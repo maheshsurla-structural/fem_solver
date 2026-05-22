@@ -7,6 +7,7 @@ from femsolver.elements.truss import Truss2D, Truss3D
 from femsolver.elements.truss_corot import Truss2DCorotational
 from femsolver.elements.beam import BeamColumn2D, BeamColumn3D
 from femsolver.elements.beam_corot import BeamColumn2DCorotational
+from femsolver.elements.beam_force import ForceBeamColumn2DCorotational
 from femsolver.elements.beam_hinged import HingedBeamColumn2D
 from femsolver.elements.plane import Quad4
 from femsolver.sections import (
@@ -34,6 +35,7 @@ from femsolver.analysis.convergence import (
     NormDispIncr,
     NormUnbalance,
 )
+from femsolver.analysis.buckling import LinearBucklingAnalysis
 from femsolver.analysis.damping import RayleighDamping
 from femsolver.analysis.eigen import EigenAnalysis
 from femsolver.analysis.integrator import (
@@ -44,9 +46,11 @@ from femsolver.analysis.integrator import (
 )
 from femsolver.analysis.linear_static import LinearStaticAnalysis
 from femsolver.analysis.nonlinear_static import NonlinearStaticAnalysis
+from femsolver.analysis.nonlinear_transient import NonlinearTransientAnalysis
 from femsolver.analysis.transient import TransientAnalysis
 from femsolver.analysis.transient_integrator import (
     Newmark,
+    NewmarkNonlinear,
     TransientIntegrator,
 )
 from femsolver.analysis.constraint_handler import (
@@ -73,6 +77,7 @@ __all__ = [
     "BeamColumn2D",
     "BeamColumn3D",
     "BeamColumn2DCorotational",
+    "ForceBeamColumn2DCorotational",
     "HingedBeamColumn2D",
     "Quad4",
     "SectionBase",
@@ -86,10 +91,13 @@ __all__ = [
     "UniaxialBilinear",
     "LinearStaticAnalysis",
     "EigenAnalysis",
+    "LinearBucklingAnalysis",
     "NonlinearStaticAnalysis",
     "TransientAnalysis",
     "TransientIntegrator",
     "Newmark",
+    "NewmarkNonlinear",
+    "NonlinearTransientAnalysis",
     "RayleighDamping",
     "Newton",
     "ModifiedNewton",
