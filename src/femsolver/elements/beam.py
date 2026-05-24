@@ -484,16 +484,22 @@ class BeamColumn2D(Element):
 class BeamColumn3D(Element):
     """2-node 3D Euler-Bernoulli beam-column. 6 DOF/node (ux, uy, uz, rx, ry, rz).
 
-    Like :class:`BeamColumn2D`, this element accepts either the legacy
-    ``(area, Iy, Iz, J)`` parameters or a ``section=`` keyword. When the
-    section route is used, the element reads ``A``, ``Iy``, ``Iz``, ``J``
-    off the section so that downstream code (mass, output, etc.) keeps a
-    consistent view of the cross-section properties.
+    Three construction paths, mirroring :class:`BeamColumn2D`:
 
-    Also like the 2D variant, ``use_numerical_integration`` switches the
-    local stiffness from the closed-form expression to a Gauss-Lobatto
-    integration of :math:`\\int_0^L B^T k_s B \\,dx`. For elastic sections
-    the two paths agree to machine precision once ``n_int >= 3``.
+    * ``BeamColumn3D(tag, nodes, mat, area, Iy, Iz, J)`` — legacy
+      elastic; an internal :class:`ElasticSection3D` is built.
+    * ``BeamColumn3D(tag, nodes, mat, section=ElasticSection3D(...))``
+      — explicit elastic section, identical to the legacy path.
+    * ``BeamColumn3D(tag, nodes, mat, section=FiberSection3D(...))``
+      — stateful fiber section, cloned per integration point.
+      ``use_numerical_integration`` is forced ``True``; section
+      response (and tangent) is queried at every Gauss-Lobatto point.
+
+    ``use_numerical_integration`` switches the local stiffness from
+    the closed-form 12 x 12 expression to a Gauss-Lobatto integration
+    of :math:`\\int_0^L B^T k_s B \\,dx`. For elastic sections the
+    two paths agree to machine precision once ``n_int >= 3``; for
+    fiber sections only the numerical path is meaningful.
     """
 
     n_nodes = 2
@@ -513,7 +519,7 @@ class BeamColumn3D(Element):
         J: float | None = None,
         vecxz=None,
         *,
-        section: ElasticSection3D | None = None,
+        section: SectionBase | None = None,
     ):
         super().__init__(tag, nodes, material)
         if section is not None:
@@ -521,16 +527,44 @@ class BeamColumn3D(Element):
                 raise ValueError(
                     "BeamColumn3D: pass either (area, Iy, Iz, J) or section=, not both"
                 )
-            for attr in ("A", "Iy", "Iz", "J"):
-                if not hasattr(section, attr):
-                    raise ValueError(
-                        f"BeamColumn3D: section must expose '{attr}' attribute"
-                    )
             self.section = section
-            self.area = float(section.A)
-            self.Iy = float(section.Iy)
-            self.Iz = float(section.Iz)
-            self.J = float(section.J)
+            # Duck-typed sections (not subclassing SectionBase) may not
+            # declare is_stateful — default to True (the safe choice).
+            is_stateful = getattr(section, "is_stateful", True)
+            if is_stateful and hasattr(section, "gross_area"):
+                # Stateful (fiber) section: per-IP clones, numerical
+                # integration, gross properties for the closed-form
+                # fallback / mass matrix.
+                self.area = float(section.gross_area)
+                self.Iz = float(section.gross_Iz)
+                self.Iy = float(section.gross_Iy)
+                # GJ is the meaningful torsional input; if the section
+                # exposes a usable ``J``, use it; otherwise back out
+                # GJ / material.G.
+                if hasattr(section, "GJ"):
+                    self.J = float(section.GJ) / float(material.G)
+                else:
+                    self.J = float(getattr(section, "J", 0.0)) or 1.0
+                self.use_numerical_integration = True
+                self._stateful_sections = True
+                clone = getattr(section, "clone", None)
+                self.sections: list[SectionBase] = [
+                    (clone() if clone is not None else section)
+                    for _ in range(self.n_int)
+                ]
+            else:
+                # Stateless elastic section — share across IPs.
+                for attr in ("A", "Iy", "Iz", "J"):
+                    if not hasattr(section, attr):
+                        raise ValueError(
+                            f"BeamColumn3D: section must expose '{attr}' attribute"
+                        )
+                self.area = float(section.A)
+                self.Iy = float(section.Iy)
+                self.Iz = float(section.Iz)
+                self.J = float(section.J)
+                self._stateful_sections = False
+                self.sections = [section] * self.n_int
         else:
             if area is None or Iy is None or Iz is None or J is None:
                 raise ValueError(
@@ -545,6 +579,8 @@ class BeamColumn3D(Element):
             self.section = ElasticSection3D(
                 material.E, material.G, self.area, self.Iy, self.Iz, self.J
             )
+            self._stateful_sections = False
+            self.sections = [self.section] * self.n_int
         self._vecxz_user = np.asarray(vecxz, dtype=float) if vecxz is not None else None
         self._wy_local: float = 0.0
         self._wz_local: float = 0.0
@@ -687,22 +723,105 @@ class BeamColumn3D(Element):
         B[3, 9] = 1.0 / L
         return B
 
-    def _K_local_numerical(self) -> np.ndarray:
-        """Numerically-integrated local stiffness via Gauss-Lobatto."""
+    def _ensure_sections_length(self) -> None:
+        """Make sure ``self.sections`` has ``n_int`` entries (mirrors
+        BeamColumn2D)."""
+        if len(self.sections) == self.n_int:
+            return
+        if self._stateful_sections:
+            raise RuntimeError(
+                f"BeamColumn3D {self.tag}: cannot change n_int after "
+                f"construction for stateful sections "
+                f"(have {len(self.sections)} per-IP states, asked for {self.n_int})"
+            )
+        self.sections = [self.section] * self.n_int
+
+    def _K_local_numerical(self, *, use_current_state: bool = False) -> np.ndarray:
+        """Numerically-integrated local stiffness via Gauss-Lobatto.
+
+        With ``use_current_state=False`` (default), the section is
+        queried at zero strain — for an elastic section this matches
+        the closed-form K to machine precision. With
+        ``use_current_state=True`` the section is queried at the
+        actual strain ``B(xi) @ u_local``, giving the consistent
+        tangent for the current state (needed for fiber-section
+        plasticity).
+        """
+        self._ensure_sections_length()
         L, _, _, _ = self.length_and_axes()
         xi_pts, w_pts = gauss_lobatto_1d(self.n_int)
         K = np.zeros((12, 12))
-        zero_strain = np.zeros(self.section.n_resultants)
         jac = 0.5 * L
-        for xi, w in zip(xi_pts, w_pts):
-            B = self._strain_disp_matrix(xi, L)
-            _, ks = self.section.get_response(zero_strain)
-            K += (w * jac) * (B.T @ ks @ B)
+        if use_current_state:
+            T = self.transform_matrix()
+            u_l = T @ self.gather_u()
+            for i, (xi, w) in enumerate(zip(xi_pts, w_pts)):
+                B = self._strain_disp_matrix(xi, L)
+                e_i = B @ u_l
+                _, ks = self.sections[i].get_response(e_i)
+                K += (w * jac) * (B.T @ ks @ B)
+        else:
+            zero_strain = np.zeros(self.section.n_resultants)
+            for i, (xi, w) in enumerate(zip(xi_pts, w_pts)):
+                B = self._strain_disp_matrix(xi, L)
+                _, ks = self.sections[i].get_response(zero_strain)
+                K += (w * jac) * (B.T @ ks @ B)
         return K
 
     def K_global(self) -> np.ndarray:
         T = self.transform_matrix()
         return T.T @ self.K_local() @ T
+
+    # ------------------------------------------------------ tangent / f_int
+    def K_tangent_global(self) -> np.ndarray:
+        """Tangent stiffness at the current state. For elastic
+        sections this is identical to :meth:`K_global`; for stateful
+        sections it re-evaluates the section response at every IP
+        with the actual current strain."""
+        if not self._stateful_sections:
+            return self.K_global()
+        T = self.transform_matrix()
+        K_loc = self._K_local_numerical(use_current_state=True)
+        return T.T @ K_loc @ T
+
+    def f_int_global(self) -> np.ndarray:
+        """Internal nodal force at the current state. For stateful
+        sections, integrates ``B^T s(x)`` along the element using
+        Gauss-Lobatto. For elastic / linear elements, falls back to
+        ``K_global() @ u``."""
+        if not self._stateful_sections:
+            return super().f_int_global()
+        self._ensure_sections_length()
+        L, _, _, _ = self.length_and_axes()
+        T = self.transform_matrix()
+        u_l = T @ self.gather_u()
+        xi_pts, w_pts = gauss_lobatto_1d(self.n_int)
+        f_l = np.zeros(12)
+        jac = 0.5 * L
+        for i, (xi, w) in enumerate(zip(xi_pts, w_pts)):
+            B = self._strain_disp_matrix(xi, L)
+            e_i = B @ u_l
+            s_i, _ = self.sections[i].get_response(e_i)
+            f_l += (w * jac) * (B.T @ s_i)
+        return T.T @ f_l
+
+    # ----------------------------------------------------------------- state
+    def commit_state(self) -> None:
+        """Forward converged state to the section(s). For stateful
+        sections each IP holds its own state; for stateless sections
+        all entries point to the same shared object."""
+        if self._stateful_sections:
+            for sec in self.sections:
+                sec.commit_state()
+        else:
+            self.section.commit_state()
+
+    def revert_state(self) -> None:
+        if self._stateful_sections:
+            for sec in self.sections:
+                sec.revert_state()
+        else:
+            self.section.revert_state()
 
     # ----------------------------------------------------------------- mass
     def M_local(self, *, lumped: bool = False) -> np.ndarray:
@@ -806,6 +925,10 @@ class BeamColumn3D(Element):
         self._evaluate_sections_along_length(u_l, L)
 
     def _evaluate_sections_along_length(self, u_l: np.ndarray, L: float) -> None:
+        """Per-IP section response, used by ``recover()``. Uses
+        ``self.sections[i]`` so that for stateful (fiber) sections each
+        IP's independent state is correctly read out."""
+        self._ensure_sections_length()
         xi_pts, _ = gauss_lobatto_1d(self.n_int)
         n_r = self.section.n_resultants
         self.section_locations = np.empty(self.n_int)
@@ -814,14 +937,13 @@ class BeamColumn3D(Element):
         for i, xi in enumerate(xi_pts):
             B = self._strain_disp_matrix(xi, L)
             e_i = B @ u_l
-            s_i, _ = self.section.get_response(e_i)
+            s_i, _ = self.sections[i].get_response(e_i)
             self.section_locations[i] = 0.5 * L * (1.0 + xi)
             self.section_strains[i] = e_i
             self.section_forces[i] = s_i
 
-    # ---------------------------------------------------------------- state
-    def commit_state(self) -> None:
-        self.section.commit_state()
-
-    def revert_state(self) -> None:
-        self.section.revert_state()
+    # NOTE: ``commit_state`` and ``revert_state`` are defined earlier
+    # in the class (the Phase 5.5 stateful-section-aware versions).
+    # The original Phase 3 versions that only forwarded to
+    # ``self.section`` would have been overwritten by the later
+    # definitions and led to silent loss of per-IP fiber-state commit.

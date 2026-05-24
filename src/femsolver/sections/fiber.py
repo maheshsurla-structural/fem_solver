@@ -192,3 +192,254 @@ class FiberSection2D(SectionBase):
             f"FiberSection2D(n_fibers={len(self.fibers)}, "
             f"A={self.gross_area:g}, Iz={self.gross_Iz:g})"
         )
+
+
+# ============================================================ 3-D ==
+
+class FiberSection3D(SectionBase):
+    """Fiber-discretized 3-D cross-section.
+
+    Strain ordering matches :class:`ElasticSection3D` and the
+    :class:`~femsolver.elements.beam.BeamColumn3D` B-matrix:
+
+        e = [eps_axial, kappa_z, kappa_y, gamma_torsion]
+        s = [N, Mz, My, T]
+
+    Fiber kinematics (Bernoulli plane sections):
+
+        eps_f(y, z) = eps_axial - y * kappa_z + z * kappa_y
+
+    Section forces from area integration over fibers:
+
+        N  = sum sigma_f * A_f
+        Mz = -sum y_f * sigma_f * A_f          (positive Mz compresses +y)
+        My = +sum z_f * sigma_f * A_f          (positive My stretches +z)
+
+    Torsion is **uncoupled** at the section level: the user supplies a
+    constant ``GJ``, and torsional response is ``T = GJ * gamma``.
+    Coupling axial / bending with torsion via warping is a substantial
+    extension (warping degree of freedom, sectorial coordinate, etc.)
+    deferred to a future phase.
+
+    Tangent stiffness picks up cross-coupling terms once any fiber's
+    tangent ``Et_f`` differs from the others (e.g. one side yields
+    while the other stays elastic). For a symmetric elastic section
+    the matrix is diagonal; after asymmetric yielding the off-diagonal
+    blocks ``ES_z, ES_y, EI_yz`` become non-zero, producing the
+    classical P-Mz-My interaction.
+    """
+
+    n_resultants = 4
+    is_stateful = True
+
+    def __init__(self, fibers: list[Fiber], *, GJ: float):
+        if not fibers:
+            raise ValueError("FiberSection3D needs at least one fiber")
+        for f in fibers:
+            if f.area <= 0.0:
+                raise ValueError(
+                    f"fiber at (y={f.y}, z={f.z}) has non-positive area"
+                )
+        if GJ <= 0.0:
+            raise ValueError("GJ must be positive")
+        self.fibers = list(fibers)
+        self.GJ = float(GJ)
+
+    # --------------------------------------------------------- gross props
+    @property
+    def gross_area(self) -> float:
+        return float(sum(f.area for f in self.fibers))
+
+    @property
+    def centroid_y(self) -> float:
+        A = self.gross_area
+        if A == 0.0:
+            return 0.0
+        return float(sum(f.area * f.y for f in self.fibers) / A)
+
+    @property
+    def centroid_z(self) -> float:
+        A = self.gross_area
+        if A == 0.0:
+            return 0.0
+        return float(sum(f.area * f.z for f in self.fibers) / A)
+
+    @property
+    def gross_Iz(self) -> float:
+        """Centroidal second moment about z."""
+        yc = self.centroid_y
+        return float(sum(f.area * (f.y - yc) ** 2 for f in self.fibers))
+
+    @property
+    def gross_Iy(self) -> float:
+        """Centroidal second moment about y."""
+        zc = self.centroid_z
+        return float(sum(f.area * (f.z - zc) ** 2 for f in self.fibers))
+
+    @property
+    def gross_Iyz(self) -> float:
+        """Centroidal product of inertia."""
+        yc = self.centroid_y
+        zc = self.centroid_z
+        return float(sum(
+            f.area * (f.y - yc) * (f.z - zc) for f in self.fibers
+        ))
+
+    @property
+    def gross_J(self) -> float:
+        """The user-supplied torsional constant J. (Returned as
+        ``GJ / G`` is only meaningful if a material's ``G`` is in
+        scope; we just expose the input ``J`` as
+        ``J = GJ / G_assumed``, but for simplicity we expose ``GJ``
+        directly via :attr:`GJ` and ``J = GJ`` is the wrong dimension.
+        BeamColumn3D reads ``J`` via the section's ``J`` attribute, so
+        we expose that as ``J = GJ`` divided by an assumed reference
+        ``G``. Cleaner: the element should read ``GJ`` directly. We
+        expose ``self.J`` purely so the element's legacy attribute-
+        sniff (``hasattr(section, 'J')``) works; numerically the
+        element uses ``GJ`` from the section's ``get_response``.)
+        """
+        # ``J`` is exposed as a placeholder; the element uses GJ via
+        # the tangent in get_response(), so the precise value here
+        # doesn't actually drive any numerics. Returning ``GJ`` (a
+        # stiffness with wrong units) would mislead downstream code,
+        # so return None — but BeamColumn3D's hasattr-sniff in Phase 5.5
+        # branches on ``is_stateful`` before checking the attribute,
+        # so we never actually read it for fiber sections. Set ``J``
+        # to a dummy zero just so the attribute exists.
+        return 0.0
+
+    @property
+    def J(self) -> float:
+        """Placeholder so duck-type checks pass — see :attr:`gross_J`."""
+        return 0.0
+
+    # ---------------------------------------------------- compatibility
+    @property
+    def A(self) -> float:
+        """Alias for :attr:`gross_area` so duck-typed elastic-section
+        sniff also passes for fiber sections."""
+        return self.gross_area
+
+    @property
+    def Iz(self) -> float:
+        return self.gross_Iz
+
+    @property
+    def Iy(self) -> float:
+        return self.gross_Iy
+
+    # ------------------------------------------------------- response
+    def get_response(self, e: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """Aggregate fiber responses + uncoupled torsion into section
+        forces and tangent."""
+        eps_a = float(e[0])
+        kappa_z = float(e[1])
+        kappa_y = float(e[2])
+        gamma = float(e[3])
+        N = 0.0
+        Mz = 0.0
+        My = 0.0
+        # Tangent contributions (axial-bending block; torsion uncoupled).
+        EA = 0.0
+        ES_z = 0.0    # = sum y_f Et_f A_f
+        ES_y = 0.0    # = sum z_f Et_f A_f
+        EI_z = 0.0    # = sum y_f^2 Et_f A_f
+        EI_y = 0.0    # = sum z_f^2 Et_f A_f
+        EI_yz = 0.0   # = sum y_f z_f Et_f A_f
+        for f in self.fibers:
+            eps_f = eps_a - f.y * kappa_z + f.z * kappa_y
+            sigma, Et = f.material.get_response(eps_f)
+            dF = sigma * f.area
+            dEt_A = Et * f.area
+            N += dF
+            Mz -= f.y * dF
+            My += f.z * dF
+            EA += dEt_A
+            ES_z += dEt_A * f.y
+            ES_y += dEt_A * f.z
+            EI_z += dEt_A * f.y * f.y
+            EI_y += dEt_A * f.z * f.z
+            EI_yz += dEt_A * f.y * f.z
+        # Torsion contribution (uncoupled).
+        T = self.GJ * gamma
+        s = np.array([N, Mz, My, T])
+        ks = np.array([
+            [EA,    -ES_z,   ES_y,    0.0   ],
+            [-ES_z,  EI_z,  -EI_yz,   0.0   ],
+            [ES_y,  -EI_yz,  EI_y,    0.0   ],
+            [0.0,    0.0,    0.0,    self.GJ],
+        ])
+        return s, ks
+
+    # -------------------------------------------------------- lifecycle
+    def commit_state(self) -> None:
+        for f in self.fibers:
+            f.material.commit_state()
+
+    def revert_state(self) -> None:
+        for f in self.fibers:
+            f.material.revert_state()
+
+    # ------------------------------------------------------------- clone
+    def clone(self) -> "FiberSection3D":
+        """Deep copy with independent fiber-material state."""
+        return FiberSection3D(
+            [
+                Fiber(y=f.y, z=f.z, area=f.area, material=f.material.clone())
+                for f in self.fibers
+            ],
+            GJ=self.GJ,
+        )
+
+    # --------------------------------------------------------- factories
+    @classmethod
+    def rectangular(
+        cls,
+        width_y: float,
+        width_z: float,
+        n_y: int,
+        n_z: int,
+        material: UniaxialMaterial,
+        *,
+        GJ: float,
+        centroid_y: float = 0.0,
+        centroid_z: float = 0.0,
+    ) -> "FiberSection3D":
+        """Build a rectangle of dimensions ``width_y`` (in y) by
+        ``width_z`` (in z), discretised into ``n_y x n_z`` equal-area
+        fibers. ``GJ`` is the torsional stiffness (user-supplied;
+        ``G * J_StVenant`` for solid rectangles).
+
+        Each fiber is centred at ``(y_i, z_j)`` where
+        ``y_i in (-width_y/2, ..., +width_y/2)``,
+        ``z_j in (-width_z/2, ..., +width_z/2)`` (plus the section-
+        centroid offset).
+        """
+        if width_y <= 0.0 or width_z <= 0.0:
+            raise ValueError("widths must be positive")
+        if n_y < 2 or n_z < 2:
+            raise ValueError("need at least 2 fibers in each direction")
+        dy = width_y / n_y
+        dz = width_z / n_z
+        fiber_area = dy * dz
+        y_top = centroid_y + 0.5 * width_y - 0.5 * dy
+        z_top = centroid_z + 0.5 * width_z - 0.5 * dz
+        fibers = [
+            Fiber(
+                y=y_top - i * dy,
+                z=z_top - j * dz,
+                area=fiber_area,
+                material=material.clone(),
+            )
+            for i in range(n_y)
+            for j in range(n_z)
+        ]
+        return cls(fibers, GJ=GJ)
+
+    def __repr__(self) -> str:
+        return (
+            f"FiberSection3D(n_fibers={len(self.fibers)}, "
+            f"A={self.gross_area:g}, Iz={self.gross_Iz:g}, "
+            f"Iy={self.gross_Iy:g}, GJ={self.GJ:g})"
+        )

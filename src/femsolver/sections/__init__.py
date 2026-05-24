@@ -10,7 +10,7 @@ code.
 """
 from femsolver.sections.base import SectionBase
 from femsolver.sections.elastic import ElasticSection2D, ElasticSection3D
-from femsolver.sections.fiber import Fiber, FiberSection2D
+from femsolver.sections.fiber import Fiber, FiberSection2D, FiberSection3D
 
 __all__ = [
     "SectionBase",
@@ -18,4 +18,5 @@ __all__ = [
     "ElasticSection3D",
     "Fiber",
     "FiberSection2D",
+    "FiberSection3D",
 ]

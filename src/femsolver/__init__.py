@@ -7,6 +7,7 @@ from femsolver.elements.truss import Truss2D, Truss3D
 from femsolver.elements.truss_corot import Truss2DCorotational
 from femsolver.elements.beam import BeamColumn2D, BeamColumn3D
 from femsolver.elements.beam_corot import BeamColumn2DCorotational
+from femsolver.elements.beam_corot_3d import BeamColumn3DCorotational
 from femsolver.elements.beam_force import ForceBeamColumn2DCorotational
 from femsolver.elements.beam_hinged import HingedBeamColumn2D
 from femsolver.elements.plane import Quad4
@@ -15,6 +16,7 @@ from femsolver.sections import (
     ElasticSection3D,
     Fiber,
     FiberSection2D,
+    FiberSection3D,
     SectionBase,
 )
 from femsolver.sections.hinges import BilinearMomentRotationSpring
@@ -47,6 +49,11 @@ from femsolver.analysis.integrator import (
 from femsolver.analysis.linear_static import LinearStaticAnalysis
 from femsolver.analysis.nonlinear_static import NonlinearStaticAnalysis
 from femsolver.analysis.nonlinear_transient import NonlinearTransientAnalysis
+from femsolver.analysis.response_spectrum import (
+    ResponseSpectrum,
+    ResponseSpectrumAnalysis,
+    ground_motion_force,
+)
 from femsolver.analysis.transient import TransientAnalysis
 from femsolver.analysis.transient_integrator import (
     Newmark,
@@ -77,6 +84,7 @@ __all__ = [
     "BeamColumn2D",
     "BeamColumn3D",
     "BeamColumn2DCorotational",
+    "BeamColumn3DCorotational",
     "ForceBeamColumn2DCorotational",
     "HingedBeamColumn2D",
     "Quad4",
@@ -85,6 +93,7 @@ __all__ = [
     "ElasticSection3D",
     "Fiber",
     "FiberSection2D",
+    "FiberSection3D",
     "BilinearMomentRotationSpring",
     "UniaxialMaterial",
     "UniaxialElastic",
@@ -99,6 +108,9 @@ __all__ = [
     "NewmarkNonlinear",
     "NonlinearTransientAnalysis",
     "RayleighDamping",
+    "ResponseSpectrum",
+    "ResponseSpectrumAnalysis",
+    "ground_motion_force",
     "Newton",
     "ModifiedNewton",
     "LineSearchNewton",
