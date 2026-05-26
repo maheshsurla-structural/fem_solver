@@ -17,6 +17,15 @@ from femsolver.sections.shell import (
     ShellLayer,
     ShellSectionBase,
 )
+from femsolver.sections.ply_failure import (
+    PlyStrength,
+    evaluate_laminate,
+    max_strain_index,
+    max_stress_index,
+    tsai_hill_index,
+    tsai_wu_index,
+    tsai_wu_strength_ratio,
+)
 
 __all__ = [
     "SectionBase",
@@ -29,4 +38,11 @@ __all__ = [
     "ElasticShellSection",
     "LayeredShellSection",
     "ShellLayer",
+    "PlyStrength",
+    "max_stress_index",
+    "max_strain_index",
+    "tsai_hill_index",
+    "tsai_wu_index",
+    "tsai_wu_strength_ratio",
+    "evaluate_laminate",
 ]

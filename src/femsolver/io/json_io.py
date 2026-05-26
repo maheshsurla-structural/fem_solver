@@ -13,6 +13,9 @@ from femsolver.constraints import (
 from femsolver.core.model import Model
 from femsolver.elements.beam import BeamColumn2D, BeamColumn3D
 from femsolver.elements.plane import Quad4
+from femsolver.elements.shell import ShellMITC4
+from femsolver.elements.shell_tri import ShellTri3
+from femsolver.elements.solid import Hex8, Tet4
 from femsolver.elements.truss import Truss2D, Truss3D
 from femsolver.materials.elastic import ElasticIsotropic
 
@@ -23,6 +26,10 @@ _ELEMENT_REGISTRY = {
     "BeamColumn2D": BeamColumn2D,
     "BeamColumn3D": BeamColumn3D,
     "Quad4": Quad4,
+    "ShellMITC4": ShellMITC4,
+    "ShellTri3": ShellTri3,
+    "Hex8": Hex8,
+    "Tet4": Tet4,
 }
 
 _MATERIAL_REGISTRY = {
@@ -121,6 +128,21 @@ def _serialize_element(e) -> dict:
         common["state"] = e.state
         common["quadrature"] = e.quadrature
         return {"type": "Quad4", "params": common}
+    if isinstance(e, ShellMITC4):
+        common["thickness"] = e.thickness
+        common["k_shear"] = e.k_shear
+        common["drilling_factor"] = e.drilling_factor
+        return {"type": "ShellMITC4", "params": common}
+    if isinstance(e, ShellTri3):
+        common["thickness"] = e.thickness
+        common["k_shear"] = e.k_shear
+        common["drilling_factor"] = e.drilling_factor
+        return {"type": "ShellTri3", "params": common}
+    if isinstance(e, Hex8):
+        common["quadrature"] = e.quadrature
+        return {"type": "Hex8", "params": common}
+    if isinstance(e, Tet4):
+        return {"type": "Tet4", "params": common}
     raise NotImplementedError(f"cannot serialize element type {type(e).__name__}")
 
 

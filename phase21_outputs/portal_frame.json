@@ -1,0 +1,128 @@
+{
+  "version": "0.2",
+  "ndm": 2,
+  "ndf": 3,
+  "nodes": [
+    {
+      "tag": 1,
+      "coords": [
+        0.0,
+        0.0
+      ],
+      "fixity": [
+        1,
+        1,
+        1
+      ],
+      "load": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "tag": 2,
+      "coords": [
+        5.0,
+        0.0
+      ],
+      "fixity": [
+        1,
+        1,
+        1
+      ],
+      "load": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "tag": 3,
+      "coords": [
+        0.0,
+        3.0
+      ],
+      "fixity": [
+        0,
+        0,
+        0
+      ],
+      "load": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "tag": 4,
+      "coords": [
+        5.0,
+        3.0
+      ],
+      "fixity": [
+        0,
+        0,
+        0
+      ],
+      "load": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "materials": [
+    {
+      "type": "ElasticIsotropic",
+      "params": {
+        "tag": 1,
+        "E": 20000000000.0,
+        "nu": 0.3,
+        "rho": 7850.0
+      }
+    }
+  ],
+  "elements": [
+    {
+      "type": "BeamColumn2D",
+      "params": {
+        "tag": 1,
+        "nodes": [
+          1,
+          3
+        ],
+        "material_tag": 1,
+        "area": 0.01,
+        "Iz": 0.0001
+      }
+    },
+    {
+      "type": "BeamColumn2D",
+      "params": {
+        "tag": 2,
+        "nodes": [
+          2,
+          4
+        ],
+        "material_tag": 1,
+        "area": 0.01,
+        "Iz": 0.0001
+      }
+    },
+    {
+      "type": "BeamColumn2D",
+      "params": {
+        "tag": 3,
+        "nodes": [
+          3,
+          4
+        ],
+        "material_tag": 1,
+        "area": 0.02,
+        "Iz": 0.0002
+      }
+    }
+  ],
+  "constraints": []
+}

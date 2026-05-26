@@ -21,6 +21,7 @@ from femsolver.materials.uniaxial.menegotto_pinto import (
 from femsolver.materials.uniaxial.hysteretic import (
     UniaxialHysteretic,
 )
+from femsolver.materials.uniaxial.gap import UniaxialGap
 
 __all__ = [
     "UniaxialMaterial",
@@ -30,4 +31,5 @@ __all__ = [
     "ConcreteMander",
     "UniaxialMenegottoPinto",
     "UniaxialHysteretic",
+    "UniaxialGap",
 ]

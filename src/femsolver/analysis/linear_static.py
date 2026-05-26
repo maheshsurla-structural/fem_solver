@@ -14,6 +14,7 @@ from femsolver.analysis.constraint_handler import (
     PenaltyHandler,
     TransformationHandler,
 )
+from femsolver.analysis.solvers import DirectSparseSolver, LinearSolver
 from femsolver.numerics.dof_numbering import rcm_renumber
 
 
@@ -32,9 +33,16 @@ class LinearStaticAnalysis:
         numbering) or ``"rcm"`` (reverse Cuthill-McKee on the node
         adjacency graph — typically reduces bandwidth and direct-solve
         fill-in on structured meshes).
+    solver : LinearSolver, optional
+        Linear solver used for ``K u = F``. Defaults to a
+        :class:`DirectSparseSolver`. Pass an
+        :class:`~femsolver.analysis.solvers.IterativeSolver` instance to
+        use CG / GMRES with preconditioning instead.
     """
 
-    def __init__(self, model, constraints="transformation", numberer: str = "default"):
+    def __init__(self, model, constraints="transformation",
+                 numberer: str = "default",
+                 solver: LinearSolver | None = None):
         self.model = model
         if isinstance(constraints, str):
             key = constraints.lower()
@@ -54,6 +62,7 @@ class LinearStaticAnalysis:
                 f"unknown numberer {numberer!r}; expected 'default' or 'rcm'"
             )
         self.numberer = numberer
+        self.solver: LinearSolver = solver or DirectSparseSolver()
         self.K: sp.csc_matrix | None = None
         self.F: np.ndarray | None = None
         self.u: np.ndarray | None = None
@@ -79,34 +88,15 @@ class LinearStaticAnalysis:
             build = self.handler.build(m)
             K_solve, F_solve = self.handler.apply(K, F, build)
             self._check_diagonal(K_solve, build=build)
-            try:
-                u_eff = spsolve(K_solve, F_solve)
-            except Exception as exc:
-                raise RuntimeError(
-                    f"linear solve failed: {exc}. Likely cause: singular reduced "
-                    "stiffness (insufficient supports or constraint setup that "
-                    "leaves a mechanism)."
-                ) from exc
+            u_eff = self.solver.solve(K_solve, F_solve)
             u = self.handler.recover_full(np.atleast_1d(u_eff), build)
         elif has_mp and isinstance(self.handler, PenaltyHandler):
             K_solve, F_solve = self.handler.apply(m, K, F)
             self._check_diagonal(K_solve)
-            try:
-                u = spsolve(K_solve, F_solve)
-            except Exception as exc:
-                raise RuntimeError(
-                    f"linear solve failed: {exc}. Likely cause: singular stiffness "
-                    "matrix (insufficient supports, mechanism, or duplicate elements)."
-                ) from exc
+            u = self.solver.solve(K_solve, F_solve)
         else:
             self._check_diagonal(K)
-            try:
-                u = spsolve(K, F)
-            except Exception as exc:
-                raise RuntimeError(
-                    f"linear solve failed: {exc}. Likely cause: singular stiffness "
-                    "matrix (insufficient supports, mechanism, or duplicate elements)."
-                ) from exc
+            u = self.solver.solve(K, F)
 
         u = np.atleast_1d(np.asarray(u).ravel())
 
