@@ -11,9 +11,23 @@ the element-end-spring level.
 from femsolver.materials.uniaxial.base import UniaxialMaterial
 from femsolver.materials.uniaxial.elastic import UniaxialElastic
 from femsolver.materials.uniaxial.bilinear import UniaxialBilinear
+from femsolver.materials.uniaxial.concrete import (
+    ConcreteKentPark,
+    ConcreteMander,
+)
+from femsolver.materials.uniaxial.menegotto_pinto import (
+    UniaxialMenegottoPinto,
+)
+from femsolver.materials.uniaxial.hysteretic import (
+    UniaxialHysteretic,
+)
 
 __all__ = [
     "UniaxialMaterial",
     "UniaxialElastic",
     "UniaxialBilinear",
+    "ConcreteKentPark",
+    "ConcreteMander",
+    "UniaxialMenegottoPinto",
+    "UniaxialHysteretic",
 ]

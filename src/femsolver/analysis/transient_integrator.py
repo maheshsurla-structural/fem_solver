@@ -250,6 +250,357 @@ class Newmark(TransientIntegrator):
         self.t += self.dt
 
 
+# ============================================================ HHT-alpha
+
+class HHTAlpha(TransientIntegrator):
+    """Hilber-Hughes-Taylor alpha-method (HHT-alpha) for linear
+    transient analysis.
+
+    The equation of motion is enforced at a *weighted* time between
+    ``t_n`` and ``t_{n+1}``:
+
+        M u_ddot_{n+1} + (1 + alpha) C u_dot_{n+1} - alpha C u_dot_n
+            + (1 + alpha) K u_{n+1} - alpha K u_n
+            = (1 + alpha) F_{n+1} - alpha F_n
+
+    The Newmark u-v-a relations are unchanged, with the parameters
+    auto-tuned for optimal high-frequency dissipation:
+
+        beta  = (1 - alpha)^2 / 4
+        gamma = 1/2 - alpha
+
+    With ``alpha = 0`` HHT collapses exactly to Newmark with
+    ``beta = 1/4, gamma = 1/2`` (average acceleration, no algorithmic
+    damping). ``alpha < 0`` introduces second-order-accurate numerical
+    damping that grows with frequency -- useful to suppress spurious
+    high-frequency content in stiff systems while keeping the lower
+    modes accurate.
+
+    Parameters
+    ----------
+    alpha : float, default -0.05
+        HHT parameter in ``[-1/3, 0]``. ``0`` = no damping (= Newmark
+        average-acceleration). Smaller (more negative) = more
+        high-frequency damping. ``-0.05`` is a mild, common default.
+
+    Notes
+    -----
+    Unconditionally stable and second-order accurate for any
+    ``alpha in [-1/3, 0]``. For nonlinear analysis use
+    :class:`NewmarkNonlinear` (HHT-alpha for nonlinear systems would
+    parallel this with the same alpha-blending; a documented future
+    refinement).
+    """
+
+    def __init__(self, *, alpha: float = -0.05):
+        super().__init__()
+        if not (-1.0 / 3.0 <= alpha <= 0.0):
+            raise ValueError(f"alpha must lie in [-1/3, 0], got {alpha}")
+        self.alpha = float(alpha)
+        # Beta / gamma auto-tuned for HHT-alpha to retain second-order
+        # accuracy and unconditional stability.
+        self.beta = (1.0 - self.alpha) ** 2 / 4.0
+        self.gamma = 0.5 - self.alpha
+        # Newmark coefficients populated at bind() from dt
+        self._a1 = self._a2 = self._a3 = 0.0
+        self._a4 = self._a5 = self._a6 = 0.0
+        # Factored K_eff solver
+        self._K_eff_solve: Callable[[np.ndarray], np.ndarray] | None = None
+        # Previous-step external force (for the (1+alpha)F_{n+1} - alpha F_n term)
+        self._F_prev: np.ndarray | None = None
+
+    def _finalize_bind(self) -> None:
+        dt = self.dt
+        beta = self.beta
+        gamma = self.gamma
+        alpha = self.alpha
+        self._a1 = 1.0 / (beta * dt * dt)
+        self._a2 = 1.0 / (beta * dt)
+        self._a3 = 1.0 / (2.0 * beta) - 1.0
+        self._a4 = gamma / (beta * dt)
+        self._a5 = gamma / beta - 1.0
+        self._a6 = dt * (gamma / (2.0 * beta) - 1.0)
+        # K_eff for HHT: a1 M + (1+alpha) a4 C + (1+alpha) K
+        K_eff = (
+            self._a1 * self.M
+            + (1.0 + alpha) * self._a4 * self.C
+            + (1.0 + alpha) * self.K
+        ).tocsc()
+        try:
+            self._K_eff_solve = factorized(K_eff)
+        except Exception as exc:
+            raise RuntimeError(
+                f"HHTAlpha: effective tangent could not be factored ({exc})."
+            ) from exc
+        # F_prev initialized to F(0); the first step uses the user-set
+        # initial force at t = 0.
+        self._F_prev = self._initial_force.copy()
+
+    def step(self, F_n_plus_1: np.ndarray) -> None:
+        a1, a2, a3 = self._a1, self._a2, self._a3
+        a4, a5, a6 = self._a4, self._a5, self._a6
+        alpha = self.alpha
+        M, C, K = self.M, self.C, self.K
+        u, ud, udd = self.u, self.u_dot, self.u_ddot
+        F_prev = self._F_prev
+        rhs = (
+            (1.0 + alpha) * F_n_plus_1 - alpha * F_prev
+            + M @ (a1 * u + a2 * ud + a3 * udd)
+            + C @ ((1.0 + alpha) * a4 * u + ((1.0 + alpha) * a5 + alpha) * ud
+                    + (1.0 + alpha) * a6 * udd)
+            + alpha * (K @ u)
+        )
+        u_new = np.asarray(self._K_eff_solve(rhs)).ravel()
+        udd_new = a1 * (u_new - u) - a2 * ud - a3 * udd
+        ud_new = a4 * (u_new - u) - a5 * ud - a6 * udd
+        self.u, self.u_dot, self.u_ddot = u_new, ud_new, udd_new
+        self._F_prev = F_n_plus_1
+        self.t += self.dt
+
+
+# ============================================================ generalized-alpha
+
+class GeneralizedAlpha(TransientIntegrator):
+    """Chung-Hulbert generalized-alpha integrator for linear transient
+    analysis.
+
+    The equation of motion is enforced at *two* intermediate time
+    points -- one for the inertia term and one for the stiffness /
+    damping / external-force terms:
+
+        (1 - alpha_m) M a_{n+1} + alpha_m M a_n
+            + (1 - alpha_f) (C v_{n+1} + K u_{n+1})
+            + alpha_f (C v_n + K u_n)
+            = (1 - alpha_f) F_{n+1} + alpha_f F_n
+
+    Specifying a single user-friendly parameter ``rho_inf`` (the
+    spectral radius at the high-frequency limit) auto-tunes
+    ``alpha_m, alpha_f, beta, gamma`` to maximize accuracy at low
+    frequencies while damping the high frequencies at the rate set by
+    ``rho_inf``:
+
+        alpha_m = (2 rho_inf - 1) / (rho_inf + 1)
+        alpha_f =        rho_inf  / (rho_inf + 1)
+        beta    = (1 - alpha_m + alpha_f)^2 / 4
+        gamma   = 1/2 - alpha_m + alpha_f
+
+    ``rho_inf = 1.0`` is the standard average-acceleration Newmark
+    (no algorithmic damping). ``rho_inf = 0.0`` annihilates high-
+    frequency modes in one step. Typical engineering choices land in
+    ``[0.6, 0.95]``.
+
+    Parameters
+    ----------
+    rho_inf : float, default 0.8
+        Spectral radius at infinity, in ``[0, 1]``. ``1`` = no
+        algorithmic damping; smaller = more high-frequency dissipation.
+
+    Notes
+    -----
+    Unconditionally stable and second-order accurate for any
+    ``rho_inf in [0, 1]``. Subsumes Newmark (``rho_inf = 1``), HHT
+    (``alpha_m = 0``), and WBZ (``alpha_f = 0``) as special cases. For
+    nonlinear problems use :class:`NewmarkNonlinear` until a
+    generalized-alpha nonlinear variant is added.
+    """
+
+    def __init__(self, *, rho_inf: float = 0.8):
+        super().__init__()
+        if not (0.0 <= rho_inf <= 1.0):
+            raise ValueError(f"rho_inf must lie in [0, 1], got {rho_inf}")
+        self.rho_inf = float(rho_inf)
+        # Auto-tuned coefficients (Chung-Hulbert optimal)
+        self.alpha_m = (2.0 * rho_inf - 1.0) / (rho_inf + 1.0)
+        self.alpha_f = rho_inf / (rho_inf + 1.0)
+        self.beta = (1.0 - self.alpha_m + self.alpha_f) ** 2 / 4.0
+        self.gamma = 0.5 - self.alpha_m + self.alpha_f
+        # Newmark coefficients populated at bind()
+        self._a1 = self._a2 = self._a3 = 0.0
+        self._a4 = self._a5 = self._a6 = 0.0
+        self._K_eff_solve: Callable[[np.ndarray], np.ndarray] | None = None
+        self._F_prev: np.ndarray | None = None
+
+    def _finalize_bind(self) -> None:
+        dt = self.dt
+        beta = self.beta
+        gamma = self.gamma
+        am = self.alpha_m
+        af = self.alpha_f
+        self._a1 = 1.0 / (beta * dt * dt)
+        self._a2 = 1.0 / (beta * dt)
+        self._a3 = 1.0 / (2.0 * beta) - 1.0
+        self._a4 = gamma / (beta * dt)
+        self._a5 = gamma / beta - 1.0
+        self._a6 = dt * (gamma / (2.0 * beta) - 1.0)
+        K_eff = (
+            (1.0 - am) * self._a1 * self.M
+            + (1.0 - af) * self._a4 * self.C
+            + (1.0 - af) * self.K
+        ).tocsc()
+        try:
+            self._K_eff_solve = factorized(K_eff)
+        except Exception as exc:
+            raise RuntimeError(
+                f"GeneralizedAlpha: K_eff could not be factored ({exc})."
+            ) from exc
+        self._F_prev = self._initial_force.copy()
+
+    def step(self, F_n_plus_1: np.ndarray) -> None:
+        a1, a2, a3 = self._a1, self._a2, self._a3
+        a4, a5, a6 = self._a4, self._a5, self._a6
+        am = self.alpha_m
+        af = self.alpha_f
+        M, C, K = self.M, self.C, self.K
+        u, ud, udd = self.u, self.u_dot, self.u_ddot
+        F_prev = self._F_prev
+        rhs = (
+            (1.0 - af) * F_n_plus_1 + af * F_prev
+            + M @ ((1.0 - am) * (a1 * u + a2 * ud + a3 * udd) - am * udd)
+            + C @ ((1.0 - af) * (a4 * u + a5 * ud + a6 * udd) - af * ud)
+            - af * (K @ u)
+        )
+        u_new = np.asarray(self._K_eff_solve(rhs)).ravel()
+        udd_new = a1 * (u_new - u) - a2 * ud - a3 * udd
+        ud_new = a4 * (u_new - u) - a5 * ud - a6 * udd
+        self.u, self.u_dot, self.u_ddot = u_new, ud_new, udd_new
+        self._F_prev = F_n_plus_1
+        self.t += self.dt
+
+
+# ============================================================ central difference
+
+class CentralDifference(TransientIntegrator):
+    """Explicit central-difference integrator for linear transient
+    analysis (impact / blast / very-short-duration loading).
+
+    Update equations:
+
+        u_ddot_n = (u_{n+1} - 2 u_n + u_{n-1}) / dt^2
+        u_dot_n  = (u_{n+1} - u_{n-1}) / (2 dt)
+
+    Enforcing the equation of motion at ``t_n``:
+
+        M u_ddot_n + C u_dot_n + K u_n = F_n
+
+    and solving for ``u_{n+1}``:
+
+        [M/dt^2 + C/(2 dt)] u_{n+1} =
+            F_n - K u_n + (2 M / dt^2) u_n
+            - (M/dt^2 - C/(2 dt)) u_{n-1}
+
+    With a **lumped** mass and Rayleigh-alpha_M-only damping, the
+    left-hand side is diagonal -- no matrix solve per step. Each step
+    costs only one matrix-vector multiply (``K u_n``) plus a few
+    element-wise updates. The cure is conditional stability: the time
+    step must satisfy
+
+        dt < 2 / omega_max
+
+    where ``omega_max`` is the largest natural frequency of the mass-
+    normalised stiffness. For typical solid-mechanics problems this
+    is a small fraction of the smallest element transit time.
+
+    Parameters
+    ----------
+    lumped_mass : bool, default True
+        Use a row-summed lumped mass matrix (the standard choice for
+        explicit integration). If ``False``, the consistent mass is
+        used and the per-step cost includes a factored solve.
+
+    Notes
+    -----
+    For nonlinear problems (most impact / blast / contact analyses),
+    a nonlinear central-difference variant is the natural next step;
+    deferred to a future Phase 17.x.
+    """
+
+    def __init__(self, *, lumped_mass: bool = True):
+        super().__init__()
+        self.lumped_mass = bool(lumped_mass)
+        self._u_prev: np.ndarray | None = None          # u_{n-1}
+        self._M_eff_solve: Callable[[np.ndarray], np.ndarray] | None = None
+        self._M_two_over_dt2: sp.csc_matrix | None = None
+        self._M_over_dt2_minus_C_over_2dt: sp.csc_matrix | None = None
+
+    def bind(self, model, *, dt: float,
+             damping: RayleighDamping | None = None) -> None:
+        # Override base bind to assemble lumped mass when requested.
+        if dt <= 0.0:
+            raise ValueError("dt must be positive")
+        self.model = model
+        self.dt = float(dt)
+        self.t = 0.0
+        self.M = assemble_mass(model, lumped=self.lumped_mass)
+        self.K = assemble_stiffness(model)
+        if damping is None:
+            self.C = sp.csc_matrix(self.M.shape)
+        else:
+            self.C = damping.build(self.M, self.K)
+        self.F_ref = assemble_force(model)
+        self.u = self._gather("disp")
+        self.u_dot = self._gather("velocity")
+        F0 = self._initial_force
+        rhs0 = F0 - self.C @ self.u_dot - self.K @ self.u
+        try:
+            M_solve = factorized(self.M)
+        except Exception as exc:
+            raise RuntimeError(
+                f"CentralDifference: mass matrix could not be factored "
+                f"({exc})."
+            ) from exc
+        self.u_ddot = np.asarray(M_solve(rhs0)).ravel()
+        self._finalize_bind()
+
+    def _finalize_bind(self) -> None:
+        dt = self.dt
+        # Effective LHS: M/dt^2 + C/(2 dt)
+        M_eff = (self.M * (1.0 / (dt * dt))
+                 + self.C * (1.0 / (2.0 * dt))).tocsc()
+        try:
+            self._M_eff_solve = factorized(M_eff)
+        except Exception as exc:
+            raise RuntimeError(
+                f"CentralDifference: effective mass matrix could not be "
+                f"factored ({exc})."
+            ) from exc
+        # Precompute frequently used combinations
+        self._M_two_over_dt2 = (self.M * (2.0 / (dt * dt))).tocsc()
+        self._M_over_dt2_minus_C_over_2dt = (
+            self.M * (1.0 / (dt * dt)) - self.C * (1.0 / (2.0 * dt))
+        ).tocsc()
+        # Starting value u_{-1} from Taylor expansion:
+        #   u_{-1} = u_0 - dt v_0 + (dt^2 / 2) a_0
+        self._u_prev = (
+            self.u - dt * self.u_dot + 0.5 * dt * dt * self.u_ddot
+        )
+
+    def step(self, F_n: np.ndarray) -> None:
+        """Advance one explicit step using force at ``t_n``.
+
+        Note: unlike implicit integrators (which use F at ``t_{n+1}``),
+        CD uses F at the *current* time. The driver passes whatever it
+        thinks of as "F at this step"; both conventions land on the
+        same physical answer for slowly-varying loads but differ by
+        ``dt`` for sharp transients.
+        """
+        dt = self.dt
+        rhs = (
+            F_n
+            - self.K @ self.u
+            + self._M_two_over_dt2 @ self.u
+            - self._M_over_dt2_minus_C_over_2dt @ self._u_prev
+        )
+        u_new = np.asarray(self._M_eff_solve(rhs)).ravel()
+        udd_new = (u_new - 2.0 * self.u + self._u_prev) / (dt * dt)
+        ud_new = (u_new - self._u_prev) / (2.0 * dt)
+        # Shift history
+        self._u_prev = self.u
+        self.u = u_new
+        self.u_dot = ud_new
+        self.u_ddot = udd_new
+        self.t += dt
+
+
 # ============================================================ nonlinear
 
 class NewmarkNonlinear(StaticIntegrator):

@@ -11,6 +11,12 @@ code.
 from femsolver.sections.base import SectionBase
 from femsolver.sections.elastic import ElasticSection2D, ElasticSection3D
 from femsolver.sections.fiber import Fiber, FiberSection2D, FiberSection3D
+from femsolver.sections.shell import (
+    ElasticShellSection,
+    LayeredShellSection,
+    ShellLayer,
+    ShellSectionBase,
+)
 
 __all__ = [
     "SectionBase",
@@ -19,4 +25,8 @@ __all__ = [
     "Fiber",
     "FiberSection2D",
     "FiberSection3D",
+    "ShellSectionBase",
+    "ElasticShellSection",
+    "LayeredShellSection",
+    "ShellLayer",
 ]

@@ -344,3 +344,118 @@ def ground_motion_force(
         return -cache["Mr"] * float(accel_function(t))
 
     return _force
+
+
+# ============================================================ multi-support
+
+def _influence_vector_for_nodes(model, direction: str,
+                                 node_tags) -> np.ndarray:
+    """Influence vector restricted to a given subset of nodes (instead
+    of the entire model). Free DOFs at the listed nodes in the chosen
+    direction get a 1; everything else gets 0. Use this to express
+    per-support motion for multi-support excitation."""
+    direction_to_index = {"x": 0, "y": 1, "z": 2}
+    if direction not in direction_to_index:
+        raise ValueError(
+            f"unknown direction {direction!r} -- use 'x', 'y', or 'z'"
+        )
+    idx = direction_to_index[direction]
+    iota = np.zeros(model.neq)
+    node_set = set(int(t) for t in node_tags)
+    for node in model.nodes.values():
+        if node.tag not in node_set:
+            continue
+        if idx < node.ndf:
+            eq = int(node.eqn[idx])
+            if eq >= 0:
+                iota[eq] = 1.0
+    return iota
+
+
+def multi_support_ground_motion_force(model, supports):
+    """Build a ``load_function`` for transient analysis where each
+    support (or group of nodes) follows a *different* ground-motion
+    history.
+
+    Parameters
+    ----------
+    model : Model
+    supports : sequence of dicts
+        Each item describes one support group::
+
+            {
+                "direction": "x",       # 'x' | 'y' | 'z'
+                "accel_function": fn,   # callable t -> u_ddot_g(t)
+                "nodes": [tag1, tag2, ...] | None
+            }
+
+        If ``"nodes"`` is ``None`` or absent, the entire model is
+        considered to move with this support (equivalent to the
+        single-support :func:`ground_motion_force`). Otherwise only
+        the listed free DOFs in the chosen direction follow this
+        support's motion.
+
+    Returns
+    -------
+    callable
+        ``F(t) -> ndarray`` of length ``model.neq`` giving
+        ``-sum_j M iota_j * a_g_j(t)``.
+
+    Examples
+    --------
+    Two bridge piers, each with its own time-history file::
+
+        supports = [
+            {"direction": "x", "accel_function": pier_west_ag,
+             "nodes": [1, 2, 3]},
+            {"direction": "x", "accel_function": pier_east_ag,
+             "nodes": [7, 8, 9]},
+        ]
+        load = multi_support_ground_motion_force(model, supports)
+        TransientAnalysis(model, num_steps=N, dt=dt,
+                            load_function=load).run()
+
+    Notes
+    -----
+    This implementation uses the simplest "kinematic influence vector"
+    approach: each support's influence vector marks the free DOFs that
+    are taken to *follow rigidly* in the relevant direction. For
+    spatially-varying inputs without rigid-body kinematics (long
+    bridges with travelling waves) a more elaborate static-condensation
+    construction of the per-support influence vectors is needed -- a
+    future refinement.
+    """
+    if not supports:
+        raise ValueError("multi_support_ground_motion_force needs >= 1 support")
+    specs = []
+    for spec in supports:
+        if "accel_function" not in spec or spec["accel_function"] is None:
+            raise ValueError("each support spec must provide 'accel_function'")
+        specs.append({
+            "direction": spec.get("direction", "x"),
+            "accel_function": spec["accel_function"],
+            "nodes": spec.get("nodes"),
+        })
+    cache: dict = {}
+
+    def _force(t: float) -> np.ndarray:
+        if "Mr_list" not in cache:
+            if model.neq == 0:
+                model.number_dofs()
+            M = assemble_mass(model)
+            mr_list = []
+            for s in specs:
+                if s["nodes"] is None:
+                    iota = _influence_vector(model, s["direction"])
+                else:
+                    iota = _influence_vector_for_nodes(
+                        model, s["direction"], s["nodes"]
+                    )
+                mr_list.append(np.asarray(M @ iota).ravel())
+            cache["Mr_list"] = mr_list
+        F = np.zeros(model.neq)
+        for mr, s in zip(cache["Mr_list"], specs):
+            F -= mr * float(s["accel_function"](t))
+        return F
+
+    return _force

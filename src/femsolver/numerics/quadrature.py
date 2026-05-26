@@ -63,6 +63,19 @@ def gauss_legendre_2d_quad(n: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     return XI.ravel(), ETA.ravel(), W.ravel()
 
 
+def gauss_legendre_3d_hex(n: int) -> tuple[np.ndarray, np.ndarray,
+                                              np.ndarray, np.ndarray]:
+    """Tensor-product Gauss-Legendre quadrature on the bi-unit cube.
+
+    Returns (xi, eta, zeta, w) flattened arrays of length n*n*n.
+    """
+    xi1, w1 = gauss_legendre_1d(n)
+    XI, ETA, ZETA = np.meshgrid(xi1, xi1, xi1, indexing="ij")
+    # Triple outer product for the weights
+    W = w1[:, None, None] * w1[None, :, None] * w1[None, None, :]
+    return XI.ravel(), ETA.ravel(), ZETA.ravel(), W.ravel()
+
+
 # ---------------------------------------------------------------- Gauss-Lobatto
 #
 # The Gauss-Lobatto-Legendre rule for n points on [-1, 1] uses the endpoints

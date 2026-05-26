@@ -3,6 +3,8 @@
 from femsolver.core.model import Model
 from femsolver.core.node import Node
 from femsolver.materials.elastic import ElasticIsotropic
+from femsolver.materials.j2_plasticity import J2Plasticity3D
+from femsolver.materials.drucker_prager import DruckerPrager3D
 from femsolver.elements.truss import Truss2D, Truss3D
 from femsolver.elements.truss_corot import Truss2DCorotational
 from femsolver.elements.beam import BeamColumn2D, BeamColumn3D
@@ -11,19 +13,30 @@ from femsolver.elements.beam_corot_3d import BeamColumn3DCorotational
 from femsolver.elements.beam_force import ForceBeamColumn2DCorotational
 from femsolver.elements.beam_hinged import HingedBeamColumn2D
 from femsolver.elements.plane import Quad4
+from femsolver.elements.shell import ShellMITC4
+from femsolver.elements.shell_tri import ShellTri3
+from femsolver.elements.solid import Hex8, Tet4
 from femsolver.sections import (
     ElasticSection2D,
     ElasticSection3D,
+    ElasticShellSection,
     Fiber,
     FiberSection2D,
     FiberSection3D,
+    LayeredShellSection,
     SectionBase,
+    ShellLayer,
+    ShellSectionBase,
 )
 from femsolver.sections.hinges import BilinearMomentRotationSpring
 from femsolver.materials.uniaxial import (
+    ConcreteKentPark,
+    ConcreteMander,
     UniaxialBilinear,
     UniaxialElastic,
+    UniaxialHysteretic,
     UniaxialMaterial,
+    UniaxialMenegottoPinto,
 )
 from femsolver.analysis.algorithm import (
     LineSearchNewton,
@@ -53,9 +66,13 @@ from femsolver.analysis.response_spectrum import (
     ResponseSpectrum,
     ResponseSpectrumAnalysis,
     ground_motion_force,
+    multi_support_ground_motion_force,
 )
 from femsolver.analysis.transient import TransientAnalysis
 from femsolver.analysis.transient_integrator import (
+    CentralDifference,
+    GeneralizedAlpha,
+    HHTAlpha,
     Newmark,
     NewmarkNonlinear,
     TransientIntegrator,
@@ -78,6 +95,8 @@ __all__ = [
     "Model",
     "Node",
     "ElasticIsotropic",
+    "J2Plasticity3D",
+    "DruckerPrager3D",
     "Truss2D",
     "Truss3D",
     "Truss2DCorotational",
@@ -88,16 +107,28 @@ __all__ = [
     "ForceBeamColumn2DCorotational",
     "HingedBeamColumn2D",
     "Quad4",
+    "ShellMITC4",
+    "ShellTri3",
+    "Hex8",
+    "Tet4",
     "SectionBase",
     "ElasticSection2D",
     "ElasticSection3D",
     "Fiber",
     "FiberSection2D",
     "FiberSection3D",
+    "ShellSectionBase",
+    "ElasticShellSection",
+    "LayeredShellSection",
+    "ShellLayer",
     "BilinearMomentRotationSpring",
     "UniaxialMaterial",
     "UniaxialElastic",
     "UniaxialBilinear",
+    "UniaxialMenegottoPinto",
+    "UniaxialHysteretic",
+    "ConcreteKentPark",
+    "ConcreteMander",
     "LinearStaticAnalysis",
     "EigenAnalysis",
     "LinearBucklingAnalysis",
@@ -106,11 +137,15 @@ __all__ = [
     "TransientIntegrator",
     "Newmark",
     "NewmarkNonlinear",
+    "HHTAlpha",
+    "GeneralizedAlpha",
+    "CentralDifference",
     "NonlinearTransientAnalysis",
     "RayleighDamping",
     "ResponseSpectrum",
     "ResponseSpectrumAnalysis",
     "ground_motion_force",
+    "multi_support_ground_motion_force",
     "Newton",
     "ModifiedNewton",
     "LineSearchNewton",
