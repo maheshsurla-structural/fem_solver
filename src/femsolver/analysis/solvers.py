@@ -142,8 +142,11 @@ class IterativeSolver(LinearSolver):
             x, info = cg(A, b, rtol=self.tol, maxiter=self.max_iter,
                           M=M, callback=_cb)
         else:
+            # callback_type='legacy' silences the scipy DeprecationWarning
+            # while preserving the current callback signature.
             x, info = gmres(A, b, rtol=self.tol, maxiter=self.max_iter,
-                              M=M, callback=_cb)
+                              M=M, callback=_cb,
+                              callback_type="legacy")
         self.last_iterations = iter_counter["n"]
         # Residual norm for diagnostic
         r = b - A @ x

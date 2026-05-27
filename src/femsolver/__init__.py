@@ -15,7 +15,10 @@ from femsolver.elements.beam_force import ForceBeamColumn2DCorotational
 from femsolver.elements.beam_hinged import HingedBeamColumn2D
 from femsolver.elements.plane import Quad4
 from femsolver.elements.shell import ShellMITC4
+from femsolver.elements.shell_mitc9 import ShellMITC9
+from femsolver.elements.shell_dkmq4 import ShellDKMQ4
 from femsolver.elements.shell_tri import ShellTri3
+from femsolver.elements.shell_dkt3 import ShellDKT3
 from femsolver.elements.shell_mesh import (
     cylindrical_shell_mesh,
     spherical_cap_mesh,
@@ -45,11 +48,16 @@ from femsolver.materials.uniaxial import (
     ConcreteKentPark,
     ConcreteMander,
     UniaxialBilinear,
+    UniaxialBRB,
     UniaxialElastic,
     UniaxialGap,
     UniaxialHysteretic,
+    UniaxialIMK,
+    UniaxialIsotropicHardening,
     UniaxialMaterial,
     UniaxialMenegottoPinto,
+    UniaxialPivot,
+    UniaxialTakeda,
 )
 from femsolver.elements.zero_length import ZeroLengthElement
 from femsolver.elements.isolators import (
@@ -102,6 +110,7 @@ from femsolver.analysis.capacity_design import (
     seismic_combination,
     story_drifts,
 )
+from femsolver.analysis.modal_pushover import ModalPushoverAnalysis
 from femsolver.analysis.transient import TransientAnalysis
 from femsolver.analysis.transient_integrator import (
     CentralDifference,
@@ -122,6 +131,7 @@ from femsolver.constraints import (
     RigidDiaphragm,
     RigidLink,
 )
+from femsolver import design   # design code modules (Phase 29+)
 
 __version__ = "0.1.0"
 
@@ -143,7 +153,10 @@ __all__ = [
     "HingedBeamColumn2D",
     "Quad4",
     "ShellMITC4",
+    "ShellMITC9",
+    "ShellDKMQ4",
     "ShellTri3",
+    "ShellDKT3",
     "cylindrical_shell_mesh",
     "spherical_cap_mesh",
     "Hex8",
@@ -169,6 +182,11 @@ __all__ = [
     "UniaxialMaterial",
     "UniaxialElastic",
     "UniaxialBilinear",
+    "UniaxialBRB",
+    "UniaxialIMK",
+    "UniaxialIsotropicHardening",
+    "UniaxialTakeda",
+    "UniaxialPivot",
     "UniaxialMenegottoPinto",
     "UniaxialHysteretic",
     "UniaxialGap",
@@ -206,6 +224,7 @@ __all__ = [
     "n2_target_displacement",
     "seismic_combination",
     "story_drifts",
+    "ModalPushoverAnalysis",
     "Newton",
     "ModifiedNewton",
     "LineSearchNewton",

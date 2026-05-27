@@ -36,13 +36,20 @@ def test_direct_solver_solves_small_system():
 
 
 def test_direct_solver_singular_raises():
-    """A singular matrix should raise with a helpful message."""
+    """A singular matrix should raise with a helpful message. The
+    underlying ``spsolve`` warns via MatrixRankWarning before our code
+    raises RuntimeError -- the warning is expected and silenced
+    here so the test output stays clean."""
+    import warnings
+    from scipy.sparse.linalg import MatrixRankWarning
     K = sp.csc_matrix([[1.0, 1.0], [1.0, 1.0]])  # rank 1
     b = np.array([1.0, 1.0])
     s = DirectSparseSolver()
-    with pytest.raises(RuntimeError,
-                          match="singular|non-finite|sparse solve failed"):
-        s.solve(K, b)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", MatrixRankWarning)
+        with pytest.raises(RuntimeError,
+                              match="singular|non-finite|sparse solve failed"):
+            s.solve(K, b)
 
 
 def test_iterative_solver_construction_validates_method():
