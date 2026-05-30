@@ -1,0 +1,354 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.design.seismic.confinement &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.design.seismic.confinement</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.design.seismic.confinement</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Confined-concrete reinforcement detailing per ACI 318-19 §18.7.5.</span>
+
+<span class="sd">For Special Moment Frame (SMF) columns, the ends of each column must</span>
+<span class="sd">be confined by closely-spaced transverse reinforcement to provide</span>
+<span class="sd">ductility under cyclic loading. The provisions are:</span>
+
+<span class="sd">§18.7.5.1 -- Length of confined zone ``l_o`` at each end:</span>
+
+<span class="sd">    l_o = max(</span>
+<span class="sd">        depth of the member at the joint face   (typically column h),</span>
+<span class="sd">        clear height / 6,</span>
+<span class="sd">        450 mm (18 in)</span>
+<span class="sd">    )</span>
+
+<span class="sd">§18.7.5.3 -- Maximum centre-to-centre spacing ``s_o`` within ``l_o``:</span>
+
+<span class="sd">    s_o = min(</span>
+<span class="sd">        b_min / 4,        # 1/4 of the smallest section dimension</span>
+<span class="sd">        6 d_b_long,        # 6 longitudinal-bar diameters</span>
+<span class="sd">        s_x                # = 100 + (350 - h_x)/3  mm</span>
+<span class="sd">    )</span>
+
+<span class="sd">where ``h_x`` is the maximum centre-to-centre horizontal spacing</span>
+<span class="sd">between crosstie or hoop legs across the section. ``s_x`` is bounded:</span>
+<span class="sd">``s_x`` should be between 100 mm and 150 mm.</span>
+
+<span class="sd">§18.7.5.4 -- Transverse reinforcement area ``A_sh`` per direction</span>
+<span class="sd">(rectangular hoop):</span>
+
+<span class="sd">    A_sh / (s · b_c) ≥ max(</span>
+<span class="sd">        0.3 (A_g / A_ch - 1) f_c&#39; / f_yt,     (Eq 18.7.5.4a)</span>
+<span class="sd">        0.09 f_c&#39; / f_yt                       (Eq 18.7.5.4b)</span>
+<span class="sd">    )</span>
+
+<span class="sd">where:</span>
+
+<span class="sd">* ``b_c`` -- cross-section dim of the confined core (out-to-out of</span>
+<span class="sd">  hoop centerlines)</span>
+<span class="sd">* ``A_ch`` -- area of column core out-to-out of hoops</span>
+<span class="sd">* ``A_g`` -- gross cross-section area</span>
+<span class="sd">* ``f_yt`` -- yield stress of the transverse hoop reinforcement</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.design.concrete.section</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ConcreteSection</span><span class="p">,</span>
+    <span class="n">rebar_area</span><span class="p">,</span>
+    <span class="n">rebar_diameter</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="ConfinementDetail">
+<a class="viewcode-back" href="../../../../api/design.html#femsolver.design.seismic.confinement.ConfinementDetail">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ConfinementDetail</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Result of an ACI 18.7.5 confinement-detailing evaluation.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    l_o : float</span>
+<span class="sd">        Confined-zone length at each end of the column (m).</span>
+<span class="sd">    s_o_required : float</span>
+<span class="sd">        Maximum allowable hoop centre-to-centre spacing within ``l_o``</span>
+<span class="sd">        (m) per §18.7.5.3.</span>
+<span class="sd">    s_o_components : dict</span>
+<span class="sd">        The three individual bounds (``b_min/4``, ``6 d_b_long``,</span>
+<span class="sd">        ``s_x``) so the user can see which governs.</span>
+<span class="sd">    Ash_per_s_required : float</span>
+<span class="sd">        Required ``A_sh / s`` per direction (m²/m) per §18.7.5.4.</span>
+<span class="sd">    Ash_per_s_provided : float</span>
+<span class="sd">        Provided ``A_sh / s`` from the rebar layout.</span>
+<span class="sd">    spacing_ok : bool</span>
+<span class="sd">        ``True`` iff the provided stirrup spacing ≤ ``s_o_required``.</span>
+<span class="sd">    reinforcement_ok : bool</span>
+<span class="sd">        ``True`` iff provided ``A_sh / s`` ≥ required.</span>
+<span class="sd">    passes : bool</span>
+<span class="sd">        ``spacing_ok and reinforcement_ok``.</span>
+<span class="sd">    notes : str</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">l_o</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">s_o_required</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">s_o_components</span><span class="p">:</span> <span class="nb">dict</span>
+    <span class="n">Ash_per_s_required</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">Ash_per_s_provided</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">spacing_ok</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">reinforcement_ok</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">passes</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">notes</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_confined_core_dims</span><span class="p">(</span><span class="n">section</span><span class="p">:</span> <span class="n">ConcreteSection</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return (b_c, h_c, A_ch) for a rectangular column.</span>
+
+<span class="sd">    Conservatively uses the section&#39;s smallest face cover (top or</span>
+<span class="sd">    bottom) as the depth of the hoop centerline, ignoring side cover</span>
+<span class="sd">    (which is typically the same). For our standard layout</span>
+<span class="sd">    ``b_c = b - 2*cover``, ``h_c = h - 2*cover``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">cover</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">section</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">top_cover</span><span class="p">,</span> <span class="n">section</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">bottom_cover</span><span class="p">)</span>
+    <span class="n">b_c</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">section</span><span class="o">.</span><span class="n">b</span> <span class="o">-</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">cover</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">)</span>
+    <span class="n">h_c</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">section</span><span class="o">.</span><span class="n">h</span> <span class="o">-</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">cover</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">)</span>
+    <span class="n">A_ch</span> <span class="o">=</span> <span class="n">b_c</span> <span class="o">*</span> <span class="n">h_c</span>
+    <span class="k">return</span> <span class="n">b_c</span><span class="p">,</span> <span class="n">h_c</span><span class="p">,</span> <span class="n">A_ch</span>
+
+
+<div class="viewcode-block" id="confined_concrete_detailing">
+<a class="viewcode-back" href="../../../../api/design.html#femsolver.design.seismic.confinement.confined_concrete_detailing">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">confined_concrete_detailing</span><span class="p">(</span>
+    <span class="n">section</span><span class="p">:</span> <span class="n">ConcreteSection</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">column_clear_height</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">longitudinal_bar</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">h_x</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ConfinementDetail</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute confinement reinforcement requirements per ACI 18.7.5</span>
+<span class="sd">    for the **end region** of an SMF column.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    section : ConcreteSection</span>
+<span class="sd">        The column section with rebar layout (including stirrups).</span>
+<span class="sd">        For an SMF column, the rebar layout provides both the</span>
+<span class="sd">        longitudinal reinforcement (used for ``d_b_long``) and the</span>
+<span class="sd">        transverse hoops (used for ``A_sh / s_provided``).</span>
+<span class="sd">    column_clear_height : float</span>
+<span class="sd">        Clear column height between joint faces (m). Used to compute</span>
+<span class="sd">        ``l_o``.</span>
+<span class="sd">    longitudinal_bar : str, optional</span>
+<span class="sd">        Designation of the longitudinal bar (e.g., ``&quot;#8&quot;``). If</span>
+<span class="sd">        omitted, the largest bar in the layout is used.</span>
+<span class="sd">    h_x : float, optional</span>
+<span class="sd">        Maximum centre-to-centre horizontal spacing between crosstie</span>
+<span class="sd">        or hoop legs across the section (m). If omitted, defaults to</span>
+<span class="sd">        ``b_c`` (the most-conservative single-hoop case).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ConfinementDetail</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">column_clear_height</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;column_clear_height must be positive, got </span><span class="si">{</span><span class="n">column_clear_height</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+    <span class="c1"># --- l_o per 18.7.5.1 ---</span>
+    <span class="n">member_depth</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">section</span><span class="o">.</span><span class="n">b</span><span class="p">,</span> <span class="n">section</span><span class="o">.</span><span class="n">h</span><span class="p">)</span>
+    <span class="n">l_o</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">member_depth</span><span class="p">,</span> <span class="n">column_clear_height</span> <span class="o">/</span> <span class="mf">6.0</span><span class="p">,</span> <span class="mf">0.450</span><span class="p">)</span>
+
+    <span class="c1"># --- s_o per 18.7.5.3 ---</span>
+    <span class="n">b_min</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">section</span><span class="o">.</span><span class="n">b</span><span class="p">,</span> <span class="n">section</span><span class="o">.</span><span class="n">h</span><span class="p">)</span>
+    <span class="c1"># Largest longitudinal bar diameter</span>
+    <span class="k">if</span> <span class="n">longitudinal_bar</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">all_long</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">section</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">top_bars</span><span class="p">)</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">section</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">bottom_bars</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">all_long</span><span class="p">:</span>
+            <span class="c1"># Pick the largest</span>
+            <span class="n">largest</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">all_long</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">rebar_area</span><span class="p">)</span>
+            <span class="n">d_b_long</span> <span class="o">=</span> <span class="n">rebar_diameter</span><span class="p">(</span><span class="n">largest</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">d_b_long</span> <span class="o">=</span> <span class="n">rebar_diameter</span><span class="p">(</span><span class="s2">&quot;#5&quot;</span><span class="p">)</span>     <span class="c1"># fallback default</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">d_b_long</span> <span class="o">=</span> <span class="n">rebar_diameter</span><span class="p">(</span><span class="n">longitudinal_bar</span><span class="p">)</span>
+
+    <span class="n">b_c</span><span class="p">,</span> <span class="n">h_c</span><span class="p">,</span> <span class="n">A_ch</span> <span class="o">=</span> <span class="n">_confined_core_dims</span><span class="p">(</span><span class="n">section</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">h_x</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">h_x</span> <span class="o">=</span> <span class="n">b_c</span>
+    <span class="c1"># s_x = (350 - h_x[mm]) / 3 + 100, bounded between 100 and 150 mm.</span>
+    <span class="n">h_x_mm</span> <span class="o">=</span> <span class="n">h_x</span> <span class="o">*</span> <span class="mf">1000.0</span>
+    <span class="n">s_x_mm</span> <span class="o">=</span> <span class="mf">100.0</span> <span class="o">+</span> <span class="p">(</span><span class="mf">350.0</span> <span class="o">-</span> <span class="n">h_x_mm</span><span class="p">)</span> <span class="o">/</span> <span class="mf">3.0</span>
+    <span class="n">s_x</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.100</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="mf">0.150</span><span class="p">,</span> <span class="n">s_x_mm</span> <span class="o">/</span> <span class="mf">1000.0</span><span class="p">))</span>
+
+    <span class="n">s_o_b</span> <span class="o">=</span> <span class="n">b_min</span> <span class="o">/</span> <span class="mf">4.0</span>
+    <span class="n">s_o_db</span> <span class="o">=</span> <span class="mf">6.0</span> <span class="o">*</span> <span class="n">d_b_long</span>
+    <span class="n">s_o_required</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">s_o_b</span><span class="p">,</span> <span class="n">s_o_db</span><span class="p">,</span> <span class="n">s_x</span><span class="p">)</span>
+    <span class="n">s_o_components</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;b_min/4&quot;</span><span class="p">:</span> <span class="n">s_o_b</span><span class="p">,</span>
+        <span class="s2">&quot;6 d_b_long&quot;</span><span class="p">:</span> <span class="n">s_o_db</span><span class="p">,</span>
+        <span class="s2">&quot;s_x&quot;</span><span class="p">:</span> <span class="n">s_x</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="c1"># --- A_sh / s per 18.7.5.4 ---</span>
+    <span class="n">fc</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">fc_prime</span>
+    <span class="n">fy</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">fy</span>
+    <span class="n">A_g</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">b</span> <span class="o">*</span> <span class="n">section</span><span class="o">.</span><span class="n">h</span>
+    <span class="n">ratio_a</span> <span class="o">=</span> <span class="mf">0.3</span> <span class="o">*</span> <span class="p">(</span><span class="n">A_g</span> <span class="o">/</span> <span class="n">A_ch</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span> <span class="o">*</span> <span class="n">fc</span> <span class="o">/</span> <span class="n">fy</span>
+    <span class="n">ratio_b</span> <span class="o">=</span> <span class="mf">0.09</span> <span class="o">*</span> <span class="n">fc</span> <span class="o">/</span> <span class="n">fy</span>
+    <span class="n">ratio_required</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">ratio_a</span><span class="p">,</span> <span class="n">ratio_b</span><span class="p">)</span>
+    <span class="n">Ash_per_s_required</span> <span class="o">=</span> <span class="n">ratio_required</span> <span class="o">*</span> <span class="n">b_c</span>
+
+    <span class="n">Ash_per_s_provided</span> <span class="o">=</span> <span class="p">(</span><span class="n">section</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">Av</span> <span class="o">/</span> <span class="n">section</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">stirrup_spacing</span>
+                            <span class="k">if</span> <span class="n">section</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">stirrup_spacing</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">)</span>
+
+    <span class="n">spacing_ok</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">stirrup_spacing</span> <span class="o">&lt;=</span> <span class="n">s_o_required</span> <span class="o">+</span> <span class="mf">1.0e-9</span>
+    <span class="n">reinforcement_ok</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">Ash_per_s_provided</span> <span class="o">&gt;=</span> <span class="n">Ash_per_s_required</span> <span class="o">-</span> <span class="mf">1.0e-12</span>
+    <span class="p">)</span>
+
+    <span class="n">notes_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">spacing_ok</span><span class="p">:</span>
+        <span class="n">notes_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;stirrup spacing s = </span><span class="si">{</span><span class="n">section</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">stirrup_spacing</span><span class="o">*</span><span class="mi">1000</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> mm &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;exceeds s_o = </span><span class="si">{</span><span class="n">s_o_required</span><span class="o">*</span><span class="mi">1000</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> mm (governed by &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">min</span><span class="p">(</span><span class="n">s_o_components</span><span class="p">,</span><span class="w"> </span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span><span class="w"> </span><span class="n">k</span><span class="p">:</span><span class="w"> </span><span class="n">s_o_components</span><span class="p">[</span><span class="n">k</span><span class="p">])</span><span class="si">}</span><span class="s2">). &quot;</span>
+            <span class="s2">&quot;Reduce hoop spacing within the l_o end zones.&quot;</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">reinforcement_ok</span><span class="p">:</span>
+        <span class="n">notes_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;A_sh/s = </span><span class="si">{</span><span class="n">Ash_per_s_provided</span><span class="o">*</span><span class="mf">1e6</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> mm²/m falls short of &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;required </span><span class="si">{</span><span class="n">Ash_per_s_required</span><span class="o">*</span><span class="mf">1e6</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> mm²/m. Use larger &quot;</span>
+            <span class="s2">&quot;hoop bars or more crossties.&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">ConfinementDetail</span><span class="p">(</span>
+        <span class="n">l_o</span><span class="o">=</span><span class="n">l_o</span><span class="p">,</span>
+        <span class="n">s_o_required</span><span class="o">=</span><span class="n">s_o_required</span><span class="p">,</span>
+        <span class="n">s_o_components</span><span class="o">=</span><span class="n">s_o_components</span><span class="p">,</span>
+        <span class="n">Ash_per_s_required</span><span class="o">=</span><span class="n">Ash_per_s_required</span><span class="p">,</span>
+        <span class="n">Ash_per_s_provided</span><span class="o">=</span><span class="n">Ash_per_s_provided</span><span class="p">,</span>
+        <span class="n">spacing_ok</span><span class="o">=</span><span class="n">spacing_ok</span><span class="p">,</span>
+        <span class="n">reinforcement_ok</span><span class="o">=</span><span class="n">reinforcement_ok</span><span class="p">,</span>
+        <span class="n">passes</span><span class="o">=</span><span class="p">(</span><span class="n">spacing_ok</span> <span class="ow">and</span> <span class="n">reinforcement_ok</span><span class="p">),</span>
+        <span class="n">notes</span><span class="o">=</span><span class="s2">&quot;; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">notes_list</span><span class="p">),</span>
+    <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

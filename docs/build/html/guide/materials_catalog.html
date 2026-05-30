@@ -1,0 +1,961 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Materials catalog &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Design workflows" href="design_workflows.html" />
+    <link rel="prev" title="Analysis types" href="analysis_types.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Materials catalog</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#continuum-2d-3d">Continuum (2D / 3D)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#uniaxial-library">Uniaxial library</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#steel-rebar-style">Steel-rebar style</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#concrete">Concrete</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hysteretic-pinching">Hysteretic / pinching</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#collapse-degradation">Collapse / degradation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#misc">Misc</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#picking-a-material">Picking a material</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Materials catalog</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/guide/materials_catalog.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="materials-catalog">
+<h1>Materials catalog<a class="headerlink" href="#materials-catalog" title="Link to this heading"></a></h1>
+<p>A walk-through of the constitutive library.</p>
+<section id="continuum-2d-3d">
+<h2>Continuum (2D / 3D)<a class="headerlink" href="#continuum-2d-3d" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Class</p></th>
+<th class="head"><p>Behaviour</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="xref py py-class docutils literal notranslate"><span class="pre">ElasticIsotropic</span></code></p></td>
+<td><p>Linear elastic, isotropic</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-class docutils literal notranslate"><span class="pre">J2Plasticity3D</span></code></p></td>
+<td><p>von Mises with isotropic / kinematic hardening</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-class docutils literal notranslate"><span class="pre">DruckerPrager3D</span></code></p></td>
+<td><p>Drucker-Prager for soils + dilatancy</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-class docutils literal notranslate"><span class="pre">OrthotropicLamina</span></code></p></td>
+<td><p>Orthotropic ply for composites</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="uniaxial-library">
+<h2>Uniaxial library<a class="headerlink" href="#uniaxial-library" title="Link to this heading"></a></h2>
+<p>Used by fiber sections (<code class="docutils literal notranslate"><span class="pre">FiberSection2D</span></code> / <code class="docutils literal notranslate"><span class="pre">FiberSection3D</span></code>) and
+zero-length connectors.</p>
+<section id="steel-rebar-style">
+<h3>Steel-rebar style<a class="headerlink" href="#steel-rebar-style" title="Link to this heading"></a></h3>
+<dl class="py class">
+<dt class="sig sig-object py">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">femsolver.</span></span><span class="sig-name descname"><span class="pre">UniaxialBilinear</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">E</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/bilinear.html#UniaxialBilinear"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">UniaxialMaterial</span></code></p>
+<p>Bilinear uniaxial plasticity with kinematic hardening.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>E</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Initial elastic modulus.</p></li>
+<li><p><strong>sigma_y</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Yield stress magnitude (positive). Yield surface in stress space
+is symmetric about the back-stress <code class="docutils literal notranslate"><span class="pre">q</span></code>.</p></li>
+<li><p><strong>b</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0.0</em>) – Post-yield stiffness ratio in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1)</span></code>. <code class="docutils literal notranslate"><span class="pre">b</span> <span class="pre">=</span> <span class="pre">0</span></code> is EPP.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_response</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eps</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/bilinear.html#UniaxialBilinear.get_response"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">(sigma,</span> <span class="pre">Et)</span></code> at the trial strain <code class="docutils literal notranslate"><span class="pre">eps</span></code>.</p>
+<p>Side effect: any internal <em>trial</em> state is updated. The committed
+state is unchanged until <code class="xref py py-meth docutils literal notranslate"><span class="pre">commit_state()</span></code> is called.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>eps</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">commit_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/bilinear.html#UniaxialBilinear.commit_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Persist the current trial state. Default: no-op (stateless).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">revert_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/bilinear.html#UniaxialBilinear.revert_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Discard the current trial state. Default: no-op (stateless).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">femsolver.</span></span><span class="sig-name descname"><span class="pre">UniaxialMenegottoPinto</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">E</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.01</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">R0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a1</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a2</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.15</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">R</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/menegotto_pinto.html#UniaxialMenegottoPinto"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">UniaxialMaterial</span></code></p>
+<p>Cyclic-steel Menegotto-Pinto material with optional
+Giuffre-Menegotto-Pinto evolving R (Filippou et al. 1983).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>E</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Initial elastic modulus.</p></li>
+<li><p><strong>sigma_y</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Yield stress magnitude (positive).</p></li>
+<li><p><strong>b</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0.01</em>) – Strain-hardening ratio in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1)</span></code>. <code class="docutils literal notranslate"><span class="pre">b</span> <span class="pre">=</span> <span class="pre">0</span></code> is EPP; values
+near <code class="docutils literal notranslate"><span class="pre">0.005-0.02</span></code> are typical for reinforcing steel.</p></li>
+<li><p><strong>R0</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 20.0</em>) – Initial Menegotto-Pinto curvature parameter (used before any
+cyclic excursion). Backwards-compat: also accepted as <code class="docutils literal notranslate"><span class="pre">R</span></code>.</p></li>
+<li><p><strong>a1</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0.0</em>) – First Giuffre curvature-evolution coefficient. <code class="docutils literal notranslate"><span class="pre">a1</span> <span class="pre">=</span> <span class="pre">0</span></code>
+keeps R constant at <code class="docutils literal notranslate"><span class="pre">R0</span></code> (pure Menegotto-Pinto, no cyclic
+curvature evolution). Typical Filippou value: <code class="docutils literal notranslate"><span class="pre">a1</span> <span class="pre">=</span> <span class="pre">18.5</span></code>.</p></li>
+<li><p><strong>a2</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0.15</em>) – <p>Second Giuffre coefficient. Together with <code class="docutils literal notranslate"><span class="pre">a1</span></code> gives</p>
+<blockquote>
+<div><p>R(xi) = R0 - a1 * xi / (a2 + xi)</p>
+</div></blockquote>
+<p>where <code class="docutils literal notranslate"><span class="pre">xi</span></code> is a strain-excursion measure normalized by the
+yield strain.</p>
+</p></li>
+<li><p><strong>R</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – Backwards-compat alias for <code class="docutils literal notranslate"><span class="pre">R0</span></code>. If given, <code class="docutils literal notranslate"><span class="pre">R0</span></code> is set to
+this value and the Giuffre evolution is disabled (<code class="docutils literal notranslate"><span class="pre">a1</span> <span class="pre">=</span> <span class="pre">0</span></code>).</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>With <code class="docutils literal notranslate"><span class="pre">a1</span> <span class="pre">=</span> <span class="pre">0</span></code> the model reduces to the classical Menegotto-Pinto
+of Phase 16.3. With <code class="docutils literal notranslate"><span class="pre">a1</span> <span class="pre">&gt;</span> <span class="pre">0</span></code>, each load reversal recomputes
+<code class="docutils literal notranslate"><span class="pre">R</span></code> based on the strain swing since the previous extreme in
+the opposite direction. Larger swings produce smaller R (rounder
+Bauschinger transition), matching real steel behaviour under
+accumulated cyclic loading.</p>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_response</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eps</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/menegotto_pinto.html#UniaxialMenegottoPinto.get_response"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">(sigma,</span> <span class="pre">Et)</span></code> at the trial strain <code class="docutils literal notranslate"><span class="pre">eps</span></code>.</p>
+<p>Side effect: any internal <em>trial</em> state is updated. The committed
+state is unchanged until <code class="xref py py-meth docutils literal notranslate"><span class="pre">commit_state()</span></code> is called.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>eps</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">commit_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/menegotto_pinto.html#UniaxialMenegottoPinto.commit_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Persist the current trial state. Default: no-op (stateless).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">revert_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/menegotto_pinto.html#UniaxialMenegottoPinto.revert_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Discard the current trial state. Default: no-op (stateless).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">femsolver.</span></span><span class="sig-name descname"><span class="pre">UniaxialIsotropicHardening</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">E</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/isotropic.html#UniaxialIsotropicHardening"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">UniaxialMaterial</span></code></p>
+<p>Bilinear uniaxial plasticity with isotropic hardening.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>E</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Initial elastic modulus.</p></li>
+<li><p><strong>sigma_y</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Initial yield stress magnitude σ_y0 (positive).</p></li>
+<li><p><strong>b</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0.0</em>) – Post-yield-to-initial stiffness ratio in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1)</span></code>.
+<code class="docutils literal notranslate"><span class="pre">b</span> <span class="pre">=</span> <span class="pre">0</span></code> is elastic-perfectly-plastic (no hardening at all).</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_response</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eps</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/isotropic.html#UniaxialIsotropicHardening.get_response"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">(sigma,</span> <span class="pre">Et)</span></code> at the trial strain <code class="docutils literal notranslate"><span class="pre">eps</span></code>.</p>
+<p>Side effect: any internal <em>trial</em> state is updated. The committed
+state is unchanged until <code class="xref py py-meth docutils literal notranslate"><span class="pre">commit_state()</span></code> is called.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>eps</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">commit_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/isotropic.html#UniaxialIsotropicHardening.commit_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Persist the current trial state. Default: no-op (stateless).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">revert_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/isotropic.html#UniaxialIsotropicHardening.revert_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Discard the current trial state. Default: no-op (stateless).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="concrete">
+<h3>Concrete<a class="headerlink" href="#concrete" title="Link to this heading"></a></h3>
+<dl class="py class">
+<dt class="sig sig-object py">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">femsolver.</span></span><span class="sig-name descname"><span class="pre">ConcreteKentPark</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fpc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps_c0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fpcu</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps_cu</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/concrete.html#ConcreteKentPark"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">UniaxialMaterial</span></code></p>
+<p>Kent-Park-Scott concrete with Karsan-Jirsa cyclic behaviour.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fpc</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Peak compressive strength (positive magnitude).</p></li>
+<li><p><strong>eps_c0</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Strain at the peak (positive magnitude, typically 0.002).</p></li>
+<li><p><strong>fpcu</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Residual crushing stress at <code class="docutils literal notranslate"><span class="pre">eps_cu</span></code> (positive magnitude;
+<code class="docutils literal notranslate"><span class="pre">0</span> <span class="pre">&lt;=</span> <span class="pre">fpcu</span> <span class="pre">&lt;=</span> <span class="pre">fpc</span></code>). Pass <code class="docutils literal notranslate"><span class="pre">0</span></code> for full crushing (concrete
+loses all strength once it crushes).</p></li>
+<li><p><strong>eps_cu</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Crushing strain (positive magnitude, typically 0.003-0.005).
+Must satisfy <code class="docutils literal notranslate"><span class="pre">eps_cu</span> <span class="pre">&gt;</span> <span class="pre">eps_c0</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>The initial modulus implied by the parabola is <code class="docutils literal notranslate"><span class="pre">E0</span> <span class="pre">=</span> <span class="pre">2</span> <span class="pre">fpc</span> <span class="pre">/</span> <span class="pre">eps_c0</span></code>,
+which for typical RC values is in the 25-35 GPa range – consistent
+with the ACI <code class="docutils literal notranslate"><span class="pre">57000</span> <span class="pre">sqrt(fc')</span></code> rule of thumb.</p>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_response</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eps</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/concrete.html#ConcreteKentPark.get_response"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">(sigma,</span> <span class="pre">Et)</span></code> at the trial strain <code class="docutils literal notranslate"><span class="pre">eps</span></code>.</p>
+<p>Side effect: any internal <em>trial</em> state is updated. The committed
+state is unchanged until <code class="xref py py-meth docutils literal notranslate"><span class="pre">commit_state()</span></code> is called.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>eps</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">commit_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/concrete.html#ConcreteKentPark.commit_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Persist the current trial state. Default: no-op (stateless).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">revert_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/concrete.html#ConcreteKentPark.revert_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Discard the current trial state. Default: no-op (stateless).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">femsolver.</span></span><span class="sig-name descname"><span class="pre">ConcreteMander</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fpc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps_c0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ec</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">damage_factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_strength_ratio</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/concrete.html#ConcreteMander"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">UniaxialMaterial</span></code></p>
+<p>Mander confined-concrete model (Popovics monotonic curve) with
+optional cyclic strength degradation (Chang-Mander style).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fpc</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – (Confined or unconfined) peak compressive strength (positive
+magnitude). For confined concrete this is <code class="docutils literal notranslate"><span class="pre">fcc'</span></code>; for
+unconfined the value typically rises 30-100% above the
+cylinder strength <code class="docutils literal notranslate"><span class="pre">fc'</span></code>.</p></li>
+<li><p><strong>eps_c0</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Strain at the peak (positive magnitude). For Mander confined
+concrete this is typically larger than the unconfined value:
+<code class="docutils literal notranslate"><span class="pre">eps_cc</span> <span class="pre">=</span> <span class="pre">eps_c0</span> <span class="pre">*</span> <span class="pre">[1</span> <span class="pre">+</span> <span class="pre">5</span> <span class="pre">(fcc/fc</span> <span class="pre">-</span> <span class="pre">1)]</span></code>.</p></li>
+<li><p><strong>Ec</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – Initial elastic modulus (positive). If <code class="docutils literal notranslate"><span class="pre">None</span></code> uses
+<code class="docutils literal notranslate"><span class="pre">4700</span> <span class="pre">sqrt(fpc[MPa])</span> <span class="pre">*</span> <span class="pre">1e6</span></code> (ACI rule of thumb assuming
+<code class="docutils literal notranslate"><span class="pre">fpc</span></code> is in Pa).</p></li>
+<li><p><strong>damage_factor</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0.0</em>) – <p>Cyclic strength-degradation rate. The effective peak
+compressive strength is</p>
+<blockquote>
+<div><p>fpc_eff = fpc / (1 + damage_factor * alpha / eps_c0)</p>
+</div></blockquote>
+<p>where <code class="docutils literal notranslate"><span class="pre">alpha</span></code> is the cumulative compressive plastic
+excursion magnitude beyond <code class="docutils literal notranslate"><span class="pre">eps_c0</span></code>. <code class="docutils literal notranslate"><span class="pre">damage_factor</span> <span class="pre">=</span> <span class="pre">0</span></code>
+disables degradation (back-compat). Typical values for
+cyclic confined concrete: 0.05–0.2.</p>
+</p></li>
+<li><p><strong>min_strength_ratio</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0.2</em>) – Lower bound on <code class="docutils literal notranslate"><span class="pre">fpc_eff</span> <span class="pre">/</span> <span class="pre">fpc</span></code>. Prevents the degraded
+strength from collapsing below a physical residual.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>The envelope is</p>
+<blockquote>
+<div><p>sigma = fpc * x * r / (r - 1 + x^r)</p>
+</div></blockquote>
+<p>with <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">=</span> <span class="pre">eps</span> <span class="pre">/</span> <span class="pre">eps_c0</span></code> (ratio of compressive strains, both
+negative -&gt; positive number), <code class="docutils literal notranslate"><span class="pre">r</span> <span class="pre">=</span> <span class="pre">Ec</span> <span class="pre">/</span> <span class="pre">(Ec</span> <span class="pre">-</span> <span class="pre">E_sec)</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">E_sec</span> <span class="pre">=</span> <span class="pre">fpc</span> <span class="pre">/</span> <span class="pre">eps_c0</span></code>. The Popovics curve smoothly transitions
+from initial-tangent <code class="docutils literal notranslate"><span class="pre">Ec</span></code> at the origin, peaks at <code class="docutils literal notranslate"><span class="pre">(eps_c0,</span>
+<span class="pre">fpc)</span></code>, and softens beyond. Tension and cyclic unloading match the
+Kent-Park model.</p>
+<p>With <code class="docutils literal notranslate"><span class="pre">damage_factor</span> <span class="pre">&gt;</span> <span class="pre">0</span></code>, each new compressive peak deeper than
+the previous one adds to <code class="docutils literal notranslate"><span class="pre">alpha</span></code> and shrinks <code class="docutils literal notranslate"><span class="pre">fpc</span></code> for the
+next envelope evaluation – the canonical Chang-Mander cyclic
+softening for confined concrete under repeated seismic loading.</p>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_response</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eps</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/concrete.html#ConcreteMander.get_response"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">(sigma,</span> <span class="pre">Et)</span></code> at the trial strain <code class="docutils literal notranslate"><span class="pre">eps</span></code>.</p>
+<p>Side effect: any internal <em>trial</em> state is updated. The committed
+state is unchanged until <code class="xref py py-meth docutils literal notranslate"><span class="pre">commit_state()</span></code> is called.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>eps</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">commit_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/concrete.html#ConcreteMander.commit_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Persist the current trial state. Default: no-op (stateless).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">revert_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/concrete.html#ConcreteMander.revert_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Discard the current trial state. Default: no-op (stateless).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="hysteretic-pinching">
+<h3>Hysteretic / pinching<a class="headerlink" href="#hysteretic-pinching" title="Link to this heading"></a></h3>
+<dl class="py class">
+<dt class="sig sig-object py">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">femsolver.</span></span><span class="sig-name descname"><span class="pre">UniaxialHysteretic</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">E</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.01</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pinch_x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pinch_y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">damage_factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_strength_ratio</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/hysteretic.html#UniaxialHysteretic"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">UniaxialMaterial</span></code></p>
+<p>Bilinear envelope + pinching cyclic uniaxial material with
+optional strength degradation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>E</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Initial elastic modulus.</p></li>
+<li><p><strong>sigma_y</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Yield stress magnitude (positive).</p></li>
+<li><p><strong>b</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0.01</em>) – Post-yield stiffness ratio. <code class="docutils literal notranslate"><span class="pre">b</span> <span class="pre">=</span> <span class="pre">0</span></code> gives EPP envelope.</p></li>
+<li><p><strong>pinch_x</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 1.0</em>) – Pinching parameter for strain. <code class="docutils literal notranslate"><span class="pre">1.0</span></code> = no pinch (direct
+line). <code class="docutils literal notranslate"><span class="pre">0</span></code> = pinch through the origin (extreme pinching).</p></li>
+<li><p><strong>pinch_y</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 1.0</em>) – Pinching parameter for stress. <code class="docutils literal notranslate"><span class="pre">1.0</span></code> = no pinch. Smaller
+values squash the loop vertically.</p></li>
+<li><p><strong>damage_factor</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0.0</em>) – <p>Strength-degradation rate (dimensionless). The effective
+yield stress is</p>
+<blockquote>
+<div><p>sigma_y_eff = sigma_y / (1 + damage_factor * alpha/eps_y)</p>
+</div></blockquote>
+<p>where <code class="docutils literal notranslate"><span class="pre">alpha</span></code> is the cumulative plastic excursion magnitude.
+<code class="docutils literal notranslate"><span class="pre">damage_factor</span> <span class="pre">=</span> <span class="pre">0</span></code> disables degradation (back-compat with
+the original undegraded model). Typical values for cyclic
+seismic RC: 0.05–0.3.</p>
+</p></li>
+<li><p><strong>min_strength_ratio</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0.1</em>) – Lower bound on <code class="docutils literal notranslate"><span class="pre">sigma_y_eff</span> <span class="pre">/</span> <span class="pre">sigma_y</span></code>. Prevents the
+degraded yield from collapsing to zero under extreme cycling.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_response</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eps</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/hysteretic.html#UniaxialHysteretic.get_response"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">(sigma,</span> <span class="pre">Et)</span></code> at the trial strain <code class="docutils literal notranslate"><span class="pre">eps</span></code>.</p>
+<p>Side effect: any internal <em>trial</em> state is updated. The committed
+state is unchanged until <code class="xref py py-meth docutils literal notranslate"><span class="pre">commit_state()</span></code> is called.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>eps</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">commit_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/hysteretic.html#UniaxialHysteretic.commit_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Persist the current trial state. Default: no-op (stateless).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">revert_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/hysteretic.html#UniaxialHysteretic.revert_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Discard the current trial state. Default: no-op (stateless).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">femsolver.</span></span><span class="sig-name descname"><span class="pre">UniaxialTakeda</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">E</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.01</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/takeda.html#UniaxialTakeda"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">UniaxialMaterial</span></code></p>
+<p>Modified Takeda uniaxial cyclic material.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>E</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Initial elastic modulus.</p></li>
+<li><p><strong>sigma_y</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Symmetric yield stress magnitude (positive).</p></li>
+<li><p><strong>b</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0.01</em>) – Post-yield-to-initial stiffness ratio in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1)</span></code>.</p></li>
+<li><p><strong>alpha</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0.5</em>) – Unloading-stiffness-degradation exponent (≥ 0). <code class="docutils literal notranslate"><span class="pre">0</span></code> =
+elastic unloading; <code class="docutils literal notranslate"><span class="pre">0.5</span></code> = typical RC value.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_response</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eps</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/takeda.html#UniaxialTakeda.get_response"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">(sigma,</span> <span class="pre">Et)</span></code> at the trial strain <code class="docutils literal notranslate"><span class="pre">eps</span></code>.</p>
+<p>Side effect: any internal <em>trial</em> state is updated. The committed
+state is unchanged until <code class="xref py py-meth docutils literal notranslate"><span class="pre">commit_state()</span></code> is called.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>eps</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">commit_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/takeda.html#UniaxialTakeda.commit_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Persist the current trial state. Default: no-op (stateless).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">revert_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/takeda.html#UniaxialTakeda.revert_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Discard the current trial state. Default: no-op (stateless).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">femsolver.</span></span><span class="sig-name descname"><span class="pre">UniaxialPivot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">E</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.01</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/pivot.html#UniaxialPivot"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">UniaxialMaterial</span></code></p>
+<p>Single-pivot Dowell-Seible-Hines hysteresis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>E</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Initial elastic modulus.</p></li>
+<li><p><strong>sigma_y</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Symmetric yield stress magnitude (positive).</p></li>
+<li><p><strong>b</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0.01</em>) – Post-yield-to-initial stiffness ratio in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1)</span></code>.</p></li>
+<li><p><strong>alpha</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 5.0</em>) – Pivot factor (≥ 1). <code class="docutils literal notranslate"><span class="pre">α</span> <span class="pre">=</span> <span class="pre">1</span></code> collapses to backbone (no loop
+area). Larger α produces steeper interior reload slopes (more
+Bauschinger-like loops); typical RC values are 5-15.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_response</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eps</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/pivot.html#UniaxialPivot.get_response"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">(sigma,</span> <span class="pre">Et)</span></code> at the trial strain <code class="docutils literal notranslate"><span class="pre">eps</span></code>.</p>
+<p>Side effect: any internal <em>trial</em> state is updated. The committed
+state is unchanged until <code class="xref py py-meth docutils literal notranslate"><span class="pre">commit_state()</span></code> is called.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>eps</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">commit_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/pivot.html#UniaxialPivot.commit_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Persist the current trial state. Default: no-op (stateless).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">revert_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/pivot.html#UniaxialPivot.revert_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Discard the current trial state. Default: no-op (stateless).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="collapse-degradation">
+<h3>Collapse / degradation<a class="headerlink" href="#collapse-degradation" title="Link to this heading"></a></h3>
+<dl class="py class">
+<dt class="sig sig-object py">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">femsolver.</span></span><span class="sig-name descname"><span class="pre">UniaxialIMK</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">E</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma_y</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.03</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps_cap</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha_pc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma_res_ratio</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps_ult</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/imk.html#UniaxialIMK"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">UniaxialMaterial</span></code></p>
+<p>Ibarra-Medina-Krawinkler deteriorating material.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>E</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Initial elastic modulus.</p></li>
+<li><p><strong>sigma_y</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Yield stress magnitude (positive, symmetric).</p></li>
+<li><p><strong>b</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0.03</em>) – Strain-hardening ratio (post-yield slope / E), in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1)</span></code>.</p></li>
+<li><p><strong>eps_cap</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 8 ε_y</em>) – Strain at peak load (where post-cap negative slope begins).
+Default is “8 times yield strain”, typical for ductile steel
+beam-column plastic hinges.</p></li>
+<li><p><strong>alpha_pc</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default -0.1</em>) – Post-cap-to-initial stiffness ratio (negative; e.g., -0.1 =
+post-cap slope is -10% of E).</p></li>
+<li><p><strong>sigma_res_ratio</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0.4</em>) – Residual strength as a fraction of σ_cap (peak load).
+<code class="docutils literal notranslate"><span class="pre">0.4</span></code> means residual ≈ 40% of σ_cap (typical for steel
+beam-column hinges with moderate damage).</p></li>
+<li><p><strong>eps_ult</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 30 ε_y</em>) – Ultimate strain (fracture). Beyond this strain, σ drops
+abruptly to zero.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_response</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eps</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/imk.html#UniaxialIMK.get_response"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">(sigma,</span> <span class="pre">Et)</span></code> at the trial strain <code class="docutils literal notranslate"><span class="pre">eps</span></code>.</p>
+<p>Side effect: any internal <em>trial</em> state is updated. The committed
+state is unchanged until <code class="xref py py-meth docutils literal notranslate"><span class="pre">commit_state()</span></code> is called.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>eps</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">commit_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/imk.html#UniaxialIMK.commit_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Persist the current trial state. Default: no-op (stateless).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">revert_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/imk.html#UniaxialIMK.revert_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Discard the current trial state. Default: no-op (stateless).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">femsolver.</span></span><span class="sig-name descname"><span class="pre">UniaxialBRB</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">E</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma_y</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.02</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a_iso</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/brb.html#UniaxialBRB"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">UniaxialMaterial</span></code></p>
+<p>Buckling-restrained brace uniaxial material.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>E</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Initial elastic modulus.</p></li>
+<li><p><strong>sigma_y</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Tension yield stress σ_y_t (positive).</p></li>
+<li><p><strong>b</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0.02</em>) – Strain-hardening ratio (kinematic component); typical 1-3%
+for BRB cores.</p></li>
+<li><p><strong>beta</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 1.10</em>) – Compression overstrength factor (≥ 1). Compression yield is
+<code class="docutils literal notranslate"><span class="pre">β</span> <span class="pre">·</span> <span class="pre">σ_y_t</span></code>. Typical 1.05-1.15 for laboratory BRBs.</p></li>
+<li><p><strong>a_iso</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0.0</em>) – Isotropic-growth rate (per unit cumulative plastic strain).
+<code class="docutils literal notranslate"><span class="pre">0</span></code> = pure kinematic (no cyclic strength growth);
+<code class="docutils literal notranslate"><span class="pre">50</span></code> ≈ 5% growth per 0.001 plastic strain (typical for
+cyclic strength buildup observed in BRB tests).</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_response</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eps</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/brb.html#UniaxialBRB.get_response"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">(sigma,</span> <span class="pre">Et)</span></code> at the trial strain <code class="docutils literal notranslate"><span class="pre">eps</span></code>.</p>
+<p>Side effect: any internal <em>trial</em> state is updated. The committed
+state is unchanged until <code class="xref py py-meth docutils literal notranslate"><span class="pre">commit_state()</span></code> is called.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>eps</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">commit_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/brb.html#UniaxialBRB.commit_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Persist the current trial state. Default: no-op (stateless).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">revert_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/brb.html#UniaxialBRB.revert_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Discard the current trial state. Default: no-op (stateless).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="misc">
+<h3>Misc<a class="headerlink" href="#misc" title="Link to this heading"></a></h3>
+<dl class="py class">
+<dt class="sig sig-object py">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">femsolver.</span></span><span class="sig-name descname"><span class="pre">UniaxialElastic</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">E</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/elastic.html#UniaxialElastic"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">UniaxialMaterial</span></code></p>
+<p><code class="docutils literal notranslate"><span class="pre">sigma</span> <span class="pre">=</span> <span class="pre">E</span> <span class="pre">*</span> <span class="pre">eps</span></code>.  Tangent <code class="docutils literal notranslate"><span class="pre">Et</span> <span class="pre">=</span> <span class="pre">E</span></code> is constant.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>E</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Young’s modulus, must be positive.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_response</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eps</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/elastic.html#UniaxialElastic.get_response"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">(sigma,</span> <span class="pre">Et)</span></code> at the trial strain <code class="docutils literal notranslate"><span class="pre">eps</span></code>.</p>
+<p>Side effect: any internal <em>trial</em> state is updated. The committed
+state is unchanged until <code class="xref py py-meth docutils literal notranslate"><span class="pre">commit_state()</span></code> is called.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>eps</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">femsolver.</span></span><span class="sig-name descname"><span class="pre">UniaxialGap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">E</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gap</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kind</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'compression'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/gap.html#UniaxialGap"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">UniaxialMaterial</span></code></p>
+<p>One-sided linear-elastic gap material.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>E</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Elastic stiffness when the gap is closed (positive).</p></li>
+<li><p><strong>gap</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0.0</em>) – Initial gap distance (non-negative). Zero gives an “instant”
+contact at <code class="docutils literal notranslate"><span class="pre">epsilon</span> <span class="pre">=</span> <span class="pre">0</span></code>; positive values delay engagement.</p></li>
+<li><p><strong>kind</strong> (<code class="docutils literal notranslate"><span class="pre">&quot;compression&quot;</span></code> (default) or <code class="docutils literal notranslate"><span class="pre">&quot;tension&quot;</span></code>) – Which side of the relative-displacement axis the spring acts on.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_response</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eps</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/gap.html#UniaxialGap.get_response"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">(sigma,</span> <span class="pre">Et)</span></code> at the trial strain <code class="docutils literal notranslate"><span class="pre">eps</span></code>.</p>
+<p>Side effect: any internal <em>trial</em> state is updated. The committed
+state is unchanged until <code class="xref py py-meth docutils literal notranslate"><span class="pre">commit_state()</span></code> is called.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>eps</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">commit_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/gap.html#UniaxialGap.commit_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Persist the current trial state. Default: no-op (stateless).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">revert_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/materials/uniaxial/gap.html#UniaxialGap.revert_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Discard the current trial state. Default: no-op (stateless).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+<section id="picking-a-material">
+<h2>Picking a material<a class="headerlink" href="#picking-a-material" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Situation</p></th>
+<th class="head"><p>Recommended</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Steel rebar in beam fibers</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UniaxialMenegottoPinto</span></code> or <code class="docutils literal notranslate"><span class="pre">UniaxialBilinear</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Confined concrete fibers</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ConcreteMander</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Unconfined cover concrete</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ConcreteKentPark</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>RC beam-column plastic hinge</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UniaxialTakeda</span></code> or <code class="docutils literal notranslate"><span class="pre">UniaxialHysteretic</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>RC column with pinched cycles</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UniaxialPivot</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Collapse-capacity analysis</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UniaxialIMK</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>BRB diagonal core</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UniaxialBRB</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Compression-only / gap</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UniaxialGap</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>See <code class="docutils literal notranslate"><span class="pre">examples/39_csi_hysteresis_catalog.py</span></code> and
+<code class="docutils literal notranslate"><span class="pre">examples/44_fiber_section_csi_hysteresis.py</span></code> for σ-ε and M-κ loop
+comparisons of all CSI-style models.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="analysis_types.html" class="btn btn-neutral float-left" title="Analysis types" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="design_workflows.html" class="btn btn-neutral float-right" title="Design workflows" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

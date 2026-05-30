@@ -1,0 +1,461 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.elements.beam_force &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.elements.beam_force</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.elements.beam_force</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Force-based 2-D Euler-Bernoulli beam-column (corotational kinematics).</span>
+
+<span class="sd">A *force-based* (= flexibility-based) beam-column element assumes the</span>
+<span class="sd">**force distribution** along the element axis a priori — not the</span>
+<span class="sd">displacement field. In a 2-D beam-column without distributed load,</span>
+<span class="sd">equilibrium between two end nodes makes the moment diagram exactly</span>
+<span class="sd">*linear* and the axial force exactly *constant*. By interpolating</span>
+<span class="sd">those forces and integrating section *flexibility* to recover</span>
+<span class="sd">deformations, the element captures distributed plasticity with one</span>
+<span class="sd">element per member, regardless of mesh density.</span>
+
+<span class="sd">This is the canonical &quot;OpenSees ``forceBeamColumn``&quot; formulation: the</span>
+<span class="sd">default beam-column for performance-based earthquake analysis since</span>
+<span class="sd">the late 1990s. Crucially, the moment diagram is exact under</span>
+<span class="sd">equilibrium even when the section response is highly nonlinear —</span>
+<span class="sd">unlike displacement-based cubic-Hermite beams (Phase 5), where the</span>
+<span class="sd">moment distribution is only as good as the assumed displacement</span>
+<span class="sd">field&#39;s second derivative.</span>
+
+<span class="sd">Formulation</span>
+<span class="sd">-----------</span>
+<span class="sd">Three natural-frame quantities at the element ends:</span>
+
+<span class="sd">    v = [u_nat, theta_1_nat, theta_2_nat]^T          (deformations)</span>
+<span class="sd">    q = [N, M_1, M_2]^T                                (basic forces)</span>
+
+<span class="sd">Force interpolation ``b(x)`` distributes ``q`` to section forces</span>
+<span class="sd">``s(x) = [N(x), M_z(x)]``:</span>
+
+<span class="sd">    N(x) = N</span>
+<span class="sd">    M(x) = -(1 - x/L) M_1  +  (x/L) M_2</span>
+
+<span class="sd">(the sign on the M_1 column matches the convention from</span>
+<span class="sd">:class:`BeamColumn2DCorotational._natural_response` so that</span>
+<span class="sd">``K_b = (integral b^T f_s b dx)^{-1}`` reproduces the standard</span>
+<span class="sd">``EI/L * [[4, 2], [2, 4]]`` bending stiffness for an elastic section.)</span>
+
+<span class="sd">State determination algorithm (Neuenhofer-Filippou 1997):</span>
+
+<span class="sd">  1. Predictor: ``q = q_committed + K_b_committed (v - v_committed)``</span>
+<span class="sd">  2. At each Gauss-Lobatto point ``xi_i``:</span>
+<span class="sd">        target ``s = b(xi_i) q``</span>
+<span class="sd">        section returns ``(s_curr, k_s)`` at committed strain</span>
+<span class="sd">        ``de = k_s^{-1} (s - s_curr)``</span>
+<span class="sd">        ``e_trial = e_committed + de``</span>
+<span class="sd">        recall section with ``e_trial`` to update ``(s_curr, k_s)``</span>
+<span class="sd">  3. ``v_computed = sum_i w_i (L/2) b^T(xi_i) e(xi_i)``</span>
+<span class="sd">  4. ``dv = v - v_computed``;  if ||dv|| &lt; tol, done.</span>
+<span class="sd">  5. ``K_b = (sum_i w_i (L/2) b^T(xi_i) k_s^{-1}(xi_i) b(xi_i))^{-1}``</span>
+<span class="sd">  6. ``q += K_b dv``;  repeat from step 2.</span>
+
+<span class="sd">Convergence is quadratic for smooth sections. For sections with</span>
+<span class="sd">discontinuous tangent (perfect plasticity), the iteration may stall —</span>
+<span class="sd">a line-search or smoothing of the section response usually recovers it.</span>
+
+<span class="sd">After convergence, ``q`` is the natural force, ``K_b`` is the natural</span>
+<span class="sd">stiffness. The element returns these to its corotational parent</span>
+<span class="sd">(:class:`BeamColumn2DCorotational`), which then wraps them with the</span>
+<span class="sd">geometric stiffness and global transformation to produce</span>
+<span class="sd">``f_int_global`` and ``K_tangent_global``.</span>
+
+<span class="sd">Compared with the displacement-based variant</span>
+<span class="sd">:class:`BeamColumn2DCorotational`:</span>
+
+<span class="sd">* Same external interface (6 global DOFs, ``K_global``,</span>
+<span class="sd">  ``K_tangent_global``, ``f_int_global``, ``recover``).</span>
+<span class="sd">* Same per-IP section handling (clones for stateful sections).</span>
+<span class="sd">* Same corotational kinematics, geometric stiffness, mass matrix.</span>
+<span class="sd">* The *only* difference is :meth:`_natural_response` which uses</span>
+<span class="sd">  force-based state determination instead of B-matrix integration of</span>
+<span class="sd">  section response.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.elements.beam_corot</span><span class="w"> </span><span class="kn">import</span> <span class="n">BeamColumn2DCorotational</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.numerics.quadrature</span><span class="w"> </span><span class="kn">import</span> <span class="n">gauss_lobatto_1d</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.sections.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">SectionBase</span>
+
+
+<div class="viewcode-block" id="ForceBeamColumn2DCorotational">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.beam_force.ForceBeamColumn2DCorotational">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ForceBeamColumn2DCorotational</span><span class="p">(</span><span class="n">BeamColumn2DCorotational</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Force-based (= flexibility-based) 2-D corotational beam-column.</span>
+
+<span class="sd">    Drop-in replacement for :class:`BeamColumn2DCorotational`. Same</span>
+<span class="sd">    constructor signature; the only difference is the constitutive</span>
+<span class="sd">    integration is force-based rather than displacement-based, giving</span>
+<span class="sd">    one-element-per-member accuracy under distributed plasticity.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    All parameters identical to :class:`BeamColumn2DCorotational`.</span>
+<span class="sd">    Additionally:</span>
+
+<span class="sd">    state_det_tol : float, default 1e-9</span>
+<span class="sd">        Tolerance on ``||v - v_computed||`` in the element-level</span>
+<span class="sd">        Neuenhofer-Filippou iteration. Loose tolerance is fine — the</span>
+<span class="sd">        outer global Newton iteration will drive any residual</span>
+<span class="sd">        equilibrium error to zero at the structural level.</span>
+<span class="sd">    state_det_max_iter : int, default 30</span>
+<span class="sd">        Maximum number of element-level iterations per state-</span>
+<span class="sd">        determination call.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Class-level defaults; the user can override these per instance.</span>
+    <span class="c1"># The inner tolerance is set well below typical global Newton</span>
+    <span class="c1"># tolerances (~1e-6 to 1e-8) so the state-determination noise</span>
+    <span class="c1"># floor does not limit the global convergence rate.</span>
+    <span class="n">state_det_tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0e-12</span>
+    <span class="n">state_det_max_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">tag</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">nodes</span><span class="p">,</span>
+        <span class="n">material</span><span class="p">,</span>
+        <span class="n">area</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">Iz</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">section</span><span class="p">:</span> <span class="n">SectionBase</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="n">nodes</span><span class="p">,</span> <span class="n">material</span><span class="p">,</span> <span class="n">area</span><span class="p">,</span> <span class="n">Iz</span><span class="p">,</span> <span class="n">section</span><span class="o">=</span><span class="n">section</span><span class="p">)</span>
+        <span class="c1"># Committed natural force and per-IP section strain at the end</span>
+        <span class="c1"># of the last converged step. The element-level iteration uses</span>
+        <span class="c1"># these as the &quot;reference&quot; state from which the incremental</span>
+        <span class="c1"># algorithm starts.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_q_committed</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_e_committed</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="c1"># Last K_b (used as predictor for the next state determination</span>
+        <span class="c1"># if the previous step&#39;s K_b is still in scope).</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_K_b_last</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="c1"># ------------------------------------------ force interpolation b(x)</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_b_matrix</span><span class="p">(</span><span class="n">xi</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">L</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Force-interpolation matrix at natural coordinate xi.</span>
+
+<span class="sd">        Returns a ``(2, 3)`` matrix ``b`` such that</span>
+<span class="sd">        ``[N(x), M(x)]^T = b @ [N, M_1, M_2]^T`` where x = L (1+xi) / 2.</span>
+
+<span class="sd">        The M_1 column carries a negative sign so that the resulting</span>
+<span class="sd">        element flexibility ``F_b = integral b^T f_s b dx`` inverts to</span>
+<span class="sd">        the standard ``EI/L * [[4, 2], [2, 4]]`` bending block of</span>
+<span class="sd">        :class:`BeamColumn2DCorotational`&#39;s natural stiffness.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># x / L  in terms of xi in [-1, 1]:  x/L = (1 + xi) / 2</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">xi</span><span class="p">)</span>            <span class="c1"># s = x / L  in [0, 1]</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+            <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span>    <span class="mf">0.0</span><span class="p">,</span>         <span class="mf">0.0</span><span class="p">],</span>
+            <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span>   <span class="o">-</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">s</span><span class="p">),</span>   <span class="n">s</span>  <span class="p">],</span>
+        <span class="p">])</span>
+
+    <span class="c1"># ------------------------------------------ section-level inversion</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_section_strain_for_force</span><span class="p">(</span>
+        <span class="n">section</span><span class="p">,</span> <span class="n">s_target</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">e_committed</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span> <span class="n">max_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span> <span class="n">tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0e-12</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Find the section strain ``e`` such that ``section.get_response(e)``</span>
+<span class="sd">        returns a force vector equal to ``s_target``, by Newton iteration</span>
+<span class="sd">        starting from ``e_committed``.</span>
+
+<span class="sd">        Returns ``(e, k_s)`` at convergence. For an elastic section the</span>
+<span class="sd">        function returns after one step (``f_s = k_s^{-1}`` is constant).</span>
+<span class="sd">        For nonlinear sections this is the &quot;inner-inner&quot; iteration</span>
+<span class="sd">        used by Neuenhofer-Filippou&#39;s element-level algorithm.</span>
+
+<span class="sd">        We use the *committed* state as starting point and accumulate</span>
+<span class="sd">        increments; this avoids accidentally setting the section&#39;s</span>
+<span class="sd">        trial state to inconsistent values during the outer iteration.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># First call to seed the trial state and grab the initial tangent.</span>
+        <span class="n">e</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">e_committed</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">s_curr</span><span class="p">,</span> <span class="n">k_s</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">get_response</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_iter</span><span class="p">):</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="n">s_target</span> <span class="o">-</span> <span class="n">s_curr</span>
+            <span class="k">if</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">r</span><span class="p">)))</span> <span class="o">&lt;</span> <span class="n">tol</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">e</span><span class="p">,</span> <span class="n">k_s</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">de</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">k_s</span><span class="p">,</span> <span class="n">r</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">LinAlgError</span><span class="p">:</span>
+                <span class="c1"># Section tangent is singular (perfect plasticity); fall</span>
+                <span class="c1"># back to least-squares (will give zero strain increment</span>
+                <span class="c1"># along the singular direction — correct for the plastic</span>
+                <span class="c1"># plateau).</span>
+                <span class="n">de</span><span class="p">,</span> <span class="o">*</span><span class="n">_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">lstsq</span><span class="p">(</span><span class="n">k_s</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">rcond</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+            <span class="n">e</span> <span class="o">=</span> <span class="n">e</span> <span class="o">+</span> <span class="n">de</span>
+            <span class="n">s_curr</span><span class="p">,</span> <span class="n">k_s</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">get_response</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+        <span class="c1"># Did not converge; return the current state and let the outer</span>
+        <span class="c1"># iteration accommodate.</span>
+        <span class="k">return</span> <span class="n">e</span><span class="p">,</span> <span class="n">k_s</span>
+
+    <span class="c1"># ------------------------------------------ Neuenhofer-Filippou loop</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_natural_response</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Force-based version of the parent&#39;s</span>
+<span class="sd">        :meth:`BeamColumn2DCorotational._natural_response`. Returns</span>
+<span class="sd">        ``(f_nat, K_l_nat, c, s, L, L0)``. The signature is identical</span>
+<span class="sd">        so the parent&#39;s ``f_int_global`` and ``K_tangent_global`` need</span>
+<span class="sd">        no changes — the corotational wrapping and geometric stiffness</span>
+<span class="sd">        are reused unchanged.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">L0</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">alpha</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_geometry</span><span class="p">()</span>
+        <span class="n">u_g</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gather_u</span><span class="p">()</span>
+        <span class="n">theta1</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">u_g</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">theta2</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">u_g</span><span class="p">[</span><span class="mi">5</span><span class="p">])</span>
+        <span class="n">u_nat</span> <span class="o">=</span> <span class="n">L</span> <span class="o">-</span> <span class="n">L0</span>
+        <span class="n">theta1_nat</span> <span class="o">=</span> <span class="n">theta1</span> <span class="o">-</span> <span class="n">alpha</span>
+        <span class="n">theta2_nat</span> <span class="o">=</span> <span class="n">theta2</span> <span class="o">-</span> <span class="n">alpha</span>
+        <span class="n">v_target</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">u_nat</span><span class="p">,</span> <span class="n">theta1_nat</span><span class="p">,</span> <span class="n">theta2_nat</span><span class="p">])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ensure_sections_length</span><span class="p">()</span>
+        <span class="n">xi_pts</span><span class="p">,</span> <span class="n">w_pts</span> <span class="o">=</span> <span class="n">gauss_lobatto_1d</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_int</span><span class="p">)</span>
+        <span class="n">n_r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sections</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">n_resultants</span>
+        <span class="n">jac</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">L0</span>
+        <span class="n">n_ip</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_int</span>
+
+        <span class="c1"># Initialize committed section strains on the first call</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_e_committed</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_e_committed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_ip</span><span class="p">,</span> <span class="n">n_r</span><span class="p">))</span>
+
+        <span class="c1"># Predict q from committed state + last K_b.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_K_b_last</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">q</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_q_committed</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_K_b_last</span> <span class="o">@</span> <span class="p">(</span>
+                <span class="n">v_target</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v_at_last_commit</span><span class="p">()</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">q</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_q_committed</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="c1"># Working arrays: per-IP trial strain and tangent</span>
+        <span class="n">e_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_e_committed</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="c1"># K_b cached across iterations</span>
+        <span class="n">K_b</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">for</span> <span class="n">_it</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">state_det_max_iter</span><span class="p">):</span>
+            <span class="c1"># --- Section loop: bring section strains into agreement</span>
+            <span class="c1"># with target forces s(x) = b(x) q, then integrate to get</span>
+            <span class="c1"># the natural deformation v_computed and flexibility F_b.</span>
+            <span class="n">F_b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+            <span class="n">v_computed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">xi_pts</span><span class="p">,</span> <span class="n">w_pts</span><span class="p">)):</span>
+                <span class="n">b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_b_matrix</span><span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">L0</span><span class="p">)</span>
+                <span class="n">s_target</span> <span class="o">=</span> <span class="n">b</span> <span class="o">@</span> <span class="n">q</span>                          <span class="c1"># (n_r,)</span>
+                <span class="c1"># Solve section: find e_i such that section gives s_target.</span>
+                <span class="n">e_i</span><span class="p">,</span> <span class="n">k_s_i</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_section_strain_for_force</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">sections</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">s_target</span><span class="p">,</span>
+                    <span class="n">e_committed</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_e_committed</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                <span class="p">)</span>
+                <span class="n">e_trial</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">e_i</span>
+                <span class="c1"># Section flexibility f_s = k_s^{-1}; use solve for stability.</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">f_s_b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">k_s_i</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+                <span class="k">except</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">LinAlgError</span><span class="p">:</span>
+                    <span class="n">f_s_b</span><span class="p">,</span> <span class="o">*</span><span class="n">_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">lstsq</span><span class="p">(</span><span class="n">k_s_i</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">rcond</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+                <span class="n">F_b</span> <span class="o">+=</span> <span class="p">(</span><span class="n">w</span> <span class="o">*</span> <span class="n">jac</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">b</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">f_s_b</span><span class="p">)</span>
+                <span class="n">v_computed</span> <span class="o">+=</span> <span class="p">(</span><span class="n">w</span> <span class="o">*</span> <span class="n">jac</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">b</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">e_i</span><span class="p">)</span>
+
+            <span class="n">dv</span> <span class="o">=</span> <span class="n">v_target</span> <span class="o">-</span> <span class="n">v_computed</span>
+            <span class="k">if</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">dv</span><span class="p">)))</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">state_det_tol</span><span class="p">:</span>
+                <span class="n">K_b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">F_b</span><span class="p">)</span>
+                <span class="k">break</span>
+
+            <span class="c1"># Newton update on q</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">K_b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">F_b</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">LinAlgError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;force-based beam </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">tag</span><span class="si">}</span><span class="s2">: element flexibility &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;became singular during state determination (</span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">). &quot;</span>
+                    <span class="s2">&quot;Likely cause: every section has lost stiffness in &quot;</span>
+                    <span class="s2">&quot;a direction the element needs (e.g. fully plastic). &quot;</span>
+                    <span class="s2">&quot;Use a hardening section, refine the time step, or &quot;</span>
+                    <span class="s2">&quot;switch to displacement-based for the post-collapse &quot;</span>
+                    <span class="s2">&quot;regime.&quot;</span>
+                <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+            <span class="n">q</span> <span class="o">=</span> <span class="n">q</span> <span class="o">+</span> <span class="n">K_b</span> <span class="o">@</span> <span class="n">dv</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;force-based beam </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">tag</span><span class="si">}</span><span class="s2">: state determination did &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;not converge in </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">state_det_max_iter</span><span class="si">}</span><span class="s2"> iterations &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(||dv|| = </span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">dv</span><span class="p">)))</span><span class="si">:</span><span class="s2">.3e</span><span class="si">}</span><span class="s2">, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;tol = </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">state_det_tol</span><span class="si">:</span><span class="s2">.3e</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Stash the trial state for the next iteration and for commit.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_q_trial</span> <span class="o">=</span> <span class="n">q</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_e_trial</span> <span class="o">=</span> <span class="n">e_trial</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_K_b_last</span> <span class="o">=</span> <span class="n">K_b</span>
+        <span class="k">return</span> <span class="n">q</span><span class="p">,</span> <span class="n">K_b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">L0</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_v_at_last_commit</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reconstruct the natural deformations corresponding to the</span>
+<span class="sd">        committed state. Used by the predictor to take a fresh-step</span>
+<span class="sd">        increment from the converged state.&quot;&quot;&quot;</span>
+        <span class="c1"># Stored at commit time in ``self._v_committed``; if not yet</span>
+        <span class="c1"># populated (very first call), assume zero.</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_v_committed&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+
+    <span class="c1"># ---------------------------------------------------------- lifecycle</span>
+<div class="viewcode-block" id="ForceBeamColumn2DCorotational.commit_state">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.beam_force.ForceBeamColumn2DCorotational.commit_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">commit_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Forward section commit to per-IP sections via the parent.</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">commit_state</span><span class="p">()</span>
+        <span class="c1"># Snapshot the converged force / strain state for the next</span>
+        <span class="c1"># step&#39;s predictor.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_q_committed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_q_trial</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_q_trial&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_q_committed</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_e_trial&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_e_committed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_e_trial</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="c1"># Remember the natural deformations at this commit for the</span>
+        <span class="c1"># incremental predictor.</span>
+        <span class="n">L0</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">alpha</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_geometry</span><span class="p">()</span>
+        <span class="n">u_g</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gather_u</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_v_committed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+            <span class="n">L</span> <span class="o">-</span> <span class="n">L0</span><span class="p">,</span>
+            <span class="nb">float</span><span class="p">(</span><span class="n">u_g</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span> <span class="o">-</span> <span class="n">alpha</span><span class="p">,</span>
+            <span class="nb">float</span><span class="p">(</span><span class="n">u_g</span><span class="p">[</span><span class="mi">5</span><span class="p">])</span> <span class="o">-</span> <span class="n">alpha</span><span class="p">,</span>
+        <span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="ForceBeamColumn2DCorotational.revert_state">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.beam_force.ForceBeamColumn2DCorotational.revert_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">revert_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">revert_state</span><span class="p">()</span>
+        <span class="c1"># Trial natural state reverts to committed</span>
+        <span class="c1"># (no element-level trial-vs-committed plumbing here beyond</span>
+        <span class="c1"># what super() does; the sections themselves revert via super).</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_q_trial&quot;</span><span class="p">):</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_q_trial</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_e_trial&quot;</span><span class="p">):</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_e_trial</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

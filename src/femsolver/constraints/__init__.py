@@ -14,6 +14,11 @@ rigid diaphragm) plus a fully general form.
 from femsolver.constraints.base import BasicConstraint, Constraint
 from femsolver.constraints.equal_dof import EqualDOF
 from femsolver.constraints.rigid_link import RigidLink
+from femsolver.constraints.rigid_offset import (
+    RigidOffset,
+    beam_shell_offset_coupling,
+    beam_solid_coupling,
+)
 from femsolver.constraints.rigid_diaphragm import RigidDiaphragm
 from femsolver.constraints.mp_constraint import MPConstraint
 
@@ -22,6 +27,9 @@ __all__ = [
     "Constraint",
     "EqualDOF",
     "RigidLink",
+    "RigidOffset",
     "RigidDiaphragm",
     "MPConstraint",
+    "beam_shell_offset_coupling",
+    "beam_solid_coupling",
 ]

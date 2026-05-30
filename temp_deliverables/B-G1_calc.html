@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset='utf-8'><title>B-G1 - ACI 318-19</title>
+<style>
+body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color: #222;
+    margin: 30px;
+    line-height: 1.45;
+}
+h1 { font-size: 22px; border-bottom: 2px solid #333; padding-bottom: 6px; }
+h2 { font-size: 16px; color: #336; margin-top: 24px; }
+h3 { font-size: 14px; color: #336; margin-bottom: 4px; }
+table { border-collapse: collapse; margin: 8px 0; }
+table.kv td { padding: 3px 12px; }
+table.kv td.sym { font-style: italic; font-family: 'Cambria Math', 'Times New Roman', serif; }
+table.checks { border: 1px solid #888; width: 100%; }
+table.checks th, table.checks td { padding: 4px 8px; border: 1px solid #aaa; }
+.pass { background: #d8f3d8; }
+.fail { background: #f7c8c8; }
+.stamp { font-weight: bold; }
+.header-box { background: #f0f0f6; padding: 12px; border-left: 4px solid #336; }
+.formula { font-family: 'Cambria Math', 'Times New Roman', serif; color: #114; padding-left: 12px; }
+.code-clause { color: #666; font-size: 11px; }
+</style>
+</head>
+<body>
+<div class='header-box'>
+<h1>Demo Office - B-G1</h1>
+<table class='kv'>
+<tr><td>Code:</td><td>ACI 318-19</td></tr>
+<tr><td>Designer:</td><td>J. Smith</td></tr>
+<tr><td>Date:</td><td>2026-05-30</td></tr>
+</table>
+<p class='stamp pass'>ALL CHECKS PASS</p>
+</div>
+<h2>Flexure check</h2>
+<p>Singly-reinforced beam in positive moment region.</p>
+<h3>Inputs</h3><table class='kv'>
+<tr><td class='sym'>f_c</td><td>=</td><td>3.0000e+07 Pa</td><td>Concrete strength</td></tr>
+<tr><td class='sym'>f_y</td><td>=</td><td>4.2000e+08 Pa</td><td>Rebar yield</td></tr>
+<tr><td class='sym'>b</td><td>=</td><td>0.3 m</td><td>Width</td></tr>
+<tr><td class='sym'>d</td><td>=</td><td>0.45 m</td><td>Effective depth</td></tr>
+</table>
+<h3>Calculations</h3><table class='kv'>
+<tr><td class='sym'>phi*M_n</td><td>=</td><td>2.2000e+05 N.m</td><td>Design moment cap</td></tr>
+<tr><td colspan='4' class='formula'>phi*A_s*f_y*(d - a/2)</td></tr>
+</table>
+<h3>Checks</h3><table class='checks'><tr><th>Check</th><th>Demand</th><th>Capacity</th><th>DCR</th><th>Status</th><th>Clause</th></tr>
+<tr class='pass'><td>Flexure</td><td>1.8000e+05 N.m</td><td>2.2000e+05 N.m</td><td>0.818</td><td class='stamp'>PASS</td><td class='code-clause'>22.2.2</td></tr>
+</table>
+</body></html>

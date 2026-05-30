@@ -1,0 +1,18 @@
+benchmark,category,units,computed,source,reference_value,tolerance,rel_error,passes
+LE1 short cantilever tip deflection,linear-static,m,13.3333,Bernoulli closed form,13.3333,0.005,2.66454e-16,yes
+LE1 short cantilever tip deflection,linear-static,m,13.3333,Timoshenko 1959 p.42,13.3333,0.005,2.66454e-16,yes
+LE1 short cantilever tip deflection,linear-static,m,13.3333,NAFEMS LE1 (analytical),13.3333,0.005,2.66454e-16,yes
+LE2 two-bar truss apex deflection,linear-static,m,3.49386e-05,Method of sections,3.49386e-05,1e-09,0,yes
+LE2 two-bar truss apex deflection,linear-static,m,3.49386e-05,"Cook, Malkus, Plesha p.18",3.49386e-05,1e-09,0,yes
+LE3 cantilever fundamental frequency,modal,Hz,40.7691,Euler-Bernoulli closed form,40.769,0.02,2.1563e-06,yes
+LE3 cantilever fundamental frequency,modal,Hz,40.7691,Blevins 1979 Table 8-1,40.769,0.02,2.1563e-06,yes
+LE3 cantilever fundamental frequency,modal,Hz,40.7691,NAFEMS Free Vibration LE3 (analytical),40.769,0.02,2.1563e-06,yes
+LE5 pin-pin column Euler buckling,buckling,N,22220.7,Euler closed form,21932.5,0.02,0.0131402,yes
+LE5 pin-pin column Euler buckling,buckling,N,22220.7,Timoshenko & Gere 1961 p.46,21932.5,0.02,0.0131402,yes
+LE5 pin-pin column Euler buckling,buckling,N,22220.7,AISC 360-22 E3.4 (Fe column),21932.5,0.02,0.0131402,yes
+Propped cantilever UDL pinned reaction,linear-static,N,15019.5,Stiffness-method closed form,15000,0.01,0.00130208,yes
+Propped cantilever UDL pinned reaction,linear-static,N,15019.5,Hibbeler Structural Analysis 10e Ex 12.2,15000,0.01,0.00130208,yes
+Propped cantilever UDL pinned reaction,linear-static,N,15019.5,AISC Steel Manual Tab 3-23 case 12,15000,0.01,0.00130208,yes
+SS beam UDL midspan deflection,linear-static,m,0.0839062,Euler-Bernoulli closed form,0.084375,0.01,0.00555556,yes
+SS beam UDL midspan deflection,linear-static,m,0.0839062,Roark 7th Ed Tab 8.1 case 1,0.084375,0.01,0.00555556,yes
+SS beam UDL midspan deflection,linear-static,m,0.0839062,AISC Steel Construction Manual,0.084375,0.01,0.00555556,yes

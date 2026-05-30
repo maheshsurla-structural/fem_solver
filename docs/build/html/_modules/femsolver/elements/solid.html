@@ -1,0 +1,646 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.elements.solid &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.elements.solid</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.elements.solid</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;3-D continuum elements -- Hex8 (trilinear brick) and Tet4 (linear</span>
+<span class="sd">tetrahedron).</span>
+
+<span class="sd">Both elements use the standard isoparametric formulation and the</span>
+<span class="sd">6-component Voigt strain ordering</span>
+
+<span class="sd">    eps = (eps_xx, eps_yy, eps_zz, gamma_xy, gamma_yz, gamma_zx)</span>
+
+<span class="sd">which matches the ``ElasticIsotropic.D_3d`` (6, 6) constitutive</span>
+<span class="sd">matrix already in the materials library (the off-diagonal G entries</span>
+<span class="sd">are uncoupled and indifferent to the shear-component ordering).</span>
+
+<span class="sd">Both elements have **3 DOFs per node** (u, v, w) so they fit</span>
+<span class="sd">naturally into 3-D models with ``ndf = 3`` or ``ndf = 6`` (in the</span>
+<span class="sd">latter, the assembler&#39;s ``eqn[:dofs_per_node]`` slot picks up the</span>
+<span class="sd">three translations and leaves the rotations untouched).</span>
+
+<span class="sd">Hex8 uses 2x2x2 Gauss quadrature (exact for polynomials up to bicubic</span>
+<span class="sd">in any direction). Tet4 has constant strain so a single midpoint</span>
+<span class="sd">evaluation suffices.</span>
+
+<span class="sd">Future Phase 15.x candidates:</span>
+
+<span class="sd">* B-bar / selective reduced integration to cure volumetric locking</span>
+<span class="sd">  for nearly-incompressible materials (nu -&gt; 0.5).</span>
+<span class="sd">* Hex8 with reduced integration + hourglass stabilization (the</span>
+<span class="sd">  industry workhorse for plasticity).</span>
+<span class="sd">* Tet10 (10-node quadratic tet) for unstructured-mesh accuracy.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.elements.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">Element</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.numerics.quadrature</span><span class="w"> </span><span class="kn">import</span> <span class="n">gauss_legendre_3d_hex</span>
+
+
+<span class="c1"># ============================================================ shape helpers</span>
+
+<span class="c1">#: Local-coord positions of the 8 corner nodes of the bi-unit cube,</span>
+<span class="c1">#: in the standard isoparametric ordering 1..8 (bottom CCW, then top CCW).</span>
+<span class="n">_HEX8_CORNERS</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+    <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+    <span class="p">[</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+    <span class="p">[</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+    <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+    <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">],</span>
+    <span class="p">[</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">],</span>
+    <span class="p">[</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">],</span>
+    <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">],</span>
+<span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_hex8_shape</span><span class="p">(</span><span class="n">xi</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">eta</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">zeta</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;8-vector of trilinear shape function values at (xi, eta, zeta).&quot;&quot;&quot;</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">8</span><span class="p">):</span>
+        <span class="n">xi_i</span><span class="p">,</span> <span class="n">eta_i</span><span class="p">,</span> <span class="n">zeta_i</span> <span class="o">=</span> <span class="n">_HEX8_CORNERS</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.125</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">xi</span> <span class="o">*</span> <span class="n">xi_i</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">eta</span> <span class="o">*</span> <span class="n">eta_i</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">zeta</span> <span class="o">*</span> <span class="n">zeta_i</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">N</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_hex8_dN_dxi</span><span class="p">(</span><span class="n">xi</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">eta</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">zeta</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns (3, 8): row 0 = dN/dxi, row 1 = dN/deta, row 2 = dN/dzeta.&quot;&quot;&quot;</span>
+    <span class="n">dN</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">8</span><span class="p">):</span>
+        <span class="n">xi_i</span><span class="p">,</span> <span class="n">eta_i</span><span class="p">,</span> <span class="n">zeta_i</span> <span class="o">=</span> <span class="n">_HEX8_CORNERS</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">dN</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.125</span> <span class="o">*</span> <span class="n">xi_i</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">eta</span> <span class="o">*</span> <span class="n">eta_i</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">zeta</span> <span class="o">*</span> <span class="n">zeta_i</span><span class="p">)</span>
+        <span class="n">dN</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.125</span> <span class="o">*</span> <span class="n">eta_i</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">xi</span> <span class="o">*</span> <span class="n">xi_i</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">zeta</span> <span class="o">*</span> <span class="n">zeta_i</span><span class="p">)</span>
+        <span class="n">dN</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.125</span> <span class="o">*</span> <span class="n">zeta_i</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">xi</span> <span class="o">*</span> <span class="n">xi_i</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">eta</span> <span class="o">*</span> <span class="n">eta_i</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">dN</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_voigt_B_3d</span><span class="p">(</span><span class="n">dN_dx</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">n_nodes</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build the (6, 3*n_nodes) strain-displacement matrix in 3-D Voigt</span>
+<span class="sd">    notation eps = (exx, eyy, ezz, gxy, gyz, gzx).&quot;&quot;&quot;</span>
+    <span class="n">B</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">6</span><span class="p">,</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">n_nodes</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_nodes</span><span class="p">):</span>
+        <span class="n">dNx</span><span class="p">,</span> <span class="n">dNy</span><span class="p">,</span> <span class="n">dNz</span> <span class="o">=</span> <span class="n">dN_dx</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="p">],</span> <span class="n">dN_dx</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">i</span><span class="p">],</span> <span class="n">dN_dx</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>
+        <span class="n">B</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">dNx</span>                    <span class="c1"># eps_xx</span>
+        <span class="n">B</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">dNy</span>                    <span class="c1"># eps_yy</span>
+        <span class="n">B</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">dNz</span>                    <span class="c1"># eps_zz</span>
+        <span class="n">B</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">dNy</span>                    <span class="c1"># gamma_xy</span>
+        <span class="n">B</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">dNx</span>
+        <span class="n">B</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">dNz</span>                    <span class="c1"># gamma_yz</span>
+        <span class="n">B</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">dNy</span>
+        <span class="n">B</span><span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">dNz</span>                    <span class="c1"># gamma_zx</span>
+        <span class="n">B</span><span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">dNx</span>
+    <span class="k">return</span> <span class="n">B</span>
+
+
+<span class="c1"># ============================================================ Hex8</span>
+
+<div class="viewcode-block" id="Hex8">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.solid.Hex8">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Hex8</span><span class="p">(</span><span class="n">Element</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;8-node trilinear hexahedron.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    tag : int</span>
+<span class="sd">    nodes : sequence of 8 node tags in the standard ordering --</span>
+<span class="sd">        bottom counter-clockwise (z = z_min) then top counter-</span>
+<span class="sd">        clockwise (z = z_max), each face viewed from the +z side.</span>
+<span class="sd">    material : ElasticIsotropic</span>
+<span class="sd">        Provides ``D_3d()`` for the elastic (initial) stiffness and</span>
+<span class="sd">        ``rho`` for the mass matrix. When ``material3d`` is provided,</span>
+<span class="sd">        ``material`` is still used for mass-density.</span>
+<span class="sd">    quadrature : int, default 2</span>
+<span class="sd">        Number of Gauss points per direction (2 = 2x2x2 = 8 GPs,</span>
+<span class="sd">        exact integration for trilinear shapes).</span>
+<span class="sd">    material3d : optional 3-D plasticity material (e.g.</span>
+<span class="sd">        ``J2Plasticity3D``, ``DruckerPrager3D``).</span>
+<span class="sd">        When given, the element clones one independent copy per</span>
+<span class="sd">        integration point and uses ``get_response`` for the stress /</span>
+<span class="sd">        tangent. The element then carries its own committed / trial</span>
+<span class="sd">        state and the standard Newton solve picks up the plastic</span>
+<span class="sd">        response automatically.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">n_nodes</span> <span class="o">=</span> <span class="mi">8</span>
+    <span class="n">dofs_per_node</span> <span class="o">=</span> <span class="mi">3</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">tag</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">nodes</span><span class="p">,</span>
+        <span class="n">material</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">quadrature</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+        <span class="n">material3d</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="n">nodes</span><span class="p">,</span> <span class="n">material</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">quadrature</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">quadrature</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gp_stress</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gp_strain</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_body_force</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">material3d</span> <span class="o">=</span> <span class="n">material3d</span>
+        <span class="k">if</span> <span class="n">material3d</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">n_gp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">quadrature</span> <span class="o">**</span> <span class="mi">3</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ip_materials</span> <span class="o">=</span> <span class="p">[</span><span class="n">material3d</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_gp</span><span class="p">)]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ip_materials</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_jacobian</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xi</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">eta</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">zeta</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+                   <span class="n">X</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns (J, detJ, dN/dx) at (xi, eta, zeta) for the given node</span>
+<span class="sd">        coordinates ``X (8, 3)``.&quot;&quot;&quot;</span>
+        <span class="n">dN</span> <span class="o">=</span> <span class="n">_hex8_dN_dxi</span><span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">eta</span><span class="p">,</span> <span class="n">zeta</span><span class="p">)</span>
+        <span class="n">J</span> <span class="o">=</span> <span class="n">dN</span> <span class="o">@</span> <span class="n">X</span>                            <span class="c1"># (3, 3)</span>
+        <span class="n">detJ</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">J</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">detJ</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Hex8 element </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">tag</span><span class="si">}</span><span class="s2">: non-positive Jacobian determinant &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">detJ</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">) at (xi=</span><span class="si">{</span><span class="n">xi</span><span class="si">}</span><span class="s2">, eta=</span><span class="si">{</span><span class="n">eta</span><span class="si">}</span><span class="s2">, zeta=</span><span class="si">{</span><span class="n">zeta</span><span class="si">}</span><span class="s2">). Check &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;node ordering and element shape.&quot;</span>
+            <span class="p">)</span>
+        <span class="n">Jinv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">J</span><span class="p">)</span>
+        <span class="n">dN_dx</span> <span class="o">=</span> <span class="n">Jinv</span> <span class="o">@</span> <span class="n">dN</span>                     <span class="c1"># (3, 8)</span>
+        <span class="k">return</span> <span class="n">J</span><span class="p">,</span> <span class="n">detJ</span><span class="p">,</span> <span class="n">dN_dx</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_D_initial</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initial (linear) D matrix. Uses material3d.D_elastic() if a</span>
+<span class="sd">        stateful material is attached; otherwise material.D_3d().&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">material3d</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">material3d</span><span class="o">.</span><span class="n">D_elastic</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">D_3d</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Hex8.K_global">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.solid.Hex8.K_global">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">K_global</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_coords</span><span class="p">()</span>                 <span class="c1"># (8, 3)</span>
+        <span class="n">D</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_D_initial</span><span class="p">()</span>
+        <span class="n">K</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">24</span><span class="p">,</span> <span class="mi">24</span><span class="p">))</span>
+        <span class="n">xi</span><span class="p">,</span> <span class="n">eta</span><span class="p">,</span> <span class="n">zeta</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">gauss_legendre_3d_hex</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">quadrature</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">xi</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">detJ</span><span class="p">,</span> <span class="n">dN_dx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_jacobian</span><span class="p">(</span>
+                <span class="nb">float</span><span class="p">(</span><span class="n">xi</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">eta</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">zeta</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="n">X</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">B</span> <span class="o">=</span> <span class="n">_voigt_B_3d</span><span class="p">(</span><span class="n">dN_dx</span><span class="p">,</span> <span class="n">n_nodes</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+            <span class="n">K</span> <span class="o">+=</span> <span class="p">(</span><span class="n">B</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">D</span> <span class="o">@</span> <span class="n">B</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">detJ</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="n">q</span><span class="p">]))</span>
+        <span class="k">return</span> <span class="n">K</span></div>
+
+
+<div class="viewcode-block" id="Hex8.K_tangent_global">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.solid.Hex8.K_tangent_global">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">K_tangent_global</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Tangent stiffness at the current displacement state.</span>
+
+<span class="sd">        For ``material3d is None``: same as ``K_global`` (linear elastic).</span>
+
+<span class="sd">        For ``material3d`` present: integrates ``B^T D_tangent B`` at each</span>
+<span class="sd">        Gauss point, where ``D_tangent`` is the per-IP tangent returned</span>
+<span class="sd">        by the plastic material at the current strain. (Currently the</span>
+<span class="sd">        materials return the elastic D as their tangent, giving linear</span>
+<span class="sd">        Newton convergence; an algorithmic-consistent tangent is a</span>
+<span class="sd">        future refinement.)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ip_materials</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">K_global</span><span class="p">()</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_coords</span><span class="p">()</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gather_u</span><span class="p">()</span>
+        <span class="n">K</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">24</span><span class="p">,</span> <span class="mi">24</span><span class="p">))</span>
+        <span class="n">xi</span><span class="p">,</span> <span class="n">eta</span><span class="p">,</span> <span class="n">zeta</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">gauss_legendre_3d_hex</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">quadrature</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">xi</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">detJ</span><span class="p">,</span> <span class="n">dN_dx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_jacobian</span><span class="p">(</span>
+                <span class="nb">float</span><span class="p">(</span><span class="n">xi</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">eta</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">zeta</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="n">X</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">B</span> <span class="o">=</span> <span class="n">_voigt_B_3d</span><span class="p">(</span><span class="n">dN_dx</span><span class="p">,</span> <span class="n">n_nodes</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+            <span class="n">eps_voigt</span> <span class="o">=</span> <span class="n">B</span> <span class="o">@</span> <span class="n">u</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">D_t</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ip_materials</span><span class="p">[</span><span class="n">q</span><span class="p">]</span><span class="o">.</span><span class="n">get_response</span><span class="p">(</span><span class="n">eps_voigt</span><span class="p">)</span>
+            <span class="n">K</span> <span class="o">+=</span> <span class="p">(</span><span class="n">B</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">D_t</span> <span class="o">@</span> <span class="n">B</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">detJ</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="n">q</span><span class="p">]))</span>
+        <span class="k">return</span> <span class="n">K</span></div>
+
+
+<div class="viewcode-block" id="Hex8.f_int_global">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.solid.Hex8.f_int_global">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">f_int_global</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Internal resisting force.</span>
+
+<span class="sd">        For ``material3d is None`` falls back to the linear ``K u``.</span>
+<span class="sd">        Otherwise integrates ``int B^T sigma dV`` with the *plastic*</span>
+<span class="sd">        stresses returned by each IP&#39;s ``get_response``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ip_materials</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">K_global</span><span class="p">()</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">gather_u</span><span class="p">()</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_coords</span><span class="p">()</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gather_u</span><span class="p">()</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">24</span><span class="p">)</span>
+        <span class="n">xi</span><span class="p">,</span> <span class="n">eta</span><span class="p">,</span> <span class="n">zeta</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">gauss_legendre_3d_hex</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">quadrature</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">xi</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">detJ</span><span class="p">,</span> <span class="n">dN_dx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_jacobian</span><span class="p">(</span>
+                <span class="nb">float</span><span class="p">(</span><span class="n">xi</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">eta</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">zeta</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="n">X</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">B</span> <span class="o">=</span> <span class="n">_voigt_B_3d</span><span class="p">(</span><span class="n">dN_dx</span><span class="p">,</span> <span class="n">n_nodes</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+            <span class="n">eps_voigt</span> <span class="o">=</span> <span class="n">B</span> <span class="o">@</span> <span class="n">u</span>
+            <span class="n">sigma_voigt</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ip_materials</span><span class="p">[</span><span class="n">q</span><span class="p">]</span><span class="o">.</span><span class="n">get_response</span><span class="p">(</span><span class="n">eps_voigt</span><span class="p">)</span>
+            <span class="n">f</span> <span class="o">+=</span> <span class="p">(</span><span class="n">B</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">sigma_voigt</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">detJ</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="n">q</span><span class="p">]))</span>
+        <span class="k">return</span> <span class="n">f</span></div>
+
+
+<div class="viewcode-block" id="Hex8.commit_state">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.solid.Hex8.commit_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">commit_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ip_materials</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">ip</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ip_materials</span><span class="p">:</span>
+                <span class="n">ip</span><span class="o">.</span><span class="n">commit_state</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="Hex8.revert_state">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.solid.Hex8.revert_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">revert_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ip_materials</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">ip</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ip_materials</span><span class="p">:</span>
+                <span class="n">ip</span><span class="o">.</span><span class="n">revert_state</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="Hex8.M_global">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.solid.Hex8.M_global">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">M_global</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lumped</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">rho</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="p">,</span> <span class="s2">&quot;rho&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">rho</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">24</span><span class="p">,</span> <span class="mi">24</span><span class="p">))</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_coords</span><span class="p">()</span>
+        <span class="n">M</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">24</span><span class="p">,</span> <span class="mi">24</span><span class="p">))</span>
+        <span class="n">xi</span><span class="p">,</span> <span class="n">eta</span><span class="p">,</span> <span class="n">zeta</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">gauss_legendre_3d_hex</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">quadrature</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">xi</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+            <span class="n">xq</span><span class="p">,</span> <span class="n">yq</span><span class="p">,</span> <span class="n">zq</span><span class="p">,</span> <span class="n">wq</span> <span class="o">=</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">xi</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">eta</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span>
+                                <span class="nb">float</span><span class="p">(</span><span class="n">zeta</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="n">q</span><span class="p">]))</span>
+            <span class="n">N</span> <span class="o">=</span> <span class="n">_hex8_shape</span><span class="p">(</span><span class="n">xq</span><span class="p">,</span> <span class="n">yq</span><span class="p">,</span> <span class="n">zq</span><span class="p">)</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">detJ</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_jacobian</span><span class="p">(</span><span class="n">xq</span><span class="p">,</span> <span class="n">yq</span><span class="p">,</span> <span class="n">zq</span><span class="p">,</span> <span class="n">X</span><span class="p">)</span>
+            <span class="n">jw</span> <span class="o">=</span> <span class="n">rho</span> <span class="o">*</span> <span class="n">detJ</span> <span class="o">*</span> <span class="n">wq</span>
+            <span class="n">Nbar</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">24</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">8</span><span class="p">):</span>
+                <span class="n">Nbar</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="n">Nbar</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="n">Nbar</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">M</span> <span class="o">+=</span> <span class="p">(</span><span class="n">Nbar</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">Nbar</span><span class="p">)</span> <span class="o">*</span> <span class="n">jw</span>
+        <span class="k">if</span> <span class="n">lumped</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">M</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">M</span></div>
+
+
+    <span class="c1"># ------------------------------------------------------------ loading</span>
+<div class="viewcode-block" id="Hex8.set_body_force">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.solid.Hex8.set_body_force">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_body_force</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bx</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">by</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">bz</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_body_force</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="nb">float</span><span class="p">(</span><span class="n">bx</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">by</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">bz</span><span class="p">)])</span></div>
+
+
+<div class="viewcode-block" id="Hex8.clear_distributed_loads">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.solid.Hex8.clear_distributed_loads">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">clear_distributed_loads</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_body_force</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Hex8.f_eq_global">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.solid.Hex8.f_eq_global">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">f_eq_global</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_body_force</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">24</span><span class="p">)</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_coords</span><span class="p">()</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">24</span><span class="p">)</span>
+        <span class="n">bx</span><span class="p">,</span> <span class="n">by</span><span class="p">,</span> <span class="n">bz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_body_force</span>
+        <span class="n">xi</span><span class="p">,</span> <span class="n">eta</span><span class="p">,</span> <span class="n">zeta</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">gauss_legendre_3d_hex</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">quadrature</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">xi</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+            <span class="n">xq</span><span class="p">,</span> <span class="n">yq</span><span class="p">,</span> <span class="n">zq</span><span class="p">,</span> <span class="n">wq</span> <span class="o">=</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">xi</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">eta</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span>
+                                <span class="nb">float</span><span class="p">(</span><span class="n">zeta</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="n">q</span><span class="p">]))</span>
+            <span class="n">N</span> <span class="o">=</span> <span class="n">_hex8_shape</span><span class="p">(</span><span class="n">xq</span><span class="p">,</span> <span class="n">yq</span><span class="p">,</span> <span class="n">zq</span><span class="p">)</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">detJ</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_jacobian</span><span class="p">(</span><span class="n">xq</span><span class="p">,</span> <span class="n">yq</span><span class="p">,</span> <span class="n">zq</span><span class="p">,</span> <span class="n">X</span><span class="p">)</span>
+            <span class="n">jw</span> <span class="o">=</span> <span class="n">detJ</span> <span class="o">*</span> <span class="n">wq</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">8</span><span class="p">):</span>
+                <span class="n">f</span><span class="p">[</span><span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">bx</span> <span class="o">*</span> <span class="n">jw</span>
+                <span class="n">f</span><span class="p">[</span><span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">by</span> <span class="o">*</span> <span class="n">jw</span>
+                <span class="n">f</span><span class="p">[</span><span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span> <span class="o">+=</span> <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">bz</span> <span class="o">*</span> <span class="n">jw</span>
+        <span class="k">return</span> <span class="n">f</span></div>
+
+
+<div class="viewcode-block" id="Hex8.recover">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.solid.Hex8.recover">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">recover</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_coords</span><span class="p">()</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gather_u</span><span class="p">()</span>
+        <span class="n">D</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">D_3d</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gp_stress</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gp_strain</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">xi</span><span class="p">,</span> <span class="n">eta</span><span class="p">,</span> <span class="n">zeta</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">gauss_legendre_3d_hex</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">quadrature</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">xi</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">dN_dx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_jacobian</span><span class="p">(</span>
+                <span class="nb">float</span><span class="p">(</span><span class="n">xi</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">eta</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">zeta</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="n">X</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">B</span> <span class="o">=</span> <span class="n">_voigt_B_3d</span><span class="p">(</span><span class="n">dN_dx</span><span class="p">,</span> <span class="n">n_nodes</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+            <span class="n">eps</span> <span class="o">=</span> <span class="n">B</span> <span class="o">@</span> <span class="n">u</span>
+            <span class="n">sig</span> <span class="o">=</span> <span class="n">D</span> <span class="o">@</span> <span class="n">eps</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">gp_strain</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">eps</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">gp_stress</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sig</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># ============================================================ Tet4</span>
+
+<div class="viewcode-block" id="Tet4">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.solid.Tet4">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Tet4</span><span class="p">(</span><span class="n">Element</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;4-node linear tetrahedron (constant-strain in 3-D).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    tag : int</span>
+<span class="sd">    nodes : sequence of 4 node tags. The convention is that nodes</span>
+<span class="sd">        ``1, 2, 3`` form the base face seen from node 4 in</span>
+<span class="sd">        counter-clockwise order; equivalently, the signed volume</span>
+<span class="sd">        ``(x2 - x1) . ((x3 - x1) x (x4 - x1)) &gt; 0``.</span>
+<span class="sd">    material : ElasticIsotropic</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Tet4 is the simplest 3-D continuum element. It is notoriously</span>
+<span class="sd">    overly stiff on coarse meshes (no quadratic kinematic field for</span>
+<span class="sd">    bending or shear) and is best used for filling unstructured</span>
+<span class="sd">    meshes around bricks or for problems dominated by bulk volumetric</span>
+<span class="sd">    response (e.g. soil with confining pressure). For bending-</span>
+<span class="sd">    dominated problems prefer Hex8 or, future, Tet10.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">n_nodes</span> <span class="o">=</span> <span class="mi">4</span>
+    <span class="n">dofs_per_node</span> <span class="o">=</span> <span class="mi">3</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">nodes</span><span class="p">,</span> <span class="n">material</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">material3d</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="n">nodes</span><span class="p">,</span> <span class="n">material</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stress</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">strain</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_body_force</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">material3d</span> <span class="o">=</span> <span class="n">material3d</span>
+        <span class="c1"># CST has 1 integration point, so a single cloned material.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ip_material</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">material3d</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span> <span class="k">if</span> <span class="n">material3d</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_B_and_volume</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;For a CST tet, B and V are constant. Returns (B, V).&quot;&quot;&quot;</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_coords</span><span class="p">()</span>                <span class="c1"># (4, 3)</span>
+        <span class="c1"># Jacobian: derivative of (x, y, z) w.r.t. (xi, eta, zeta) on</span>
+        <span class="c1"># the reference tet (vertices (0,0,0), (1,0,0), (0,1,0), (0,0,1)).</span>
+        <span class="c1"># Shape functions: N1 = 1 - xi - eta - zeta, N2 = xi, N3 = eta, N4 = zeta.</span>
+        <span class="c1"># dN/dxi (constant): (-1, 1, 0, 0); dN/deta: (-1, 0, 1, 0);</span>
+        <span class="c1"># dN/dzeta: (-1, 0, 0, 1).</span>
+        <span class="n">dN_dref</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+            <span class="p">[</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+            <span class="p">[</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+            <span class="p">[</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
+        <span class="p">])</span>
+        <span class="n">J</span> <span class="o">=</span> <span class="n">dN_dref</span> <span class="o">@</span> <span class="n">X</span>                       <span class="c1"># (3, 3)</span>
+        <span class="n">detJ</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">J</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">detJ</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Tet4 element </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">tag</span><span class="si">}</span><span class="s2">: non-positive Jacobian determinant &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">detJ</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">). Check node ordering -- the signed volume of &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(x2-x1, x3-x1, x4-x1) must be positive.&quot;</span>
+            <span class="p">)</span>
+        <span class="n">V</span> <span class="o">=</span> <span class="n">detJ</span> <span class="o">/</span> <span class="mf">6.0</span>
+        <span class="n">Jinv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">J</span><span class="p">)</span>
+        <span class="n">dN_dx</span> <span class="o">=</span> <span class="n">Jinv</span> <span class="o">@</span> <span class="n">dN_dref</span>                <span class="c1"># (3, 4)</span>
+        <span class="n">B</span> <span class="o">=</span> <span class="n">_voigt_B_3d</span><span class="p">(</span><span class="n">dN_dx</span><span class="p">,</span> <span class="n">n_nodes</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">B</span><span class="p">,</span> <span class="n">V</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_D_initial</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">material3d</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">material3d</span><span class="o">.</span><span class="n">D_elastic</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">D_3d</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Tet4.K_global">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.solid.Tet4.K_global">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">K_global</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">B</span><span class="p">,</span> <span class="n">V</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_B_and_volume</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">B</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">_D_initial</span><span class="p">()</span> <span class="o">@</span> <span class="n">B</span><span class="p">)</span> <span class="o">*</span> <span class="n">V</span></div>
+
+
+<div class="viewcode-block" id="Tet4.K_tangent_global">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.solid.Tet4.K_tangent_global">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">K_tangent_global</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ip_material</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">K_global</span><span class="p">()</span>
+        <span class="n">B</span><span class="p">,</span> <span class="n">V</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_B_and_volume</span><span class="p">()</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gather_u</span><span class="p">()</span>
+        <span class="n">eps_voigt</span> <span class="o">=</span> <span class="n">B</span> <span class="o">@</span> <span class="n">u</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">D_t</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ip_material</span><span class="o">.</span><span class="n">get_response</span><span class="p">(</span><span class="n">eps_voigt</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">B</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">D_t</span> <span class="o">@</span> <span class="n">B</span><span class="p">)</span> <span class="o">*</span> <span class="n">V</span></div>
+
+
+<div class="viewcode-block" id="Tet4.f_int_global">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.solid.Tet4.f_int_global">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">f_int_global</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ip_material</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">K_global</span><span class="p">()</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">gather_u</span><span class="p">()</span>
+        <span class="n">B</span><span class="p">,</span> <span class="n">V</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_B_and_volume</span><span class="p">()</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gather_u</span><span class="p">()</span>
+        <span class="n">eps_voigt</span> <span class="o">=</span> <span class="n">B</span> <span class="o">@</span> <span class="n">u</span>
+        <span class="n">sigma_voigt</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ip_material</span><span class="o">.</span><span class="n">get_response</span><span class="p">(</span><span class="n">eps_voigt</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">B</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">sigma_voigt</span> <span class="o">*</span> <span class="n">V</span></div>
+
+
+<div class="viewcode-block" id="Tet4.commit_state">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.solid.Tet4.commit_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">commit_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ip_material</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ip_material</span><span class="o">.</span><span class="n">commit_state</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="Tet4.revert_state">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.solid.Tet4.revert_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">revert_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ip_material</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ip_material</span><span class="o">.</span><span class="n">revert_state</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="Tet4.M_global">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.solid.Tet4.M_global">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">M_global</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lumped</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">rho</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="p">,</span> <span class="s2">&quot;rho&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">rho</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">12</span><span class="p">,</span> <span class="mi">12</span><span class="p">))</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">V</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_B_and_volume</span><span class="p">()</span>
+        <span class="n">m_total</span> <span class="o">=</span> <span class="n">rho</span> <span class="o">*</span> <span class="n">V</span>
+        <span class="c1"># Consistent mass for a Tet4 (from M_ij = integral N_i N_j dV):</span>
+        <span class="c1"># diagonal entries get m/10, off-diagonal entries get m/20.</span>
+        <span class="c1"># (For each of the 3 translations the same scalar pattern.)</span>
+        <span class="n">M</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">12</span><span class="p">,</span> <span class="mi">12</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+                <span class="n">coef</span> <span class="o">=</span> <span class="n">m_total</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="mf">10.0</span> <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="n">j</span> <span class="k">else</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="mf">20.0</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+                    <span class="n">M</span><span class="p">[</span><span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="n">k</span><span class="p">,</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">j</span> <span class="o">+</span> <span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">coef</span>
+        <span class="k">if</span> <span class="n">lumped</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">M</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">M</span></div>
+
+
+    <span class="c1"># ------------------------------------------------------------ loading</span>
+<div class="viewcode-block" id="Tet4.set_body_force">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.solid.Tet4.set_body_force">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_body_force</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bx</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">by</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">bz</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_body_force</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="nb">float</span><span class="p">(</span><span class="n">bx</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">by</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">bz</span><span class="p">)])</span></div>
+
+
+<div class="viewcode-block" id="Tet4.clear_distributed_loads">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.solid.Tet4.clear_distributed_loads">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">clear_distributed_loads</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_body_force</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Tet4.f_eq_global">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.solid.Tet4.f_eq_global">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">f_eq_global</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_body_force</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">V</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_B_and_volume</span><span class="p">()</span>
+        <span class="c1"># CST: body force distributes equally to all 4 nodes</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span>
+        <span class="n">bx</span><span class="p">,</span> <span class="n">by</span><span class="p">,</span> <span class="n">bz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_body_force</span>
+        <span class="n">per_node</span> <span class="o">=</span> <span class="n">V</span> <span class="o">/</span> <span class="mf">4.0</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+            <span class="n">f</span><span class="p">[</span><span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">bx</span> <span class="o">*</span> <span class="n">per_node</span>
+            <span class="n">f</span><span class="p">[</span><span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">by</span> <span class="o">*</span> <span class="n">per_node</span>
+            <span class="n">f</span><span class="p">[</span><span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">bz</span> <span class="o">*</span> <span class="n">per_node</span>
+        <span class="k">return</span> <span class="n">f</span></div>
+
+
+<div class="viewcode-block" id="Tet4.recover">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.solid.Tet4.recover">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">recover</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">B</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_B_and_volume</span><span class="p">()</span>
+        <span class="n">D</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">D_3d</span><span class="p">()</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gather_u</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">strain</span> <span class="o">=</span> <span class="n">B</span> <span class="o">@</span> <span class="n">u</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stress</span> <span class="o">=</span> <span class="n">D</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">strain</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

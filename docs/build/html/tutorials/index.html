@@ -1,0 +1,531 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tutorial examples &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Theory manual overview" href="../theory/overview.html" />
+    <link rel="prev" title="I/O and post-processing" href="../api/io.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Tutorial examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#beginner-linear-static">Beginner — linear, static</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#modal-dynamics-response-spectrum">Modal, dynamics, response spectrum</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#nonlinear-pushover-plasticity">Nonlinear: pushover, plasticity</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#d-advanced-sections">3D + advanced sections</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#shells-composites">Shells + composites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#materials-catalogue">Materials catalogue</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#capacity-design-post-processing">Capacity design + post-processing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#pbe-pipeline">PBE pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#shear-walls">Shear walls</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#v-v">V&amp;V</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#design-code-based">Design — code-based</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#bridges">Bridges</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#capstone-walkthroughs">Capstone walkthroughs</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Tutorial examples</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/tutorials/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="tutorial-examples">
+<h1>Tutorial examples<a class="headerlink" href="#tutorial-examples" title="Link to this heading"></a></h1>
+<p>The <code class="docutils literal notranslate"><span class="pre">examples/</span></code> directory of the source tree ships 50+ self-contained
+scripts, organised below by topic. Each script is runnable from the
+repo root:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>examples/01_simple_truss.py
+</pre></div>
+</div>
+<p>The list is curated; the script numbers reflect the historical phase
+ordering (Phase 1 → Phase 38), not difficulty.</p>
+<section id="beginner-linear-static">
+<h2>Beginner — linear, static<a class="headerlink" href="#beginner-linear-static" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Script</p></th>
+<th class="head"><p>What it demonstrates</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">01_simple_truss.py</span></code></p></td>
+<td><p>3-bar pin/roller truss; first model from scratch</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">02_cantilever_beam.py</span></code></p></td>
+<td><p>Simple cantilever under tip load (Bernoulli)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">03_portal_frame.py</span></code></p></td>
+<td><p>2D portal frame, lateral + gravity</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">04_plane_stress_plate.py</span></code></p></td>
+<td><p>Plate under tension via Quad4</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">05_rigid_diaphragm_frame.py</span></code></p></td>
+<td><p>3D frame with rigid floor diaphragm</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="modal-dynamics-response-spectrum">
+<h2>Modal, dynamics, response spectrum<a class="headerlink" href="#modal-dynamics-response-spectrum" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Script</p></th>
+<th class="head"><p>Demonstrates</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">06_cantilever_modal.py</span></code></p></td>
+<td><p>Modal periods + shapes of a cantilever beam</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">14_sdof_damped_response.py</span></code></p></td>
+<td><p>SDOF under impulse, damping ratio sweep</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">15_cantilever_free_vibration.py</span></code></p></td>
+<td><p>Free-vibration transient, Newmark integration</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">22_response_spectrum_vs_time_history.py</span></code></p></td>
+<td><p>SRSS / CQC response spectrum vs direct integration</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">29_advanced_dynamics_integrators.py</span></code></p></td>
+<td><p>HHT-α vs Generalised-α vs central difference</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="nonlinear-pushover-plasticity">
+<h2>Nonlinear: pushover, plasticity<a class="headerlink" href="#nonlinear-pushover-plasticity" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Script</p></th>
+<th class="head"><p>Demonstrates</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">07_mises_truss_snapthrough.py</span></code></p></td>
+<td><p>Classic snap-through with arc-length</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">08_hinged_cantilever_pushover.py</span></code></p></td>
+<td><p>Lumped plastic hinge</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">09_fiber_cantilever_pushover.py</span></code></p></td>
+<td><p>Fiber-section cantilever</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">10_corotational_column_p_delta.py</span></code></p></td>
+<td><p>Corotational beam-column with P-Delta</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">11_corotational_fiber_column.py</span></code></p></td>
+<td><p>Corotational + fiber section</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">12_displacement_control_epp_plateau.py</span></code></p></td>
+<td><p>Displacement-control past the plateau</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">13_arc_length_mises_snap_through.py</span></code></p></td>
+<td><p>Crisfield arc-length</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">16_nonlinear_cyclic_hysteresis.py</span></code></p></td>
+<td><p>Bilinear hinge under cyclic load</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">17_buckling_mesh_convergence.py</span></code></p></td>
+<td><p>Euler P_cr mesh convergence</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">18_force_based_vs_displacement_based.py</span></code></p></td>
+<td><p>Force-based vs DB fiber column</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="d-advanced-sections">
+<h2>3D + advanced sections<a class="headerlink" href="#d-advanced-sections" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Script</p></th>
+<th class="head"><p>Demonstrates</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">19_3d_fiber_column_biaxial.py</span></code></p></td>
+<td><p>Biaxial fiber column</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">20_3d_corotational_p_delta.py</span></code></p></td>
+<td><p>3D corotational beam-column</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">21_3d_corot_fiber_pushover.py</span></code></p></td>
+<td><p>Combined 3D corotational + fiber</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">27_3d_solid_cantilever.py</span></code></p></td>
+<td><p>Hex8 cantilever</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">29_hex8_j2_pushover.py</span></code></p></td>
+<td><p>Hex8 with J₂ plasticity</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="shells-composites">
+<h2>Shells + composites<a class="headerlink" href="#shells-composites" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Script</p></th>
+<th class="head"><p>Demonstrates</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">23_shell_ss_plate_navier.py</span></code></p></td>
+<td><p>MITC4 simply-supported plate vs Navier series</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">24_shell_buckling.py</span></code></p></td>
+<td><p>Shell linear-buckling analysis</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">25_shell_tri3_vs_mitc4.py</span></code></p></td>
+<td><p>Tri3 vs MITC4 convergence comparison</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">26_layered_shell_sandwich.py</span></code></p></td>
+<td><p>Layered shell sandwich section</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">34_composite_laminate.py</span></code></p></td>
+<td><p>Composite laminate analysis</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">35_composite_failure.py</span></code></p></td>
+<td><p>Tsai-Wu / Tsai-Hill / max-stress</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">37_shell_mitc9_convergence.py</span></code></p></td>
+<td><p>MITC9 convergence study</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">38_dkmq4_thin_plate.py</span></code></p></td>
+<td><p>DKMQ4 on a thin plate</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="materials-catalogue">
+<h2>Materials catalogue<a class="headerlink" href="#materials-catalogue" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Script</p></th>
+<th class="head"><p>Demonstrates</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">28_concrete_confined_vs_unconfined.py</span></code></p></td>
+<td><p>Kent-Park vs Mander concrete</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">39_csi_hysteresis_catalog.py</span></code></p></td>
+<td><p>σ-ε loops of all CSI hysteresis types</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">44_fiber_section_csi_hysteresis.py</span></code></p></td>
+<td><p>M-κ loops of the same materials in a fiber section</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="capacity-design-post-processing">
+<h2>Capacity design + post-processing<a class="headerlink" href="#capacity-design-post-processing" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Script</p></th>
+<th class="head"><p>Demonstrates</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">30_post_processing_workflow.py</span></code></p></td>
+<td><p>VTK + JSON + force diagrams</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">31_capacity_design_workflow.py</span></code></p></td>
+<td><p>Pushover-to-target, bilinearisation, N2</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">32_base_isolation.py</span></code></p></td>
+<td><p>Lead-rubber bearing under ground motion</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">33_solver_benchmark.py</span></code></p></td>
+<td><p>Solver timing on a benchmark model</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">36_modal_pushover.py</span></code></p></td>
+<td><p>Modal pushover analysis vs first-mode pushover</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="pbe-pipeline">
+<h2>PBE pipeline<a class="headerlink" href="#pbe-pipeline" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Script</p></th>
+<th class="head"><p>Demonstrates</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">40_ida_collapse_fragility.py</span></code></p></td>
+<td><p>IDA + collapse detection + lognormal fragility fit</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">41_record_selection_to_ida.py</span></code></p></td>
+<td><p>CMS + ASCE 7 scaling + IDA</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">42_pile_py_pushover.py</span></code></p></td>
+<td><p>Pile-soil interaction with API p-y springs</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">43_pbe_full_workflow.py</span></code></p></td>
+<td><p><strong>Capstone</strong> PBE: IDA → EDPs → P-58 loss curve</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="shear-walls">
+<h2>Shear walls<a class="headerlink" href="#shear-walls" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Script</p></th>
+<th class="head"><p>Demonstrates</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">45_coupled_wall_pushover.py</span></code></p></td>
+<td><p>Two walls + coupling beams; linked vs unlinked</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="v-v">
+<h2>V&amp;V<a class="headerlink" href="#v-v" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Script</p></th>
+<th class="head"><p>Demonstrates</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">46_vnv_report.py</span></code></p></td>
+<td><p>Full benchmark suite, CSV export, pass/fail report</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="design-code-based">
+<h2>Design — code-based<a class="headerlink" href="#design-code-based" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Script</p></th>
+<th class="head"><p>Demonstrates</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">47_indian_codes_frame_design.py</span></code></p></td>
+<td><p>4-storey RC frame to IS 456 / IS 1893 / IS 13920</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">48_connection_capstone.py</span></code></p></td>
+<td><p>Panel zone + RBS + PR + bolts/welds</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">49_rc_frame_design.py</span></code></p></td>
+<td><p>RC frame to ACI 318</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">50_steel_frame_design.py</span></code></p></td>
+<td><p>Steel frame to AISC 360</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">51_envelope_drift_check.py</span></code></p></td>
+<td><p>Load-combo envelope + ASCE 7 drift</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">52_smrf_capacity_design.py</span></code></p></td>
+<td><p>Special moment frame seismic detailing</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">53_full_design_report.py</span></code></p></td>
+<td><p>HTML + CSV design report</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="bridges">
+<h2>Bridges<a class="headerlink" href="#bridges" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Script</p></th>
+<th class="head"><p>Demonstrates</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">49_psc_girder_bridge.py</span></code></p></td>
+<td><p><strong>Capstone</strong> PSC girder: composite section, HL-93,
+PT losses, CEB-FIP creep / shrinkage / relaxation</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="capstone-walkthroughs">
+<h2>Capstone walkthroughs<a class="headerlink" href="#capstone-walkthroughs" title="Link to this heading"></a></h2>
+<p>These scripts compose features end-to-end and make good “what can
+femsolver do” demos:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">43_pbe_full_workflow.py</span></code> — full PBE pipeline</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">45_coupled_wall_pushover.py</span></code> — coupled-wall system</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">46_vnv_report.py</span></code> — V&amp;V suite output</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">47_indian_codes_frame_design.py</span></code> — IS-codes design pipeline</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">48_connection_capstone.py</span></code> — connection mechanics</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">49_psc_girder_bridge.py</span></code> — bridge engineering</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">52_smrf_capacity_design.py</span></code> — SMRF capacity design</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">53_full_design_report.py</span></code> — full design report</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../api/io.html" class="btn btn-neutral float-left" title="I/O and post-processing" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../theory/overview.html" class="btn btn-neutral float-right" title="Theory manual overview" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

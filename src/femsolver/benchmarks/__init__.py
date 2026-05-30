@@ -26,6 +26,22 @@ from femsolver.benchmarks.harness import (
 from femsolver.benchmarks.linear_static import linear_static_benchmarks
 from femsolver.benchmarks.modal_buckling import modal_buckling_benchmarks
 from femsolver.benchmarks.nonlinear import nonlinear_benchmarks
+from femsolver.benchmarks.cross_platform import (
+    CrossPlatformBenchmark,
+    CrossPlatformReference,
+    CrossPlatformResult,
+    export_validation_csv,
+    format_validation_table,
+    render_validation_html,
+)
+from femsolver.benchmarks.nafems import nafems_cross_platform_benchmarks
+from femsolver.benchmarks.frames import frame_cross_platform_benchmarks
+
+
+def all_cross_platform_benchmarks() -> list[CrossPlatformBenchmark]:
+    """All cross-platform benchmarks (NAFEMS + frames)."""
+    return (nafems_cross_platform_benchmarks()
+            + frame_cross_platform_benchmarks())
 
 
 def all_benchmarks() -> list[Benchmark]:
@@ -48,4 +64,14 @@ __all__ = [
     "nonlinear_benchmarks",
     "run_benchmarks",
     "summary_stats",
+    # Theme AA
+    "CrossPlatformBenchmark",
+    "CrossPlatformReference",
+    "CrossPlatformResult",
+    "format_validation_table",
+    "render_validation_html",
+    "export_validation_csv",
+    "nafems_cross_platform_benchmarks",
+    "frame_cross_platform_benchmarks",
+    "all_cross_platform_benchmarks",
 ]

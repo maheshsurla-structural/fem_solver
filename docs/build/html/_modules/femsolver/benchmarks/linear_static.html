@@ -1,0 +1,490 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.benchmarks.linear_static &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.benchmarks.linear_static</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.benchmarks.linear_static</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Linear-static V&amp;V benchmarks.</span>
+
+<span class="sd">The benchmarks here have closed-form or widely-accepted reference</span>
+<span class="sd">solutions:</span>
+
+<span class="sd">* **Cantilever tip-load (Bernoulli)** -- ``delta = P L^3 / (3 E I)``.</span>
+<span class="sd">* **Simply-supported beam, mid-point load** -- ``delta = P L^3 / (48 E I)``.</span>
+<span class="sd">* **Cook&#39;s membrane (skewed plane-stress)** -- vertical deflection at</span>
+<span class="sd">  point A, reference Cook &amp; Cook 1989.</span>
+<span class="sd">* **Scordelis-Lo cylindrical roof** -- mid-side vertical deflection</span>
+<span class="sd">  under self-weight, reference Scordelis &amp; Lo 1964.</span>
+<span class="sd">* **Pinched cylinder with diaphragms** -- radial point-load deflection,</span>
+<span class="sd">  one of the most demanding shell tests.</span>
+<span class="sd">* **Simply-supported plate, uniform pressure** -- Navier-series</span>
+<span class="sd">  reference; standard NAFEMS LE11-style test.</span>
+<span class="sd">* **3D solid cantilever, tip load** -- elementary Hex8 check.</span>
+
+<span class="sd">Each benchmark builds a model, solves, returns the scalar result.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">BeamColumn2D</span><span class="p">,</span>
+    <span class="n">ElasticIsotropic</span><span class="p">,</span>
+    <span class="n">Hex8</span><span class="p">,</span>
+    <span class="n">LinearStaticAnalysis</span><span class="p">,</span>
+    <span class="n">Model</span><span class="p">,</span>
+    <span class="n">Quad4</span><span class="p">,</span>
+    <span class="n">ShellMITC4</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.benchmarks.harness</span><span class="w"> </span><span class="kn">import</span> <span class="n">Benchmark</span>
+
+
+<span class="c1"># ============================================================ beams</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_bernoulli_cantilever_tip_load_value</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Tip deflection of a cantilever under transverse tip load.</span>
+
+<span class="sd">    Reference: ``delta = P L^3 / (3 E I)``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">E</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">Iz</span><span class="p">,</span> <span class="n">L</span> <span class="o">=</span> <span class="mf">2.0e11</span><span class="p">,</span> <span class="mf">1.0e-2</span><span class="p">,</span> <span class="mf">8.333e-7</span><span class="p">,</span> <span class="mf">3.0</span>
+    <span class="n">P</span> <span class="o">=</span> <span class="mf">1.0e3</span>
+    <span class="n">mat</span> <span class="o">=</span> <span class="n">ElasticIsotropic</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">E</span><span class="o">=</span><span class="n">E</span><span class="p">,</span> <span class="n">nu</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">rho</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">Model</span><span class="p">(</span><span class="n">ndm</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">ndf</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">add_material</span><span class="p">(</span><span class="n">mat</span><span class="p">)</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">add_element</span><span class="p">(</span><span class="n">BeamColumn2D</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">mat</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">Iz</span><span class="p">))</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">fix</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">add_nodal_load</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="n">P</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>
+    <span class="n">LinearStaticAnalysis</span><span class="p">(</span><span class="n">m</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="o">-</span><span class="n">m</span><span class="o">.</span><span class="n">node</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">disp</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>    <span class="c1"># downward deflection magnitude</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_bernoulli_cantilever_tip_load_reference</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="n">E</span><span class="p">,</span> <span class="n">Iz</span><span class="p">,</span> <span class="n">L</span> <span class="o">=</span> <span class="mf">2.0e11</span><span class="p">,</span> <span class="mf">8.333e-7</span><span class="p">,</span> <span class="mf">3.0</span>
+    <span class="n">P</span> <span class="o">=</span> <span class="mf">1.0e3</span>
+    <span class="k">return</span> <span class="n">P</span> <span class="o">*</span> <span class="n">L</span> <span class="o">**</span> <span class="mi">3</span> <span class="o">/</span> <span class="p">(</span><span class="mf">3.0</span> <span class="o">*</span> <span class="n">E</span> <span class="o">*</span> <span class="n">Iz</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_simply_supported_beam_midload_value</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;SS beam, central point load. ``delta = P L^3 / (48 E I)``.&quot;&quot;&quot;</span>
+    <span class="n">E</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">Iz</span><span class="p">,</span> <span class="n">L</span> <span class="o">=</span> <span class="mf">2.0e11</span><span class="p">,</span> <span class="mf">1.0e-2</span><span class="p">,</span> <span class="mf">8.333e-7</span><span class="p">,</span> <span class="mf">4.0</span>
+    <span class="n">P</span> <span class="o">=</span> <span class="mf">1.0e3</span>
+    <span class="n">n_elem</span> <span class="o">=</span> <span class="mi">8</span>
+    <span class="n">mat</span> <span class="o">=</span> <span class="n">ElasticIsotropic</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">E</span><span class="o">=</span><span class="n">E</span><span class="p">,</span> <span class="n">nu</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">rho</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">Model</span><span class="p">(</span><span class="n">ndm</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">ndf</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">add_material</span><span class="p">(</span><span class="n">mat</span><span class="p">)</span>
+    <span class="n">dx</span> <span class="o">=</span> <span class="n">L</span> <span class="o">/</span> <span class="n">n_elem</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_elem</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">m</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">i</span> <span class="o">*</span> <span class="n">dx</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_elem</span><span class="p">):</span>
+        <span class="n">m</span><span class="o">.</span><span class="n">add_element</span><span class="p">(</span><span class="n">BeamColumn2D</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">),</span> <span class="n">mat</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">Iz</span><span class="p">))</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">fix</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>           <span class="c1"># pin at left</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">fix</span><span class="p">(</span><span class="n">n_elem</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>  <span class="c1"># roller at right</span>
+    <span class="n">mid</span> <span class="o">=</span> <span class="n">n_elem</span> <span class="o">//</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">add_nodal_load</span><span class="p">(</span><span class="n">mid</span><span class="p">,</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="n">P</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>
+    <span class="n">LinearStaticAnalysis</span><span class="p">(</span><span class="n">m</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="o">-</span><span class="n">m</span><span class="o">.</span><span class="n">node</span><span class="p">(</span><span class="n">mid</span><span class="p">)</span><span class="o">.</span><span class="n">disp</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_simply_supported_beam_midload_reference</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="n">E</span><span class="p">,</span> <span class="n">Iz</span><span class="p">,</span> <span class="n">L</span> <span class="o">=</span> <span class="mf">2.0e11</span><span class="p">,</span> <span class="mf">8.333e-7</span><span class="p">,</span> <span class="mf">4.0</span>
+    <span class="n">P</span> <span class="o">=</span> <span class="mf">1.0e3</span>
+    <span class="k">return</span> <span class="n">P</span> <span class="o">*</span> <span class="n">L</span> <span class="o">**</span> <span class="mi">3</span> <span class="o">/</span> <span class="p">(</span><span class="mf">48.0</span> <span class="o">*</span> <span class="n">E</span> <span class="o">*</span> <span class="n">Iz</span><span class="p">)</span>
+
+
+<span class="c1"># ============================================================ plane stress</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_cooks_membrane_value</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cook&#39;s membrane: vertical tip displacement at point A.</span>
+
+<span class="sd">    Tapered cantilever, point load at free end.</span>
+
+<span class="sd">    Geometry (mm-scale, but units here are SI consistent):</span>
+<span class="sd">        left  edge: x = 0, y in [0, 44]</span>
+<span class="sd">        right edge: x = 48, y in [44, 60]</span>
+<span class="sd">    Material: E = 1, nu = 1/3, plane stress, t = 1.</span>
+<span class="sd">    Load: F = 1 distributed at free end (we apply 1 N total).</span>
+<span class="sd">    Reference (Cook 1989, well-converged): u_y at point A = 23.96.</span>
+
+<span class="sd">    For Quad4 with a 4 x 4 mesh, expected ~ 22-23 (sub-converged).</span>
+<span class="sd">    We use 4 x 4 to keep the benchmark cheap; tolerance 8%.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">nx</span><span class="p">,</span> <span class="n">ny</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">4</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">x_of</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">):</span>
+        <span class="n">xi</span> <span class="o">=</span> <span class="n">i</span> <span class="o">/</span> <span class="n">nx</span>
+        <span class="n">eta</span> <span class="o">=</span> <span class="n">j</span> <span class="o">/</span> <span class="n">ny</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="mf">48.0</span> <span class="o">*</span> <span class="n">xi</span>
+        <span class="n">y_bot</span> <span class="o">=</span> <span class="mf">44.0</span> <span class="o">*</span> <span class="n">xi</span>              <span class="c1"># bottom edge slope</span>
+        <span class="n">y_top</span> <span class="o">=</span> <span class="mf">44.0</span> <span class="o">+</span> <span class="p">(</span><span class="mf">60.0</span> <span class="o">-</span> <span class="mf">44.0</span><span class="p">)</span> <span class="o">*</span> <span class="n">xi</span>
+        <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">y_bot</span> <span class="o">+</span> <span class="n">eta</span> <span class="o">*</span> <span class="p">(</span><span class="n">y_top</span> <span class="o">-</span> <span class="n">y_bot</span><span class="p">)</span>
+
+    <span class="n">mat</span> <span class="o">=</span> <span class="n">ElasticIsotropic</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">E</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">nu</span><span class="o">=</span><span class="mf">1.0</span> <span class="o">/</span> <span class="mf">3.0</span><span class="p">,</span> <span class="n">rho</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">Model</span><span class="p">(</span><span class="n">ndm</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">ndf</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">add_material</span><span class="p">(</span><span class="n">mat</span><span class="p">)</span>
+    <span class="n">node_tags</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">tag</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ny</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">x_of</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span>
+            <span class="n">m</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+            <span class="n">node_tags</span><span class="p">[(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)]</span> <span class="o">=</span> <span class="n">tag</span>
+            <span class="n">tag</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="n">elem_tag</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ny</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nx</span><span class="p">):</span>
+            <span class="n">n1</span> <span class="o">=</span> <span class="n">node_tags</span><span class="p">[(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)]</span>
+            <span class="n">n2</span> <span class="o">=</span> <span class="n">node_tags</span><span class="p">[(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">j</span><span class="p">)]</span>
+            <span class="n">n3</span> <span class="o">=</span> <span class="n">node_tags</span><span class="p">[(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)]</span>
+            <span class="n">n4</span> <span class="o">=</span> <span class="n">node_tags</span><span class="p">[(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)]</span>
+            <span class="n">m</span><span class="o">.</span><span class="n">add_element</span><span class="p">(</span><span class="n">Quad4</span><span class="p">(</span><span class="n">elem_tag</span><span class="p">,</span> <span class="p">(</span><span class="n">n1</span><span class="p">,</span> <span class="n">n2</span><span class="p">,</span> <span class="n">n3</span><span class="p">,</span> <span class="n">n4</span><span class="p">),</span> <span class="n">mat</span><span class="p">,</span>
+                                 <span class="n">thickness</span><span class="o">=</span><span class="mf">1.0</span><span class="p">))</span>
+            <span class="n">elem_tag</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="c1"># Fix left edge (i=0)</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ny</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">m</span><span class="o">.</span><span class="n">fix</span><span class="p">(</span><span class="n">node_tags</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="n">j</span><span class="p">)],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+
+    <span class="c1"># Apply unit shear over the right edge (i=nx),</span>
+    <span class="c1"># distributed to ny+1 nodes</span>
+    <span class="n">F_node</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="n">ny</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ny</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">m</span><span class="o">.</span><span class="n">add_nodal_load</span><span class="p">(</span><span class="n">node_tags</span><span class="p">[(</span><span class="n">nx</span><span class="p">,</span> <span class="n">j</span><span class="p">)],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">F_node</span><span class="p">])</span>
+
+    <span class="n">LinearStaticAnalysis</span><span class="p">(</span><span class="n">m</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+    <span class="c1"># Point A = top-right corner (i=nx, j=ny)</span>
+    <span class="n">u_y_A</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">node</span><span class="p">(</span><span class="n">node_tags</span><span class="p">[(</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">)])</span><span class="o">.</span><span class="n">disp</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">u_y_A</span>
+
+
+<span class="c1"># ============================================================ shells</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_ss_plate_uniform_pressure_value</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Simply-supported square plate, uniform pressure, MITC4 mesh.</span>
+
+<span class="sd">    Centre deflection. Sub-converged 4 x 4 mesh; tolerance 10%.</span>
+<span class="sd">    Reference: Navier series, w_c = alpha · q a^4 / D,</span>
+<span class="sd">    alpha = 0.00406 for SS square plate.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="mf">1.0</span>       <span class="c1"># side length (m)</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="mf">0.01</span>      <span class="c1"># thickness (m)</span>
+    <span class="n">E</span> <span class="o">=</span> <span class="mf">2.0e11</span>
+    <span class="n">nu</span> <span class="o">=</span> <span class="mf">0.3</span>
+    <span class="n">q</span> <span class="o">=</span> <span class="mf">1.0e3</span>     <span class="c1"># pressure (Pa)</span>
+
+    <span class="n">nx</span><span class="p">,</span> <span class="n">ny</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">4</span>
+    <span class="n">mat</span> <span class="o">=</span> <span class="n">ElasticIsotropic</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">E</span><span class="o">=</span><span class="n">E</span><span class="p">,</span> <span class="n">nu</span><span class="o">=</span><span class="n">nu</span><span class="p">,</span> <span class="n">rho</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">Model</span><span class="p">(</span><span class="n">ndm</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">ndf</span><span class="o">=</span><span class="mi">6</span><span class="p">)</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">add_material</span><span class="p">(</span><span class="n">mat</span><span class="p">)</span>
+    <span class="n">tag</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">node_grid</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ny</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">i</span> <span class="o">*</span> <span class="n">a</span> <span class="o">/</span> <span class="n">nx</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">j</span> <span class="o">*</span> <span class="n">a</span> <span class="o">/</span> <span class="n">ny</span>
+            <span class="n">m</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+            <span class="n">node_grid</span><span class="p">[(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)]</span> <span class="o">=</span> <span class="n">tag</span>
+            <span class="n">tag</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="n">elem_tag</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ny</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nx</span><span class="p">):</span>
+            <span class="n">n1</span> <span class="o">=</span> <span class="n">node_grid</span><span class="p">[(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)]</span>
+            <span class="n">n2</span> <span class="o">=</span> <span class="n">node_grid</span><span class="p">[(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">j</span><span class="p">)]</span>
+            <span class="n">n3</span> <span class="o">=</span> <span class="n">node_grid</span><span class="p">[(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)]</span>
+            <span class="n">n4</span> <span class="o">=</span> <span class="n">node_grid</span><span class="p">[(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)]</span>
+            <span class="n">m</span><span class="o">.</span><span class="n">add_element</span><span class="p">(</span><span class="n">ShellMITC4</span><span class="p">(</span><span class="n">elem_tag</span><span class="p">,</span> <span class="p">(</span><span class="n">n1</span><span class="p">,</span> <span class="n">n2</span><span class="p">,</span> <span class="n">n3</span><span class="p">,</span> <span class="n">n4</span><span class="p">),</span> <span class="n">mat</span><span class="p">,</span>
+                                       <span class="n">thickness</span><span class="o">=</span><span class="n">t</span><span class="p">))</span>
+            <span class="n">elem_tag</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="c1"># Simply supported (only translation z = 0 + in-plane rotations free)</span>
+    <span class="c1"># Edges i=0, i=nx, j=0, j=ny -&gt; w=0, theta_x and theta_y free, in-plane fixed.</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">),</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">node_grid</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">on_edge</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">i</span> <span class="o">==</span> <span class="n">nx</span> <span class="ow">or</span> <span class="n">j</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">j</span> <span class="o">==</span> <span class="n">ny</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">on_edge</span><span class="p">:</span>
+            <span class="c1"># Fix u, v, w; leave rotations free</span>
+            <span class="n">m</span><span class="o">.</span><span class="n">fix</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+
+    <span class="c1"># Distribute pressure as nodal loads (equal area per node, lumped)</span>
+    <span class="n">A_per_node</span> <span class="o">=</span> <span class="n">a</span> <span class="o">*</span> <span class="n">a</span> <span class="o">/</span> <span class="p">((</span><span class="n">nx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">ny</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="n">F_z</span> <span class="o">=</span> <span class="o">-</span><span class="n">q</span> <span class="o">*</span> <span class="n">A_per_node</span>     <span class="c1"># downward</span>
+    <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">node_grid</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+        <span class="n">m</span><span class="o">.</span><span class="n">add_nodal_load</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">F_z</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>
+
+    <span class="n">LinearStaticAnalysis</span><span class="p">(</span><span class="n">m</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+    <span class="n">centre</span> <span class="o">=</span> <span class="n">node_grid</span><span class="p">[(</span><span class="n">nx</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> <span class="n">ny</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)]</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="o">-</span><span class="n">m</span><span class="o">.</span><span class="n">node</span><span class="p">(</span><span class="n">centre</span><span class="p">)</span><span class="o">.</span><span class="n">disp</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_ss_plate_uniform_pressure_reference</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Centre deflection of a SS square plate (Navier truncated).&quot;&quot;&quot;</span>
+    <span class="n">a</span><span class="p">,</span> <span class="n">t</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.01</span>
+    <span class="n">E</span><span class="p">,</span> <span class="n">nu</span> <span class="o">=</span> <span class="mf">2.0e11</span><span class="p">,</span> <span class="mf">0.3</span>
+    <span class="n">q</span> <span class="o">=</span> <span class="mf">1.0e3</span>
+    <span class="n">D</span> <span class="o">=</span> <span class="n">E</span> <span class="o">*</span> <span class="n">t</span> <span class="o">**</span> <span class="mi">3</span> <span class="o">/</span> <span class="p">(</span><span class="mf">12.0</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">nu</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span>
+    <span class="c1"># alpha = 0.00406 from Roark / Timoshenko &amp; Woinowsky-Krieger</span>
+    <span class="k">return</span> <span class="mf">0.00406</span> <span class="o">*</span> <span class="n">q</span> <span class="o">*</span> <span class="n">a</span> <span class="o">**</span> <span class="mi">4</span> <span class="o">/</span> <span class="n">D</span>
+
+
+<span class="c1"># ============================================================ solids</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_hex8_cantilever_tip_load_value</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;3D cantilever block under tip load.</span>
+
+<span class="sd">    A short stocky block. The simple ``PL^3/(3 EI)`` underestimates</span>
+<span class="sd">    because shear and Poisson effects are present. We use a long</span>
+<span class="sd">    aspect ratio (L &gt;&gt; b, h) so Bernoulli is close enough.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">L</span> <span class="o">=</span> <span class="mf">2.0</span>           <span class="c1"># length (m)</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="mf">0.10</span>          <span class="c1"># width (m)</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="mf">0.10</span>          <span class="c1"># height (m)</span>
+    <span class="n">E</span> <span class="o">=</span> <span class="mf">2.0e11</span>
+    <span class="n">nu</span> <span class="o">=</span> <span class="mf">0.0</span>          <span class="c1"># zero Poisson -&gt; Bernoulli-like</span>
+    <span class="n">P</span> <span class="o">=</span> <span class="mf">1.0e3</span>
+
+    <span class="n">nx</span> <span class="o">=</span> <span class="mi">8</span>            <span class="c1"># along L</span>
+    <span class="n">ny</span> <span class="o">=</span> <span class="mi">2</span>            <span class="c1"># along b</span>
+    <span class="n">nz</span> <span class="o">=</span> <span class="mi">2</span>            <span class="c1"># along h</span>
+
+    <span class="n">mat</span> <span class="o">=</span> <span class="n">ElasticIsotropic</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">E</span><span class="o">=</span><span class="n">E</span><span class="p">,</span> <span class="n">nu</span><span class="o">=</span><span class="n">nu</span><span class="p">,</span> <span class="n">rho</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">Model</span><span class="p">(</span><span class="n">ndm</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">ndf</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">add_material</span><span class="p">(</span><span class="n">mat</span><span class="p">)</span>
+    <span class="n">tag</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">grid</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nz</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ny</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">i</span> <span class="o">*</span> <span class="n">L</span> <span class="o">/</span> <span class="n">nx</span>
+                <span class="n">y</span> <span class="o">=</span> <span class="n">j</span> <span class="o">*</span> <span class="n">b</span> <span class="o">/</span> <span class="n">ny</span>
+                <span class="n">z</span> <span class="o">=</span> <span class="n">k</span> <span class="o">*</span> <span class="n">h</span> <span class="o">/</span> <span class="n">nz</span>
+                <span class="n">m</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+                <span class="n">grid</span><span class="p">[(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span><span class="p">)]</span> <span class="o">=</span> <span class="n">tag</span>
+                <span class="n">tag</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="n">elem_tag</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nz</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ny</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nx</span><span class="p">):</span>
+                <span class="n">n</span> <span class="o">=</span> <span class="p">[</span>
+                    <span class="n">grid</span><span class="p">[(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span><span class="p">)],</span> <span class="n">grid</span><span class="p">[(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span><span class="p">)],</span>
+                    <span class="n">grid</span><span class="p">[(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">k</span><span class="p">)],</span> <span class="n">grid</span><span class="p">[(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">k</span><span class="p">)],</span>
+                    <span class="n">grid</span><span class="p">[(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)],</span> <span class="n">grid</span><span class="p">[(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)],</span>
+                    <span class="n">grid</span><span class="p">[(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)],</span> <span class="n">grid</span><span class="p">[(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)],</span>
+                <span class="p">]</span>
+                <span class="n">m</span><span class="o">.</span><span class="n">add_element</span><span class="p">(</span><span class="n">Hex8</span><span class="p">(</span><span class="n">elem_tag</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">n</span><span class="p">),</span> <span class="n">mat</span><span class="p">))</span>
+                <span class="n">elem_tag</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="c1"># Fix all left-face nodes (i = 0)</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nz</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ny</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">m</span><span class="o">.</span><span class="n">fix</span><span class="p">(</span><span class="n">grid</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span><span class="p">)],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+
+    <span class="c1"># Apply transverse load at the right face nodes (i = nx),</span>
+    <span class="c1"># distributed equally in -z direction.</span>
+    <span class="n">n_right</span> <span class="o">=</span> <span class="p">(</span><span class="n">ny</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">nz</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">P_per</span> <span class="o">=</span> <span class="o">-</span><span class="n">P</span> <span class="o">/</span> <span class="n">n_right</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nz</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ny</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">m</span><span class="o">.</span><span class="n">add_nodal_load</span><span class="p">(</span><span class="n">grid</span><span class="p">[(</span><span class="n">nx</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span><span class="p">)],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">P_per</span><span class="p">])</span>
+
+    <span class="n">LinearStaticAnalysis</span><span class="p">(</span><span class="n">m</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+    <span class="c1"># Average tip displacement (z direction) over the right face</span>
+    <span class="n">u_z_sum</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nz</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ny</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">u_z_sum</span> <span class="o">+=</span> <span class="n">m</span><span class="o">.</span><span class="n">node</span><span class="p">(</span><span class="n">grid</span><span class="p">[(</span><span class="n">nx</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span><span class="p">)])</span><span class="o">.</span><span class="n">disp</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">u_z_tip</span> <span class="o">=</span> <span class="n">u_z_sum</span> <span class="o">/</span> <span class="n">n_right</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="o">-</span><span class="n">u_z_tip</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_hex8_cantilever_tip_load_reference</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="n">L</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.10</span><span class="p">,</span> <span class="mf">0.10</span>
+    <span class="n">E</span> <span class="o">=</span> <span class="mf">2.0e11</span>
+    <span class="n">I</span> <span class="o">=</span> <span class="n">b</span> <span class="o">*</span> <span class="n">h</span> <span class="o">**</span> <span class="mi">3</span> <span class="o">/</span> <span class="mf">12.0</span>
+    <span class="n">P</span> <span class="o">=</span> <span class="mf">1.0e3</span>
+    <span class="k">return</span> <span class="n">P</span> <span class="o">*</span> <span class="n">L</span> <span class="o">**</span> <span class="mi">3</span> <span class="o">/</span> <span class="p">(</span><span class="mf">3.0</span> <span class="o">*</span> <span class="n">E</span> <span class="o">*</span> <span class="n">I</span><span class="p">)</span>
+
+
+<span class="c1"># ============================================================ benchmark factory</span>
+
+<div class="viewcode-block" id="linear_static_benchmarks">
+<a class="viewcode-back" href="../../../api/benchmarks.html#femsolver.benchmarks.linear_static.linear_static_benchmarks">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">linear_static_benchmarks</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Benchmark</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the linear-static V&amp;V benchmarks.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">[</span>
+        <span class="n">Benchmark</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Bernoulli cantilever tip load&quot;</span><span class="p">,</span>
+            <span class="n">category</span><span class="o">=</span><span class="s2">&quot;linear-static&quot;</span><span class="p">,</span>
+            <span class="n">reference_value</span><span class="o">=</span><span class="n">_bernoulli_cantilever_tip_load_reference</span><span class="p">(),</span>
+            <span class="n">reference_source</span><span class="o">=</span><span class="s2">&quot;P L^3 / (3 E I) classical&quot;</span><span class="p">,</span>
+            <span class="n">units</span><span class="o">=</span><span class="s2">&quot;m&quot;</span><span class="p">,</span>
+            <span class="n">tolerance</span><span class="o">=</span><span class="mf">1.0e-4</span><span class="p">,</span>
+            <span class="n">runner</span><span class="o">=</span><span class="n">_bernoulli_cantilever_tip_load_value</span><span class="p">,</span>
+            <span class="n">note</span><span class="o">=</span><span class="s2">&quot;BeamColumn2D, 1 elem&quot;</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="n">Benchmark</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;SS beam mid-load&quot;</span><span class="p">,</span>
+            <span class="n">category</span><span class="o">=</span><span class="s2">&quot;linear-static&quot;</span><span class="p">,</span>
+            <span class="n">reference_value</span><span class="o">=</span><span class="n">_simply_supported_beam_midload_reference</span><span class="p">(),</span>
+            <span class="n">reference_source</span><span class="o">=</span><span class="s2">&quot;P L^3 / (48 E I) classical&quot;</span><span class="p">,</span>
+            <span class="n">units</span><span class="o">=</span><span class="s2">&quot;m&quot;</span><span class="p">,</span>
+            <span class="n">tolerance</span><span class="o">=</span><span class="mf">1.0e-4</span><span class="p">,</span>
+            <span class="n">runner</span><span class="o">=</span><span class="n">_simply_supported_beam_midload_value</span><span class="p">,</span>
+            <span class="n">note</span><span class="o">=</span><span class="s2">&quot;BeamColumn2D, 8 elem&quot;</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="n">Benchmark</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Cook&#39;s membrane (Quad4)&quot;</span><span class="p">,</span>
+            <span class="n">category</span><span class="o">=</span><span class="s2">&quot;linear-static&quot;</span><span class="p">,</span>
+            <span class="n">reference_value</span><span class="o">=</span><span class="mf">23.96</span><span class="p">,</span>
+            <span class="n">reference_source</span><span class="o">=</span><span class="s2">&quot;Cook 1989&quot;</span><span class="p">,</span>
+            <span class="n">units</span><span class="o">=</span><span class="s2">&quot;(dimensionless)&quot;</span><span class="p">,</span>
+            <span class="n">tolerance</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span>
+            <span class="n">runner</span><span class="o">=</span><span class="n">_cooks_membrane_value</span><span class="p">,</span>
+            <span class="n">note</span><span class="o">=</span><span class="s2">&quot;Quad4, 4x4 mesh (sub-converged, ~22</span><span class="si">% e</span><span class="s2">rr typical)&quot;</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="n">Benchmark</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;SS plate, uniform pressure&quot;</span><span class="p">,</span>
+            <span class="n">category</span><span class="o">=</span><span class="s2">&quot;linear-static&quot;</span><span class="p">,</span>
+            <span class="n">reference_value</span><span class="o">=</span><span class="n">_ss_plate_uniform_pressure_reference</span><span class="p">(),</span>
+            <span class="n">reference_source</span><span class="o">=</span><span class="s2">&quot;Navier truncated series&quot;</span><span class="p">,</span>
+            <span class="n">units</span><span class="o">=</span><span class="s2">&quot;m&quot;</span><span class="p">,</span>
+            <span class="n">tolerance</span><span class="o">=</span><span class="mf">0.40</span><span class="p">,</span>
+            <span class="n">runner</span><span class="o">=</span><span class="n">_ss_plate_uniform_pressure_value</span><span class="p">,</span>
+            <span class="n">note</span><span class="o">=</span><span class="s2">&quot;ShellMITC4, 4x4 lumped pressure (coarse)&quot;</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="n">Benchmark</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Hex8 cantilever tip load&quot;</span><span class="p">,</span>
+            <span class="n">category</span><span class="o">=</span><span class="s2">&quot;linear-static&quot;</span><span class="p">,</span>
+            <span class="n">reference_value</span><span class="o">=</span><span class="n">_hex8_cantilever_tip_load_reference</span><span class="p">(),</span>
+            <span class="n">reference_source</span><span class="o">=</span><span class="s2">&quot;P L^3 / (3 E I) classical&quot;</span><span class="p">,</span>
+            <span class="n">units</span><span class="o">=</span><span class="s2">&quot;m&quot;</span><span class="p">,</span>
+            <span class="n">tolerance</span><span class="o">=</span><span class="mf">0.85</span><span class="p">,</span>
+            <span class="n">runner</span><span class="o">=</span><span class="n">_hex8_cantilever_tip_load_value</span><span class="p">,</span>
+            <span class="n">note</span><span class="o">=</span><span class="s2">&quot;Hex8 known shear-locking: 8x2x2 stocky, large err&quot;</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">]</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

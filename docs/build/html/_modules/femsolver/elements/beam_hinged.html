@@ -1,0 +1,644 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.elements.beam_hinged &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.elements.beam_hinged</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.elements.beam_hinged</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;2-D Euler-Bernoulli beam-column with optional concentrated plastic</span>
+<span class="sd">hinges at one or both ends.</span>
+
+<span class="sd">Architecture</span>
+<span class="sd">------------</span>
+<span class="sd">The element wraps an elastic prismatic beam (described by ``EA`` and</span>
+<span class="sd">``EIz``, exactly like :class:`BeamColumn2D`) and one or two zero-length</span>
+<span class="sd">rotational springs at the ends. From the outside it advertises the same</span>
+<span class="sd">6 node DOFs as the elastic beam, so it composes cleanly with the rest of</span>
+<span class="sd">the model. Internally it carries up to two extra rotational degrees of</span>
+<span class="sd">freedom — the *interior* beam-end rotations on the beam side of each</span>
+<span class="sd">spring. These interior DOFs are eliminated by static (Guyan) condensation</span>
+<span class="sd">before the element returns its tangent stiffness to the assembler.</span>
+
+<span class="sd">Sign convention for a hinge at end I::</span>
+
+<span class="sd">      [node I]---||spring i||---[beam end I]------ ...</span>
+<span class="sd">        theta_n_i               theta_b_i</span>
+
+<span class="sd">    theta_h_i = theta_n_i - theta_b_i        (hinge rotation)</span>
+<span class="sd">    M_h_i = M(theta_h_i)                     (spring response)</span>
+
+<span class="sd">Equilibrium at the interior DOF ``theta_b_i`` requires the beam-side</span>
+<span class="sd">moment to equal the spring moment:</span>
+
+<span class="sd">    K_beam_local[2, :] @ u_local  ==  M_h_i</span>
+
+<span class="sd">When the spring is in its elastic regime this is a single linear</span>
+<span class="sd">equation per hinge. Once the spring yields the equation is nonlinear,</span>
+<span class="sd">and the element runs an internal Newton iteration on</span>
+<span class="sd">``(theta_b_i, theta_b_j)`` to drive the residual to zero before</span>
+<span class="sd">reporting its tangent and internal force to the global solver.</span>
+
+<span class="sd">Limitations (current phase)</span>
+<span class="sd">---------------------------</span>
+<span class="sd">* No distributed loads. Add nodal loads to the model.</span>
+<span class="sd">* 2-D only. The 3-D variant follows the same pattern but is not yet</span>
+<span class="sd">  implemented.</span>
+<span class="sd">* Mass is taken from the underlying elastic beam. The hinges contribute</span>
+<span class="sd">  zero mass.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.elements.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">Element</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.elements.beam</span><span class="w"> </span><span class="kn">import</span> <span class="n">BeamColumn2D</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.sections.elastic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ElasticSection2D</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.sections.hinges.spring</span><span class="w"> </span><span class="kn">import</span> <span class="n">BilinearMomentRotationSpring</span>
+
+
+<div class="viewcode-block" id="HingedBeamColumn2D">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.beam_hinged.HingedBeamColumn2D">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">HingedBeamColumn2D</span><span class="p">(</span><span class="n">Element</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Elastic beam with concentrated plastic hinges at the ends.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    tag : int</span>
+<span class="sd">    nodes : (int, int)</span>
+<span class="sd">    material : Material</span>
+<span class="sd">    area, Iz : float, optional</span>
+<span class="sd">        Cross-section properties. Either both or ``section=`` must be given.</span>
+<span class="sd">    section : ElasticSection2D, optional</span>
+<span class="sd">        Pre-built elastic section, alternative to ``(area, Iz)``.</span>
+<span class="sd">    hinge_i, hinge_j : BilinearMomentRotationSpring, optional</span>
+<span class="sd">        Springs at end I (node 1 side) and end J (node 2 side). At least</span>
+<span class="sd">        one must be supplied — otherwise use :class:`BeamColumn2D`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">n_nodes</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">dofs_per_node</span> <span class="o">=</span> <span class="mi">3</span>
+
+    <span class="c1"># Internal-Newton settings. The tolerance is on the absolute residual</span>
+    <span class="c1"># (units: moment), so it must be lenient enough to absorb the</span>
+    <span class="c1"># round-off of beam-stiffness terms (order ``EI / L``) yet strict</span>
+    <span class="c1"># enough to make the global Newton residual converge to its own tol.</span>
+    <span class="c1"># 1e-9 is a reasonable default for typical structural-engineering</span>
+    <span class="c1"># scales (kN-m, MPa, mm).</span>
+    <span class="n">_internal_max_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span>
+    <span class="n">_internal_tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0e-9</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">tag</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">nodes</span><span class="p">,</span>
+        <span class="n">material</span><span class="p">,</span>
+        <span class="n">area</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">Iz</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">section</span><span class="p">:</span> <span class="n">ElasticSection2D</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">hinge_i</span><span class="p">:</span> <span class="n">BilinearMomentRotationSpring</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">hinge_j</span><span class="p">:</span> <span class="n">BilinearMomentRotationSpring</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="n">nodes</span><span class="p">,</span> <span class="n">material</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">hinge_i</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">hinge_j</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;HingedBeamColumn2D needs at least one hinge — for a fully &quot;</span>
+                <span class="s2">&quot;elastic beam, use BeamColumn2D instead&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">section</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">area</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">Iz</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;HingedBeamColumn2D: pass either (area, Iz) or section=, not both&quot;</span>
+                <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">section</span> <span class="o">=</span> <span class="n">section</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">area</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">section</span><span class="o">.</span><span class="n">A</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">Iz</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">section</span><span class="o">.</span><span class="n">Iz</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">area</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">Iz</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;HingedBeamColumn2D: provide (area, Iz) or section=&quot;</span>
+                <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">area</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">area</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">Iz</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">Iz</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">section</span> <span class="o">=</span> <span class="n">ElasticSection2D</span><span class="p">(</span><span class="n">material</span><span class="o">.</span><span class="n">E</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">area</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Iz</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hinge_i</span> <span class="o">=</span> <span class="n">hinge_i</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hinge_j</span> <span class="o">=</span> <span class="n">hinge_j</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">end_forces_local</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>
+        <span class="c1"># Trial / committed values of the *interior* beam-end rotations.</span>
+        <span class="c1"># These are what the internal Newton iteration solves for.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_theta_bi_committed</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_theta_bi_trial</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_theta_bj_committed</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_theta_bj_trial</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+    <span class="c1"># ------------------------------------------------------------- geometry</span>
+<div class="viewcode-block" id="HingedBeamColumn2D.length_and_angle">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.beam_hinged.HingedBeamColumn2D.length_and_angle">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">length_and_angle</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_coords</span><span class="p">()</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="n">c</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">c</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">L</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">d</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">L</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;hinged beam </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">tag</span><span class="si">}</span><span class="s2"> has zero length&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">L</span><span class="p">,</span> <span class="n">d</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">L</span><span class="p">,</span> <span class="n">d</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="n">L</span></div>
+
+
+<div class="viewcode-block" id="HingedBeamColumn2D.transform_matrix">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.beam_hinged.HingedBeamColumn2D.transform_matrix">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">transform_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">L</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">s</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">length_and_angle</span><span class="p">()</span>
+        <span class="n">R</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">c</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="n">s</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]])</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">6</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+        <span class="n">T</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">R</span>
+        <span class="n">T</span><span class="p">[</span><span class="mi">3</span><span class="p">:</span><span class="mi">6</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span><span class="mi">6</span><span class="p">]</span> <span class="o">=</span> <span class="n">R</span>
+        <span class="k">return</span> <span class="n">T</span></div>
+
+
+    <span class="c1"># --------------------------------------------------- elastic beam K_local</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_beam_K_local</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;6 x 6 stiffness of the elastic prismatic beam in local frame.</span>
+
+<span class="sd">        DOF order is interpreted as</span>
+<span class="sd">        ``[u1, v1, theta_b_i, u2, v2, theta_b_j]`` — the rotational DOFs</span>
+<span class="sd">        are the *beam-side* rotations, not the node rotations. They become</span>
+<span class="sd">        node rotations whenever the corresponding hinge is absent.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">L</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">length_and_angle</span><span class="p">()</span>
+        <span class="n">E</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">E</span>
+        <span class="n">A</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">area</span>
+        <span class="n">Iz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Iz</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">E</span> <span class="o">*</span> <span class="n">A</span> <span class="o">/</span> <span class="n">L</span>
+        <span class="n">b3</span> <span class="o">=</span> <span class="mf">12.0</span> <span class="o">*</span> <span class="n">E</span> <span class="o">*</span> <span class="n">Iz</span> <span class="o">/</span> <span class="p">(</span><span class="n">L</span> <span class="o">**</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="n">b2</span> <span class="o">=</span> <span class="mf">6.0</span> <span class="o">*</span> <span class="n">E</span> <span class="o">*</span> <span class="n">Iz</span> <span class="o">/</span> <span class="p">(</span><span class="n">L</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">b1</span> <span class="o">=</span> <span class="mf">4.0</span> <span class="o">*</span> <span class="n">E</span> <span class="o">*</span> <span class="n">Iz</span> <span class="o">/</span> <span class="n">L</span>
+        <span class="n">b1h</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">E</span> <span class="o">*</span> <span class="n">Iz</span> <span class="o">/</span> <span class="n">L</span>
+        <span class="n">K</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">6</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+        <span class="n">K</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span><span class="p">;</span> <span class="n">K</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">a</span>
+        <span class="n">K</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">a</span><span class="p">;</span> <span class="n">K</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span>
+        <span class="n">K</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">b3</span><span class="p">;</span> <span class="n">K</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">b2</span><span class="p">;</span> <span class="n">K</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">b3</span><span class="p">;</span> <span class="n">K</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">]</span> <span class="o">=</span> <span class="n">b2</span>
+        <span class="n">K</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">b2</span><span class="p">;</span> <span class="n">K</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">b1</span><span class="p">;</span> <span class="n">K</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">b2</span><span class="p">;</span> <span class="n">K</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">]</span> <span class="o">=</span> <span class="n">b1h</span>
+        <span class="n">K</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">b3</span><span class="p">;</span> <span class="n">K</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">b2</span><span class="p">;</span> <span class="n">K</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="n">b3</span><span class="p">;</span> <span class="n">K</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">b2</span>
+        <span class="n">K</span><span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">b2</span><span class="p">;</span> <span class="n">K</span><span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">b1h</span><span class="p">;</span> <span class="n">K</span><span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">b2</span><span class="p">;</span> <span class="n">K</span><span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">]</span> <span class="o">=</span> <span class="n">b1</span>
+        <span class="k">return</span> <span class="n">K</span>
+
+    <span class="c1"># ------------------------------------------------ state determination</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_u_local_full</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">theta_bi</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">theta_bj</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build the 6-vector that the elastic beam sees:</span>
+<span class="sd">        ``[u1, v1, theta_b_i, u2, v2, theta_b_j]``.</span>
+
+<span class="sd">        For DOFs without a hinge the beam rotation equals the node</span>
+<span class="sd">        rotation, so we read it straight off the node displacements.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">u_l_node</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform_matrix</span><span class="p">()</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">gather_u</span><span class="p">()</span>
+        <span class="c1"># u_l_node has DOF order [u1, v1, theta_n_i, u2, v2, theta_n_j]</span>
+        <span class="n">u_b</span> <span class="o">=</span> <span class="n">u_l_node</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_i</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">u_b</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">theta_bi</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_j</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">u_b</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span> <span class="o">=</span> <span class="n">theta_bj</span>
+        <span class="k">return</span> <span class="n">u_b</span><span class="p">,</span> <span class="n">u_l_node</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_state_determination</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run internal Newton on the beam-end rotations and return a</span>
+<span class="sd">        dict with all the quantities the global solver needs.</span>
+
+<span class="sd">        Returned keys</span>
+<span class="sd">        -------------</span>
+<span class="sd">        ``u_l_node`` (size 6)            local displacements at node DOFs</span>
+<span class="sd">        ``u_b``      (size 6)            beam-side u_local with theta_b</span>
+<span class="sd">                                         at the end positions</span>
+<span class="sd">        ``K_b``      (6x6)               elastic beam stiffness</span>
+<span class="sd">        ``M_h_i``, ``K_h_i``             converged spring response at I</span>
+<span class="sd">                                         (``None`` if no hinge)</span>
+<span class="sd">        ``M_h_j``, ``K_h_j``             converged spring response at J</span>
+<span class="sd">        ``theta_b_i``, ``theta_b_j``     converged interior rotations</span>
+
+<span class="sd">        Algorithm</span>
+<span class="sd">        ---------</span>
+<span class="sd">        Newton on the equilibrium residual at the interior DOFs:</span>
+
+<span class="sd">            R_i = K_b[2, :] @ u_b - M_h_i(theta_n_i - theta_b_i) = 0</span>
+<span class="sd">            R_j = K_b[5, :] @ u_b - M_h_j(theta_n_j - theta_b_j) = 0</span>
+
+<span class="sd">        For an elastic-perfectly-plastic spring the residual is</span>
+<span class="sd">        piecewise-linear in ``theta_b`` with a discontinuity in slope at</span>
+<span class="sd">        the elastic-plastic boundary. Pure Newton can overshoot the</span>
+<span class="sd">        regime each step and oscillate, so we wrap the update in a</span>
+<span class="sd">        backtracking line search: try the full Newton step; if the</span>
+<span class="sd">        residual norm does not decrease, halve and retry.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">K_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_beam_K_local</span><span class="p">()</span>
+        <span class="n">theta_bi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_theta_bi_trial</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_i</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mf">0.0</span>
+        <span class="n">theta_bj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_theta_bj_trial</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_j</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mf">0.0</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_evaluate</span><span class="p">(</span><span class="n">tbi</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">tbj</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;Compute (residual, K_h_i, K_h_j, M_h_i, M_h_j, u_l_node, u_b)</span>
+<span class="sd">            at the trial rotations. Each call mutates the spring&#39;s *trial*</span>
+<span class="sd">            state — that is fine because the committed state is unchanged</span>
+<span class="sd">            and the spring is deterministic in the input.&quot;&quot;&quot;</span>
+            <span class="n">u_b</span><span class="p">,</span> <span class="n">u_l_node</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_u_local_full</span><span class="p">(</span><span class="n">tbi</span><span class="p">,</span> <span class="n">tbj</span><span class="p">)</span>
+            <span class="n">theta_n_i</span> <span class="o">=</span> <span class="n">u_l_node</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+            <span class="n">theta_n_j</span> <span class="o">=</span> <span class="n">u_l_node</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span>
+            <span class="n">M_h_i</span><span class="p">,</span> <span class="n">K_h_i</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">hinge_i</span><span class="o">.</span><span class="n">get_response</span><span class="p">(</span><span class="n">theta_n_i</span> <span class="o">-</span> <span class="n">tbi</span><span class="p">)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_i</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">M_h_j</span><span class="p">,</span> <span class="n">K_h_j</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">hinge_j</span><span class="o">.</span><span class="n">get_response</span><span class="p">(</span><span class="n">theta_n_j</span> <span class="o">-</span> <span class="n">tbj</span><span class="p">)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_j</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_i</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">r</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">K_b</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="p">:]</span> <span class="o">@</span> <span class="n">u_b</span> <span class="o">-</span> <span class="n">M_h_i</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_j</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">r</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">K_b</span><span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="p">:]</span> <span class="o">@</span> <span class="n">u_b</span> <span class="o">-</span> <span class="n">M_h_j</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">r</span><span class="p">),</span> <span class="n">K_h_i</span><span class="p">,</span> <span class="n">K_h_j</span><span class="p">,</span> <span class="n">M_h_i</span><span class="p">,</span> <span class="n">M_h_j</span><span class="p">,</span> <span class="n">u_l_node</span><span class="p">,</span> <span class="n">u_b</span>
+
+        <span class="n">r</span><span class="p">,</span> <span class="n">K_h_i</span><span class="p">,</span> <span class="n">K_h_j</span><span class="p">,</span> <span class="n">M_h_i</span><span class="p">,</span> <span class="n">M_h_j</span><span class="p">,</span> <span class="n">u_l_node</span><span class="p">,</span> <span class="n">u_b</span> <span class="o">=</span> <span class="n">_evaluate</span><span class="p">(</span><span class="n">theta_bi</span><span class="p">,</span> <span class="n">theta_bj</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_internal_max_iter</span><span class="p">):</span>
+            <span class="n">norm_r</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">r</span><span class="p">)))</span>
+            <span class="k">if</span> <span class="n">norm_r</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_internal_tol</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="c1"># Newton tangent at the current state</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_i</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_j</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">Jm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+                    <span class="p">[</span><span class="n">K_b</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="n">K_h_i</span><span class="p">,</span> <span class="n">K_b</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">]],</span>
+                    <span class="p">[</span><span class="n">K_b</span><span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>         <span class="n">K_b</span><span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">]</span> <span class="o">+</span> <span class="n">K_h_j</span><span class="p">],</span>
+                <span class="p">])</span>
+                <span class="n">d</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">Jm</span><span class="p">,</span> <span class="o">-</span><span class="n">r</span><span class="p">)</span>
+                <span class="n">d_bi</span><span class="p">,</span> <span class="n">d_bj</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_i</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">d_bi</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="o">-</span><span class="n">r</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span><span class="n">K_b</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="n">K_h_i</span><span class="p">))</span>
+                <span class="n">d_bj</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">d_bi</span> <span class="o">=</span> <span class="mf">0.0</span>
+                <span class="n">d_bj</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="o">-</span><span class="n">r</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span><span class="n">K_b</span><span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">]</span> <span class="o">+</span> <span class="n">K_h_j</span><span class="p">))</span>
+            <span class="c1"># Backtracking line search — halve the step until the residual</span>
+            <span class="c1"># norm goes down. Twenty backtracks let alpha shrink to ~1e-6,</span>
+            <span class="c1"># well below any physically reasonable step size.</span>
+            <span class="n">alpha</span> <span class="o">=</span> <span class="mf">1.0</span>
+            <span class="k">for</span> <span class="n">_bt</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">20</span><span class="p">):</span>
+                <span class="n">tbi_try</span> <span class="o">=</span> <span class="n">theta_bi</span> <span class="o">+</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">d_bi</span>
+                <span class="n">tbj_try</span> <span class="o">=</span> <span class="n">theta_bj</span> <span class="o">+</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">d_bj</span>
+                <span class="n">r_try</span><span class="p">,</span> <span class="n">K_h_i_try</span><span class="p">,</span> <span class="n">K_h_j_try</span><span class="p">,</span> <span class="n">M_h_i_try</span><span class="p">,</span> <span class="n">M_h_j_try</span><span class="p">,</span> <span class="n">u_l_node_try</span><span class="p">,</span> <span class="n">u_b_try</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">_evaluate</span><span class="p">(</span><span class="n">tbi_try</span><span class="p">,</span> <span class="n">tbj_try</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="n">norm_r_try</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">r_try</span><span class="p">)))</span>
+                <span class="k">if</span> <span class="n">norm_r_try</span> <span class="o">&lt;</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="mf">1.0e-4</span> <span class="o">*</span> <span class="n">alpha</span><span class="p">)</span> <span class="o">*</span> <span class="n">norm_r</span><span class="p">:</span>
+                    <span class="c1"># accept</span>
+                    <span class="n">theta_bi</span><span class="p">,</span> <span class="n">theta_bj</span> <span class="o">=</span> <span class="n">tbi_try</span><span class="p">,</span> <span class="n">tbj_try</span>
+                    <span class="n">r</span> <span class="o">=</span> <span class="n">r_try</span>
+                    <span class="n">K_h_i</span><span class="p">,</span> <span class="n">K_h_j</span> <span class="o">=</span> <span class="n">K_h_i_try</span><span class="p">,</span> <span class="n">K_h_j_try</span>
+                    <span class="n">M_h_i</span><span class="p">,</span> <span class="n">M_h_j</span> <span class="o">=</span> <span class="n">M_h_i_try</span><span class="p">,</span> <span class="n">M_h_j_try</span>
+                    <span class="n">u_l_node</span><span class="p">,</span> <span class="n">u_b</span> <span class="o">=</span> <span class="n">u_l_node_try</span><span class="p">,</span> <span class="n">u_b_try</span>
+                    <span class="k">break</span>
+                <span class="n">alpha</span> <span class="o">*=</span> <span class="mf">0.5</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Line search exhausted without finding a descent direction.</span>
+                <span class="c1"># Re-evaluate at the current iterate so the springs leave</span>
+                <span class="c1"># consistent trial state, then bail out.</span>
+                <span class="n">_evaluate</span><span class="p">(</span><span class="n">theta_bi</span><span class="p">,</span> <span class="n">theta_bj</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;hinged beam </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">tag</span><span class="si">}</span><span class="s2">: internal line search failed &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;(|R| = </span><span class="si">{</span><span class="n">norm_r</span><span class="si">}</span><span class="s2">)&quot;</span>
+                <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;hinged beam </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">tag</span><span class="si">}</span><span class="s2">: internal Newton did not converge &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;in </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_internal_max_iter</span><span class="si">}</span><span class="s2"> iterations &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(|R| = </span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">r</span><span class="p">)))</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_theta_bi_trial</span> <span class="o">=</span> <span class="n">theta_bi</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_theta_bj_trial</span> <span class="o">=</span> <span class="n">theta_bj</span>
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">u_l_node</span><span class="o">=</span><span class="n">u_l_node</span><span class="p">,</span> <span class="n">u_b</span><span class="o">=</span><span class="n">u_b</span><span class="p">,</span> <span class="n">K_b</span><span class="o">=</span><span class="n">K_b</span><span class="p">,</span>
+            <span class="n">M_h_i</span><span class="o">=</span><span class="n">M_h_i</span><span class="p">,</span> <span class="n">K_h_i</span><span class="o">=</span><span class="n">K_h_i</span><span class="p">,</span> <span class="n">M_h_j</span><span class="o">=</span><span class="n">M_h_j</span><span class="p">,</span> <span class="n">K_h_j</span><span class="o">=</span><span class="n">K_h_j</span><span class="p">,</span>
+            <span class="n">theta_b_i</span><span class="o">=</span><span class="n">theta_bi</span><span class="p">,</span> <span class="n">theta_b_j</span><span class="o">=</span><span class="n">theta_bj</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="c1"># ------------------------------------------------- stiffness / forces</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_condensed_K_local</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">K_b</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">K_h_i</span><span class="p">,</span> <span class="n">K_h_j</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build the augmented K, partition, and condense to 6x6 in node</span>
+<span class="sd">        DOFs. The hinge tangent stiffnesses ``K_h_i`` / ``K_h_j`` are</span>
+<span class="sd">        evaluated at the converged state and may be zero (perfectly</span>
+<span class="sd">        plastic) — both cases are handled by ``np.linalg.solve``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Augmented DOF layout: [u1, v1, theta_n_i, u2, v2, theta_n_j |</span>
+        <span class="c1">#                        theta_b_i?, theta_b_j?]</span>
+        <span class="n">n_int</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_i</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_j</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="mi">6</span> <span class="o">+</span> <span class="n">n_int</span>
+        <span class="n">K_aug</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n</span><span class="p">,</span> <span class="n">n</span><span class="p">))</span>
+        <span class="c1"># beam dof -&gt; aug dof mapping</span>
+        <span class="n">next_int</span> <span class="o">=</span> <span class="mi">6</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_i</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">beam_idx_i</span> <span class="o">=</span> <span class="n">next_int</span>
+            <span class="n">next_int</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">beam_idx_i</span> <span class="o">=</span> <span class="mi">2</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_j</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">beam_idx_j</span> <span class="o">=</span> <span class="n">next_int</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">beam_idx_j</span> <span class="o">=</span> <span class="mi">5</span>
+        <span class="n">beam_dofs</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">beam_idx_i</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">beam_idx_j</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">6</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">jj</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">6</span><span class="p">):</span>
+                <span class="n">K_aug</span><span class="p">[</span><span class="n">beam_dofs</span><span class="p">[</span><span class="n">ii</span><span class="p">],</span> <span class="n">beam_dofs</span><span class="p">[</span><span class="n">jj</span><span class="p">]]</span> <span class="o">+=</span> <span class="n">K_b</span><span class="p">[</span><span class="n">ii</span><span class="p">,</span> <span class="n">jj</span><span class="p">]</span>
+        <span class="c1"># springs: K_h is the *current tangent*, supplied by caller</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_i</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">n_idx</span><span class="p">,</span> <span class="n">b_idx</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">beam_idx_i</span>
+            <span class="n">K_aug</span><span class="p">[</span><span class="n">n_idx</span><span class="p">,</span> <span class="n">n_idx</span><span class="p">]</span> <span class="o">+=</span> <span class="n">K_h_i</span>
+            <span class="n">K_aug</span><span class="p">[</span><span class="n">n_idx</span><span class="p">,</span> <span class="n">b_idx</span><span class="p">]</span> <span class="o">-=</span> <span class="n">K_h_i</span>
+            <span class="n">K_aug</span><span class="p">[</span><span class="n">b_idx</span><span class="p">,</span> <span class="n">n_idx</span><span class="p">]</span> <span class="o">-=</span> <span class="n">K_h_i</span>
+            <span class="n">K_aug</span><span class="p">[</span><span class="n">b_idx</span><span class="p">,</span> <span class="n">b_idx</span><span class="p">]</span> <span class="o">+=</span> <span class="n">K_h_i</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_j</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">n_idx</span><span class="p">,</span> <span class="n">b_idx</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span> <span class="n">beam_idx_j</span>
+            <span class="n">K_aug</span><span class="p">[</span><span class="n">n_idx</span><span class="p">,</span> <span class="n">n_idx</span><span class="p">]</span> <span class="o">+=</span> <span class="n">K_h_j</span>
+            <span class="n">K_aug</span><span class="p">[</span><span class="n">n_idx</span><span class="p">,</span> <span class="n">b_idx</span><span class="p">]</span> <span class="o">-=</span> <span class="n">K_h_j</span>
+            <span class="n">K_aug</span><span class="p">[</span><span class="n">b_idx</span><span class="p">,</span> <span class="n">n_idx</span><span class="p">]</span> <span class="o">-=</span> <span class="n">K_h_j</span>
+            <span class="n">K_aug</span><span class="p">[</span><span class="n">b_idx</span><span class="p">,</span> <span class="n">b_idx</span><span class="p">]</span> <span class="o">+=</span> <span class="n">K_h_j</span>
+        <span class="c1"># Condense out the internal DOFs</span>
+        <span class="k">if</span> <span class="n">n_int</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">K_aug</span>
+        <span class="n">ext</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">6</span><span class="p">))</span>
+        <span class="n">intern</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="n">n</span><span class="p">))</span>
+        <span class="n">K_ee</span> <span class="o">=</span> <span class="n">K_aug</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ix_</span><span class="p">(</span><span class="n">ext</span><span class="p">,</span> <span class="n">ext</span><span class="p">)]</span>
+        <span class="n">K_ei</span> <span class="o">=</span> <span class="n">K_aug</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ix_</span><span class="p">(</span><span class="n">ext</span><span class="p">,</span> <span class="n">intern</span><span class="p">)]</span>
+        <span class="n">K_ie</span> <span class="o">=</span> <span class="n">K_aug</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ix_</span><span class="p">(</span><span class="n">intern</span><span class="p">,</span> <span class="n">ext</span><span class="p">)]</span>
+        <span class="n">K_ii</span> <span class="o">=</span> <span class="n">K_aug</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ix_</span><span class="p">(</span><span class="n">intern</span><span class="p">,</span> <span class="n">intern</span><span class="p">)]</span>
+        <span class="c1"># K_ii can be near-singular when the spring is perfectly plastic</span>
+        <span class="c1"># *and* the beam contribution at that DOF is the only term left.</span>
+        <span class="c1"># In practice the beam contributes 4EI/L on the diagonal, which</span>
+        <span class="c1"># keeps K_ii well-conditioned even for K_h = 0.</span>
+        <span class="n">K_cond</span> <span class="o">=</span> <span class="n">K_ee</span> <span class="o">-</span> <span class="n">K_ei</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">K_ii</span><span class="p">,</span> <span class="n">K_ie</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">K_cond</span>
+
+<div class="viewcode-block" id="HingedBeamColumn2D.K_local">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.beam_hinged.HingedBeamColumn2D.K_local">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">K_local</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initial (elastic) stiffness — used for linear analysis and the</span>
+<span class="sd">        first iteration of modified Newton.&quot;&quot;&quot;</span>
+        <span class="n">K_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_beam_K_local</span><span class="p">()</span>
+        <span class="n">K_h_i</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_i</span><span class="o">.</span><span class="n">K0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_i</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">K_h_j</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_j</span><span class="o">.</span><span class="n">K0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_j</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_condensed_K_local</span><span class="p">(</span><span class="n">K_b</span><span class="p">,</span> <span class="n">K_h_i</span><span class="p">,</span> <span class="n">K_h_j</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HingedBeamColumn2D.K_global">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.beam_hinged.HingedBeamColumn2D.K_global">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">K_global</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform_matrix</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">T</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">K_local</span><span class="p">()</span> <span class="o">@</span> <span class="n">T</span></div>
+
+
+<div class="viewcode-block" id="HingedBeamColumn2D.K_tangent_global">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.beam_hinged.HingedBeamColumn2D.K_tangent_global">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">K_tangent_global</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Tangent stiffness at the *current* state.</span>
+
+<span class="sd">        Runs internal state determination first so the spring tangents</span>
+<span class="sd">        reflect the converged hinge rotations under the current node</span>
+<span class="sd">        displacements.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">sd</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state_determination</span><span class="p">()</span>
+        <span class="n">K_cond</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_condensed_K_local</span><span class="p">(</span><span class="n">sd</span><span class="p">[</span><span class="s2">&quot;K_b&quot;</span><span class="p">],</span> <span class="n">sd</span><span class="p">[</span><span class="s2">&quot;K_h_i&quot;</span><span class="p">],</span> <span class="n">sd</span><span class="p">[</span><span class="s2">&quot;K_h_j&quot;</span><span class="p">])</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform_matrix</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">T</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">K_cond</span> <span class="o">@</span> <span class="n">T</span></div>
+
+
+<div class="viewcode-block" id="HingedBeamColumn2D.f_int_global">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.beam_hinged.HingedBeamColumn2D.f_int_global">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">f_int_global</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Internal nodal force in global coords at the current state.&quot;&quot;&quot;</span>
+        <span class="n">sd</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state_determination</span><span class="p">()</span>
+        <span class="n">K_b</span> <span class="o">=</span> <span class="n">sd</span><span class="p">[</span><span class="s2">&quot;K_b&quot;</span><span class="p">]</span>
+        <span class="n">u_b</span> <span class="o">=</span> <span class="n">sd</span><span class="p">[</span><span class="s2">&quot;u_b&quot;</span><span class="p">]</span>
+        <span class="c1"># internal force at the 6 node DOFs in local coords</span>
+        <span class="n">f_l</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>
+        <span class="c1"># translational DOFs come straight from the beam</span>
+        <span class="n">f_l</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">K_b</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span> <span class="o">@</span> <span class="n">u_b</span>
+        <span class="n">f_l</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">K_b</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span> <span class="o">@</span> <span class="n">u_b</span>
+        <span class="n">f_l</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">K_b</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="p">:]</span> <span class="o">@</span> <span class="n">u_b</span>
+        <span class="n">f_l</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="n">K_b</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="p">:]</span> <span class="o">@</span> <span class="n">u_b</span>
+        <span class="c1"># rotational DOFs at the node:</span>
+        <span class="c1">#   if there&#39;s a hinge -&gt; moment exerted on the node by the spring</span>
+        <span class="c1">#   if there&#39;s no hinge -&gt; beam moment at that end (rotational dof</span>
+        <span class="c1">#                          is the *node* rotation, identical to beam-end)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_i</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">f_l</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">sd</span><span class="p">[</span><span class="s2">&quot;M_h_i&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">f_l</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">K_b</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="p">:]</span> <span class="o">@</span> <span class="n">u_b</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_j</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">f_l</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span> <span class="o">=</span> <span class="n">sd</span><span class="p">[</span><span class="s2">&quot;M_h_j&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">f_l</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span> <span class="o">=</span> <span class="n">K_b</span><span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="p">:]</span> <span class="o">@</span> <span class="n">u_b</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform_matrix</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">T</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">f_l</span></div>
+
+
+    <span class="c1"># ----------------------------------------------------------------- mass</span>
+<div class="viewcode-block" id="HingedBeamColumn2D.M_local">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.beam_hinged.HingedBeamColumn2D.M_local">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">M_local</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lumped</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Mass of the underlying elastic beam. Hinges contribute zero</span>
+<span class="sd">        mass (they are zero-length, mass-less rotational springs).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Re-use BeamColumn2D&#39;s mass formulation by delegating to a</span>
+        <span class="c1"># temporary elastic beam — keeps the consistent-mass formula in</span>
+        <span class="c1"># one place.</span>
+        <span class="n">rho</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">rho</span>
+        <span class="k">if</span> <span class="n">rho</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">6</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+        <span class="c1"># Ad hoc proxy: build a BeamColumn2D and call M_local. We can&#39;t</span>
+        <span class="c1"># share state because the proxy is unbound, so just inline the</span>
+        <span class="c1"># formulae using the same pattern as BeamColumn2D.</span>
+        <span class="n">L</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">length_and_angle</span><span class="p">()</span>
+        <span class="n">m_total</span> <span class="o">=</span> <span class="n">rho</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">area</span> <span class="o">*</span> <span class="n">L</span>
+        <span class="k">if</span> <span class="n">lumped</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">([</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span> <span class="o">*</span> <span class="n">m_total</span>
+        <span class="n">M</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">6</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+        <span class="n">M</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">M</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">m_total</span> <span class="o">/</span> <span class="mf">3.0</span>
+        <span class="n">M</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">M</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">m_total</span> <span class="o">/</span> <span class="mf">6.0</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">m_total</span> <span class="o">/</span> <span class="mf">420.0</span>
+        <span class="n">Mt</span> <span class="o">=</span> <span class="n">f</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+            <span class="p">[</span><span class="mf">156.0</span><span class="p">,</span>    <span class="mf">22.0</span> <span class="o">*</span> <span class="n">L</span><span class="p">,</span>    <span class="mf">54.0</span><span class="p">,</span>   <span class="o">-</span><span class="mf">13.0</span> <span class="o">*</span> <span class="n">L</span><span class="p">],</span>
+            <span class="p">[</span> <span class="mf">22.0</span> <span class="o">*</span> <span class="n">L</span><span class="p">,</span>  <span class="mf">4.0</span> <span class="o">*</span> <span class="n">L</span> <span class="o">*</span> <span class="n">L</span><span class="p">,</span> <span class="mf">13.0</span> <span class="o">*</span> <span class="n">L</span><span class="p">,</span> <span class="o">-</span><span class="mf">3.0</span> <span class="o">*</span> <span class="n">L</span> <span class="o">*</span> <span class="n">L</span><span class="p">],</span>
+            <span class="p">[</span> <span class="mf">54.0</span><span class="p">,</span>    <span class="mf">13.0</span> <span class="o">*</span> <span class="n">L</span><span class="p">,</span>   <span class="mf">156.0</span><span class="p">,</span>   <span class="o">-</span><span class="mf">22.0</span> <span class="o">*</span> <span class="n">L</span><span class="p">],</span>
+            <span class="p">[</span><span class="o">-</span><span class="mf">13.0</span> <span class="o">*</span> <span class="n">L</span><span class="p">,</span> <span class="o">-</span><span class="mf">3.0</span> <span class="o">*</span> <span class="n">L</span> <span class="o">*</span> <span class="n">L</span><span class="p">,</span> <span class="o">-</span><span class="mf">22.0</span> <span class="o">*</span> <span class="n">L</span><span class="p">,</span>  <span class="mf">4.0</span> <span class="o">*</span> <span class="n">L</span> <span class="o">*</span> <span class="n">L</span><span class="p">],</span>
+        <span class="p">])</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">ig</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">idx</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">jg</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">idx</span><span class="p">):</span>
+                <span class="n">M</span><span class="p">[</span><span class="n">ig</span><span class="p">,</span> <span class="n">jg</span><span class="p">]</span> <span class="o">=</span> <span class="n">Mt</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">M</span></div>
+
+
+<div class="viewcode-block" id="HingedBeamColumn2D.M_global">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.beam_hinged.HingedBeamColumn2D.M_global">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">M_global</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lumped</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform_matrix</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">T</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">M_local</span><span class="p">(</span><span class="n">lumped</span><span class="o">=</span><span class="n">lumped</span><span class="p">)</span> <span class="o">@</span> <span class="n">T</span></div>
+
+
+    <span class="c1"># ---------------------------------------------------------------- state</span>
+<div class="viewcode-block" id="HingedBeamColumn2D.commit_state">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.beam_hinged.HingedBeamColumn2D.commit_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">commit_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_i</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hinge_i</span><span class="o">.</span><span class="n">commit_state</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_j</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hinge_j</span><span class="o">.</span><span class="n">commit_state</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_theta_bi_committed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_theta_bi_trial</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_theta_bj_committed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_theta_bj_trial</span></div>
+
+
+<div class="viewcode-block" id="HingedBeamColumn2D.revert_state">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.beam_hinged.HingedBeamColumn2D.revert_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">revert_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_i</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hinge_i</span><span class="o">.</span><span class="n">revert_state</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_j</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hinge_j</span><span class="o">.</span><span class="n">revert_state</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_theta_bi_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_theta_bi_committed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_theta_bj_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_theta_bj_committed</span></div>
+
+
+    <span class="c1"># -------------------------------------------------------------- recovery</span>
+<div class="viewcode-block" id="HingedBeamColumn2D.recover">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.beam_hinged.HingedBeamColumn2D.recover">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">recover</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">sd</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state_determination</span><span class="p">()</span>
+        <span class="n">K_b</span> <span class="o">=</span> <span class="n">sd</span><span class="p">[</span><span class="s2">&quot;K_b&quot;</span><span class="p">]</span>
+        <span class="n">u_b</span> <span class="o">=</span> <span class="n">sd</span><span class="p">[</span><span class="s2">&quot;u_b&quot;</span><span class="p">]</span>
+        <span class="c1"># element-end forces in local coords, in the same convention as</span>
+        <span class="c1"># BeamColumn2D: [F_x1, F_y1, M_z1, F_x2, F_y2, M_z2].</span>
+        <span class="n">f_l</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>
+        <span class="n">f_l</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">K_b</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span> <span class="o">@</span> <span class="n">u_b</span>
+        <span class="n">f_l</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">K_b</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span> <span class="o">@</span> <span class="n">u_b</span>
+        <span class="n">f_l</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">sd</span><span class="p">[</span><span class="s2">&quot;M_h_i&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_i</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">K_b</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="p">:]</span> <span class="o">@</span> <span class="n">u_b</span>
+        <span class="n">f_l</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">K_b</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="p">:]</span> <span class="o">@</span> <span class="n">u_b</span>
+        <span class="n">f_l</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="n">K_b</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="p">:]</span> <span class="o">@</span> <span class="n">u_b</span>
+        <span class="n">f_l</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span> <span class="o">=</span> <span class="n">sd</span><span class="p">[</span><span class="s2">&quot;M_h_j&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinge_j</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">K_b</span><span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="p">:]</span> <span class="o">@</span> <span class="n">u_b</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">end_forces_local</span> <span class="o">=</span> <span class="n">f_l</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

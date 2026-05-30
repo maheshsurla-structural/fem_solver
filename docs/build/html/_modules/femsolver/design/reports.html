@@ -1,0 +1,593 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.design.reports &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.design.reports</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.design.reports</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Design reports -- HTML per-member + CSV summary.</span>
+
+<span class="sd">The deliverable layer for Phase 29 (ACI 318 concrete) and Phase 30</span>
+<span class="sd">(AISC 360 steel) designs. Consumes any of the result dataclasses from</span>
+<span class="sd">those phases (``BeamDesignResult``, ``ColumnDesignResult``,</span>
+<span class="sd">``SteelMemberCheck``), converts them into a code-neutral</span>
+<span class="sd">:class:`MemberReportEntry`, and emits:</span>
+
+<span class="sd">* a **self-contained HTML report** (no external CSS / JS) with one</span>
+<span class="sd">  card per member containing demand, capacity, DCR, code clauses,</span>
+<span class="sd">  and pass/fail status, suitable for review attachment;</span>
+<span class="sd">* a flat **CSV summary** with one row per member for whole-frame</span>
+<span class="sd">  spreadsheet review.</span>
+
+<span class="sd">No third-party templating engine -- plain string concatenation,</span>
+<span class="sd">following the no-extra-dependencies house style.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">io</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">csv</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="c1"># Make adapters opt-in: the reports module itself only depends on</span>
+    <span class="c1"># the dataclasses, but if the design modules are present we can</span>
+    <span class="c1"># provide convenient from_* helpers.</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.design.concrete</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+        <span class="n">BeamDesignResult</span><span class="p">,</span>
+        <span class="n">ColumnDesignDemand</span><span class="p">,</span>
+        <span class="n">ColumnDesignResult</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">_CONCRETE_AVAILABLE</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">_CONCRETE_AVAILABLE</span> <span class="o">=</span> <span class="kc">False</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.design.steel</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+        <span class="n">SteelMemberCheck</span><span class="p">,</span>
+        <span class="n">SteelMemberDemand</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">_STEEL_AVAILABLE</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">_STEEL_AVAILABLE</span> <span class="o">=</span> <span class="kc">False</span>
+
+
+<span class="c1"># ============================================================ entry</span>
+
+<div class="viewcode-block" id="MemberReportEntry">
+<a class="viewcode-back" href="../../../api/design.html#femsolver.design.reports.MemberReportEntry">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MemberReportEntry</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Code-neutral per-member design entry, ready for reporting.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    member_tag : str</span>
+<span class="sd">        Identifier for the member (e.g., ``&quot;Beam L1-B1&quot;``,</span>
+<span class="sd">        ``&quot;Col S2-C3&quot;``).</span>
+<span class="sd">    member_type : str</span>
+<span class="sd">        Free text describing the member type (e.g.,</span>
+<span class="sd">        ``&quot;RC beam (ACI 318-19)&quot;``, ``&quot;Steel W14x90 (AISC 360-22)&quot;``).</span>
+<span class="sd">    section_summary : str</span>
+<span class="sd">        Geometric / section summary (e.g., ``&quot;300 x 550 mm, 4 #7 bot</span>
+<span class="sd">        + 3 #7 top, #3 stirrups @ 150 mm&quot;``).</span>
+<span class="sd">    material_summary : str</span>
+<span class="sd">        Material grades summary (e.g., ``&quot;fc&#39; = 28 MPa, fy = 420 MPa&quot;``).</span>
+<span class="sd">    demands : dict[str, str]</span>
+<span class="sd">        Map of demand label -&gt; formatted value string. Examples:</span>
+<span class="sd">        ``{&quot;M_u&quot;: &quot;200 kN·m&quot;, &quot;V_u&quot;: &quot;120 kN&quot;, &quot;P_u&quot;: &quot;+400 kN&quot;}``.</span>
+<span class="sd">    capacities : dict[str, str]</span>
+<span class="sd">        Same format for capacities (``φM_n``, ``φV_n``, ``φP_n``).</span>
+<span class="sd">    dcrs : dict[str, float]</span>
+<span class="sd">        Per-check DCR numerical values.</span>
+<span class="sd">    governing_dcr : float</span>
+<span class="sd">        Worst (largest) DCR across all checks.</span>
+<span class="sd">    governing_check : str</span>
+<span class="sd">        Label of which check produced ``governing_dcr``.</span>
+<span class="sd">    passes : bool</span>
+<span class="sd">        ``governing_dcr &lt;= 1.0``.</span>
+<span class="sd">    code_refs : list[str]</span>
+<span class="sd">        Citation strings (e.g., ``&quot;ACI 318-19 §22.2&quot;``).</span>
+<span class="sd">    notes : str</span>
+<span class="sd">        Free-text design notes / warnings.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">member_tag</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">member_type</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">section_summary</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">material_summary</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">demands</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">capacities</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">dcrs</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">governing_dcr</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">governing_check</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">passes</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">code_refs</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">notes</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span></div>
+
+
+
+<span class="c1"># ============================================================ adapters</span>
+
+<div class="viewcode-block" id="from_beam_design_result">
+<a class="viewcode-back" href="../../../api/design.html#femsolver.design.reports.from_beam_design_result">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">from_beam_design_result</span><span class="p">(</span>
+    <span class="n">member_tag</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">result</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">demand</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MemberReportEntry</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert a Phase 29 :class:`BeamDesignResult` into a report entry.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">_CONCRETE_AVAILABLE</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;femsolver.design.concrete is not importable&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="o">.</span><span class="n">success</span> <span class="ow">or</span> <span class="n">result</span><span class="o">.</span><span class="n">section</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">MemberReportEntry</span><span class="p">(</span>
+            <span class="n">member_tag</span><span class="o">=</span><span class="n">member_tag</span><span class="p">,</span>
+            <span class="n">member_type</span><span class="o">=</span><span class="s2">&quot;RC beam (ACI 318-19) -- DESIGN FAILED&quot;</span><span class="p">,</span>
+            <span class="n">section_summary</span><span class="o">=</span><span class="s2">&quot;(no valid section)&quot;</span><span class="p">,</span>
+            <span class="n">material_summary</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="n">governing_dcr</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">),</span>
+            <span class="n">governing_check</span><span class="o">=</span><span class="s2">&quot;design&quot;</span><span class="p">,</span>
+            <span class="n">passes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">notes</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">notes</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">section</span>
+    <span class="n">section_summary</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">b</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">1000</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> x </span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">h</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">1000</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> mm; &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;bot </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">bottom_bars</span><span class="p">)</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;(none)&#39;</span><span class="si">}</span><span class="s2">; &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;top </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">top_bars</span><span class="p">)</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;(none)&#39;</span><span class="si">}</span><span class="s2">; &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">stirrup_designation</span><span class="si">}</span><span class="s2"> stirrups @ &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">stirrup_spacing</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">1000</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> mm&quot;</span>
+    <span class="p">)</span>
+    <span class="n">material_summary</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;fc&#39; = </span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">fc_prime</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e6</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> MPa, &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;fy = </span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">fy</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e6</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> MPa&quot;</span>
+    <span class="p">)</span>
+    <span class="n">demands_d</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">capacities_d</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">dcrs_d</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="n">demand</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">demand</span><span class="o">.</span><span class="n">M_u_positive</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">demands_d</span><span class="p">[</span><span class="s2">&quot;M_u+ (sag)&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">demand</span><span class="o">.</span><span class="n">M_u_positive</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s2">+.1f</span><span class="si">}</span><span class="s2"> kN.m&quot;</span>
+            <span class="n">capacities_d</span><span class="p">[</span><span class="s2">&quot;phi*M_n+&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">flexure_positive</span><span class="o">.</span><span class="n">phi_M_n</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s2">+.1f</span><span class="si">}</span><span class="s2"> kN.m&quot;</span>
+            <span class="n">dcrs_d</span><span class="p">[</span><span class="s2">&quot;M+&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">demand</span><span class="o">.</span><span class="n">M_u_positive</span><span class="p">)</span> <span class="o">/</span>
+                              <span class="n">result</span><span class="o">.</span><span class="n">flexure_positive</span><span class="o">.</span><span class="n">phi_M_n</span>
+                              <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">flexure_positive</span><span class="o">.</span><span class="n">phi_M_n</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">demand</span><span class="o">.</span><span class="n">M_u_negative</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">demands_d</span><span class="p">[</span><span class="s2">&quot;M_u- (hog)&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">demand</span><span class="o">.</span><span class="n">M_u_negative</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s2">+.1f</span><span class="si">}</span><span class="s2"> kN.m&quot;</span>
+            <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">flexure_negative</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">capacities_d</span><span class="p">[</span><span class="s2">&quot;phi*M_n-&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">flexure_negative</span><span class="o">.</span><span class="n">phi_M_n</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s2">+.1f</span><span class="si">}</span><span class="s2"> kN.m&quot;</span>
+                <span class="p">)</span>
+                <span class="n">dcrs_d</span><span class="p">[</span><span class="s2">&quot;M-&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">demand</span><span class="o">.</span><span class="n">M_u_negative</span><span class="p">)</span> <span class="o">/</span>
+                                  <span class="n">result</span><span class="o">.</span><span class="n">flexure_negative</span><span class="o">.</span><span class="n">phi_M_n</span>
+                                  <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">flexure_negative</span><span class="o">.</span><span class="n">phi_M_n</span> <span class="o">&gt;</span> <span class="mi">0</span>
+                                  <span class="k">else</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">demand</span><span class="o">.</span><span class="n">V_u</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">demands_d</span><span class="p">[</span><span class="s2">&quot;V_u&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">demand</span><span class="o">.</span><span class="n">V_u</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> kN&quot;</span>
+            <span class="n">capacities_d</span><span class="p">[</span><span class="s2">&quot;phi*V_n&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">shear</span><span class="o">.</span><span class="n">phi_V_n</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> kN&quot;</span>
+            <span class="n">dcrs_d</span><span class="p">[</span><span class="s2">&quot;V&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">demand</span><span class="o">.</span><span class="n">V_u</span><span class="p">)</span> <span class="o">/</span> <span class="n">result</span><span class="o">.</span><span class="n">shear</span><span class="o">.</span><span class="n">phi_V_n</span>
+                              <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">shear</span><span class="o">.</span><span class="n">phi_V_n</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">governing_dcr</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">dcrs_d</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="k">if</span> <span class="n">dcrs_d</span> <span class="k">else</span> <span class="mf">0.0</span>
+    <span class="n">governing_check</span> <span class="o">=</span> <span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">dcrs_d</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">dcrs_d</span><span class="o">.</span><span class="n">get</span><span class="p">)</span> <span class="k">if</span> <span class="n">dcrs_d</span> <span class="k">else</span> <span class="s2">&quot;none&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">MemberReportEntry</span><span class="p">(</span>
+        <span class="n">member_tag</span><span class="o">=</span><span class="n">member_tag</span><span class="p">,</span>
+        <span class="n">member_type</span><span class="o">=</span><span class="s2">&quot;RC beam (ACI 318-19)&quot;</span><span class="p">,</span>
+        <span class="n">section_summary</span><span class="o">=</span><span class="n">section_summary</span><span class="p">,</span>
+        <span class="n">material_summary</span><span class="o">=</span><span class="n">material_summary</span><span class="p">,</span>
+        <span class="n">demands</span><span class="o">=</span><span class="n">demands_d</span><span class="p">,</span>
+        <span class="n">capacities</span><span class="o">=</span><span class="n">capacities_d</span><span class="p">,</span>
+        <span class="n">dcrs</span><span class="o">=</span><span class="n">dcrs_d</span><span class="p">,</span>
+        <span class="n">governing_dcr</span><span class="o">=</span><span class="n">governing_dcr</span><span class="p">,</span>
+        <span class="n">governing_check</span><span class="o">=</span><span class="n">governing_check</span><span class="p">,</span>
+        <span class="n">passes</span><span class="o">=</span><span class="n">governing_dcr</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">code_refs</span><span class="o">=</span><span class="p">[</span>
+            <span class="s2">&quot;ACI 318-19 §22.2 (flexure)&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;ACI 318-19 §22.5 (shear)&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;ACI 318-19 §9.6.1 (As_min)&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;ACI 318-19 §9.7.6.2 (s_max)&quot;</span><span class="p">,</span>
+        <span class="p">],</span>
+        <span class="n">notes</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">notes</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="from_column_design_result">
+<a class="viewcode-back" href="../../../api/design.html#femsolver.design.reports.from_column_design_result">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">from_column_design_result</span><span class="p">(</span>
+    <span class="n">member_tag</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">result</span><span class="p">,</span> <span class="n">demand</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MemberReportEntry</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert a Phase 29 :class:`ColumnDesignResult` into a report entry.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">_CONCRETE_AVAILABLE</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;femsolver.design.concrete is not importable&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="o">.</span><span class="n">success</span> <span class="ow">or</span> <span class="n">result</span><span class="o">.</span><span class="n">section</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">MemberReportEntry</span><span class="p">(</span>
+            <span class="n">member_tag</span><span class="o">=</span><span class="n">member_tag</span><span class="p">,</span>
+            <span class="n">member_type</span><span class="o">=</span><span class="s2">&quot;RC column (ACI 318-19) -- DESIGN FAILED&quot;</span><span class="p">,</span>
+            <span class="n">section_summary</span><span class="o">=</span><span class="s2">&quot;(no valid section)&quot;</span><span class="p">,</span>
+            <span class="n">material_summary</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="n">governing_dcr</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">),</span>
+            <span class="n">governing_check</span><span class="o">=</span><span class="s2">&quot;design&quot;</span><span class="p">,</span>
+            <span class="n">passes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">notes</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">notes</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">section</span>
+    <span class="n">n_long</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">top_bars</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">bottom_bars</span><span class="p">)</span>
+    <span class="n">section_summary</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">b</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">1000</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> x </span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">h</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">1000</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> mm; &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">n_long</span><span class="si">}</span><span class="s2"> long (</span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">top_bars</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">s</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">top_bars</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;?&#39;</span><span class="si">}</span><span class="s2">); &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;rho = </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">rho</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">100</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">%&quot;</span>
+    <span class="p">)</span>
+    <span class="n">material_summary</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;fc&#39; = </span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">fc_prime</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e6</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> MPa, &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;fy = </span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">fy</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e6</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> MPa&quot;</span>
+    <span class="p">)</span>
+    <span class="n">demands_d</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;P_u (compr)&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">demand</span><span class="o">.</span><span class="n">P_u</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s2">+.1f</span><span class="si">}</span><span class="s2"> kN&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;M_u&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">demand</span><span class="o">.</span><span class="n">M_u</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s2">+.1f</span><span class="si">}</span><span class="s2"> kN.m&quot;</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="n">phi_M_n_at_P_u</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">interaction_surface</span><span class="o">.</span><span class="n">phi_M_n_at_P_u</span><span class="p">(</span><span class="n">demand</span><span class="o">.</span><span class="n">P_u</span><span class="p">)</span>
+    <span class="n">capacities_d</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;phi*M_n @ P_u&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">phi_M_n_at_P_u</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> kN.m&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;P_n_max (cap)&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">interaction_surface</span><span class="o">.</span><span class="n">P_n_max</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> kN&quot;</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="n">dcrs_d</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;PM interaction&quot;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">dcr</span><span class="p">}</span>
+    <span class="k">return</span> <span class="n">MemberReportEntry</span><span class="p">(</span>
+        <span class="n">member_tag</span><span class="o">=</span><span class="n">member_tag</span><span class="p">,</span>
+        <span class="n">member_type</span><span class="o">=</span><span class="s2">&quot;RC column (ACI 318-19)&quot;</span><span class="p">,</span>
+        <span class="n">section_summary</span><span class="o">=</span><span class="n">section_summary</span><span class="p">,</span>
+        <span class="n">material_summary</span><span class="o">=</span><span class="n">material_summary</span><span class="p">,</span>
+        <span class="n">demands</span><span class="o">=</span><span class="n">demands_d</span><span class="p">,</span>
+        <span class="n">capacities</span><span class="o">=</span><span class="n">capacities_d</span><span class="p">,</span>
+        <span class="n">dcrs</span><span class="o">=</span><span class="n">dcrs_d</span><span class="p">,</span>
+        <span class="n">governing_dcr</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">dcr</span><span class="p">,</span>
+        <span class="n">governing_check</span><span class="o">=</span><span class="s2">&quot;PM interaction&quot;</span><span class="p">,</span>
+        <span class="n">passes</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">success</span> <span class="ow">and</span> <span class="n">result</span><span class="o">.</span><span class="n">dcr</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">code_refs</span><span class="o">=</span><span class="p">[</span>
+            <span class="s2">&quot;ACI 318-19 §22.4 (axial-flexure interaction)&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;ACI 318-19 §10.6.1.1 (ρ limits 1-8%)&quot;</span><span class="p">,</span>
+        <span class="p">],</span>
+        <span class="n">notes</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">notes</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="from_steel_member_check">
+<a class="viewcode-back" href="../../../api/design.html#femsolver.design.reports.from_steel_member_check">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">from_steel_member_check</span><span class="p">(</span>
+    <span class="n">member_tag</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">check</span><span class="p">,</span> <span class="n">demand</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MemberReportEntry</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert a Phase 30 :class:`SteelMemberCheck` into a report entry.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">_STEEL_AVAILABLE</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;femsolver.design.steel is not importable&quot;</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">check</span><span class="o">.</span><span class="n">section</span>
+    <span class="n">section_summary</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">designation</span><span class="si">}</span><span class="s2">, A = </span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">A</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1e4</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> cm² &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">weight_per_length</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">9.81</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> kg/m)&quot;</span>
+    <span class="p">)</span>
+    <span class="n">material_summary</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>        <span class="c1"># SteelMaterial not currently exposed on check</span>
+    <span class="n">demands_d</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">capacities_d</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">dcrs_d</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="n">demand</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">demand</span><span class="o">.</span><span class="n">P_u</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">demands_d</span><span class="p">[</span><span class="s2">&quot;P_u&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">demand</span><span class="o">.</span><span class="n">P_u</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s2">+.1f</span><span class="si">}</span><span class="s2"> kN&quot;</span>
+        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">demand</span><span class="o">.</span><span class="n">M_ux</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">demands_d</span><span class="p">[</span><span class="s2">&quot;M_ux&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">demand</span><span class="o">.</span><span class="n">M_ux</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s2">+.1f</span><span class="si">}</span><span class="s2"> kN.m&quot;</span>
+        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">demand</span><span class="o">.</span><span class="n">M_uy</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">demands_d</span><span class="p">[</span><span class="s2">&quot;M_uy&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">demand</span><span class="o">.</span><span class="n">M_uy</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s2">+.1f</span><span class="si">}</span><span class="s2"> kN.m&quot;</span>
+        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">demand</span><span class="o">.</span><span class="n">V_u</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">demands_d</span><span class="p">[</span><span class="s2">&quot;V_u&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">demand</span><span class="o">.</span><span class="n">V_u</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> kN&quot;</span>
+    <span class="k">if</span> <span class="n">check</span><span class="o">.</span><span class="n">combined</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">capacities_d</span><span class="p">[</span><span class="s2">&quot;P_c (axial)&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">check</span><span class="o">.</span><span class="n">combined</span><span class="o">.</span><span class="n">P_c</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> kN&quot;</span>
+        <span class="n">capacities_d</span><span class="p">[</span><span class="s2">&quot;M_cx&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">check</span><span class="o">.</span><span class="n">combined</span><span class="o">.</span><span class="n">M_cx</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> kN.m&quot;</span>
+        <span class="n">capacities_d</span><span class="p">[</span><span class="s2">&quot;M_cy&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">check</span><span class="o">.</span><span class="n">combined</span><span class="o">.</span><span class="n">M_cy</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> kN.m&quot;</span>
+        <span class="n">dcrs_d</span><span class="p">[</span><span class="s2">&quot;Combined (H1)&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">check</span><span class="o">.</span><span class="n">combined</span><span class="o">.</span><span class="n">DCR</span>
+    <span class="k">if</span> <span class="n">check</span><span class="o">.</span><span class="n">shear</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">capacities_d</span><span class="p">[</span><span class="s2">&quot;phi*V_n&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">check</span><span class="o">.</span><span class="n">shear</span><span class="o">.</span><span class="n">phi_V_n</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> kN&quot;</span>
+        <span class="k">if</span> <span class="n">demand</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">demand</span><span class="o">.</span><span class="n">V_u</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">dcrs_d</span><span class="p">[</span><span class="s2">&quot;Shear (G)&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">demand</span><span class="o">.</span><span class="n">V_u</span><span class="p">)</span> <span class="o">/</span> <span class="n">check</span><span class="o">.</span><span class="n">shear</span><span class="o">.</span><span class="n">phi_V_n</span>
+    <span class="k">return</span> <span class="n">MemberReportEntry</span><span class="p">(</span>
+        <span class="n">member_tag</span><span class="o">=</span><span class="n">member_tag</span><span class="p">,</span>
+        <span class="n">member_type</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Steel </span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">designation</span><span class="si">}</span><span class="s2"> (AISC 360-22)&quot;</span><span class="p">,</span>
+        <span class="n">section_summary</span><span class="o">=</span><span class="n">section_summary</span><span class="p">,</span>
+        <span class="n">material_summary</span><span class="o">=</span><span class="n">material_summary</span><span class="p">,</span>
+        <span class="n">demands</span><span class="o">=</span><span class="n">demands_d</span><span class="p">,</span>
+        <span class="n">capacities</span><span class="o">=</span><span class="n">capacities_d</span><span class="p">,</span>
+        <span class="n">dcrs</span><span class="o">=</span><span class="n">dcrs_d</span><span class="p">,</span>
+        <span class="n">governing_dcr</span><span class="o">=</span><span class="n">check</span><span class="o">.</span><span class="n">governing_DCR</span><span class="p">,</span>
+        <span class="n">governing_check</span><span class="o">=</span><span class="n">check</span><span class="o">.</span><span class="n">governing_limit_state</span><span class="p">,</span>
+        <span class="n">passes</span><span class="o">=</span><span class="n">check</span><span class="o">.</span><span class="n">passes</span><span class="p">,</span>
+        <span class="n">code_refs</span><span class="o">=</span><span class="p">[</span>
+            <span class="s2">&quot;AISC 360-22 Ch. E (compression)&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;AISC 360-22 Ch. F (flexure / LTB)&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;AISC 360-22 Ch. G (shear)&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;AISC 360-22 Ch. H (combined forces)&quot;</span><span class="p">,</span>
+        <span class="p">],</span>
+        <span class="n">notes</span><span class="o">=</span><span class="n">check</span><span class="o">.</span><span class="n">notes</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="c1"># ============================================================ HTML</span>
+
+<span class="n">_HTML_STYLE</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">&lt;style&gt;</span>
+<span class="s2">  body { font-family: -apple-system, system-ui, sans-serif;</span>
+<span class="s2">          max-width: 1100px; margin: 20px auto; padding: 0 12px;</span>
+<span class="s2">          color: #222; }</span>
+<span class="s2">  h1 { border-bottom: 2px solid #444; padding-bottom: 6px; }</span>
+<span class="s2">  .member { border: 1px solid #ccc; border-radius: 6px;</span>
+<span class="s2">             margin: 14px 0; padding: 12px 16px;</span>
+<span class="s2">             background: #fafafa; }</span>
+<span class="s2">  .member.pass { border-left: 6px solid #2ca02c; }</span>
+<span class="s2">  .member.fail { border-left: 6px solid #d62728; }</span>
+<span class="s2">  .header { display: flex; justify-content: space-between;</span>
+<span class="s2">             align-items: baseline; flex-wrap: wrap; }</span>
+<span class="s2">  .tag { font-size: 1.15em; font-weight: 600; }</span>
+<span class="s2">  .status { font-weight: 700; }</span>
+<span class="s2">  .status.pass { color: #1e7a1e; }</span>
+<span class="s2">  .status.fail { color: #b1131c; }</span>
+<span class="s2">  .meta { color: #555; font-size: 0.95em; margin: 4px 0; }</span>
+<span class="s2">  table { border-collapse: collapse; width: 100%;</span>
+<span class="s2">           margin-top: 8px; font-size: 0.9em; }</span>
+<span class="s2">  th, td { text-align: left; padding: 4px 8px;</span>
+<span class="s2">            border-bottom: 1px solid #eee; }</span>
+<span class="s2">  th { background: #efefef; }</span>
+<span class="s2">  .dcr-bar { background: #eee; border-radius: 3px;</span>
+<span class="s2">              height: 14px; width: 200px; display: inline-block;</span>
+<span class="s2">              vertical-align: middle; overflow: hidden; }</span>
+<span class="s2">  .dcr-fill { height: 100%; background: #2ca02c; }</span>
+<span class="s2">  .dcr-fill.warn { background: #ffb02e; }</span>
+<span class="s2">  .dcr-fill.fail { background: #d62728; }</span>
+<span class="s2">  .refs { font-size: 0.85em; color: #666; margin-top: 6px; }</span>
+<span class="s2">  .notes { background: #fff8e0; padding: 4px 8px;</span>
+<span class="s2">            border-left: 3px solid #d4a017; margin-top: 6px;</span>
+<span class="s2">            font-size: 0.9em; }</span>
+<span class="s2">&lt;/style&gt;</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_dcr_bar_html</span><span class="p">(</span><span class="n">dcr</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="n">pct</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">dcr</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">)</span> <span class="o">/</span> <span class="mf">1.5</span> <span class="o">*</span> <span class="mf">100.0</span>
+    <span class="k">if</span> <span class="n">dcr</span> <span class="o">&gt;</span> <span class="mf">1.0</span><span class="p">:</span>
+        <span class="bp">cls</span> <span class="o">=</span> <span class="s2">&quot;fail&quot;</span>
+    <span class="k">elif</span> <span class="n">dcr</span> <span class="o">&gt;</span> <span class="mf">0.85</span><span class="p">:</span>
+        <span class="bp">cls</span> <span class="o">=</span> <span class="s2">&quot;warn&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="bp">cls</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s1">&#39;&lt;span class=&quot;dcr-bar&quot;&gt;&lt;span class=&quot;dcr-fill </span><span class="si">{</span><span class="bp">cls</span><span class="si">}</span><span class="s1">&quot; &#39;</span>
+        <span class="sa">f</span><span class="s1">&#39;style=&quot;width:</span><span class="si">{</span><span class="n">pct</span><span class="si">:</span><span class="s1">.1f</span><span class="si">}</span><span class="s1">%&quot;&gt;&lt;/span&gt;&lt;/span&gt; </span><span class="si">{</span><span class="n">dcr</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1">&#39;</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_entry_html</span><span class="p">(</span><span class="n">entry</span><span class="p">:</span> <span class="n">MemberReportEntry</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="n">pass_cls</span> <span class="o">=</span> <span class="s2">&quot;pass&quot;</span> <span class="k">if</span> <span class="n">entry</span><span class="o">.</span><span class="n">passes</span> <span class="k">else</span> <span class="s2">&quot;fail&quot;</span>
+    <span class="n">status_text</span> <span class="o">=</span> <span class="s2">&quot;PASS&quot;</span> <span class="k">if</span> <span class="n">entry</span><span class="o">.</span><span class="n">passes</span> <span class="k">else</span> <span class="s2">&quot;FAIL&quot;</span>
+    <span class="n">parts</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;&lt;div class=&quot;member </span><span class="si">{</span><span class="n">pass_cls</span><span class="si">}</span><span class="s1">&quot;&gt;&#39;</span><span class="p">)</span>
+    <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;&lt;div class=&quot;header&quot;&gt;&#39;</span><span class="p">)</span>
+    <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;&lt;div class=&quot;tag&quot;&gt;</span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">member_tag</span><span class="si">}</span><span class="s1"> &amp;mdash; &#39;</span>
+                  <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">member_type</span><span class="si">}</span><span class="s1">&lt;/div&gt;&#39;</span><span class="p">)</span>
+    <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;&lt;div class=&quot;status </span><span class="si">{</span><span class="n">pass_cls</span><span class="si">}</span><span class="s1">&quot;&gt;</span><span class="si">{</span><span class="n">status_text</span><span class="si">}</span><span class="s1"> &#39;</span>
+                  <span class="sa">f</span><span class="s1">&#39;(governing DCR = </span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">governing_dcr</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1">)&lt;/div&gt;&#39;</span><span class="p">)</span>
+    <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;&lt;/div&gt;&#39;</span><span class="p">)</span>
+    <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;&lt;div class=&quot;meta&quot;&gt;Section: </span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">section_summary</span><span class="si">}</span><span class="s1">&lt;/div&gt;&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">entry</span><span class="o">.</span><span class="n">material_summary</span><span class="p">:</span>
+        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;&lt;div class=&quot;meta&quot;&gt;Material: </span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">material_summary</span><span class="si">}</span><span class="s1">&lt;/div&gt;&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">entry</span><span class="o">.</span><span class="n">demands</span> <span class="ow">or</span> <span class="n">entry</span><span class="o">.</span><span class="n">capacities</span><span class="p">:</span>
+        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;&lt;table&gt;&#39;</span><span class="p">)</span>
+        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;&lt;tr&gt;&lt;th&gt;Demand&lt;/th&gt;&lt;th&gt;Capacity&lt;/th&gt;&#39;</span>
+                       <span class="s1">&#39;&lt;th&gt;Check&lt;/th&gt;&lt;th&gt;DCR&lt;/th&gt;&lt;/tr&gt;&#39;</span><span class="p">)</span>
+        <span class="c1"># Pair demand/capacity rows; show DCRs separately if more</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">demands</span><span class="p">)</span> <span class="o">|</span> <span class="nb">set</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">capacities</span><span class="p">))</span>
+        <span class="n">labels</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">lbl</span> <span class="ow">in</span> <span class="n">labels</span><span class="p">:</span>
+            <span class="n">d</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">demands</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">lbl</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="n">c</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">capacities</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">lbl</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;&lt;tr&gt;&lt;td&gt;</span><span class="si">{</span><span class="n">lbl</span><span class="si">}</span><span class="s1">: </span><span class="si">{</span><span class="n">d</span><span class="si">}</span><span class="s1">&lt;/td&gt;&#39;</span>
+                          <span class="sa">f</span><span class="s1">&#39;&lt;td&gt;</span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s1">&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&lt;/tr&gt;&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">chk</span><span class="p">,</span> <span class="n">dcr</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">dcrs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;&lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;&lt;/td&gt;&#39;</span>
+                          <span class="sa">f</span><span class="s1">&#39;&lt;td&gt;</span><span class="si">{</span><span class="n">chk</span><span class="si">}</span><span class="s1">&lt;/td&gt;&lt;td&gt;</span><span class="si">{</span><span class="n">_dcr_bar_html</span><span class="p">(</span><span class="n">dcr</span><span class="p">)</span><span class="si">}</span><span class="s1">&lt;/td&gt;&lt;/tr&gt;&#39;</span><span class="p">)</span>
+        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;&lt;/table&gt;&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">entry</span><span class="o">.</span><span class="n">code_refs</span><span class="p">:</span>
+        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;&lt;div class=&quot;refs&quot;&gt;Code references: &#39;</span> <span class="o">+</span>
+                       <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">code_refs</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;&lt;/div&gt;&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">entry</span><span class="o">.</span><span class="n">notes</span><span class="p">:</span>
+        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;&lt;div class=&quot;notes&quot;&gt;</span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">notes</span><span class="si">}</span><span class="s1">&lt;/div&gt;&#39;</span><span class="p">)</span>
+    <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;&lt;/div&gt;&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="make_html_report">
+<a class="viewcode-back" href="../../../api/design.html#femsolver.design.reports.make_html_report">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">make_html_report</span><span class="p">(</span>
+    <span class="n">entries</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Member Design Report&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a self-contained HTML design report.&quot;&quot;&quot;</span>
+    <span class="n">head</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s1">&#39;&lt;!DOCTYPE html&gt;</span><span class="se">\n</span><span class="s1">&lt;html&gt;&lt;head&gt;&#39;</span>
+        <span class="sa">f</span><span class="s1">&#39;&lt;meta charset=&quot;utf-8&quot;&gt;&lt;title&gt;</span><span class="si">{</span><span class="n">title</span><span class="si">}</span><span class="s1">&lt;/title&gt;&#39;</span>
+        <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">_HTML_STYLE</span><span class="si">}</span><span class="s1">&lt;/head&gt;&lt;body&gt;&#39;</span>
+    <span class="p">)</span>
+    <span class="n">body</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s1">&#39;&lt;h1&gt;</span><span class="si">{</span><span class="n">title</span><span class="si">}</span><span class="s1">&lt;/h1&gt;&#39;</span><span class="p">]</span>
+    <span class="c1"># Summary</span>
+    <span class="n">n_total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">entries</span><span class="p">)</span>
+    <span class="n">n_pass</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">entries</span> <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">passes</span><span class="p">)</span>
+    <span class="n">n_fail</span> <span class="o">=</span> <span class="n">n_total</span> <span class="o">-</span> <span class="n">n_pass</span>
+    <span class="n">body</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s1">&#39;&lt;p&gt;&lt;b&gt;</span><span class="si">{</span><span class="n">n_total</span><span class="si">}</span><span class="s1">&lt;/b&gt; member(s), &#39;</span>
+        <span class="sa">f</span><span class="s1">&#39;&lt;span style=&quot;color:#1e7a1e&quot;&gt;&lt;b&gt;</span><span class="si">{</span><span class="n">n_pass</span><span class="si">}</span><span class="s1"> pass&lt;/b&gt;&lt;/span&gt;, &#39;</span>
+        <span class="sa">f</span><span class="s1">&#39;&lt;span style=&quot;color:#b1131c&quot;&gt;&lt;b&gt;</span><span class="si">{</span><span class="n">n_fail</span><span class="si">}</span><span class="s1"> fail&lt;/b&gt;&lt;/span&gt;&lt;/p&gt;&#39;</span>
+    <span class="p">)</span>
+    <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">:</span>
+        <span class="n">body</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_entry_html</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+    <span class="n">tail</span> <span class="o">=</span> <span class="s1">&#39;&lt;/body&gt;&lt;/html&gt;&#39;</span>
+    <span class="k">return</span> <span class="n">head</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">body</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="n">tail</span></div>
+
+
+
+<div class="viewcode-block" id="write_html_report">
+<a class="viewcode-back" href="../../../api/design.html#femsolver.design.reports.write_html_report">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">write_html_report</span><span class="p">(</span>
+    <span class="n">entries</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Member Design Report&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Write the HTML report to ``path``.&quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">make_html_report</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">))</span></div>
+
+
+
+<span class="c1"># ============================================================ CSV</span>
+
+<div class="viewcode-block" id="make_csv_summary">
+<a class="viewcode-back" href="../../../api/design.html#femsolver.design.reports.make_csv_summary">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">make_csv_summary</span><span class="p">(</span><span class="n">entries</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a CSV string with one row per member.&quot;&quot;&quot;</span>
+    <span class="n">buf</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">StringIO</span><span class="p">()</span>
+    <span class="n">writer</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">writer</span><span class="p">(</span><span class="n">buf</span><span class="p">)</span>
+    <span class="n">writer</span><span class="o">.</span><span class="n">writerow</span><span class="p">([</span>
+        <span class="s2">&quot;member_tag&quot;</span><span class="p">,</span> <span class="s2">&quot;member_type&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;section_summary&quot;</span><span class="p">,</span> <span class="s2">&quot;material_summary&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;governing_dcr&quot;</span><span class="p">,</span> <span class="s2">&quot;governing_check&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;passes&quot;</span><span class="p">,</span> <span class="s2">&quot;notes&quot;</span><span class="p">,</span>
+    <span class="p">])</span>
+    <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">:</span>
+        <span class="n">writer</span><span class="o">.</span><span class="n">writerow</span><span class="p">([</span>
+            <span class="n">e</span><span class="o">.</span><span class="n">member_tag</span><span class="p">,</span> <span class="n">e</span><span class="o">.</span><span class="n">member_type</span><span class="p">,</span>
+            <span class="n">e</span><span class="o">.</span><span class="n">section_summary</span><span class="p">,</span> <span class="n">e</span><span class="o">.</span><span class="n">material_summary</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">governing_dcr</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">e</span><span class="o">.</span><span class="n">governing_check</span><span class="p">,</span>
+            <span class="s2">&quot;PASS&quot;</span> <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">passes</span> <span class="k">else</span> <span class="s2">&quot;FAIL&quot;</span><span class="p">,</span>
+            <span class="n">e</span><span class="o">.</span><span class="n">notes</span><span class="p">,</span>
+        <span class="p">])</span>
+    <span class="k">return</span> <span class="n">buf</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="write_csv_summary">
+<a class="viewcode-back" href="../../../api/design.html#femsolver.design.reports.write_csv_summary">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">write_csv_summary</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Write the CSV summary to ``path``.&quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">,</span> <span class="n">newline</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">make_csv_summary</span><span class="p">(</span><span class="n">entries</span><span class="p">))</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,423 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.materials.drucker_prager &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.materials.drucker_prager</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.materials.drucker_prager</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Drucker-Prager plasticity in 3-D for soils.</span>
+
+<span class="sd">The Drucker-Prager (DP) yield function is</span>
+
+<span class="sd">    f(sigma) = alpha * I1 + sqrt(J2) - k</span>
+
+<span class="sd">where ``I1 = trace(sigma)`` and ``J2 = (1/2) s : s`` is the second</span>
+<span class="sd">deviatoric invariant. The two parameters ``alpha`` and ``k`` are</span>
+<span class="sd">related to the cohesion ``c`` and friction angle ``phi`` of a</span>
+<span class="sd">Mohr-Coulomb material by an outer-cone (or inner-cone) projection:</span>
+
+<span class="sd">    alpha = 2 sin(phi) / (sqrt(3) (3 - sin(phi)))</span>
+<span class="sd">    k     = 6 c cos(phi) / (sqrt(3) (3 - sin(phi)))   # outer cone</span>
+
+<span class="sd">(Inner cone uses ``(3 + sin(phi))`` in the denominator.) For</span>
+<span class="sd">phi = 0 (purely cohesive soil) DP reduces to a J2-type model with</span>
+<span class="sd">``k = 2 c / sqrt(3)``.</span>
+
+<span class="sd">This implementation uses **associated** flow on the smooth cone face.</span>
+<span class="sd">The apex region (where ``J2_n+1`` would become negative under the</span>
+<span class="sd">return) is handled by projecting onto the cone tip ``I1 = k/alpha,</span>
+<span class="sd">J2 = 0`` -- the standard cap that prevents non-physical states.</span>
+
+<span class="sd">Sign convention</span>
+<span class="sd">---------------</span>
+<span class="sd">Standard solid-mechanics convention: tension positive, compression</span>
+<span class="sd">negative for both stress and strain. Voigt order matches the rest</span>
+<span class="sd">of the library: ``(xx, yy, zz, xy, yz, zx)``, with engineering shear</span>
+<span class="sd">strain.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+
+<div class="viewcode-block" id="DruckerPrager3D">
+<a class="viewcode-back" href="../../../api/materials.html#femsolver.materials.drucker_prager.DruckerPrager3D">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DruckerPrager3D</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;3-D Drucker-Prager perfectly-plastic material.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    E : float</span>
+<span class="sd">        Young&#39;s modulus.</span>
+<span class="sd">    nu : float</span>
+<span class="sd">        Poisson&#39;s ratio.</span>
+<span class="sd">    alpha : float</span>
+<span class="sd">        DP friction-angle parameter (positive). For ``alpha = 0``,</span>
+<span class="sd">        the model reduces to a J2-type cohesive material with no</span>
+<span class="sd">        pressure dependence.</span>
+<span class="sd">    k : float</span>
+<span class="sd">        DP cohesion-strength parameter (positive).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">E</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">nu</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">k</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">E</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;E must be positive, got </span><span class="si">{</span><span class="n">E</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="o">-</span><span class="mf">1.0</span> <span class="o">&lt;</span> <span class="n">nu</span> <span class="o">&lt;</span> <span class="mf">0.5</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;nu must be in (-1, 0.5), got </span><span class="si">{</span><span class="n">nu</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">alpha</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;alpha must be &gt;= 0, got </span><span class="si">{</span><span class="n">alpha</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">k</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;k must be positive, got </span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">E</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">E</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nu</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">nu</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">alpha</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">k</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+        <span class="c1"># Derived elastic constants</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">G</span> <span class="o">=</span> <span class="n">E</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">nu</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">K_bulk</span> <span class="o">=</span> <span class="n">E</span> <span class="o">/</span> <span class="p">(</span><span class="mf">3.0</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">nu</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_D_elastic</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_D_elastic</span><span class="p">()</span>
+        <span class="c1"># ---- state ----</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_p_committed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_committed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_p_trial</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_trial</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DruckerPrager3D.from_mohr_coulomb">
+<a class="viewcode-back" href="../../../api/materials.html#femsolver.materials.drucker_prager.DruckerPrager3D.from_mohr_coulomb">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_mohr_coulomb</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">E</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">nu</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">cohesion</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+                          <span class="n">phi_deg</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
+                          <span class="n">outer_cone</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;DruckerPrager3D&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build DP parameters by matching a Mohr-Coulomb material.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cohesion : float</span>
+<span class="sd">            Mohr-Coulomb cohesion (positive).</span>
+<span class="sd">        phi_deg : float</span>
+<span class="sd">            Friction angle in degrees (0 &lt;= phi &lt; 90).</span>
+<span class="sd">        outer_cone : bool, default True</span>
+<span class="sd">            ``True`` -&gt; outer-cone (circumscribed) match: aggressive,</span>
+<span class="sd">            but matches axisymmetric MC compression triaxial. ``False``</span>
+<span class="sd">            -&gt; inner-cone (inscribed) match: conservative, matches MC</span>
+<span class="sd">            extension triaxial.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">phi_deg</span> <span class="o">&lt;</span> <span class="mf">90.0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;phi_deg must be in [0, 90), got </span><span class="si">{</span><span class="n">phi_deg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cohesion</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;cohesion must be positive, got </span><span class="si">{</span><span class="n">cohesion</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">phi</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">phi_deg</span><span class="p">)</span>
+        <span class="n">sp</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">phi</span><span class="p">);</span> <span class="n">cp</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">outer_cone</span><span class="p">:</span>
+            <span class="n">denom</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">3.0</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">3.0</span> <span class="o">-</span> <span class="n">sp</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">denom</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">3.0</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">3.0</span> <span class="o">+</span> <span class="n">sp</span><span class="p">)</span>
+        <span class="n">alpha</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">sp</span> <span class="o">/</span> <span class="n">denom</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="mf">6.0</span> <span class="o">*</span> <span class="n">cohesion</span> <span class="o">*</span> <span class="n">cp</span> <span class="o">/</span> <span class="n">denom</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">E</span><span class="o">=</span><span class="n">E</span><span class="p">,</span> <span class="n">nu</span><span class="o">=</span><span class="n">nu</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="n">k</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_build_D_elastic</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">E</span><span class="p">,</span> <span class="n">nu</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">E</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nu</span>
+        <span class="n">lam</span> <span class="o">=</span> <span class="n">E</span> <span class="o">*</span> <span class="n">nu</span> <span class="o">/</span> <span class="p">((</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">nu</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">nu</span><span class="p">))</span>
+        <span class="n">mu</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">G</span>
+        <span class="n">D</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">6</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+        <span class="n">D</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">D</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">D</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">lam</span> <span class="o">+</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">mu</span>
+        <span class="n">D</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">D</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">D</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">D</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">D</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">D</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">lam</span>
+        <span class="n">D</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">D</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="n">D</span><span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">]</span> <span class="o">=</span> <span class="n">mu</span>
+        <span class="k">return</span> <span class="n">D</span>
+
+<div class="viewcode-block" id="DruckerPrager3D.D_elastic">
+<a class="viewcode-back" href="../../../api/materials.html#femsolver.materials.drucker_prager.DruckerPrager3D.D_elastic">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">D_elastic</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_D_elastic</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_continuum_tangent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s_voigt</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                             <span class="n">sqrt_J2</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Continuum elasto-plastic tangent on the smooth cone face.</span>
+
+<span class="sd">            C_ep = D_e - (D_e r) (D_e r)^T / (r . D_e . r)</span>
+
+<span class="sd">        with the associated flow direction ``r = alpha I + s / (2 sqrt(J2))``</span>
+<span class="sd">        and the scalar ``r . D_e . r = 9 K alpha^2 + G``. The outer</span>
+<span class="sd">        product ``(D_e r) (D_e r)^T`` works in Voigt with engineering</span>
+<span class="sd">        shear because both factors are stress-like vectors.</span>
+
+<span class="sd">        Returns the symmetric 6x6 elasto-plastic tangent.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">G</span>
+        <span class="n">K</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">K_bulk</span>
+        <span class="n">alpha</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span>
+        <span class="c1"># D_e r in Voigt form: volumetric part 3K alpha I + deviatoric</span>
+        <span class="c1"># part G s / sqrt(J2). For pure shear J2 = ||s||^2/2 so sqrt(J2)</span>
+        <span class="c1"># may be small near origin -- caller has ensured sqrt_J2 &gt; 0.</span>
+        <span class="n">a_voigt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>
+        <span class="n">a_voigt</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="mf">3.0</span> <span class="o">*</span> <span class="n">K</span> <span class="o">*</span> <span class="n">alpha</span>
+        <span class="n">a_voigt</span> <span class="o">+=</span> <span class="p">(</span><span class="n">G</span> <span class="o">/</span> <span class="n">sqrt_J2</span><span class="p">)</span> <span class="o">*</span> <span class="n">s_voigt</span>
+        <span class="n">denom</span> <span class="o">=</span> <span class="mf">9.0</span> <span class="o">*</span> <span class="n">K</span> <span class="o">*</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">alpha</span> <span class="o">+</span> <span class="n">G</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_D_elastic</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">a_voigt</span><span class="p">,</span> <span class="n">a_voigt</span><span class="p">)</span> <span class="o">/</span> <span class="n">denom</span>
+
+    <span class="c1"># ----------------------------------------------------- helpers</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_deviator</span><span class="p">(</span><span class="n">sigma</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="p">(</span><span class="n">sigma</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">sigma</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">sigma</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span> <span class="o">/</span> <span class="mf">3.0</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">sigma</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-=</span> <span class="n">p</span><span class="p">;</span> <span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-=</span> <span class="n">p</span><span class="p">;</span> <span class="n">s</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-=</span> <span class="n">p</span>
+        <span class="k">return</span> <span class="n">s</span><span class="p">,</span> <span class="n">p</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_voigt_double_dot</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span>
+            <span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">s</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span>
+            <span class="o">+</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">s</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">s</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="DruckerPrager3D.yield_function">
+<a class="viewcode-back" href="../../../api/materials.html#femsolver.materials.drucker_prager.DruckerPrager3D.yield_function">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">yield_function</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sigma</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;``f = alpha I1 + sqrt(J2) - k``. ``f &lt;= 0`` means inside the</span>
+<span class="sd">        yield cone.&quot;&quot;&quot;</span>
+        <span class="n">I1</span> <span class="o">=</span> <span class="n">sigma</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">sigma</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">sigma</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">s</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_deviator</span><span class="p">(</span><span class="n">sigma</span><span class="p">)</span>
+        <span class="n">J2</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_voigt_double_dot</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">*</span> <span class="n">I1</span> <span class="o">+</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">J2</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">))</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span></div>
+
+
+    <span class="c1"># ----------------------------------------------------- response</span>
+<div class="viewcode-block" id="DruckerPrager3D.get_response">
+<a class="viewcode-back" href="../../../api/materials.html#femsolver.materials.drucker_prager.DruckerPrager3D.get_response">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">eps_voigt</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Drucker-Prager radial return.</span>
+
+<span class="sd">        Returns ``(sigma, D_elastic)`` after radial-return mapping of</span>
+<span class="sd">        the trial stress back to the smooth cone face. The apex case</span>
+<span class="sd">        (``sqrt(J2_n+1) &lt; 0``) projects onto the cone tip.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">eps</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">eps_voigt</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>
+        <span class="n">eps_e_trial</span> <span class="o">=</span> <span class="n">eps</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_p_committed</span>
+        <span class="n">sigma_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_D_elastic</span> <span class="o">@</span> <span class="n">eps_e_trial</span>
+        <span class="n">I1_trial</span> <span class="o">=</span> <span class="n">sigma_trial</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">sigma_trial</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">sigma_trial</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">s_trial</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_deviator</span><span class="p">(</span><span class="n">sigma_trial</span><span class="p">)</span>
+        <span class="n">norm_s_sq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_voigt_double_dot</span><span class="p">(</span><span class="n">s_trial</span><span class="p">)</span>
+        <span class="n">sqrt_J2</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">norm_s_sq</span><span class="p">)</span>
+        <span class="n">f_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">*</span> <span class="n">I1_trial</span> <span class="o">+</span> <span class="n">sqrt_J2</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span>
+
+        <span class="k">if</span> <span class="n">f_trial</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sigma_trial</span> <span class="o">=</span> <span class="n">sigma_trial</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">eps_p_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_p_committed</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">sigma_trial</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_D_elastic</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="c1"># Plastic step: smooth-cone return.</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">G</span>
+        <span class="n">K</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">K_bulk</span>
+        <span class="n">alpha</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span>
+        <span class="n">d_lambda</span> <span class="o">=</span> <span class="n">f_trial</span> <span class="o">/</span> <span class="p">(</span><span class="n">G</span> <span class="o">+</span> <span class="mf">9.0</span> <span class="o">*</span> <span class="n">K</span> <span class="o">*</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">alpha</span><span class="p">)</span>
+        <span class="n">sqrt_J2_new</span> <span class="o">=</span> <span class="n">sqrt_J2</span> <span class="o">-</span> <span class="n">G</span> <span class="o">*</span> <span class="n">d_lambda</span>
+        <span class="k">if</span> <span class="n">sqrt_J2_new</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="c1"># Apex return: collapse deviator to zero and project I1 to k/alpha.</span>
+            <span class="n">d_lambda</span> <span class="o">=</span> <span class="n">sqrt_J2</span> <span class="o">/</span> <span class="n">G</span>        <span class="c1"># consume deviator</span>
+            <span class="c1"># Apex return: sigma = (k / (3 alpha)) * I_voigt</span>
+            <span class="n">sigma_new</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>
+            <span class="n">apex_p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span> <span class="o">/</span> <span class="p">(</span><span class="mf">3.0</span> <span class="o">*</span> <span class="n">alpha</span><span class="p">)</span> <span class="k">if</span> <span class="n">alpha</span> <span class="o">&gt;</span> <span class="mf">0.0</span> <span class="k">else</span> <span class="mf">0.0</span>
+            <span class="n">sigma_new</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">apex_p</span>
+            <span class="c1"># eps_p update: tricky -- effectively all strain becomes plastic.</span>
+            <span class="c1"># For simplicity, accumulate eps_p approximately using the</span>
+            <span class="c1"># smooth-cone formula with the consumed d_lambda for the</span>
+            <span class="c1"># deviator + the remaining volumetric demand:</span>
+            <span class="c1"># We do a 2-stage update.</span>
+            <span class="c1"># Stage 1: smooth-cone consumption (d_lambda from above).</span>
+            <span class="n">s_unit_factor</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">sqrt_J2</span><span class="p">,</span> <span class="mf">1.0e-30</span><span class="p">)</span>
+            <span class="n">eps_p_inc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>
+            <span class="n">eps_p_inc</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">d_lambda</span> <span class="o">*</span> <span class="p">(</span><span class="n">alpha</span> <span class="o">+</span> <span class="n">s_trial</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">sqrt_J2</span><span class="p">))</span>
+            <span class="n">eps_p_inc</span><span class="p">[</span><span class="mi">3</span><span class="p">:</span><span class="mi">6</span><span class="p">]</span> <span class="o">=</span> <span class="n">d_lambda</span> <span class="o">*</span> <span class="n">s_trial</span><span class="p">[</span><span class="mi">3</span><span class="p">:</span><span class="mi">6</span><span class="p">]</span> <span class="o">/</span> <span class="n">sqrt_J2</span>
+            <span class="c1"># Stage 2: extra volumetric consumption to land at apex</span>
+            <span class="c1"># The extra volumetric demand: I1_target = k/alpha;</span>
+            <span class="c1"># current I1 after smooth-cone = I1_trial - 9 K alpha d_lambda.</span>
+            <span class="n">I1_smooth</span> <span class="o">=</span> <span class="n">I1_trial</span> <span class="o">-</span> <span class="mf">9.0</span> <span class="o">*</span> <span class="n">K</span> <span class="o">*</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">d_lambda</span>
+            <span class="n">apex_I1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span> <span class="o">/</span> <span class="n">alpha</span>
+            <span class="n">extra_I1</span> <span class="o">=</span> <span class="n">I1_smooth</span> <span class="o">-</span> <span class="n">apex_I1</span>
+            <span class="c1"># The extra plastic volumetric strain to absorb is extra_I1/(3K)</span>
+            <span class="n">extra_e_v</span> <span class="o">=</span> <span class="n">extra_I1</span> <span class="o">/</span> <span class="p">(</span><span class="mf">3.0</span> <span class="o">*</span> <span class="n">K</span><span class="p">)</span>
+            <span class="n">eps_p_inc</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">+=</span> <span class="n">extra_e_v</span> <span class="o">/</span> <span class="mf">3.0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">eps_p_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_p_committed</span> <span class="o">+</span> <span class="n">eps_p_inc</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sigma_trial</span> <span class="o">=</span> <span class="n">sigma_new</span>
+            <span class="k">return</span> <span class="n">sigma_new</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_D_elastic</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="c1"># Standard smooth-cone return</span>
+        <span class="c1"># sigma_new = sigma_trial - d_lambda * (3 K alpha I + G s_trial / sqrt_J2)</span>
+        <span class="n">sigma_new</span> <span class="o">=</span> <span class="n">sigma_trial</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="c1"># Volumetric component</span>
+        <span class="n">delta_p</span> <span class="o">=</span> <span class="o">-</span><span class="mf">3.0</span> <span class="o">*</span> <span class="n">K</span> <span class="o">*</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">d_lambda</span>
+        <span class="n">sigma_new</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">+=</span> <span class="n">delta_p</span>
+        <span class="c1"># Deviatoric component</span>
+        <span class="n">ds_factor</span> <span class="o">=</span> <span class="o">-</span><span class="n">G</span> <span class="o">*</span> <span class="n">d_lambda</span> <span class="o">/</span> <span class="n">sqrt_J2</span>
+        <span class="n">sigma_new</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">+=</span> <span class="n">ds_factor</span> <span class="o">*</span> <span class="n">s_trial</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span>
+        <span class="n">sigma_new</span><span class="p">[</span><span class="mi">3</span><span class="p">:</span><span class="mi">6</span><span class="p">]</span> <span class="o">+=</span> <span class="n">ds_factor</span> <span class="o">*</span> <span class="n">s_trial</span><span class="p">[</span><span class="mi">3</span><span class="p">:</span><span class="mi">6</span><span class="p">]</span>
+
+        <span class="c1"># Plastic strain increment (associated flow)</span>
+        <span class="n">eps_p_inc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>
+        <span class="n">eps_p_inc</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">d_lambda</span> <span class="o">*</span> <span class="p">(</span><span class="n">alpha</span> <span class="o">+</span> <span class="n">s_trial</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">sqrt_J2</span><span class="p">))</span>
+        <span class="c1"># Engineering shear: factor of 2 on shears for plastic strain</span>
+        <span class="n">eps_p_inc</span><span class="p">[</span><span class="mi">3</span><span class="p">:</span><span class="mi">6</span><span class="p">]</span> <span class="o">=</span> <span class="n">d_lambda</span> <span class="o">*</span> <span class="n">s_trial</span><span class="p">[</span><span class="mi">3</span><span class="p">:</span><span class="mi">6</span><span class="p">]</span> <span class="o">/</span> <span class="n">sqrt_J2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_p_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_p_committed</span> <span class="o">+</span> <span class="n">eps_p_inc</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_trial</span> <span class="o">=</span> <span class="n">sigma_new</span>
+        <span class="c1"># Continuum elasto-plastic tangent on the smooth cone face.</span>
+        <span class="c1"># (Algorithmic / consistent tangent that gives quadratic Newton</span>
+        <span class="c1"># convergence requires extra terms accounting for the</span>
+        <span class="c1"># volumetric-deviatoric coupling of finite-step return -- a</span>
+        <span class="c1"># future refinement.)</span>
+        <span class="n">D_ep</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_continuum_tangent</span><span class="p">(</span><span class="n">s_trial</span><span class="p">,</span> <span class="n">sqrt_J2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">sigma_new</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="n">D_ep</span></div>
+
+
+    <span class="c1"># ----------------------------------------------------- state</span>
+<div class="viewcode-block" id="DruckerPrager3D.commit_state">
+<a class="viewcode-back" href="../../../api/materials.html#femsolver.materials.drucker_prager.DruckerPrager3D.commit_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">commit_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_p_committed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_p_trial</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_committed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_trial</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="DruckerPrager3D.revert_state">
+<a class="viewcode-back" href="../../../api/materials.html#femsolver.materials.drucker_prager.DruckerPrager3D.revert_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">revert_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_p_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_p_committed</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_committed</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="DruckerPrager3D.clone">
+<a class="viewcode-back" href="../../../api/materials.html#femsolver.materials.drucker_prager.DruckerPrager3D.clone">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">clone</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;DruckerPrager3D&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;DruckerPrager3D(E=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">E</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">, nu=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">nu</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;alpha=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">, k=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">)&quot;</span>
+        <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -257,14 +257,14 @@ class HHTAlpha(TransientIntegrator):
     transient analysis.
 
     The equation of motion is enforced at a *weighted* time between
-    ``t_n`` and ``t_{n+1}``:
+    ``t_n`` and ``t_{n+1}``::
 
         M u_ddot_{n+1} + (1 + alpha) C u_dot_{n+1} - alpha C u_dot_n
             + (1 + alpha) K u_{n+1} - alpha K u_n
             = (1 + alpha) F_{n+1} - alpha F_n
 
     The Newmark u-v-a relations are unchanged, with the parameters
-    auto-tuned for optimal high-frequency dissipation:
+    auto-tuned for optimal high-frequency dissipation::
 
         beta  = (1 - alpha)^2 / 4
         gamma = 1/2 - alpha
@@ -366,7 +366,7 @@ class GeneralizedAlpha(TransientIntegrator):
 
     The equation of motion is enforced at *two* intermediate time
     points -- one for the inertia term and one for the stiffness /
-    damping / external-force terms:
+    damping / external-force terms::
 
         (1 - alpha_m) M a_{n+1} + alpha_m M a_n
             + (1 - alpha_f) (C v_{n+1} + K u_{n+1})
@@ -377,7 +377,7 @@ class GeneralizedAlpha(TransientIntegrator):
     spectral radius at the high-frequency limit) auto-tunes
     ``alpha_m, alpha_f, beta, gamma`` to maximize accuracy at low
     frequencies while damping the high frequencies at the rate set by
-    ``rho_inf``:
+    ``rho_inf``::
 
         alpha_m = (2 rho_inf - 1) / (rho_inf + 1)
         alpha_f =        rho_inf  / (rho_inf + 1)

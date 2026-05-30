@@ -1,0 +1,290 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.elements.isolators &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.elements.isolators</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.elements.isolators</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Base-isolation device macros.</span>
+
+<span class="sd">Helper factories that build pre-configured :class:`ZeroLengthElement`</span>
+<span class="sd">instances for common seismic isolators. Each macro encapsulates the</span>
+<span class="sd">bilinear / EPP backbone with parameters matched to product literature</span>
+<span class="sd">or design code:</span>
+
+<span class="sd">* :func:`lead_rubber_bearing` -- LRB / LDR. Bilinear horizontal</span>
+<span class="sd">  spring (initial K1, post-yield K2, characteristic strength Q) with</span>
+<span class="sd">  a high (rigid) vertical spring. The standard &quot;Bouc-Wen-like&quot;</span>
+<span class="sd">  bilinear simplification used for design.</span>
+<span class="sd">* :func:`friction_pendulum` -- FPS isolator. Bilinear horizontal</span>
+<span class="sd">  spring with friction force ``mu * W`` and post-yield restoring</span>
+<span class="sd">  stiffness ``W / R`` from pendulum geometry, with rigid vertical.</span>
+
+<span class="sd">These return a ``ZeroLengthElement`` ready to add to a model with</span>
+<span class="sd">``model.add_element(elem)``.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.elements.zero_length</span><span class="w"> </span><span class="kn">import</span> <span class="n">ZeroLengthElement</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.materials.uniaxial.bilinear</span><span class="w"> </span><span class="kn">import</span> <span class="n">UniaxialBilinear</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.materials.uniaxial.elastic</span><span class="w"> </span><span class="kn">import</span> <span class="n">UniaxialElastic</span>
+
+
+<div class="viewcode-block" id="lead_rubber_bearing">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.isolators.lead_rubber_bearing">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">lead_rubber_bearing</span><span class="p">(</span>
+    <span class="n">tag</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">nodes</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">K1</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">K2</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">Q</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">K_vertical</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">dofs_per_node</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
+    <span class="n">direction</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ZeroLengthElement</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Lead-rubber bearing (LRB) base isolator.</span>
+
+<span class="sd">    The horizontal force-displacement relation is bilinear with</span>
+<span class="sd">    initial stiffness ``K1``, characteristic strength ``Q`` (the</span>
+<span class="sd">    intercept of the post-yield line at zero displacement), and</span>
+<span class="sd">    post-yield slope ``K2``. The yield displacement and force are:</span>
+
+<span class="sd">        d_y = Q / (K1 - K2)</span>
+<span class="sd">        F_y = K1 * d_y</span>
+
+<span class="sd">    With the standard hardening ratio ``b = K2 / K1``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    tag : int</span>
+<span class="sd">    nodes : (i, j) two coincident node tags</span>
+<span class="sd">    K1 : float</span>
+<span class="sd">        Initial (elastic) horizontal stiffness.</span>
+<span class="sd">    K2 : float</span>
+<span class="sd">        Post-yield horizontal stiffness (``&lt; K1``).</span>
+<span class="sd">    Q : float</span>
+<span class="sd">        Characteristic strength (yield-line intercept at zero</span>
+<span class="sd">        displacement). ``Q &gt; 0``.</span>
+<span class="sd">    K_vertical : float, optional</span>
+<span class="sd">        Vertical stiffness in the gravity direction (typically very</span>
+<span class="sd">        high). Defaults to ``1000 * K1``. Vertical DOF is taken as</span>
+<span class="sd">        DOF index 2 (z) for 3D models or 1 (y) for 2D.</span>
+<span class="sd">    dofs_per_node : int, default 6</span>
+<span class="sd">    direction : int, default 0</span>
+<span class="sd">        DOF index in which the bilinear horizontal spring acts</span>
+<span class="sd">        (0=ux, 1=uy, 2=uz).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">K1</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;K1 must be positive, got </span><span class="si">{</span><span class="n">K1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">K2</span> <span class="o">&lt;</span> <span class="n">K1</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;K2 must satisfy 0 &lt;= K2 &lt; K1, got K2=</span><span class="si">{</span><span class="n">K2</span><span class="si">}</span><span class="s2">, K1=</span><span class="si">{</span><span class="n">K1</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">Q</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Q must be positive, got </span><span class="si">{</span><span class="n">Q</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">K_vertical</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">K_vertical</span> <span class="o">=</span> <span class="mf">1000.0</span> <span class="o">*</span> <span class="n">K1</span>
+    <span class="c1"># Bilinear with kinematic hardening</span>
+    <span class="n">d_y</span> <span class="o">=</span> <span class="n">Q</span> <span class="o">/</span> <span class="p">(</span><span class="n">K1</span> <span class="o">-</span> <span class="n">K2</span><span class="p">)</span>
+    <span class="n">F_y</span> <span class="o">=</span> <span class="n">K1</span> <span class="o">*</span> <span class="n">d_y</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">K2</span> <span class="o">/</span> <span class="n">K1</span>
+    <span class="n">h_mat</span> <span class="o">=</span> <span class="n">UniaxialBilinear</span><span class="p">(</span><span class="n">E</span><span class="o">=</span><span class="n">K1</span><span class="p">,</span> <span class="n">sigma_y</span><span class="o">=</span><span class="n">F_y</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="n">b</span><span class="p">)</span>
+    <span class="n">v_mat</span> <span class="o">=</span> <span class="n">UniaxialElastic</span><span class="p">(</span><span class="n">E</span><span class="o">=</span><span class="n">K_vertical</span><span class="p">)</span>
+    <span class="c1"># Vertical direction: DOF 2 in 3D models with ndf=6; for 2D</span>
+    <span class="c1"># frames (ndf=3) the vertical is DOF 1 (uy).</span>
+    <span class="n">vert_dof</span> <span class="o">=</span> <span class="mi">2</span> <span class="k">if</span> <span class="n">dofs_per_node</span> <span class="o">&gt;=</span> <span class="mi">4</span> <span class="k">else</span> <span class="mi">1</span>
+    <span class="n">materials</span> <span class="o">=</span> <span class="p">{</span><span class="n">direction</span><span class="p">:</span> <span class="n">h_mat</span><span class="p">}</span>
+    <span class="k">if</span> <span class="n">vert_dof</span> <span class="o">!=</span> <span class="n">direction</span><span class="p">:</span>
+        <span class="n">materials</span><span class="p">[</span><span class="n">vert_dof</span><span class="p">]</span> <span class="o">=</span> <span class="n">v_mat</span>
+    <span class="k">return</span> <span class="n">ZeroLengthElement</span><span class="p">(</span>
+        <span class="n">tag</span><span class="p">,</span> <span class="n">nodes</span><span class="p">,</span> <span class="n">materials</span><span class="o">=</span><span class="n">materials</span><span class="p">,</span> <span class="n">dofs_per_node</span><span class="o">=</span><span class="n">dofs_per_node</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="friction_pendulum">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.isolators.friction_pendulum">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">friction_pendulum</span><span class="p">(</span>
+    <span class="n">tag</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">nodes</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">mu</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">R</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">W</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">K_vertical</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">K_initial_factor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span>
+    <span class="n">dofs_per_node</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
+    <span class="n">direction</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ZeroLengthElement</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Friction-pendulum (FPS) isolator.</span>
+
+<span class="sd">    Bilinear horizontal behaviour with:</span>
+
+<span class="sd">    * Friction force at zero displacement: ``F_f = mu * W``</span>
+<span class="sd">    * Post-yield restoring slope: ``K2 = W / R``  (pendulum geometry)</span>
+<span class="sd">    * Initial (pre-slip) stiffness: ``K1 = K_initial_factor * K2``</span>
+
+<span class="sd">    The &quot;yield&quot; displacement is the small slip distance at which the</span>
+<span class="sd">    friction force is reached; with ``K_initial_factor = 100`` the</span>
+<span class="sd">    behaviour is essentially rigid-perfectly-plastic up to the</span>
+<span class="sd">    friction force.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mu : float</span>
+<span class="sd">        Friction coefficient (e.g. 0.05 for typical FPS bearings).</span>
+<span class="sd">    R : float</span>
+<span class="sd">        Pendulum radius (e.g. 1-4 m for buildings).</span>
+<span class="sd">    W : float</span>
+<span class="sd">        Vertical load (axial force on the isolator), used to compute</span>
+<span class="sd">        F_f and K2.</span>
+<span class="sd">    K_vertical : float, optional</span>
+<span class="sd">        Vertical stiffness. Defaults to ``1000 * K2``.</span>
+<span class="sd">    K_initial_factor : float, default 100</span>
+<span class="sd">        Ratio of pre-slip to post-slip stiffness.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">mu</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;mu must be positive, got </span><span class="si">{</span><span class="n">mu</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">R</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;R must be positive, got </span><span class="si">{</span><span class="n">R</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">W</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;W must be positive (vertical load), got </span><span class="si">{</span><span class="n">W</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">K2</span> <span class="o">=</span> <span class="n">W</span> <span class="o">/</span> <span class="n">R</span>
+    <span class="n">F_f</span> <span class="o">=</span> <span class="n">mu</span> <span class="o">*</span> <span class="n">W</span>
+    <span class="n">K1</span> <span class="o">=</span> <span class="n">K_initial_factor</span> <span class="o">*</span> <span class="n">K2</span>
+    <span class="k">if</span> <span class="n">K_vertical</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">K_vertical</span> <span class="o">=</span> <span class="mf">1000.0</span> <span class="o">*</span> <span class="n">K2</span>
+    <span class="c1"># Bilinear backbone with kinematic hardening; yield = friction force.</span>
+    <span class="c1"># b = K2 / K1</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">K2</span> <span class="o">/</span> <span class="n">K1</span>
+    <span class="n">h_mat</span> <span class="o">=</span> <span class="n">UniaxialBilinear</span><span class="p">(</span><span class="n">E</span><span class="o">=</span><span class="n">K1</span><span class="p">,</span> <span class="n">sigma_y</span><span class="o">=</span><span class="n">F_f</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="n">b</span><span class="p">)</span>
+    <span class="n">v_mat</span> <span class="o">=</span> <span class="n">UniaxialElastic</span><span class="p">(</span><span class="n">E</span><span class="o">=</span><span class="n">K_vertical</span><span class="p">)</span>
+    <span class="n">vert_dof</span> <span class="o">=</span> <span class="mi">2</span> <span class="k">if</span> <span class="n">dofs_per_node</span> <span class="o">&gt;=</span> <span class="mi">4</span> <span class="k">else</span> <span class="mi">1</span>
+    <span class="n">materials</span> <span class="o">=</span> <span class="p">{</span><span class="n">direction</span><span class="p">:</span> <span class="n">h_mat</span><span class="p">}</span>
+    <span class="k">if</span> <span class="n">vert_dof</span> <span class="o">!=</span> <span class="n">direction</span><span class="p">:</span>
+        <span class="n">materials</span><span class="p">[</span><span class="n">vert_dof</span><span class="p">]</span> <span class="o">=</span> <span class="n">v_mat</span>
+    <span class="k">return</span> <span class="n">ZeroLengthElement</span><span class="p">(</span>
+        <span class="n">tag</span><span class="p">,</span> <span class="n">nodes</span><span class="p">,</span> <span class="n">materials</span><span class="o">=</span><span class="n">materials</span><span class="p">,</span> <span class="n">dofs_per_node</span><span class="o">=</span><span class="n">dofs_per_node</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

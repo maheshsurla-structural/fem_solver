@@ -1,0 +1,529 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.bridges.influence &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.bridges.influence</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.bridges.influence</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Influence lines and moving-load envelopes for bridge analysis.</span>
+
+<span class="sd">An *influence line* gives the value of a structural response (reaction,</span>
+<span class="sd">shear, or moment at a fixed section) as a unit point load moves</span>
+<span class="sd">across the structure. For determinate beams the influence lines are</span>
+<span class="sd">closed-form polynomials; for continuous or indeterminate structures,</span>
+<span class="sd">they are obtained numerically via the Müller-Breslau principle (the</span>
+<span class="sd">deflected shape produced by a unit virtual displacement at the</span>
+<span class="sd">response location, with sign convention to match the response).</span>
+
+<span class="sd">Moving-load analysis convolves a vehicle&#39;s wheel loads with the</span>
+<span class="sd">influence line to determine the maximum response. Vehicles include</span>
+<span class="sd">AASHTO HL-93 (design truck + tandem + lane) and IRC Class A/AA/70R.</span>
+
+<span class="sd">This module provides:</span>
+
+<span class="sd">* :func:`influence_line_simple_span_moment` -- M(x) influence for a</span>
+<span class="sd">  simply-supported beam.</span>
+<span class="sd">* :func:`influence_line_simple_span_shear` -- V(x) influence for a SS</span>
+<span class="sd">  beam (sign convention: + just to the right of x).</span>
+<span class="sd">* :class:`MovingLoad` -- a collection of axle loads + spacings.</span>
+<span class="sd">* :func:`max_response_for_moving_load` -- sweep the moving load</span>
+<span class="sd">  across the span and return the maximum response.</span>
+<span class="sd">* :func:`max_truck_envelope_simple_span` -- end-to-end shortcut for</span>
+<span class="sd">  HL-93 truck + tandem + lane envelope on a simple span.</span>
+
+<span class="sd">References</span>
+<span class="sd">----------</span>
+<span class="sd">* AASHTO LRFD Bridge Design Specifications, 9e (2020), Sec. 3.6.</span>
+<span class="sd">* IRC 6:2017, Sec. 204 (vehicle loads).</span>
+<span class="sd">* Hibbeler, R.C. (2017). *Structural Analysis*, 10e. Pearson.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+
+<span class="c1"># ============================================================ simple-span IL</span>
+
+<div class="viewcode-block" id="influence_line_simple_span_moment">
+<a class="viewcode-back" href="../../../api/bridges.html#femsolver.bridges.influence.influence_line_simple_span_moment">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">influence_line_simple_span_moment</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">L</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">xi</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Influence line for bending moment at section ``x`` on a SS span ``L``,</span>
+<span class="sd">    evaluated at load positions ``xi``.</span>
+
+<span class="sd">    Formula::</span>
+<span class="sd">        M(x; xi) = xi (L - x) / L      for xi &lt;= x</span>
+<span class="sd">                 = x (L - xi) / L      for xi &gt;  x</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    eta : np.ndarray</span>
+<span class="sd">        Influence-line ordinates (m) -- so a unit load (N) at xi gives</span>
+<span class="sd">        the moment eta · 1 (N·m).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">L</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;L must be &gt; 0, got </span><span class="si">{</span><span class="n">L</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">x</span> <span class="o">&lt;=</span> <span class="n">L</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;x = </span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s2"> must lie in [0, L = </span><span class="si">{</span><span class="n">L</span><span class="si">}</span><span class="s2">]&quot;</span><span class="p">)</span>
+    <span class="n">xi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">((</span><span class="n">xi</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">xi</span> <span class="o">&gt;</span> <span class="n">L</span><span class="p">)):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;all xi must lie in [0, L]&quot;</span><span class="p">)</span>
+    <span class="n">eta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+        <span class="n">xi</span> <span class="o">&lt;=</span> <span class="n">x</span><span class="p">,</span>
+        <span class="n">xi</span> <span class="o">*</span> <span class="p">(</span><span class="n">L</span> <span class="o">-</span> <span class="n">x</span><span class="p">)</span> <span class="o">/</span> <span class="n">L</span><span class="p">,</span>
+        <span class="n">x</span> <span class="o">*</span> <span class="p">(</span><span class="n">L</span> <span class="o">-</span> <span class="n">xi</span><span class="p">)</span> <span class="o">/</span> <span class="n">L</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">eta</span></div>
+
+
+
+<div class="viewcode-block" id="influence_line_simple_span_shear">
+<a class="viewcode-back" href="../../../api/bridges.html#femsolver.bridges.influence.influence_line_simple_span_shear">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">influence_line_simple_span_shear</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">L</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">xi</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Influence line for shear at section ``x`` on a SS span ``L``.</span>
+
+<span class="sd">    Sign convention: ``V`` positive when the resultant of forces to</span>
+<span class="sd">    the LEFT of ``x`` acts upward (standard &quot;left-up = positive&quot;).</span>
+<span class="sd">    Formula::</span>
+<span class="sd">        V(x; xi) = -xi / L        for xi &lt;  x   (load to the left of x)</span>
+<span class="sd">                 = (L - xi) / L   for xi &gt;  x   (load to the right of x)</span>
+<span class="sd">        V(x; x)  = +0.5/-0.5 (discontinuity); we return the right-limit</span>
+<span class="sd">                   value here.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">L</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;L must be &gt; 0&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">x</span> <span class="o">&lt;=</span> <span class="n">L</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;x must lie in [0, L = </span><span class="si">{</span><span class="n">L</span><span class="si">}</span><span class="s2">]&quot;</span><span class="p">)</span>
+    <span class="n">xi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="n">eta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+        <span class="n">xi</span> <span class="o">&lt;</span> <span class="n">x</span><span class="p">,</span>
+        <span class="o">-</span><span class="n">xi</span> <span class="o">/</span> <span class="n">L</span><span class="p">,</span>
+        <span class="p">(</span><span class="n">L</span> <span class="o">-</span> <span class="n">xi</span><span class="p">)</span> <span class="o">/</span> <span class="n">L</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">eta</span></div>
+
+
+
+<span class="c1"># ============================================================ moving loads</span>
+
+<div class="viewcode-block" id="MovingLoad">
+<a class="viewcode-back" href="../../../api/bridges.html#femsolver.bridges.influence.MovingLoad">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MovingLoad</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A train of point loads (axles) with spacings.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    axle_loads : np.ndarray</span>
+<span class="sd">        Axle weights (N), positive downward.</span>
+<span class="sd">    axle_offsets : np.ndarray</span>
+<span class="sd">        Distance of each axle from the LEFT-MOST axle (m). The</span>
+<span class="sd">        leftmost has offset 0; offsets must be non-decreasing.</span>
+<span class="sd">    name : str</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">axle_loads</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">axle_offsets</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">axle_loads</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">axle_loads</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">axle_offsets</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">axle_offsets</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">axle_loads</span><span class="o">.</span><span class="n">size</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">axle_offsets</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;axle_loads and axle_offsets must have same length&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">axle_loads</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;need at least one axle&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">axle_offsets</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mf">0.0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;axle_offsets must be non-decreasing&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">axle_offsets</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;first axle offset must be 0&quot;</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">total_length</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Span of the load train (distance from first to last axle).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">axle_offsets</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">total_load</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">axle_loads</span><span class="p">))</span>
+
+<div class="viewcode-block" id="MovingLoad.preset">
+<a class="viewcode-back" href="../../../api/bridges.html#femsolver.bridges.influence.MovingLoad.preset">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">preset</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;MovingLoad&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Look up a named code vehicle by short string.</span>
+
+<span class="sd">        Available names::</span>
+
+<span class="sd">            &quot;hl93_truck&quot;   -- AASHTO HL-93 design truck</span>
+<span class="sd">            &quot;hl93_tandem&quot;  -- AASHTO HL-93 design tandem</span>
+<span class="sd">            &quot;irc_class_a&quot;  -- IRC Class A vehicle train</span>
+<span class="sd">            &quot;irc_70r&quot;      -- IRC Class 70R tracked vehicle</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_MOVING_LOAD_PRESETS</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;unknown moving-load preset </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2">; &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;available: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">_MOVING_LOAD_PRESETS</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">_MOVING_LOAD_PRESETS</span><span class="p">[</span><span class="n">name</span><span class="p">]()</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="evaluate_response_for_position">
+<a class="viewcode-back" href="../../../api/bridges.html#femsolver.bridges.influence.evaluate_response_for_position">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">evaluate_response_for_position</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">head_position</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">moving_load</span><span class="p">:</span> <span class="n">MovingLoad</span><span class="p">,</span>
+    <span class="n">influence_line</span><span class="p">:</span> <span class="nb">callable</span><span class="p">,</span>
+    <span class="n">L</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">drop_off_span</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute the structural response when the leftmost axle is at</span>
+<span class="sd">    ``head_position`` along the span.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    head_position : float</span>
+<span class="sd">        Position of the leftmost axle (m).</span>
+<span class="sd">    moving_load : MovingLoad</span>
+<span class="sd">    influence_line : callable</span>
+<span class="sd">        ``f(xi: np.ndarray) -&gt; np.ndarray`` giving the IL ordinate(s).</span>
+<span class="sd">    L : float</span>
+<span class="sd">        Span length (m).</span>
+<span class="sd">    drop_off_span : bool, default True</span>
+<span class="sd">        Axles outside [0, L] contribute zero (have left the bridge).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">axle_x</span> <span class="o">=</span> <span class="n">head_position</span> <span class="o">+</span> <span class="n">moving_load</span><span class="o">.</span><span class="n">axle_offsets</span>
+    <span class="k">if</span> <span class="n">drop_off_span</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">axle_x</span> <span class="o">&gt;=</span> <span class="mf">0.0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">axle_x</span> <span class="o">&lt;=</span> <span class="n">L</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">axle_x</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="k">return</span> <span class="mf">0.0</span>
+    <span class="n">eta</span> <span class="o">=</span> <span class="n">influence_line</span><span class="p">(</span><span class="n">axle_x</span><span class="p">[</span><span class="n">mask</span><span class="p">])</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">moving_load</span><span class="o">.</span><span class="n">axle_loads</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">*</span> <span class="n">eta</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="max_response_for_moving_load">
+<a class="viewcode-back" href="../../../api/bridges.html#femsolver.bridges.influence.max_response_for_moving_load">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">max_response_for_moving_load</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">moving_load</span><span class="p">:</span> <span class="n">MovingLoad</span><span class="p">,</span>
+    <span class="n">influence_line</span><span class="p">:</span> <span class="nb">callable</span><span class="p">,</span>
+    <span class="n">L</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">n_positions</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">401</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Sweep the moving load across the structure and return</span>
+<span class="sd">    ``(max_response, head_position_at_max)``.</span>
+
+<span class="sd">    The leftmost axle is positioned at sample points from</span>
+<span class="sd">    ``-train_length`` (load entering) to ``L`` (load leaving), so the</span>
+<span class="sd">    full envelope is captured.</span>
+
+<span class="sd">    Vectorised: builds the ``(n_positions, n_axles)`` matrix of axle</span>
+<span class="sd">    positions, evaluates the IL once over the flattened array, masks</span>
+<span class="sd">    off-bridge axles, and sums ``axle_loads · eta`` per position in a</span>
+<span class="sd">    single matrix-vector product.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">train_L</span> <span class="o">=</span> <span class="n">moving_load</span><span class="o">.</span><span class="n">total_length</span>
+    <span class="n">positions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="n">train_L</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">n_positions</span><span class="p">)</span>
+    <span class="c1"># (n_positions, n_axles) matrix of every axle position to evaluate.</span>
+    <span class="n">axle_x</span> <span class="o">=</span> <span class="n">positions</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">+</span> <span class="n">moving_load</span><span class="o">.</span><span class="n">axle_offsets</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span>
+    <span class="n">on_bridge</span> <span class="o">=</span> <span class="p">(</span><span class="n">axle_x</span> <span class="o">&gt;=</span> <span class="mf">0.0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">axle_x</span> <span class="o">&lt;=</span> <span class="n">L</span><span class="p">)</span>
+    <span class="c1"># Evaluate the IL over the flat array of on-bridge positions only;</span>
+    <span class="c1"># for off-bridge cells store 0 (axle contributes nothing).</span>
+    <span class="n">eta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">axle_x</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">on_bridge</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="n">eta</span><span class="p">[</span><span class="n">on_bridge</span><span class="p">]</span> <span class="o">=</span> <span class="n">influence_line</span><span class="p">(</span><span class="n">axle_x</span><span class="p">[</span><span class="n">on_bridge</span><span class="p">])</span>
+    <span class="n">responses</span> <span class="o">=</span> <span class="n">eta</span> <span class="o">@</span> <span class="n">moving_load</span><span class="o">.</span><span class="n">axle_loads</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">responses</span><span class="p">)))</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">responses</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">positions</span><span class="p">[</span><span class="n">i</span><span class="p">])</span></div>
+
+
+
+<span class="c1"># ============================================================ AASHTO HL-93</span>
+
+<div class="viewcode-block" id="aashto_hl93_truck">
+<a class="viewcode-back" href="../../../api/bridges.html#femsolver.bridges.influence.aashto_hl93_truck">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">aashto_hl93_truck</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">MovingLoad</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;AASHTO HL-93 design truck (HS20-44 derivative).</span>
+
+<span class="sd">    Three axles: 35 kN, 145 kN, 145 kN at spacings 4.3 m (front-to-middle)</span>
+<span class="sd">    and a variable 4.3-9.0 m (middle-to-rear). We use the 4.3 m minimum</span>
+<span class="sd">    for the maximum positive moment in simple spans (governs).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">MovingLoad</span><span class="p">(</span>
+        <span class="n">axle_loads</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">35.0e3</span><span class="p">,</span> <span class="mf">145.0e3</span><span class="p">,</span> <span class="mf">145.0e3</span><span class="p">]),</span>
+        <span class="n">axle_offsets</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">4.3</span><span class="p">,</span> <span class="mf">8.6</span><span class="p">]),</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;AASHTO HL-93 design truck (4.3 m rear spacing)&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="aashto_hl93_tandem">
+<a class="viewcode-back" href="../../../api/bridges.html#femsolver.bridges.influence.aashto_hl93_tandem">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">aashto_hl93_tandem</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">MovingLoad</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;AASHTO HL-93 design tandem: 2 axles of 110 kN at 1.2 m spacing.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">MovingLoad</span><span class="p">(</span>
+        <span class="n">axle_loads</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">110.0e3</span><span class="p">,</span> <span class="mf">110.0e3</span><span class="p">]),</span>
+        <span class="n">axle_offsets</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">]),</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;AASHTO HL-93 design tandem&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="aashto_hl93_lane_load_kN_per_m">
+<a class="viewcode-back" href="../../../api/bridges.html#femsolver.bridges.influence.aashto_hl93_lane_load_kN_per_m">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">aashto_hl93_lane_load_kN_per_m</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;AASHTO HL-93 lane load: 9.34 kN/m (640 plf), uniformly distributed.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="mf">9.34e3</span></div>
+
+
+
+<div class="viewcode-block" id="aashto_lane_moment_simple_span">
+<a class="viewcode-back" href="../../../api/bridges.html#femsolver.bridges.influence.aashto_lane_moment_simple_span">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">aashto_lane_moment_simple_span</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">w</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">L</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Moment at section x on a SS span L under uniform lane load w (N/m).</span>
+
+<span class="sd">    Integral of M influence line · w gives ``M = w x (L - x) / 2``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">w</span> <span class="o">*</span> <span class="n">x</span> <span class="o">*</span> <span class="p">(</span><span class="n">L</span> <span class="o">-</span> <span class="n">x</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="max_truck_envelope_simple_span">
+<a class="viewcode-back" href="../../../api/bridges.html#femsolver.bridges.influence.max_truck_envelope_simple_span">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">max_truck_envelope_simple_span</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">L</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">impact_factor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.33</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;End-to-end AASHTO HL-93 envelope for moment at section ``x`` on</span>
+<span class="sd">    a SS span of length ``L``.</span>
+
+<span class="sd">    Combines:</span>
+<span class="sd">        max[ truck + lane, tandem + lane ] · impact_factor.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    impact_factor : float, default 1.33</span>
+<span class="sd">        Dynamic load allowance per AASHTO 3.6.2 (33% for the truck).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict</span>
+<span class="sd">        ``{&quot;M_truck_plus_lane&quot;: ..., &quot;M_tandem_plus_lane&quot;: ...,</span>
+<span class="sd">        &quot;M_governing&quot;: ..., &quot;M_with_impact&quot;: ...,</span>
+<span class="sd">        &quot;vehicle_governing&quot;: ...}``</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">il_M</span><span class="p">(</span><span class="n">xi</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">influence_line_simple_span_moment</span><span class="p">(</span><span class="n">L</span><span class="o">=</span><span class="n">L</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">xi</span><span class="o">=</span><span class="n">xi</span><span class="p">)</span>
+
+    <span class="n">M_truck</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">max_response_for_moving_load</span><span class="p">(</span>
+        <span class="n">moving_load</span><span class="o">=</span><span class="n">aashto_hl93_truck</span><span class="p">(),</span>
+        <span class="n">influence_line</span><span class="o">=</span><span class="n">il_M</span><span class="p">,</span> <span class="n">L</span><span class="o">=</span><span class="n">L</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">M_tandem</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">max_response_for_moving_load</span><span class="p">(</span>
+        <span class="n">moving_load</span><span class="o">=</span><span class="n">aashto_hl93_tandem</span><span class="p">(),</span>
+        <span class="n">influence_line</span><span class="o">=</span><span class="n">il_M</span><span class="p">,</span> <span class="n">L</span><span class="o">=</span><span class="n">L</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">M_lane</span> <span class="o">=</span> <span class="n">aashto_lane_moment_simple_span</span><span class="p">(</span>
+        <span class="n">w</span><span class="o">=</span><span class="n">aashto_hl93_lane_load_kN_per_m</span><span class="p">(),</span> <span class="n">L</span><span class="o">=</span><span class="n">L</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">M_t</span> <span class="o">=</span> <span class="n">M_truck</span> <span class="o">+</span> <span class="n">M_lane</span>
+    <span class="n">M_d</span> <span class="o">=</span> <span class="n">M_tandem</span> <span class="o">+</span> <span class="n">M_lane</span>
+    <span class="n">governing</span> <span class="o">=</span> <span class="s2">&quot;truck+lane&quot;</span> <span class="k">if</span> <span class="n">M_t</span> <span class="o">&gt;=</span> <span class="n">M_d</span> <span class="k">else</span> <span class="s2">&quot;tandem+lane&quot;</span>
+    <span class="n">M_gov</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">M_t</span><span class="p">,</span> <span class="n">M_d</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;M_truck&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">M_truck</span><span class="p">),</span>
+        <span class="s2">&quot;M_tandem&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">M_tandem</span><span class="p">),</span>
+        <span class="s2">&quot;M_lane&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">M_lane</span><span class="p">),</span>
+        <span class="s2">&quot;M_truck_plus_lane&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">M_t</span><span class="p">),</span>
+        <span class="s2">&quot;M_tandem_plus_lane&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">M_d</span><span class="p">),</span>
+        <span class="s2">&quot;M_governing&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">M_gov</span><span class="p">),</span>
+        <span class="s2">&quot;M_with_impact&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">impact_factor</span> <span class="o">*</span> <span class="n">M_gov</span><span class="p">),</span>
+        <span class="s2">&quot;vehicle_governing&quot;</span><span class="p">:</span> <span class="n">governing</span><span class="p">,</span>
+    <span class="p">}</span></div>
+
+
+
+<span class="c1"># ============================================================ IRC vehicles</span>
+
+<div class="viewcode-block" id="irc_class_70r_truck">
+<a class="viewcode-back" href="../../../api/bridges.html#femsolver.bridges.influence.irc_class_70r_truck">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">irc_class_70r_truck</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">MovingLoad</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;IRC Class 70R tracked vehicle (approximate equivalent as 7</span>
+<span class="sd">    axles to keep the API uniform).</span>
+
+<span class="sd">    A simplified 7-axle representation of the 70R tracked vehicle,</span>
+<span class="sd">    total weight 700 kN over a 4.57 m base, 100 kN per axle.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="mi">7</span>
+    <span class="n">base</span> <span class="o">=</span> <span class="mf">4.57</span>
+    <span class="n">loads</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="mf">100.0e3</span><span class="p">)</span>
+    <span class="n">offsets</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">base</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">MovingLoad</span><span class="p">(</span>
+        <span class="n">axle_loads</span><span class="o">=</span><span class="n">loads</span><span class="p">,</span> <span class="n">axle_offsets</span><span class="o">=</span><span class="n">offsets</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;IRC Class 70R (simplified 7-axle)&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="irc_class_a">
+<a class="viewcode-back" href="../../../api/bridges.html#femsolver.bridges.influence.irc_class_a">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">irc_class_a</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">MovingLoad</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;IRC Class A train: 2 driving + 2 front + bogie of 4 rear axles.</span>
+
+<span class="sd">    Loads (kN): 27, 27, 114, 114, 68, 68, 68, 68.</span>
+<span class="sd">    Spacings (m): 1.1 (front pair) -&gt; 3.2 -&gt; 1.2 (driving pair) -&gt; 4.3</span>
+<span class="sd">    -&gt; 3.0 -&gt; 3.0 -&gt; 3.0 (rear bogie).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">loads</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">27</span><span class="p">,</span> <span class="mi">27</span><span class="p">,</span> <span class="mi">114</span><span class="p">,</span> <span class="mi">114</span><span class="p">,</span> <span class="mi">68</span><span class="p">,</span> <span class="mi">68</span><span class="p">,</span> <span class="mi">68</span><span class="p">,</span> <span class="mi">68</span><span class="p">])</span> <span class="o">*</span> <span class="mf">1.0e3</span>
+    <span class="n">spacings</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.1</span><span class="p">,</span> <span class="mf">3.2</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">,</span> <span class="mf">4.3</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">]</span>
+    <span class="n">offsets</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">spacings</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">MovingLoad</span><span class="p">(</span>
+        <span class="n">axle_loads</span><span class="o">=</span><span class="n">loads</span><span class="p">,</span> <span class="n">axle_offsets</span><span class="o">=</span><span class="n">offsets</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;IRC Class A vehicle train&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="c1"># Name -&gt; factory registry used by :meth:`MovingLoad.preset`.</span>
+<span class="n">_MOVING_LOAD_PRESETS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;hl93_truck&quot;</span><span class="p">:</span>  <span class="n">aashto_hl93_truck</span><span class="p">,</span>
+    <span class="s2">&quot;hl93_tandem&quot;</span><span class="p">:</span> <span class="n">aashto_hl93_tandem</span><span class="p">,</span>
+    <span class="s2">&quot;irc_class_a&quot;</span><span class="p">:</span> <span class="n">irc_class_a</span><span class="p">,</span>
+    <span class="s2">&quot;irc_70r&quot;</span><span class="p">:</span>     <span class="n">irc_class_70r_truck</span><span class="p">,</span>
+<span class="p">}</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,228 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.analysis.damping &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.analysis.damping</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.analysis.damping</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Damping models for transient and dynamic analysis.</span>
+
+<span class="sd">Currently provides :class:`RayleighDamping` — the standard</span>
+<span class="sd">``C = alpha_M * M + alpha_K * K`` decomposition used in essentially all</span>
+<span class="sd">commercial structural-dynamics codes. The mass-proportional part</span>
+<span class="sd">suppresses low-frequency modes; the stiffness-proportional part</span>
+<span class="sd">suppresses high-frequency modes. Together they give the structural</span>
+<span class="sd">engineer two knobs to tune two target modes&#39; damping ratios.</span>
+
+<span class="sd">Future damping models (modal damping with per-mode ratios, Caughey series,</span>
+<span class="sd">hysteretic damping) can be added as additional classes alongside.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy.sparse</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
+
+
+<div class="viewcode-block" id="RayleighDamping">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.damping.RayleighDamping">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">RayleighDamping</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Mass- and stiffness-proportional damping: ``C = aM M + aK K``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    alpha_M : float</span>
+<span class="sd">        Mass-proportional coefficient. Adds damping that decreases with</span>
+<span class="sd">        frequency (dominant on low modes).</span>
+<span class="sd">    alpha_K : float</span>
+<span class="sd">        Stiffness-proportional coefficient. Adds damping that increases</span>
+<span class="sd">        with frequency (dominant on high modes).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">alpha_M</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">alpha_K</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+<div class="viewcode-block" id="RayleighDamping.build">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.damping.RayleighDamping.build">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">build</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">M</span><span class="p">,</span> <span class="n">K</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">sp</span><span class="o">.</span><span class="n">csc_matrix</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return ``C = alpha_M M + alpha_K K`` as a CSC sparse matrix.&quot;&quot;&quot;</span>
+        <span class="n">C</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha_M</span> <span class="o">*</span> <span class="n">M</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha_K</span> <span class="o">*</span> <span class="n">K</span>
+        <span class="k">return</span> <span class="n">C</span><span class="o">.</span><span class="n">tocsc</span><span class="p">()</span> <span class="k">if</span> <span class="n">sp</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="n">C</span><span class="p">)</span> <span class="k">else</span> <span class="n">C</span></div>
+
+
+<div class="viewcode-block" id="RayleighDamping.from_modes">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.damping.RayleighDamping.from_modes">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_modes</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span>
+        <span class="n">omega_1</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">zeta_1</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">omega_2</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">zeta_2</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;RayleighDamping&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Construct from two target frequency / damping-ratio pairs.</span>
+
+<span class="sd">        Solves the 2 x 2 system::</span>
+
+<span class="sd">            zeta_i = alpha_M / (2 omega_i)  +  alpha_K omega_i / 2</span>
+
+<span class="sd">        for ``i = 1, 2``. The resulting damping ratio at any other</span>
+<span class="sd">        frequency follows the Rayleigh curve, so modes between</span>
+<span class="sd">        ``omega_1`` and ``omega_2`` are damped *less* and modes outside</span>
+<span class="sd">        that range are damped *more*. The standard recipe in</span>
+<span class="sd">        commercial seismic analysis is to set ``omega_1, omega_2`` at</span>
+<span class="sd">        the first and a higher significant mode, and ``zeta_1 = zeta_2 = 0.05``</span>
+<span class="sd">        for 5 % structural damping.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        omega_1, omega_2 : float</span>
+<span class="sd">            Angular frequencies (rad/s). Must be positive and distinct.</span>
+<span class="sd">        zeta_1, zeta_2 : float</span>
+<span class="sd">            Damping ratios at the two frequencies.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">omega_1</span> <span class="o">&lt;=</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">omega_2</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;omegas must be positive&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">omega_1</span> <span class="o">==</span> <span class="n">omega_2</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;omegas must be distinct&quot;</span><span class="p">)</span>
+        <span class="c1"># Solve the 2x2 system:</span>
+        <span class="c1">#   [1/(2 w1)     w1/2 ] [aM]   [z1]</span>
+        <span class="c1">#   [1/(2 w2)     w2/2 ] [aK] = [z2]</span>
+        <span class="c1"># Cramer&#39;s rule:</span>
+        <span class="n">det</span> <span class="o">=</span> <span class="mf">0.25</span> <span class="o">*</span> <span class="p">(</span><span class="n">omega_2</span> <span class="o">-</span> <span class="n">omega_1</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">omega_2</span> <span class="o">+</span> <span class="n">omega_1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">omega_1</span> <span class="o">*</span> <span class="n">omega_2</span><span class="p">)</span>
+        <span class="c1"># Equivalent: det = (w2^2 - w1^2) / (4 w1 w2)</span>
+        <span class="n">alpha_M</span> <span class="o">=</span> <span class="p">(</span><span class="n">zeta_1</span> <span class="o">*</span> <span class="n">omega_2</span> <span class="o">/</span> <span class="mf">2.0</span> <span class="o">-</span> <span class="n">zeta_2</span> <span class="o">*</span> <span class="n">omega_1</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">)</span> <span class="o">/</span> <span class="n">det</span>
+        <span class="c1"># For alpha_K the cofactor uses the FIRST column of the 2x2</span>
+        <span class="c1"># system (the 1/(2 w_i) entries), so the omegas pair *opposite*</span>
+        <span class="c1"># to the alpha_M case:</span>
+        <span class="c1">#   alpha_K_num = z2/(2 w1) - z1/(2 w2)</span>
+        <span class="n">alpha_K</span> <span class="o">=</span> <span class="p">(</span><span class="n">zeta_2</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">omega_1</span><span class="p">)</span> <span class="o">-</span> <span class="n">zeta_1</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">omega_2</span><span class="p">))</span> <span class="o">/</span> <span class="n">det</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">alpha_M</span><span class="o">=</span><span class="n">alpha_M</span><span class="p">,</span> <span class="n">alpha_K</span><span class="o">=</span><span class="n">alpha_K</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="RayleighDamping.damping_ratio_at">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.damping.RayleighDamping.damping_ratio_at">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">damping_ratio_at</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">omega</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the Rayleigh damping ratio at angular frequency ``omega``.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha_M</span> <span class="o">/</span> <span class="n">omega</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha_K</span> <span class="o">*</span> <span class="n">omega</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

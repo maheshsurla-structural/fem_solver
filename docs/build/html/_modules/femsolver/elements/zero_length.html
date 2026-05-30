@@ -1,0 +1,334 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.elements.zero_length &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.elements.zero_length</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.elements.zero_length</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Zero-length connector element with per-DOF uniaxial materials.</span>
+
+<span class="sd">The ``ZeroLengthElement`` connects two (typically coincident) nodes</span>
+<span class="sd">with independent springs in any subset of DOFs. Each spring&#39;s</span>
+<span class="sd">force-displacement behaviour is supplied as a</span>
+<span class="sd">:class:`~femsolver.materials.uniaxial.UniaxialMaterial`, so the</span>
+<span class="sd">existing library of uniaxials (Elastic, Bilinear, Hysteretic,</span>
+<span class="sd">Menegotto-Pinto, Concrete, Gap, ...) all become connector building</span>
+<span class="sd">blocks.</span>
+
+<span class="sd">This is the workhorse element for:</span>
+
+<span class="sd">* Base isolators (lead-rubber, friction-pendulum)</span>
+<span class="sd">* Foundation uplift / pounding gaps</span>
+<span class="sd">* Discrete plastic hinges</span>
+<span class="sd">* Generic spring-dashpot connectors</span>
+<span class="sd">* Bonded / glued joints (with high-stiffness springs)</span>
+
+<span class="sd">Sign convention</span>
+<span class="sd">---------------</span>
+<span class="sd">Per DOF ``d``: the **strain** ``epsilon = u_j[d] - u_i[d]`` is the</span>
+<span class="sd">&quot;j minus i&quot; displacement difference, so positive ``epsilon`` is</span>
+<span class="sd">elongation. The material returns the stress (= force) ``sigma`` in</span>
+<span class="sd">that DOF:</span>
+
+<span class="sd">* ``f_int_i[d] = +sigma`` (force on i pulls *toward* j when sigma &gt; 0)</span>
+<span class="sd">* ``f_int_j[d] = -sigma`` (reaction on j)</span>
+
+<span class="sd">For a uniaxial elastic spring with stiffness ``K``: ``sigma = K * epsilon``</span>
+<span class="sd">gives the standard ``[[K, -K], [-K, K]]`` 2-DOF block.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mapping</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.elements.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">Element</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.materials.uniaxial.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">UniaxialMaterial</span>
+
+
+<div class="viewcode-block" id="ZeroLengthElement">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.zero_length.ZeroLengthElement">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ZeroLengthElement</span><span class="p">(</span><span class="n">Element</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;2-node connector with per-DOF uniaxial springs.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    tag : int</span>
+<span class="sd">    nodes : sequence of 2 node tags (i, j). Coincident coordinates are</span>
+<span class="sd">        typical but not required; the element does not rotate to any</span>
+<span class="sd">        local frame -- all directions are *global*.</span>
+<span class="sd">    material : Material, optional</span>
+<span class="sd">        Used only for the standard ``Element.material`` slot (e.g. mass</span>
+<span class="sd">        density if you want a non-zero element mass via the lumped-mass</span>
+<span class="sd">        path). May be ``None``. The connector&#39;s stiffness comes from</span>
+<span class="sd">        the ``materials`` argument.</span>
+<span class="sd">    materials : dict[int, UniaxialMaterial]</span>
+<span class="sd">        Map from global DOF index (0=ux, 1=uy, 2=uz, 3=rx, 4=ry, 5=rz)</span>
+<span class="sd">        to the uniaxial spring used in that DOF. DOFs not in the map</span>
+<span class="sd">        have zero stiffness (free).</span>
+<span class="sd">    dofs_per_node : int, default 6</span>
+<span class="sd">        Number of DOFs per node in the connector. Must be &gt;= max(DOF</span>
+<span class="sd">        index in ``materials``) + 1. The element will pull</span>
+<span class="sd">        ``dofs_per_node`` DOFs from each node when assembled, so the</span>
+<span class="sd">        value should match the model&#39;s ``ndf`` (2, 3, or 6).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">n_nodes</span> <span class="o">=</span> <span class="mi">2</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">tag</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">nodes</span><span class="p">,</span>
+        <span class="n">material</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">materials</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">UniaxialMaterial</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">dofs_per_node</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="c1"># Allow material=None (no global material). Use a stub if needed.</span>
+        <span class="c1"># We set dofs_per_node as an instance attribute before super().__init__</span>
+        <span class="c1"># so the base class can validate n_nodes correctly.</span>
+        <span class="k">if</span> <span class="n">materials</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">materials</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;ZeroLengthElement needs at least one (DOF -&gt; material) entry &quot;</span>
+                <span class="s2">&quot;in &#39;materials&#39;&quot;</span>
+            <span class="p">)</span>
+        <span class="n">max_dof</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">materials</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">max_dof</span> <span class="o">&gt;=</span> <span class="n">dofs_per_node</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;materials reference DOF </span><span class="si">{</span><span class="n">max_dof</span><span class="si">}</span><span class="s2"> but dofs_per_node=&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">dofs_per_node</span><span class="si">}</span><span class="s2">; pass a larger dofs_per_node&quot;</span>
+            <span class="p">)</span>
+        <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">materials</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">d</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;DOF index must be &gt;= 0, got </span><span class="si">{</span><span class="n">d</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="c1"># Use a None material slot is fine; base only stores it.</span>
+        <span class="c1"># However, Element&#39;s __init__ expects &#39;material&#39; positionally.</span>
+        <span class="c1"># We pass the user-supplied material (may be None).</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dofs_per_node</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">dofs_per_node</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="n">nodes</span><span class="p">,</span> <span class="n">material</span><span class="p">)</span>
+        <span class="c1"># Sorted DOF directions for deterministic iteration order.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">materials</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">UniaxialMaterial</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="nb">sorted</span><span class="p">((</span><span class="nb">int</span><span class="p">(</span><span class="n">k</span><span class="p">),</span> <span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">materials</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+        <span class="p">)</span>
+
+    <span class="c1"># ----------------------------------------------------- helpers</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_delta</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Per-DOF strain epsilon[d] = u_j[d] - u_i[d].&quot;&quot;&quot;</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gather_u</span><span class="p">()</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dofs_per_node</span>
+        <span class="k">return</span> <span class="n">u</span><span class="p">[</span><span class="n">n</span><span class="p">:</span><span class="mi">2</span> <span class="o">*</span> <span class="n">n</span><span class="p">]</span> <span class="o">-</span> <span class="n">u</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">n</span><span class="p">]</span>
+
+    <span class="c1"># ----------------------------------------------------- K_global</span>
+<div class="viewcode-block" id="ZeroLengthElement.K_global">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.zero_length.ZeroLengthElement.K_global">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">K_global</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initial (elastic) stiffness -- each material evaluated at</span>
+<span class="sd">        zero strain to extract its initial tangent.&quot;&quot;&quot;</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dofs_per_node</span>
+        <span class="n">K</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span> <span class="o">*</span> <span class="n">n</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">n</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">d</span><span class="p">,</span> <span class="n">mat</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">materials</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="c1"># Probe at eps = 0 then revert so initial state is unchanged.</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">Et</span> <span class="o">=</span> <span class="n">mat</span><span class="o">.</span><span class="n">get_response</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+            <span class="n">mat</span><span class="o">.</span><span class="n">revert_state</span><span class="p">()</span>
+            <span class="n">K</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">d</span><span class="p">]</span> <span class="o">+=</span> <span class="n">Et</span>
+            <span class="n">K</span><span class="p">[</span><span class="n">n</span> <span class="o">+</span> <span class="n">d</span><span class="p">,</span> <span class="n">n</span> <span class="o">+</span> <span class="n">d</span><span class="p">]</span> <span class="o">+=</span> <span class="n">Et</span>
+            <span class="n">K</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">n</span> <span class="o">+</span> <span class="n">d</span><span class="p">]</span> <span class="o">-=</span> <span class="n">Et</span>
+            <span class="n">K</span><span class="p">[</span><span class="n">n</span> <span class="o">+</span> <span class="n">d</span><span class="p">,</span> <span class="n">d</span><span class="p">]</span> <span class="o">-=</span> <span class="n">Et</span>
+        <span class="k">return</span> <span class="n">K</span></div>
+
+
+<div class="viewcode-block" id="ZeroLengthElement.K_tangent_global">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.zero_length.ZeroLengthElement.K_tangent_global">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">K_tangent_global</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Tangent stiffness at the current state.&quot;&quot;&quot;</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dofs_per_node</span>
+        <span class="n">eps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_delta</span><span class="p">()</span>
+        <span class="n">K</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span> <span class="o">*</span> <span class="n">n</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">n</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">d</span><span class="p">,</span> <span class="n">mat</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">materials</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">Et</span> <span class="o">=</span> <span class="n">mat</span><span class="o">.</span><span class="n">get_response</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">eps</span><span class="p">[</span><span class="n">d</span><span class="p">]))</span>
+            <span class="n">K</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">d</span><span class="p">]</span> <span class="o">+=</span> <span class="n">Et</span>
+            <span class="n">K</span><span class="p">[</span><span class="n">n</span> <span class="o">+</span> <span class="n">d</span><span class="p">,</span> <span class="n">n</span> <span class="o">+</span> <span class="n">d</span><span class="p">]</span> <span class="o">+=</span> <span class="n">Et</span>
+            <span class="n">K</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">n</span> <span class="o">+</span> <span class="n">d</span><span class="p">]</span> <span class="o">-=</span> <span class="n">Et</span>
+            <span class="n">K</span><span class="p">[</span><span class="n">n</span> <span class="o">+</span> <span class="n">d</span><span class="p">,</span> <span class="n">d</span><span class="p">]</span> <span class="o">-=</span> <span class="n">Et</span>
+        <span class="k">return</span> <span class="n">K</span></div>
+
+
+<div class="viewcode-block" id="ZeroLengthElement.f_int_global">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.zero_length.ZeroLengthElement.f_int_global">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">f_int_global</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Internal resisting force vector (size 2*ndf).</span>
+
+<span class="sd">        Sign convention matches ``K @ u`` of an equivalent</span>
+<span class="sd">        ``[[K, -K], [-K, K]]`` 1-D spring: for ``epsilon = u_j - u_i &gt; 0``,</span>
+<span class="sd">        ``f_int[i] = -sigma`` (force pulls i toward j) and</span>
+<span class="sd">        ``f_int[j] = +sigma`` (force pulls j toward i in the</span>
+<span class="sd">        resisting-force / external-load sense).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dofs_per_node</span>
+        <span class="n">eps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_delta</span><span class="p">()</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">n</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">d</span><span class="p">,</span> <span class="n">mat</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">materials</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">sigma</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">mat</span><span class="o">.</span><span class="n">get_response</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">eps</span><span class="p">[</span><span class="n">d</span><span class="p">]))</span>
+            <span class="n">f</span><span class="p">[</span><span class="n">d</span><span class="p">]</span> <span class="o">-=</span> <span class="n">sigma</span>           <span class="c1"># on node i</span>
+            <span class="n">f</span><span class="p">[</span><span class="n">n</span> <span class="o">+</span> <span class="n">d</span><span class="p">]</span> <span class="o">+=</span> <span class="n">sigma</span>       <span class="c1"># on node j</span>
+        <span class="k">return</span> <span class="n">f</span></div>
+
+
+    <span class="c1"># ----------------------------------------------------- mass</span>
+<div class="viewcode-block" id="ZeroLengthElement.M_global">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.zero_length.ZeroLengthElement.M_global">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">M_global</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lumped</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Zero-length elements carry no mass by default.&quot;&quot;&quot;</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dofs_per_node</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span> <span class="o">*</span> <span class="n">n</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">n</span><span class="p">))</span></div>
+
+
+    <span class="c1"># ----------------------------------------------------- state</span>
+<div class="viewcode-block" id="ZeroLengthElement.commit_state">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.zero_length.ZeroLengthElement.commit_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">commit_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Forward to materials. Materials&#39; trial states were updated by</span>
+        <span class="c1"># the most recent get_response call during residual / tangent</span>
+        <span class="c1"># evaluation, so committing now persists them.</span>
+        <span class="k">for</span> <span class="n">mat</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">materials</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">mat</span><span class="o">.</span><span class="n">commit_state</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="ZeroLengthElement.revert_state">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.zero_length.ZeroLengthElement.revert_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">revert_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">mat</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">materials</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">mat</span><span class="o">.</span><span class="n">revert_state</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="ZeroLengthElement.recover">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.zero_length.ZeroLengthElement.recover">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">recover</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Re-evaluate each material at the committed displacement so</span>
+<span class="sd">        the materials&#39; internal stress / strain attributes reflect the</span>
+<span class="sd">        current state.&quot;&quot;&quot;</span>
+        <span class="n">eps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_delta</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">d</span><span class="p">,</span> <span class="n">mat</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">materials</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">mat</span><span class="o">.</span><span class="n">get_response</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">eps</span><span class="p">[</span><span class="n">d</span><span class="p">]))</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

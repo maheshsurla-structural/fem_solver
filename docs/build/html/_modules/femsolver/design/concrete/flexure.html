@@ -1,0 +1,433 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.design.concrete.flexure &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.design.concrete.flexure</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.design.concrete.flexure</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Rectangular concrete beam flexural strength per ACI 318-19 Ch. 22.2.</span>
+
+<span class="sd">Implements the Whitney rectangular stress-block analysis:</span>
+
+<span class="sd">* Uniform concrete stress ``0.85 f_c&#39;`` over compression depth ``a = β_1 c``.</span>
+<span class="sd">* Tension steel assumed to yield (``f_s = f_y``); the algorithm checks</span>
+<span class="sd">  that ε_s ≥ ε_ty and warns if not.</span>
+<span class="sd">* Strain-compatibility gives tension-steel strain ``ε_t = ε_cu (d - c) / c``</span>
+<span class="sd">  used to set the φ factor per Table 21.2.2.</span>
+
+<span class="sd">Singly-reinforced</span>
+<span class="sd">-----------------</span>
+<span class="sd">Force equilibrium with ``A_s f_y = 0.85 f_c&#39; b a`` gives:</span>
+
+<span class="sd">    a = A_s f_y / (0.85 f_c&#39; b)</span>
+<span class="sd">    c = a / β_1</span>
+<span class="sd">    M_n = A_s f_y (d - a / 2)</span>
+
+<span class="sd">Doubly-reinforced</span>
+<span class="sd">-----------------</span>
+<span class="sd">With compression steel ``A_s&#39;`` at depth ``d&#39;``:</span>
+
+<span class="sd">1. **First** try assuming compression steel yields (``f_s&#39; = f_y``).</span>
+<span class="sd">   Then equilibrium gives:</span>
+
+<span class="sd">       a = (A_s - A_s&#39;) f_y / (0.85 f_c&#39; b),   c = a / β_1</span>
+<span class="sd">       M_n = (A_s - A_s&#39;) f_y (d - a/2) + A_s&#39; f_y (d - d&#39;)</span>
+
+<span class="sd">2. **Verify** that ``ε_s&#39; = ε_cu (c - d&#39;) / c ≥ ε_ty``. If not,</span>
+<span class="sd">   compression steel does **not** yield and we solve the quadratic</span>
+<span class="sd">   in ``c``:</span>
+
+<span class="sd">       0.85 f_c&#39; b β_1 c² + (A_s&#39; E_s ε_cu - A_s f_y) c</span>
+<span class="sd">                          - A_s&#39; E_s ε_cu d&#39; = 0</span>
+
+<span class="sd">   then recompute M_n with the actual ``f_s&#39; = E_s ε_cu (c - d&#39;) / c``.</span>
+
+<span class="sd">Sign conventions</span>
+<span class="sd">----------------</span>
+<span class="sd">* Positive ``M_n`` corresponds to tension at the bottom of the</span>
+<span class="sd">  section (sagging) -- the standard convention. The section is</span>
+<span class="sd">  treated as symmetric; for hogging (negative) moment, swap top and</span>
+<span class="sd">  bottom bars before calling.</span>
+<span class="sd">* Units: all inputs in SI (Pa, m). Result ``M_n`` in N·m.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.design.concrete.section</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">EPSILON_CU</span><span class="p">,</span>
+    <span class="n">E_STEEL</span><span class="p">,</span>
+    <span class="n">ConcreteSection</span><span class="p">,</span>
+    <span class="n">phi_for_strain</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<span class="c1"># ============================================================ result</span>
+
+<div class="viewcode-block" id="FlexuralCheck">
+<a class="viewcode-back" href="../../../../api/design.html#femsolver.design.concrete.flexure.FlexuralCheck">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">FlexuralCheck</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Result of a beam flexural-strength evaluation.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    M_n : float</span>
+<span class="sd">        Nominal moment capacity (N·m).</span>
+<span class="sd">    phi : float</span>
+<span class="sd">        Strength-reduction factor per ACI Table 21.2.2.</span>
+<span class="sd">    phi_M_n : float</span>
+<span class="sd">        Design moment capacity ``φ · M_n`` (N·m).</span>
+<span class="sd">    c : float</span>
+<span class="sd">        Neutral-axis depth from extreme compression fiber (m).</span>
+<span class="sd">    a : float</span>
+<span class="sd">        Whitney stress-block depth = ``β_1 · c`` (m).</span>
+<span class="sd">    epsilon_t : float</span>
+<span class="sd">        Extreme-tension-steel strain at nominal flexural strength.</span>
+<span class="sd">    section_type : str</span>
+<span class="sd">        ``&quot;tension-controlled&quot;`` (ε_t ≥ 0.005), ``&quot;transition&quot;``</span>
+<span class="sd">        (ε_ty &lt; ε_t &lt; 0.005), or ``&quot;compression-controlled&quot;``</span>
+<span class="sd">        (ε_t ≤ ε_ty).</span>
+<span class="sd">    compression_steel_yields : bool</span>
+<span class="sd">        For doubly-reinforced sections: whether the compression steel</span>
+<span class="sd">        has reached yield at nominal strength. False for singly-</span>
+<span class="sd">        reinforced sections (no compression steel) by convention.</span>
+<span class="sd">    tension_steel_yields : bool</span>
+<span class="sd">        Whether the tension steel has reached yield. Should be True</span>
+<span class="sd">        for any conventional design; False indicates a severely</span>
+<span class="sd">        over-reinforced section.</span>
+<span class="sd">    notes : str</span>
+<span class="sd">        Warnings about A_s_min or A_s_max violations, etc.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">M_n</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">phi</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">phi_M_n</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">c</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">a</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">epsilon_t</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">section_type</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">compression_steel_yields</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">tension_steel_yields</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">notes</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span></div>
+
+
+
+<span class="c1"># ============================================================ doubly-reinforced solver</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_solve_doubly_reinforced_c</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">d</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">d_prime</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">As</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">As_prime</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">fc_prime</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">fy</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">beta_1</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Solve the quadratic in ``c`` when compression steel doesn&#39;t yield.</span>
+
+<span class="sd">    From equilibrium:</span>
+<span class="sd">        0.85 f_c&#39; b β_1 c² + (A_s&#39; E_s ε_cu - A_s f_y) c</span>
+<span class="sd">                            - A_s&#39; E_s ε_cu d&#39; = 0</span>
+
+<span class="sd">    Returns the positive root.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">A_q</span> <span class="o">=</span> <span class="mf">0.85</span> <span class="o">*</span> <span class="n">fc_prime</span> <span class="o">*</span> <span class="n">b</span> <span class="o">*</span> <span class="n">beta_1</span>
+    <span class="n">B_q</span> <span class="o">=</span> <span class="n">As_prime</span> <span class="o">*</span> <span class="n">E_STEEL</span> <span class="o">*</span> <span class="n">EPSILON_CU</span> <span class="o">-</span> <span class="n">As</span> <span class="o">*</span> <span class="n">fy</span>
+    <span class="n">C_q</span> <span class="o">=</span> <span class="o">-</span><span class="n">As_prime</span> <span class="o">*</span> <span class="n">E_STEEL</span> <span class="o">*</span> <span class="n">EPSILON_CU</span> <span class="o">*</span> <span class="n">d_prime</span>
+    <span class="n">disc</span> <span class="o">=</span> <span class="n">B_q</span> <span class="o">*</span> <span class="n">B_q</span> <span class="o">-</span> <span class="mf">4.0</span> <span class="o">*</span> <span class="n">A_q</span> <span class="o">*</span> <span class="n">C_q</span>
+    <span class="k">if</span> <span class="n">disc</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;doubly-reinforced solve: negative discriminant &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;(A=</span><span class="si">{</span><span class="n">A_q</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">, B=</span><span class="si">{</span><span class="n">B_q</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">, C=</span><span class="si">{</span><span class="n">C_q</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">); the section may have &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;compatibility issues -- check inputs.&quot;</span>
+        <span class="p">)</span>
+    <span class="n">sd</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">disc</span><span class="p">)</span>
+    <span class="n">c1</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="n">B_q</span> <span class="o">+</span> <span class="n">sd</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">A_q</span><span class="p">)</span>
+    <span class="n">c2</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="n">B_q</span> <span class="o">-</span> <span class="n">sd</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">A_q</span><span class="p">)</span>
+    <span class="c1"># Choose the positive root (there&#39;s exactly one for physical sections)</span>
+    <span class="k">if</span> <span class="n">c1</span> <span class="o">&gt;</span> <span class="mf">0.0</span> <span class="ow">and</span> <span class="n">c2</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="c1"># Both positive: pick the one with the larger compression-steel</span>
+        <span class="c1"># strain (the more physically reasonable). For typical sections</span>
+        <span class="c1"># only one is positive.</span>
+        <span class="k">return</span> <span class="nb">min</span><span class="p">(</span><span class="n">c1</span><span class="p">,</span> <span class="n">c2</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">c1</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">c1</span>
+    <span class="k">if</span> <span class="n">c2</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">c2</span>
+    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+        <span class="s2">&quot;doubly-reinforced solve: no positive root for neutral-axis &quot;</span>
+        <span class="s2">&quot;depth -- the section may be severely over-reinforced.&quot;</span>
+    <span class="p">)</span>
+
+
+<span class="c1"># ============================================================ main entry</span>
+
+<div class="viewcode-block" id="beam_flexural_strength">
+<a class="viewcode-back" href="../../../../api/design.html#femsolver.design.concrete.flexure.beam_flexural_strength">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">beam_flexural_strength</span><span class="p">(</span><span class="n">section</span><span class="p">:</span> <span class="n">ConcreteSection</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FlexuralCheck</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute nominal and design flexural strength of a rectangular</span>
+<span class="sd">    concrete beam per ACI 318-19 Ch. 22.2.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    section : ConcreteSection</span>
+<span class="sd">        Rectangular section with rebar layout. Bottom bars are</span>
+<span class="sd">        treated as tension steel (sagging-moment case).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    FlexuralCheck</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    * For hogging moments, build the section with bars swapped (top</span>
+<span class="sd">      bars become &quot;tension&quot;) -- a higher-level wrapper can handle</span>
+<span class="sd">      both signs automatically.</span>
+<span class="sd">    * The compression-steel-yields check is checked exactly; if it</span>
+<span class="sd">      doesn&#39;t yield, the routine falls back to the quadratic solve</span>
+<span class="sd">      with the actual elastic compression-steel stress.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fc</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">fc_prime</span>
+    <span class="n">fy</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">fy</span>
+    <span class="n">beta_1</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">beta_1</span>
+    <span class="n">eps_ty</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">epsilon_ty</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">b</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">d</span>
+    <span class="n">d_prime</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">d_prime</span>
+    <span class="n">As</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">As_bottom</span>
+    <span class="n">As_prime</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">As_top</span>
+
+    <span class="c1"># Degenerate: no tension steel -&gt; no flexural capacity</span>
+    <span class="k">if</span> <span class="n">As</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">FlexuralCheck</span><span class="p">(</span>
+            <span class="n">M_n</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">phi</span><span class="o">=</span><span class="mf">0.90</span><span class="p">,</span> <span class="n">phi_M_n</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+            <span class="n">c</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">a</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">epsilon_t</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">),</span>
+            <span class="n">section_type</span><span class="o">=</span><span class="s2">&quot;no-tension-steel&quot;</span><span class="p">,</span>
+            <span class="n">compression_steel_yields</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">tension_steel_yields</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">notes</span><span class="o">=</span><span class="s2">&quot;no tension steel; flexural capacity = 0&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">As_prime</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="c1"># ---- Singly-reinforced ----</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">As</span> <span class="o">*</span> <span class="n">fy</span> <span class="o">/</span> <span class="p">(</span><span class="mf">0.85</span> <span class="o">*</span> <span class="n">fc</span> <span class="o">*</span> <span class="n">b</span><span class="p">)</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">a</span> <span class="o">/</span> <span class="n">beta_1</span>
+        <span class="n">M_n</span> <span class="o">=</span> <span class="n">As</span> <span class="o">*</span> <span class="n">fy</span> <span class="o">*</span> <span class="p">(</span><span class="n">d</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">a</span><span class="p">)</span>
+        <span class="n">compression_steel_yields</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># ---- Doubly-reinforced ----</span>
+        <span class="c1"># Assume compression steel yields, compute c, then verify.</span>
+        <span class="n">a_assumed</span> <span class="o">=</span> <span class="p">(</span><span class="n">As</span> <span class="o">-</span> <span class="n">As_prime</span><span class="p">)</span> <span class="o">*</span> <span class="n">fy</span> <span class="o">/</span> <span class="p">(</span><span class="mf">0.85</span> <span class="o">*</span> <span class="n">fc</span> <span class="o">*</span> <span class="n">b</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">a_assumed</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="c1"># As&#39; &gt;= As: rare case; section behaves like compression</span>
+            <span class="c1"># member -- not a flexural problem. Fall back to elastic c.</span>
+            <span class="n">c_assumed</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">c_assumed</span> <span class="o">=</span> <span class="n">a_assumed</span> <span class="o">/</span> <span class="n">beta_1</span>
+        <span class="k">if</span> <span class="n">c_assumed</span> <span class="o">&gt;</span> <span class="n">d_prime</span><span class="p">:</span>
+            <span class="c1"># Check compression-steel strain</span>
+            <span class="n">eps_s_prime</span> <span class="o">=</span> <span class="n">EPSILON_CU</span> <span class="o">*</span> <span class="p">(</span><span class="n">c_assumed</span> <span class="o">-</span> <span class="n">d_prime</span><span class="p">)</span> <span class="o">/</span> <span class="n">c_assumed</span>
+            <span class="k">if</span> <span class="n">eps_s_prime</span> <span class="o">&gt;=</span> <span class="n">eps_ty</span><span class="p">:</span>
+                <span class="c1"># Compression steel yields -- the assumption holds</span>
+                <span class="n">a</span> <span class="o">=</span> <span class="n">a_assumed</span>
+                <span class="n">c</span> <span class="o">=</span> <span class="n">c_assumed</span>
+                <span class="n">M_n</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="p">(</span><span class="n">As</span> <span class="o">-</span> <span class="n">As_prime</span><span class="p">)</span> <span class="o">*</span> <span class="n">fy</span> <span class="o">*</span> <span class="p">(</span><span class="n">d</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">a</span><span class="p">)</span>
+                    <span class="o">+</span> <span class="n">As_prime</span> <span class="o">*</span> <span class="n">fy</span> <span class="o">*</span> <span class="p">(</span><span class="n">d</span> <span class="o">-</span> <span class="n">d_prime</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="n">compression_steel_yields</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Compression steel doesn&#39;t yield -- solve quadratic</span>
+                <span class="n">c</span> <span class="o">=</span> <span class="n">_solve_doubly_reinforced_c</span><span class="p">(</span>
+                    <span class="n">b</span><span class="o">=</span><span class="n">b</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="n">d</span><span class="p">,</span> <span class="n">d_prime</span><span class="o">=</span><span class="n">d_prime</span><span class="p">,</span>
+                    <span class="n">As</span><span class="o">=</span><span class="n">As</span><span class="p">,</span> <span class="n">As_prime</span><span class="o">=</span><span class="n">As_prime</span><span class="p">,</span>
+                    <span class="n">fc_prime</span><span class="o">=</span><span class="n">fc</span><span class="p">,</span> <span class="n">fy</span><span class="o">=</span><span class="n">fy</span><span class="p">,</span> <span class="n">beta_1</span><span class="o">=</span><span class="n">beta_1</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">a</span> <span class="o">=</span> <span class="n">beta_1</span> <span class="o">*</span> <span class="n">c</span>
+                <span class="n">eps_s_prime</span> <span class="o">=</span> <span class="n">EPSILON_CU</span> <span class="o">*</span> <span class="p">(</span><span class="n">c</span> <span class="o">-</span> <span class="n">d_prime</span><span class="p">)</span> <span class="o">/</span> <span class="n">c</span>
+                <span class="n">f_s_prime</span> <span class="o">=</span> <span class="n">E_STEEL</span> <span class="o">*</span> <span class="n">eps_s_prime</span>
+                <span class="n">M_n</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="mf">0.85</span> <span class="o">*</span> <span class="n">fc</span> <span class="o">*</span> <span class="n">b</span> <span class="o">*</span> <span class="n">a</span> <span class="o">*</span> <span class="p">(</span><span class="n">d</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">a</span><span class="p">)</span>
+                    <span class="o">+</span> <span class="n">As_prime</span> <span class="o">*</span> <span class="n">f_s_prime</span> <span class="o">*</span> <span class="p">(</span><span class="n">d</span> <span class="o">-</span> <span class="n">d_prime</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="n">compression_steel_yields</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># c is so shallow that compression steel is actually in</span>
+            <span class="c1"># tension (below the neutral axis): treat as singly-</span>
+            <span class="c1"># reinforced with the top bars ignored (conservative).</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="n">As</span> <span class="o">*</span> <span class="n">fy</span> <span class="o">/</span> <span class="p">(</span><span class="mf">0.85</span> <span class="o">*</span> <span class="n">fc</span> <span class="o">*</span> <span class="n">b</span><span class="p">)</span>
+            <span class="n">c</span> <span class="o">=</span> <span class="n">a</span> <span class="o">/</span> <span class="n">beta_1</span>
+            <span class="n">M_n</span> <span class="o">=</span> <span class="n">As</span> <span class="o">*</span> <span class="n">fy</span> <span class="o">*</span> <span class="p">(</span><span class="n">d</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">a</span><span class="p">)</span>
+            <span class="n">compression_steel_yields</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="c1"># Tension-steel strain at ultimate, for phi</span>
+    <span class="k">if</span> <span class="n">c</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="n">eps_t</span> <span class="o">=</span> <span class="n">EPSILON_CU</span> <span class="o">*</span> <span class="p">(</span><span class="n">d</span> <span class="o">-</span> <span class="n">c</span><span class="p">)</span> <span class="o">/</span> <span class="n">c</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">eps_t</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
+    <span class="n">tension_steel_yields</span> <span class="o">=</span> <span class="p">(</span><span class="n">eps_t</span> <span class="o">&gt;=</span> <span class="n">eps_ty</span><span class="p">)</span>
+
+    <span class="n">phi</span> <span class="o">=</span> <span class="n">phi_for_strain</span><span class="p">(</span><span class="n">eps_t</span><span class="p">,</span> <span class="n">epsilon_ty</span><span class="o">=</span><span class="n">eps_ty</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">eps_t</span> <span class="o">&gt;=</span> <span class="mf">0.005</span><span class="p">:</span>
+        <span class="n">section_type</span> <span class="o">=</span> <span class="s2">&quot;tension-controlled&quot;</span>
+    <span class="k">elif</span> <span class="n">eps_t</span> <span class="o">&lt;=</span> <span class="n">eps_ty</span><span class="p">:</span>
+        <span class="n">section_type</span> <span class="o">=</span> <span class="s2">&quot;compression-controlled&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">section_type</span> <span class="o">=</span> <span class="s2">&quot;transition&quot;</span>
+
+    <span class="c1"># Validation warnings</span>
+    <span class="n">notes</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">As_min</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">As_min_flexure</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">As</span> <span class="o">&lt;</span> <span class="n">As_min</span><span class="p">:</span>
+        <span class="n">notes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;As (</span><span class="si">{</span><span class="n">As</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1e6</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> mm²) &lt; As_min (</span><span class="si">{</span><span class="n">As_min</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1e6</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> mm²) &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;per ACI 9.6.1.2&quot;</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">section_type</span> <span class="o">==</span> <span class="s2">&quot;transition&quot;</span><span class="p">:</span>
+        <span class="n">notes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;section is in transition zone (ε_t = </span><span class="si">{</span><span class="n">eps_t</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">); &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;consider adding compression steel or reducing tension steel&quot;</span>
+        <span class="p">)</span>
+    <span class="k">elif</span> <span class="n">section_type</span> <span class="o">==</span> <span class="s2">&quot;compression-controlled&quot;</span> <span class="ow">and</span> <span class="n">As_prime</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="n">notes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;section is over-reinforced (ε_t = </span><span class="si">{</span><span class="n">eps_t</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">); add &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;compression reinforcement or increase section depth&quot;</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">tension_steel_yields</span><span class="p">:</span>
+        <span class="n">notes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;tension steel has NOT yielded (ε_s = </span><span class="si">{</span><span class="n">eps_t</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> &lt; &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;ε_ty = </span><span class="si">{</span><span class="n">eps_ty</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">); the As·fy assumption is violated&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">FlexuralCheck</span><span class="p">(</span>
+        <span class="n">M_n</span><span class="o">=</span><span class="n">M_n</span><span class="p">,</span>
+        <span class="n">phi</span><span class="o">=</span><span class="n">phi</span><span class="p">,</span>
+        <span class="n">phi_M_n</span><span class="o">=</span><span class="n">phi</span> <span class="o">*</span> <span class="n">M_n</span><span class="p">,</span>
+        <span class="n">c</span><span class="o">=</span><span class="n">c</span><span class="p">,</span>
+        <span class="n">a</span><span class="o">=</span><span class="n">a</span><span class="p">,</span>
+        <span class="n">epsilon_t</span><span class="o">=</span><span class="n">eps_t</span><span class="p">,</span>
+        <span class="n">section_type</span><span class="o">=</span><span class="n">section_type</span><span class="p">,</span>
+        <span class="n">compression_steel_yields</span><span class="o">=</span><span class="n">compression_steel_yields</span><span class="p">,</span>
+        <span class="n">tension_steel_yields</span><span class="o">=</span><span class="n">tension_steel_yields</span><span class="p">,</span>
+        <span class="n">notes</span><span class="o">=</span><span class="s2">&quot;; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">notes</span><span class="p">),</span>
+    <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

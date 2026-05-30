@@ -1,0 +1,339 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.elements.plane &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.elements.plane</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.elements.plane</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;4-node quadrilateral plane element (Q4) with bilinear shape functions.&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.elements.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">Element</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.numerics.quadrature</span><span class="w"> </span><span class="kn">import</span> <span class="n">gauss_legendre_2d_quad</span>
+
+
+<div class="viewcode-block" id="Quad4">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.plane.Quad4">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Quad4</span><span class="p">(</span><span class="n">Element</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Bilinear isoparametric quadrilateral, plane stress or plane strain.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    tag : int</span>
+<span class="sd">    nodes : (4,) sequence of node tags, counter-clockwise.</span>
+<span class="sd">    material : Material</span>
+<span class="sd">    thickness : float</span>
+<span class="sd">        Out-of-plane thickness. Defaults to 1.0.</span>
+<span class="sd">    state : {&quot;plane_stress&quot;, &quot;plane_strain&quot;}, default &quot;plane_stress&quot;.</span>
+<span class="sd">    quadrature : int, default 2 (2x2 Gauss).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">n_nodes</span> <span class="o">=</span> <span class="mi">4</span>
+    <span class="n">dofs_per_node</span> <span class="o">=</span> <span class="mi">2</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">tag</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">nodes</span><span class="p">,</span>
+        <span class="n">material</span><span class="p">,</span>
+        <span class="n">thickness</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">state</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;plane_stress&quot;</span><span class="p">,</span>
+        <span class="n">quadrature</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="n">nodes</span><span class="p">,</span> <span class="n">material</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">thickness</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;thickness must be positive, got </span><span class="si">{</span><span class="n">thickness</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">state</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;plane_stress&quot;</span><span class="p">,</span> <span class="s2">&quot;plane_strain&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;state must be plane_stress or plane_strain, got </span><span class="si">{</span><span class="n">state</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">thickness</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">state</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">quadrature</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">quadrature</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gp_stress</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># populated by recover()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gp_strain</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_body_force</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Quad4.shape_functions">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.plane.Quad4.shape_functions">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">shape_functions</span><span class="p">(</span><span class="n">xi</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">eta</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;N (4,) at (xi, eta) on the bi-unit square.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="mf">0.25</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+            <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">xi</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">eta</span><span class="p">),</span>
+            <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">xi</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">eta</span><span class="p">),</span>
+            <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">xi</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">eta</span><span class="p">),</span>
+            <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">xi</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">eta</span><span class="p">),</span>
+        <span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="Quad4.dN_dxi">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.plane.Quad4.dN_dxi">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">dN_dxi</span><span class="p">(</span><span class="n">xi</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">eta</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;dN/d(xi,eta) as a (2, 4) matrix. Row 0 = dN/dxi, row 1 = dN/deta.&quot;&quot;&quot;</span>
+        <span class="n">dN</span> <span class="o">=</span> <span class="mf">0.25</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+            <span class="p">[</span><span class="o">-</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">eta</span><span class="p">),</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">eta</span><span class="p">),</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">eta</span><span class="p">),</span> <span class="o">-</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">eta</span><span class="p">)],</span>
+            <span class="p">[</span><span class="o">-</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">xi</span><span class="p">),</span> <span class="o">-</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">xi</span><span class="p">),</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">xi</span><span class="p">),</span>  <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">xi</span><span class="p">)],</span>
+        <span class="p">])</span>
+        <span class="k">return</span> <span class="n">dN</span></div>
+
+
+<div class="viewcode-block" id="Quad4.D">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.plane.Quad4.D">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">D</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="s2">&quot;plane_stress&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">D_plane_stress</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">D_plane_strain</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="Quad4.jacobian">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.plane.Quad4.jacobian">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">jacobian</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xi</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">eta</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return (J, detJ, dN_dx) where dN_dx is the (2, 4) physical-derivative matrix.&quot;&quot;&quot;</span>
+        <span class="n">dN</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dN_dxi</span><span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">eta</span><span class="p">)</span>  <span class="c1"># (2, 4)</span>
+        <span class="n">J</span> <span class="o">=</span> <span class="n">dN</span> <span class="o">@</span> <span class="n">X</span>  <span class="c1"># (2, 2)</span>
+        <span class="n">detJ</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">J</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">detJ</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Quad4 element </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">tag</span><span class="si">}</span><span class="s2">: non-positive Jacobian determinant &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">detJ</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">) at xi=</span><span class="si">{</span><span class="n">xi</span><span class="si">}</span><span class="s2">, eta=</span><span class="si">{</span><span class="n">eta</span><span class="si">}</span><span class="s2">. Check node ordering &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(must be counter-clockwise) and element shape.&quot;</span>
+            <span class="p">)</span>
+        <span class="n">Jinv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">J</span><span class="p">)</span>
+        <span class="n">dN_dx</span> <span class="o">=</span> <span class="n">Jinv</span> <span class="o">@</span> <span class="n">dN</span>  <span class="c1"># (2, 4)</span>
+        <span class="k">return</span> <span class="n">J</span><span class="p">,</span> <span class="n">detJ</span><span class="p">,</span> <span class="n">dN_dx</span></div>
+
+
+<div class="viewcode-block" id="Quad4.B_matrix">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.plane.Quad4.B_matrix">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">B_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dN_dx</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Strain-displacement matrix B (3, 8). Voigt order [exx, eyy, gxy].&quot;&quot;&quot;</span>
+        <span class="n">B</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+            <span class="n">dNx</span> <span class="o">=</span> <span class="n">dN_dx</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>
+            <span class="n">dNy</span> <span class="o">=</span> <span class="n">dN_dx</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>
+            <span class="n">B</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">dNx</span>
+            <span class="n">B</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">dNy</span>
+            <span class="n">B</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">dNy</span>
+            <span class="n">B</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">dNx</span>
+        <span class="k">return</span> <span class="n">B</span></div>
+
+
+<div class="viewcode-block" id="Quad4.K_global">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.plane.Quad4.K_global">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">K_global</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_coords</span><span class="p">()</span>  <span class="c1"># (4, 2)</span>
+        <span class="n">D</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">D</span><span class="p">()</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span>
+        <span class="n">K</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
+        <span class="n">xi</span><span class="p">,</span> <span class="n">eta</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">gauss_legendre_2d_quad</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">quadrature</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">xi</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">detJ</span><span class="p">,</span> <span class="n">dN_dx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">jacobian</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">xi</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">eta</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="n">X</span><span class="p">)</span>
+            <span class="n">B</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">B_matrix</span><span class="p">(</span><span class="n">dN_dx</span><span class="p">)</span>
+            <span class="n">K</span> <span class="o">+=</span> <span class="p">(</span><span class="n">B</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">D</span> <span class="o">@</span> <span class="n">B</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">t</span> <span class="o">*</span> <span class="n">detJ</span> <span class="o">*</span> <span class="n">w</span><span class="p">[</span><span class="n">q</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">K</span></div>
+
+
+<div class="viewcode-block" id="Quad4.M_global">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.plane.Quad4.M_global">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">M_global</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lumped</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">rho</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">rho</span>
+        <span class="k">if</span> <span class="n">rho</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_coords</span><span class="p">()</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span>
+        <span class="c1"># consistent: M = integral rho * Nbar^T Nbar t dA, where Nbar (2x8) maps</span>
+        <span class="c1"># nodal disp -&gt; point disp. Element area is invariant of state</span>
+        <span class="c1"># (plane stress vs plane strain) for the mass term.</span>
+        <span class="n">M</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
+        <span class="n">xi</span><span class="p">,</span> <span class="n">eta</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">gauss_legendre_2d_quad</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">quadrature</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">xi</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+            <span class="n">N</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape_functions</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">xi</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">eta</span><span class="p">[</span><span class="n">q</span><span class="p">]))</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">detJ</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">jacobian</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">xi</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">eta</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="n">X</span><span class="p">)</span>
+            <span class="n">jw</span> <span class="o">=</span> <span class="n">rho</span> <span class="o">*</span> <span class="n">t</span> <span class="o">*</span> <span class="n">detJ</span> <span class="o">*</span> <span class="n">w</span><span class="p">[</span><span class="n">q</span><span class="p">]</span>
+            <span class="n">Nbar</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+                <span class="n">Nbar</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="n">Nbar</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">M</span> <span class="o">+=</span> <span class="p">(</span><span class="n">Nbar</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">Nbar</span><span class="p">)</span> <span class="o">*</span> <span class="n">jw</span>
+        <span class="k">if</span> <span class="n">lumped</span><span class="p">:</span>
+            <span class="c1"># row-sum lumping (HRZ for bilinear quad reduces to equal split</span>
+            <span class="c1"># of the total mass across the four translational DOF pairs)</span>
+            <span class="n">row_sum</span> <span class="o">=</span> <span class="n">M</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">row_sum</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">M</span></div>
+
+
+    <span class="c1"># ---------------------------------------------------------------- loading</span>
+<div class="viewcode-block" id="Quad4.set_body_force">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.plane.Quad4.set_body_force">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_body_force</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bx</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">by</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Body force per unit volume (in global x, y).&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_body_force</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="nb">float</span><span class="p">(</span><span class="n">bx</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">by</span><span class="p">)])</span></div>
+
+
+<div class="viewcode-block" id="Quad4.clear_distributed_loads">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.plane.Quad4.clear_distributed_loads">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">clear_distributed_loads</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_body_force</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Quad4.f_eq_global">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.plane.Quad4.f_eq_global">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">f_eq_global</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_body_force</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_coords</span><span class="p">()</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span>
+        <span class="n">bx</span><span class="p">,</span> <span class="n">by</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_body_force</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span>
+        <span class="n">xi</span><span class="p">,</span> <span class="n">eta</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">gauss_legendre_2d_quad</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">quadrature</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">xi</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+            <span class="n">N</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape_functions</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">xi</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">eta</span><span class="p">[</span><span class="n">q</span><span class="p">]))</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">detJ</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">jacobian</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">xi</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">eta</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="n">X</span><span class="p">)</span>
+            <span class="n">jw</span> <span class="o">=</span> <span class="n">t</span> <span class="o">*</span> <span class="n">detJ</span> <span class="o">*</span> <span class="n">w</span><span class="p">[</span><span class="n">q</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+                <span class="n">f</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">bx</span> <span class="o">*</span> <span class="n">jw</span>
+                <span class="n">f</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">by</span> <span class="o">*</span> <span class="n">jw</span>
+        <span class="k">return</span> <span class="n">f</span></div>
+
+
+<div class="viewcode-block" id="Quad4.recover">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.plane.Quad4.recover">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">recover</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_coords</span><span class="p">()</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gather_u</span><span class="p">()</span>
+        <span class="n">D</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">D</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gp_stress</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gp_strain</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">xi</span><span class="p">,</span> <span class="n">eta</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">gauss_legendre_2d_quad</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">quadrature</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">xi</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">dN_dx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">jacobian</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">xi</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">eta</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="n">X</span><span class="p">)</span>
+            <span class="n">B</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">B_matrix</span><span class="p">(</span><span class="n">dN_dx</span><span class="p">)</span>
+            <span class="n">eps</span> <span class="o">=</span> <span class="n">B</span> <span class="o">@</span> <span class="n">u</span>
+            <span class="n">sig</span> <span class="o">=</span> <span class="n">D</span> <span class="o">@</span> <span class="n">eps</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">gp_strain</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">eps</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">gp_stress</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sig</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

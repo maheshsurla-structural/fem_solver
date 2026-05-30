@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset='utf-8'><title>Beam B-RB (interior, span 6.0 m) - ACI 318-19</title>
+<style>
+body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color: #222;
+    margin: 30px;
+    line-height: 1.45;
+}
+h1 { font-size: 22px; border-bottom: 2px solid #333; padding-bottom: 6px; }
+h2 { font-size: 16px; color: #336; margin-top: 24px; }
+h3 { font-size: 14px; color: #336; margin-bottom: 4px; }
+table { border-collapse: collapse; margin: 8px 0; }
+table.kv td { padding: 3px 12px; }
+table.kv td.sym { font-style: italic; font-family: 'Cambria Math', 'Times New Roman', serif; }
+table.checks { border: 1px solid #888; width: 100%; }
+table.checks th, table.checks td { padding: 4px 8px; border: 1px solid #aaa; }
+.pass { background: #d8f3d8; }
+.fail { background: #f7c8c8; }
+.stamp { font-weight: bold; }
+.header-box { background: #f0f0f6; padding: 12px; border-left: 4px solid #336; }
+.formula { font-family: 'Cambria Math', 'Times New Roman', serif; color: #114; padding-left: 12px; }
+.code-clause { color: #666; font-size: 11px; }
+</style>
+</head>
+<body>
+<div class='header-box'>
+<h1>Theme Y Demo Frame - Beam B-RB (interior, span 6.0 m)</h1>
+<table class='kv'>
+<tr><td>Code:</td><td>ACI 318-19</td></tr>
+<tr><td>Designer:</td><td>femsolver</td></tr>
+<tr><td>Date:</td><td>2026-05-30</td></tr>
+</table>
+<p class='stamp pass'>ALL CHECKS PASS</p>
+</div>
+<h2>Flexure check (positive moment)</h2>
+<p>Mid-span positive moment check for the interior roof beam under factored gravity loading.</p>
+<h3>Inputs</h3><table class='kv'>
+<tr><td class='sym'>f_c&#x27;</td><td>=</td><td>3.0000e+07 Pa</td><td>Concrete compressive strength</td></tr>
+<tr><td class='sym'>f_y</td><td>=</td><td>4.2000e+08 Pa</td><td>Rebar yield strength</td></tr>
+<tr><td class='sym'>b</td><td>=</td><td>0.3 m</td><td>Beam width</td></tr>
+<tr><td class='sym'>d</td><td>=</td><td>0.45 m</td><td>Effective depth</td></tr>
+<tr><td class='sym'>rho</td><td>=</td><td>0.012</td><td>Tension steel ratio</td></tr>
+<tr><td class='sym'>w_u</td><td>=</td><td>3e+04 N/m</td><td>Factored line load</td></tr>
+<tr><td class='sym'>L</td><td>=</td><td>6 m</td><td>Span</td></tr>
+</table>
+<h3>Calculations</h3><table class='kv'>
+<tr><td class='sym'>A_s</td><td>=</td><td>0.00162 m^2</td><td>Tension steel area</td></tr>
+<tr><td colspan='4' class='formula'>A_s = rho * b * d</td></tr>
+<tr><td class='sym'>a</td><td>=</td><td>0.08894 m</td><td>Equivalent stress-block depth</td></tr>
+<tr><td colspan='4' class='formula'>a = A_s * f_y / (0.85 * f_c&#x27; * b)</td></tr>
+<tr><td class='sym'>phi*M_n</td><td>=</td><td>2.4833e+05 N.m</td><td>Design moment capacity</td></tr>
+<tr><td colspan='4' class='formula'>phi * A_s * f_y * (d - a/2)</td></tr>
+<tr><td class='sym'>M_u</td><td>=</td><td>1.3500e+05 N.m</td><td>Factored midspan moment</td></tr>
+<tr><td colspan='4' class='formula'>w_u * L^2 / 8</td></tr>
+</table>
+<h3>Checks</h3><table class='checks'><tr><th>Check</th><th>Demand</th><th>Capacity</th><th>DCR</th><th>Status</th><th>Clause</th></tr>
+<tr class='pass'><td>Flexure (positive moment)</td><td>1.3500e+05 N.m</td><td>2.4833e+05 N.m</td><td>0.544</td><td class='stamp'>PASS</td><td class='code-clause'>ACI 318-19 22.2.2</td></tr>
+</table>
+</body></html>

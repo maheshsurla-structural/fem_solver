@@ -1,0 +1,462 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.analysis.record_scaling &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.analysis.record_scaling</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.analysis.record_scaling</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;ASCE 7-22 §16.2.4.1 amplitude scaling of ground-motion records.</span>
+
+<span class="sd">For nonlinear response-history analysis the standard workflow is:</span>
+
+<span class="sd">1. **Compute** the 5%-damped pseudo-acceleration response spectrum</span>
+<span class="sd">   ``Sa(T)`` of each candidate record by integrating an SDOF</span>
+<span class="sd">   oscillator under the recorded acceleration history at a series</span>
+<span class="sd">   of periods (the response-spectrum computation).</span>
+<span class="sd">2. **Scale** each record by a single scalar factor so that the</span>
+<span class="sd">   geometric mean of its spectrum over the period range</span>
+<span class="sd">   ``[0.2 T_1, 2.0 T_1]`` matches the target design spectrum&#39;s</span>
+<span class="sd">   geometric mean over the same range. (ASCE 7-22 Method A.)</span>
+<span class="sd">3. **Verify** that the average of the scaled-suite spectra does not</span>
+<span class="sd">   fall below 90 percent of the target spectrum at any period in</span>
+<span class="sd">   the range -- the ASCE 7-22 §16.2.4.1 acceptance test.</span>
+
+<span class="sd">This module provides the three pieces and a top-level</span>
+<span class="sd">:func:`scale_record_suite` that runs the full workflow on a list of</span>
+<span class="sd">records and returns the per-record scale factors plus an aggregated</span>
+<span class="sd">suite-acceptance report.</span>
+
+<span class="sd">References</span>
+<span class="sd">----------</span>
+<span class="sd">* ASCE 7-22 §16.2.4 &quot;Ground Motion Modification&quot;.</span>
+<span class="sd">* Chopra, *Dynamics of Structures*, 5e §6.5, &quot;Response Spectrum</span>
+<span class="sd">  Concept&quot; -- the Newmark constant-average-acceleration algorithm</span>
+<span class="sd">  used here for SDOF integration.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+
+<span class="c1"># ============================================================ SDOF spectrum</span>
+
+<div class="viewcode-block" id="compute_sdof_response_spectrum">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.record_scaling.compute_sdof_response_spectrum">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_sdof_response_spectrum</span><span class="p">(</span>
+    <span class="n">accel</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">periods</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">zeta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute the 5%-damped pseudo-acceleration response spectrum</span>
+<span class="sd">    of a ground-acceleration time series.</span>
+
+<span class="sd">    For each period ``T`` in ``periods``, integrates the SDOF</span>
+<span class="sd">    response::</span>
+
+<span class="sd">        u_ddot + 2 zeta omega u_dot + omega^2 u = -a_g(t)</span>
+
+<span class="sd">    with Newmark-beta (constant-average-acceleration: gamma = 1/2,</span>
+<span class="sd">    beta = 1/4 -- unconditionally stable) and returns the peak</span>
+<span class="sd">    pseudo-acceleration ``Sa = omega^2 * max|u|`` at each period.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    accel : array</span>
+<span class="sd">        Ground acceleration samples ``a_g[i]`` at equal spacing ``dt``.</span>
+<span class="sd">    dt : float</span>
+<span class="sd">        Sample interval (s).</span>
+<span class="sd">    periods : array</span>
+<span class="sd">        Periods (s) at which to compute the spectrum. Must be all &gt; 0.</span>
+<span class="sd">    zeta : float, default 0.05</span>
+<span class="sd">        Damping ratio (0..1, fraction of critical).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Sa : np.ndarray</span>
+<span class="sd">        Peak pseudo-acceleration at each ``periods[i]``, same units</span>
+<span class="sd">        as ``accel``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">accel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">accel</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="n">periods</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">periods</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">accel</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;need at least 2 acceleration samples&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">dt</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;dt must be positive, got </span><span class="si">{</span><span class="n">dt</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">periods</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;periods must all be positive&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">zeta</span> <span class="o">&lt;</span> <span class="mf">1.0</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;zeta must be in [0, 1), got </span><span class="si">{</span><span class="n">zeta</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">n_steps</span> <span class="o">=</span> <span class="n">accel</span><span class="o">.</span><span class="n">size</span>
+    <span class="n">omega</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="n">periods</span>                  <span class="c1"># (n_T,)</span>
+    <span class="n">n_T</span> <span class="o">=</span> <span class="n">periods</span><span class="o">.</span><span class="n">size</span>
+
+    <span class="c1"># State vectors, one per period (vectorised).</span>
+    <span class="n">u</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_T</span><span class="p">)</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_T</span><span class="p">)</span>
+    <span class="c1"># Initial acceleration: with u = v = 0, u_ddot_0 = -a_g[0].</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="o">-</span><span class="n">accel</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n_T</span><span class="p">)</span>
+    <span class="n">Sa</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_T</span><span class="p">)</span>
+
+    <span class="c1"># Effective stiffness for Newmark constant-avg-accel:</span>
+    <span class="c1">#   ü_next · (1 + ζ ω Δt + ω² Δt²/4) = -a_g_next - 2 ζ ω v_pred - ω² u_pred</span>
+    <span class="n">coef</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">+</span> <span class="n">zeta</span> <span class="o">*</span> <span class="n">omega</span> <span class="o">*</span> <span class="n">dt</span> <span class="o">+</span> <span class="mf">0.25</span> <span class="o">*</span> <span class="n">omega</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">dt</span> <span class="o">**</span> <span class="mi">2</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_steps</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">a_next</span> <span class="o">=</span> <span class="n">accel</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="n">u_pred</span> <span class="o">=</span> <span class="n">u</span> <span class="o">+</span> <span class="n">dt</span> <span class="o">*</span> <span class="n">v</span> <span class="o">+</span> <span class="mf">0.25</span> <span class="o">*</span> <span class="n">dt</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">a</span>
+        <span class="n">v_pred</span> <span class="o">=</span> <span class="n">v</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">dt</span> <span class="o">*</span> <span class="n">a</span>
+        <span class="n">a_new</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="n">a_next</span> <span class="o">-</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">zeta</span> <span class="o">*</span> <span class="n">omega</span> <span class="o">*</span> <span class="n">v_pred</span>
+                 <span class="o">-</span> <span class="n">omega</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">u_pred</span><span class="p">)</span> <span class="o">/</span> <span class="n">coef</span>
+        <span class="n">u_new</span> <span class="o">=</span> <span class="n">u_pred</span> <span class="o">+</span> <span class="mf">0.25</span> <span class="o">*</span> <span class="n">dt</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">a_new</span>
+        <span class="n">v_new</span> <span class="o">=</span> <span class="n">v_pred</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">dt</span> <span class="o">*</span> <span class="n">a_new</span>
+        <span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">a</span> <span class="o">=</span> <span class="n">u_new</span><span class="p">,</span> <span class="n">v_new</span><span class="p">,</span> <span class="n">a_new</span>
+        <span class="n">Sa</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">Sa</span><span class="p">,</span> <span class="n">omega</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">u</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">Sa</span></div>
+
+
+
+<div class="viewcode-block" id="record_response_spectrum">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.record_scaling.record_response_spectrum">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">record_response_spectrum</span><span class="p">(</span>
+    <span class="n">accel_function</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">t_end</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">periods</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">zeta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convenience wrapper that samples ``accel_function`` then runs</span>
+<span class="sd">    :func:`compute_sdof_response_spectrum`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    accel_function : callable</span>
+<span class="sd">        ``a_g(t) -&gt; float``.</span>
+<span class="sd">    t_end : float</span>
+<span class="sd">        Total record duration (s).</span>
+<span class="sd">    dt : float</span>
+<span class="sd">        Sample interval (s).</span>
+<span class="sd">    periods : array</span>
+<span class="sd">    zeta : float</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">t_end</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">dt</span><span class="p">,</span> <span class="n">dt</span><span class="p">)</span>
+    <span class="n">accel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">accel_function</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">times</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">compute_sdof_response_spectrum</span><span class="p">(</span><span class="n">accel</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">periods</span><span class="p">,</span> <span class="n">zeta</span><span class="o">=</span><span class="n">zeta</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># ============================================================ scaling helpers</span>
+
+<div class="viewcode-block" id="amplitude_scale_factor">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.record_scaling.amplitude_scale_factor">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">amplitude_scale_factor</span><span class="p">(</span>
+    <span class="n">record_Sa</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">target_Sa</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">weights</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Scale factor that matches the geometric mean of ``record_Sa``</span>
+<span class="sd">    to that of ``target_Sa`` (ASCE 7-22 Method A).</span>
+
+<span class="sd">    The scale factor is::</span>
+
+<span class="sd">        SF = exp(  mean( w_i · ln(target_Sa_i / record_Sa_i) )  /</span>
+<span class="sd">                   mean( w_i )  )</span>
+
+<span class="sd">    For equal weights this reduces to the ratio of geometric means.</span>
+<span class="sd">    The same SF applied multiplicatively to the time-history will</span>
+<span class="sd">    bring the spectrum to a least-squares match in log space over</span>
+<span class="sd">    the period range.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    record_Sa, target_Sa : array</span>
+<span class="sd">        Spectra at the same periods. Must be same shape and &gt; 0.</span>
+<span class="sd">    weights : array, optional</span>
+<span class="sd">        Per-period weights (defaults to uniform).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    SF : float</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">rec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">record_Sa</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="n">tar</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">target_Sa</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">rec</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">tar</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;record_Sa and target_Sa must have same shape&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">rec</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;spectra must be non-empty&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">rec</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">)</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">tar</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;spectra must be strictly positive&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">weights</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">ln_ratio_mean</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">tar</span> <span class="o">/</span> <span class="n">rec</span><span class="p">)))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">weights</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">w</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">rec</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;weights must have same shape as spectra&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;weights must sum to &gt; 0&quot;</span><span class="p">)</span>
+        <span class="n">ln_ratio_mean</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">w</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">tar</span> <span class="o">/</span> <span class="n">rec</span><span class="p">))</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">w</span><span class="p">))</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">ln_ratio_mean</span><span class="p">))</span></div>
+
+
+
+<span class="c1"># ============================================================ suite check</span>
+
+<div class="viewcode-block" id="SuiteScalingResult">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.record_scaling.SuiteScalingResult">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">SuiteScalingResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Result of scaling an entire suite to a target spectrum.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    scale_factors : np.ndarray</span>
+<span class="sd">        Per-record scale factor (same order as input records).</span>
+<span class="sd">    periods_check : np.ndarray</span>
+<span class="sd">        Periods at which the suite-average check was evaluated.</span>
+<span class="sd">    suite_average_Sa : np.ndarray</span>
+<span class="sd">        Average of the scaled-suite spectra at each ``periods_check``.</span>
+<span class="sd">    target_Sa : np.ndarray</span>
+<span class="sd">        Target spectrum at each ``periods_check``.</span>
+<span class="sd">    min_ratio : float</span>
+<span class="sd">        Smallest value of ``suite_average_Sa / target_Sa`` over the</span>
+<span class="sd">        period range.</span>
+<span class="sd">    passes_90pct : bool</span>
+<span class="sd">        True iff ``min_ratio &gt;= 0.90`` -- the ASCE 7-22 §16.2.4.1</span>
+<span class="sd">        acceptance criterion.</span>
+<span class="sd">    n_records : int</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">scale_factors</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+    <span class="n">periods_check</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+    <span class="n">suite_average_Sa</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+    <span class="n">target_Sa</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+    <span class="n">min_ratio</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">passes_90pct</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">n_records</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span></div>
+
+
+
+<div class="viewcode-block" id="scale_record_suite">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.record_scaling.scale_record_suite">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">scale_record_suite</span><span class="p">(</span>
+    <span class="n">record_spectra</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+    <span class="n">target_Sa_at_periods</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">period_range_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SuiteScalingResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply ASCE 7-22 amplitude scaling to a suite of records.</span>
+
+<span class="sd">    Each record&#39;s scale factor is chosen by :func:`amplitude_scale_factor`</span>
+<span class="sd">    matching its spectrum&#39;s geometric-mean to the target over the</span>
+<span class="sd">    selected period range (``period_range_mask``). After scaling,</span>
+<span class="sd">    the suite-average spectrum is computed and compared to the target</span>
+<span class="sd">    -- the suite passes acceptance if the smallest ratio is at least</span>
+<span class="sd">    0.90 at every period in the range.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    record_spectra : list of arrays</span>
+<span class="sd">        One per record. Each is ``Sa`` sampled at the SAME periods</span>
+<span class="sd">        as ``target_Sa_at_periods``.</span>
+<span class="sd">    target_Sa_at_periods : array</span>
+<span class="sd">        Target ``Sa(T)`` at the analysis periods.</span>
+<span class="sd">    period_range_mask : boolean array, optional</span>
+<span class="sd">        Mask selecting the period band over which scaling and the</span>
+<span class="sd">        suite-average check are evaluated. If omitted, all periods</span>
+<span class="sd">        are used.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    SuiteScalingResult</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">target</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">target_Sa_at_periods</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">target</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;target spectrum must be non-empty&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">record_spectra</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;need at least one record&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">period_range_mask</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">period_range_mask</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">mask</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">target</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;period_range_mask must match target spectrum shape&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">mask</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;period_range_mask selects no periods&quot;</span><span class="p">)</span>
+
+    <span class="n">target_in</span> <span class="o">=</span> <span class="n">target</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+    <span class="n">scale_factors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">record_spectra</span><span class="p">))</span>
+    <span class="n">scaled_spectra</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">record_spectra</span><span class="p">),</span> <span class="n">target</span><span class="o">.</span><span class="n">size</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">rec</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">record_spectra</span><span class="p">):</span>
+        <span class="n">rec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">rec</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">rec</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">target</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;record </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> spectrum shape </span><span class="si">{</span><span class="n">rec</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> != target shape &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">target</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="n">scale_factors</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">amplitude_scale_factor</span><span class="p">(</span><span class="n">rec</span><span class="p">[</span><span class="n">mask</span><span class="p">],</span> <span class="n">target_in</span><span class="p">)</span>
+        <span class="n">scaled_spectra</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">scale_factors</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">rec</span>
+
+    <span class="n">suite_avg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">scaled_spectra</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">ratio</span> <span class="o">=</span> <span class="n">suite_avg</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">/</span> <span class="n">target_in</span>
+    <span class="n">min_ratio</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">ratio</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">SuiteScalingResult</span><span class="p">(</span>
+        <span class="n">scale_factors</span><span class="o">=</span><span class="n">scale_factors</span><span class="p">,</span>
+        <span class="n">periods_check</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">mask</span><span class="p">),</span>
+        <span class="n">suite_average_Sa</span><span class="o">=</span><span class="n">suite_avg</span><span class="p">,</span>
+        <span class="n">target_Sa</span><span class="o">=</span><span class="n">target</span><span class="p">,</span>
+        <span class="n">min_ratio</span><span class="o">=</span><span class="n">min_ratio</span><span class="p">,</span>
+        <span class="n">passes_90pct</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">min_ratio</span> <span class="o">&gt;=</span> <span class="mf">0.90</span><span class="p">),</span>
+        <span class="n">n_records</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">record_spectra</span><span class="p">),</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="period_range_mask">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.record_scaling.period_range_mask">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">period_range_mask</span><span class="p">(</span>
+    <span class="n">periods</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">T1</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">low_mult</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">,</span> <span class="n">high_mult</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Boolean mask selecting periods in ``[low_mult·T1, high_mult·T1]``.</span>
+
+<span class="sd">    The default ``0.2 T_1`` to ``2.0 T_1`` reflects ASCE 7-22</span>
+<span class="sd">    §16.2.4.1 for nonlinear response-history analysis.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">periods</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">periods</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">T1</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;T1 must be positive&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">low_mult</span> <span class="o">&lt;=</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">high_mult</span> <span class="o">&lt;=</span> <span class="n">low_mult</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;require 0 &lt; low_mult &lt; high_mult&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">periods</span> <span class="o">&gt;=</span> <span class="n">low_mult</span> <span class="o">*</span> <span class="n">T1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">periods</span> <span class="o">&lt;=</span> <span class="n">high_mult</span> <span class="o">*</span> <span class="n">T1</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

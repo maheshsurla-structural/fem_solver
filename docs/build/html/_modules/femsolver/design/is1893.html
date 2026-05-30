@@ -1,0 +1,457 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.design.is1893 &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.design.is1893</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.design.is1893</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;IS 1893 (Part 1) — Criteria for Earthquake-Resistant Design of</span>
+<span class="sd">Structures (2016 / 2002).</span>
+
+<span class="sd">This module implements the equivalent-static-force procedure (Cl. 7):</span>
+
+<span class="sd">* **Design spectrum** ``S_a/g(T)`` for 5%-damped response, with the</span>
+<span class="sd">  three IS soil types I (rock/hard), II (medium), and III (soft).</span>
+<span class="sd">* **Design horizontal acceleration coefficient**</span>
+<span class="sd">  ``A_h = (Z/2)·(I/R)·(S_a/g)`` (Cl. 6.4.2).</span>
+<span class="sd">* **Base shear** ``V_B = A_h W`` (Cl. 7.5.3).</span>
+<span class="sd">* **Vertical distribution of base shear** Q_i (Cl. 7.6.3) over storeys.</span>
+<span class="sd">* **Empirical period formulas** (Cl. 7.6.2): 0.075 h^0.75 for RC MRF,</span>
+<span class="sd">  0.085 h^0.75 for steel MRF, 0.09 h/sqrt(d) for braced/infill.</span>
+<span class="sd">* **Drift check** (Cl. 7.11.1): allowable storey-drift ratio 0.004.</span>
+
+<span class="sd">References</span>
+<span class="sd">----------</span>
+<span class="sd">* IS 1893 (Part 1):2016. *Criteria for Earthquake-Resistant Design --</span>
+<span class="sd">  Part 1: General Provisions and Buildings*. BIS.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+
+<span class="c1"># ============================================================ tables</span>
+
+<span class="c1"># Table 2: Zone Factor</span>
+<span class="n">_Z_TABLE</span> <span class="o">=</span> <span class="p">{</span><span class="mi">2</span><span class="p">:</span> <span class="mf">0.10</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span> <span class="mf">0.16</span><span class="p">,</span> <span class="mi">4</span><span class="p">:</span> <span class="mf">0.24</span><span class="p">,</span> <span class="mi">5</span><span class="p">:</span> <span class="mf">0.36</span><span class="p">}</span>
+
+<span class="c1"># Table 8: Importance Factors</span>
+<span class="n">IMPORTANCE_DEFAULT</span> <span class="o">=</span> <span class="mf">1.0</span>
+<span class="n">IMPORTANCE_CRITICAL</span> <span class="o">=</span> <span class="mf">1.5</span>
+
+<span class="c1"># Response reduction R (Table 9, common cases)</span>
+<span class="n">R_VALUES</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;RC_OMRF&quot;</span><span class="p">:</span>            <span class="mf">3.0</span><span class="p">,</span>
+    <span class="s2">&quot;RC_SMRF&quot;</span><span class="p">:</span>            <span class="mf">5.0</span><span class="p">,</span>
+    <span class="s2">&quot;RC_DUCTILE_SHEAR&quot;</span><span class="p">:</span>   <span class="mf">4.0</span><span class="p">,</span>
+    <span class="s2">&quot;STEEL_BRACED&quot;</span><span class="p">:</span>       <span class="mf">4.0</span><span class="p">,</span>
+    <span class="s2">&quot;STEEL_SMRF&quot;</span><span class="p">:</span>         <span class="mf">5.0</span><span class="p">,</span>
+    <span class="s2">&quot;STEEL_CBF&quot;</span><span class="p">:</span>          <span class="mf">4.0</span><span class="p">,</span>
+    <span class="s2">&quot;STEEL_EBF&quot;</span><span class="p">:</span>          <span class="mf">5.0</span><span class="p">,</span>
+    <span class="s2">&quot;MASONRY&quot;</span><span class="p">:</span>            <span class="mf">3.0</span><span class="p">,</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="zone_factor">
+<a class="viewcode-back" href="../../../api/design.html#femsolver.design.is1893.zone_factor">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">zone_factor</span><span class="p">(</span><span class="n">zone</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Z from Table 2: zones II..V.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">zone</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_Z_TABLE</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;zone must be one of </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">_Z_TABLE</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">, got </span><span class="si">{</span><span class="n">zone</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">_Z_TABLE</span><span class="p">[</span><span class="n">zone</span><span class="p">]</span></div>
+
+
+
+<span class="c1"># ============================================================ design spectrum</span>
+
+<div class="viewcode-block" id="design_spectrum_Sa_g">
+<a class="viewcode-back" href="../../../api/design.html#femsolver.design.is1893.design_spectrum_Sa_g">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">design_spectrum_Sa_g</span><span class="p">(</span><span class="n">T</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">soil_type</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;5%-damped design pseudo-spectral acceleration S_a/g for IS 1893.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    T : float</span>
+<span class="sd">        Natural period (s).</span>
+<span class="sd">    soil_type : int</span>
+<span class="sd">        1 = Rocky / Hard, 2 = Medium, 3 = Soft.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Sa_g : float</span>
+<span class="sd">        Spectral acceleration divided by g (dimensionless).</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Type I:  T &lt; 0.10:  1 + 15T;  0.10..0.40: 2.50;  T &gt; 0.40: 1.00/T</span>
+<span class="sd">    Type II: T &lt; 0.10:  1 + 15T;  0.10..0.55: 2.50;  T &gt; 0.55: 1.36/T</span>
+<span class="sd">    Type III:T &lt; 0.10:  1 + 15T;  0.10..0.67: 2.50;  T &gt; 0.67: 1.67/T</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">T</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;T must be &gt;= 0, got </span><span class="si">{</span><span class="n">T</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">soil_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;soil_type must be 1/2/3, got </span><span class="si">{</span><span class="n">soil_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">T</span> <span class="o">&lt;</span> <span class="mf">0.10</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mf">1.0</span> <span class="o">+</span> <span class="mf">15.0</span> <span class="o">*</span> <span class="n">T</span>
+    <span class="c1"># Plateau and decay corners</span>
+    <span class="k">if</span> <span class="n">soil_type</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">T_corner</span><span class="p">,</span> <span class="n">coef</span> <span class="o">=</span> <span class="mf">0.40</span><span class="p">,</span> <span class="mf">1.00</span>
+    <span class="k">elif</span> <span class="n">soil_type</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">T_corner</span><span class="p">,</span> <span class="n">coef</span> <span class="o">=</span> <span class="mf">0.55</span><span class="p">,</span> <span class="mf">1.36</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">T_corner</span><span class="p">,</span> <span class="n">coef</span> <span class="o">=</span> <span class="mf">0.67</span><span class="p">,</span> <span class="mf">1.67</span>
+    <span class="k">if</span> <span class="n">T</span> <span class="o">&lt;=</span> <span class="n">T_corner</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mf">2.50</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">coef</span> <span class="o">/</span> <span class="n">T</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="Ah_coefficient">
+<a class="viewcode-back" href="../../../api/design.html#femsolver.design.is1893.Ah_coefficient">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">Ah_coefficient</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">T</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">zone</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">importance</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">R</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">soil_type</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Design horizontal acceleration coefficient ``A_h``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict</span>
+<span class="sd">        ``{&quot;A_h&quot;: ..., &quot;Z&quot;: ..., &quot;I&quot;: ..., &quot;R&quot;: ..., &quot;Sa_g&quot;: ...,</span>
+<span class="sd">        &quot;T&quot;: ..., &quot;soil_type&quot;: ...}``</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">importance</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;importance I must be &gt; 0&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">R</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;R must be &gt; 0&quot;</span><span class="p">)</span>
+    <span class="n">Z</span> <span class="o">=</span> <span class="n">zone_factor</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+    <span class="n">Sa_g</span> <span class="o">=</span> <span class="n">design_spectrum_Sa_g</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">soil_type</span><span class="o">=</span><span class="n">soil_type</span><span class="p">)</span>
+    <span class="n">A_h</span> <span class="o">=</span> <span class="p">(</span><span class="n">Z</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">importance</span> <span class="o">/</span> <span class="n">R</span><span class="p">)</span> <span class="o">*</span> <span class="n">Sa_g</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;A_h&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">A_h</span><span class="p">),</span>
+        <span class="s2">&quot;Z&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">Z</span><span class="p">),</span>
+        <span class="s2">&quot;I&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">importance</span><span class="p">),</span>
+        <span class="s2">&quot;R&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">R</span><span class="p">),</span>
+        <span class="s2">&quot;Sa_g&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">Sa_g</span><span class="p">),</span>
+        <span class="s2">&quot;T&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">T</span><span class="p">),</span>
+        <span class="s2">&quot;soil_type&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">soil_type</span><span class="p">),</span>
+    <span class="p">}</span></div>
+
+
+
+<span class="c1"># ============================================================ time period</span>
+
+<div class="viewcode-block" id="empirical_period">
+<a class="viewcode-back" href="../../../api/design.html#femsolver.design.is1893.empirical_period">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">empirical_period</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">h</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">system</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;RC_MRF&quot;</span><span class="p">,</span>
+                       <span class="n">d</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Empirical fundamental period ``T_a`` per IS 1893 Cl. 7.6.2.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    h : float</span>
+<span class="sd">        Building height (m).</span>
+<span class="sd">    system : str</span>
+<span class="sd">        ``&quot;RC_MRF&quot;``, ``&quot;STEEL_MRF&quot;``, ``&quot;BRACED_INFILL&quot;``.</span>
+<span class="sd">    d : float, optional</span>
+<span class="sd">        Base dimension parallel to ground motion (m). Required for</span>
+<span class="sd">        ``&quot;BRACED_INFILL&quot;``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">h</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;h must be &gt; 0&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">system</span> <span class="o">==</span> <span class="s2">&quot;RC_MRF&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mf">0.075</span> <span class="o">*</span> <span class="n">h</span> <span class="o">**</span> <span class="mf">0.75</span>
+    <span class="k">if</span> <span class="n">system</span> <span class="o">==</span> <span class="s2">&quot;STEEL_MRF&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mf">0.085</span> <span class="o">*</span> <span class="n">h</span> <span class="o">**</span> <span class="mf">0.75</span>
+    <span class="k">if</span> <span class="n">system</span> <span class="o">==</span> <span class="s2">&quot;BRACED_INFILL&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">d</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">d</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;d (base dimension) required for &quot;</span>
+                             <span class="s2">&quot;BRACED_INFILL&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mf">0.09</span> <span class="o">*</span> <span class="n">h</span> <span class="o">/</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;unknown system </span><span class="si">{</span><span class="n">system</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># ============================================================ base shear and distribution</span>
+
+<div class="viewcode-block" id="IS1893BaseShearResult">
+<a class="viewcode-back" href="../../../api/design.html#femsolver.design.is1893.IS1893BaseShearResult">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">IS1893BaseShearResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Result of an equivalent-static base-shear calculation.&quot;&quot;&quot;</span>
+
+    <span class="n">V_B</span><span class="p">:</span> <span class="nb">float</span>                <span class="c1"># total base shear (N)</span>
+    <span class="n">A_h</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">Z</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">I</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">R</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">Sa_g</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">T</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">W</span><span class="p">:</span> <span class="nb">float</span>                  <span class="c1"># seismic weight (N)</span></div>
+
+
+
+<div class="viewcode-block" id="is1893_base_shear">
+<a class="viewcode-back" href="../../../api/design.html#femsolver.design.is1893.is1893_base_shear">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">is1893_base_shear</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">T</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">W</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">zone</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">importance</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">R</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">soil_type</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">IS1893BaseShearResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute the design seismic base shear V_B = A_h W.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    T : float</span>
+<span class="sd">    W : float</span>
+<span class="sd">        Total seismic weight of the building (N).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">W</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;W must be &gt; 0&quot;</span><span class="p">)</span>
+    <span class="n">ah</span> <span class="o">=</span> <span class="n">Ah_coefficient</span><span class="p">(</span><span class="n">T</span><span class="o">=</span><span class="n">T</span><span class="p">,</span> <span class="n">zone</span><span class="o">=</span><span class="n">zone</span><span class="p">,</span> <span class="n">importance</span><span class="o">=</span><span class="n">importance</span><span class="p">,</span>
+                          <span class="n">R</span><span class="o">=</span><span class="n">R</span><span class="p">,</span> <span class="n">soil_type</span><span class="o">=</span><span class="n">soil_type</span><span class="p">)</span>
+    <span class="n">V_B</span> <span class="o">=</span> <span class="n">ah</span><span class="p">[</span><span class="s2">&quot;A_h&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">W</span>
+    <span class="k">return</span> <span class="n">IS1893BaseShearResult</span><span class="p">(</span>
+        <span class="n">V_B</span><span class="o">=</span><span class="n">V_B</span><span class="p">,</span> <span class="n">A_h</span><span class="o">=</span><span class="n">ah</span><span class="p">[</span><span class="s2">&quot;A_h&quot;</span><span class="p">],</span> <span class="n">Z</span><span class="o">=</span><span class="n">ah</span><span class="p">[</span><span class="s2">&quot;Z&quot;</span><span class="p">],</span>
+        <span class="n">I</span><span class="o">=</span><span class="n">ah</span><span class="p">[</span><span class="s2">&quot;I&quot;</span><span class="p">],</span> <span class="n">R</span><span class="o">=</span><span class="n">ah</span><span class="p">[</span><span class="s2">&quot;R&quot;</span><span class="p">],</span> <span class="n">Sa_g</span><span class="o">=</span><span class="n">ah</span><span class="p">[</span><span class="s2">&quot;Sa_g&quot;</span><span class="p">],</span>
+        <span class="n">T</span><span class="o">=</span><span class="n">T</span><span class="p">,</span> <span class="n">W</span><span class="o">=</span><span class="n">W</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="vertical_force_distribution">
+<a class="viewcode-back" href="../../../api/design.html#femsolver.design.is1893.vertical_force_distribution">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">vertical_force_distribution</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">V_B</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">storey_weights</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">storey_heights</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Distribute V_B over storeys per IS 1893 Cl. 7.6.3.</span>
+
+<span class="sd">    Q_i = V_B · (W_i h_i^2) / sum_j(W_j h_j^2).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    V_B : float</span>
+<span class="sd">        Total base shear (N).</span>
+<span class="sd">    storey_weights : array</span>
+<span class="sd">        Seismic weight at each floor (N), ordered low to high.</span>
+<span class="sd">    storey_heights : array</span>
+<span class="sd">        Floor elevations above ground (m), ordered low to high.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Q : np.ndarray</span>
+<span class="sd">        Floor-level lateral force (N).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">W</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">storey_weights</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">storey_heights</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">W</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">h</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;storey_weights and storey_heights must &quot;</span>
+                         <span class="s2">&quot;have the same shape&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">W</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">)</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">h</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;storey weights and heights must all be &gt; 0&quot;</span><span class="p">)</span>
+    <span class="n">products</span> <span class="o">=</span> <span class="n">W</span> <span class="o">*</span> <span class="n">h</span> <span class="o">**</span> <span class="mi">2</span>
+    <span class="k">return</span> <span class="n">V_B</span> <span class="o">*</span> <span class="n">products</span> <span class="o">/</span> <span class="n">products</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span></div>
+
+
+
+<span class="c1"># ============================================================ drift check</span>
+
+<div class="viewcode-block" id="IS1893DriftResult">
+<a class="viewcode-back" href="../../../api/design.html#femsolver.design.is1893.IS1893DriftResult">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">IS1893DriftResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Storey-drift ratio check per IS 1893 Cl. 7.11.1.</span>
+
+<span class="sd">    Allowable storey-drift ratio: 0.004 of the storey height (under</span>
+<span class="sd">    factored loads with R = 1, i.e., the &quot;design earthquake&quot;</span>
+<span class="sd">    deflection -- usually obtained by multiplying the elastic</span>
+<span class="sd">    deflection by R).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">storey_drifts</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>         <span class="c1"># absolute drifts (m)</span>
+    <span class="n">storey_heights</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>        <span class="c1"># m</span>
+    <span class="n">drift_ratios</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">max_ratio</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">passes</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">limit</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.004</span></div>
+
+
+
+<div class="viewcode-block" id="is1893_drift_check">
+<a class="viewcode-back" href="../../../api/design.html#femsolver.design.is1893.is1893_drift_check">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">is1893_drift_check</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">floor_disp</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">storey_heights</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">R</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">limit</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.004</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">IS1893DriftResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Check storey-drift ratios against IS 1893 limit (0.4% by default).</span>
+
+<span class="sd">    The input ``floor_disp`` is the elastic floor lateral displacement</span>
+<span class="sd">    from the analysis (R=1). It is multiplied by ``R`` to obtain the</span>
+<span class="sd">    design-earthquake deflection.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    floor_disp : array</span>
+<span class="sd">        Elastic lateral displacements at each floor (m), low to high.</span>
+<span class="sd">        Base assumed at 0.</span>
+<span class="sd">    storey_heights : array</span>
+<span class="sd">        Per-storey height (m), same length as ``floor_disp``.</span>
+<span class="sd">    R : float</span>
+<span class="sd">    limit : float, default 0.004</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">u</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">floor_disp</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">storey_heights</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">u</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">h</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;floor_disp and storey_heights must &quot;</span>
+                         <span class="s2">&quot;have the same shape&quot;</span><span class="p">)</span>
+    <span class="n">u_design</span> <span class="o">=</span> <span class="n">R</span> <span class="o">*</span> <span class="n">u</span>
+    <span class="n">drifts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">u_design</span><span class="p">)</span>
+    <span class="n">drifts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">u_design</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">drifts</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">u_design</span><span class="p">)</span>
+    <span class="n">drifts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">drifts</span><span class="p">)</span>
+    <span class="n">ratios</span> <span class="o">=</span> <span class="n">drifts</span> <span class="o">/</span> <span class="n">h</span>
+    <span class="k">return</span> <span class="n">IS1893DriftResult</span><span class="p">(</span>
+        <span class="n">storey_drifts</span><span class="o">=</span><span class="n">drifts</span><span class="p">,</span>
+        <span class="n">storey_heights</span><span class="o">=</span><span class="n">h</span><span class="p">,</span>
+        <span class="n">drift_ratios</span><span class="o">=</span><span class="n">ratios</span><span class="p">,</span>
+        <span class="n">max_ratio</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">ratios</span><span class="o">.</span><span class="n">max</span><span class="p">()),</span>
+        <span class="n">passes</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">ratios</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&lt;=</span> <span class="n">limit</span><span class="p">),</span>
+        <span class="n">limit</span><span class="o">=</span><span class="n">limit</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

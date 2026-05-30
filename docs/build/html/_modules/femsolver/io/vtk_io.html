@@ -1,0 +1,401 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.io.vtk_io &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.io.vtk_io</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.io.vtk_io</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Write a deformed-shape VTK unstructured grid for Paraview / VisIt /</span>
+<span class="sd">MayaVi visualization.</span>
+
+<span class="sd">Uses the legacy VTK ASCII format -- no dependency on ``meshio``. Each</span>
+<span class="sd">element family is mapped to the appropriate VTK cell type:</span>
+
+<span class="sd">* Truss (2D / 3D, corotational variants)                      -&gt; VTK_LINE</span>
+<span class="sd">* BeamColumn (2D / 3D, all corotational + force-based + hinged) -&gt; VTK_LINE</span>
+<span class="sd">* Quad4 plane element                                         -&gt; VTK_QUAD</span>
+<span class="sd">* ShellMITC4 (4-node Mindlin-Reissner shell)                   -&gt; VTK_QUAD</span>
+<span class="sd">* ShellTri3 (3-node Reissner-Mindlin shell)                    -&gt; VTK_TRIANGLE</span>
+<span class="sd">* Hex8 (8-node trilinear brick)                                -&gt; VTK_HEXAHEDRON</span>
+<span class="sd">* Tet4 (4-node linear tetrahedron)                             -&gt; VTK_TETRA</span>
+
+<span class="sd">Two output entry points:</span>
+
+<span class="sd">* :func:`write_vtk_unstructured` -- legacy / backwards-compatible writer</span>
+<span class="sd">  that emits a deformed-shape file with the nodal displacement vector.</span>
+<span class="sd">* :func:`write_vtk` -- richer interface that exposes optional element</span>
+<span class="sd">  data (e.g. averaged stress, equivalent plastic strain, axial force</span>
+<span class="sd">  along a beam).</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.elements.beam</span><span class="w"> </span><span class="kn">import</span> <span class="n">BeamColumn2D</span><span class="p">,</span> <span class="n">BeamColumn3D</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.elements.beam_corot</span><span class="w"> </span><span class="kn">import</span> <span class="n">BeamColumn2DCorotational</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.elements.beam_corot_3d</span><span class="w"> </span><span class="kn">import</span> <span class="n">BeamColumn3DCorotational</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.elements.beam_force</span><span class="w"> </span><span class="kn">import</span> <span class="n">ForceBeamColumn2DCorotational</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.elements.beam_hinged</span><span class="w"> </span><span class="kn">import</span> <span class="n">HingedBeamColumn2D</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.elements.plane</span><span class="w"> </span><span class="kn">import</span> <span class="n">Quad4</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.elements.shell</span><span class="w"> </span><span class="kn">import</span> <span class="n">ShellMITC4</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.elements.shell_tri</span><span class="w"> </span><span class="kn">import</span> <span class="n">ShellTri3</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.elements.solid</span><span class="w"> </span><span class="kn">import</span> <span class="n">Hex8</span><span class="p">,</span> <span class="n">Tet4</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.elements.truss</span><span class="w"> </span><span class="kn">import</span> <span class="n">Truss2D</span><span class="p">,</span> <span class="n">Truss3D</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.elements.truss_corot</span><span class="w"> </span><span class="kn">import</span> <span class="n">Truss2DCorotational</span>
+
+
+<span class="c1"># ---------------------------------------------------------------- VTK types</span>
+<span class="n">_VTK_LINE</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="n">_VTK_TRIANGLE</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">_VTK_QUAD</span> <span class="o">=</span> <span class="mi">9</span>
+<span class="n">_VTK_TETRA</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="n">_VTK_HEXAHEDRON</span> <span class="o">=</span> <span class="mi">12</span>
+
+
+<span class="n">_LINE_ELEMENTS</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">Truss2D</span><span class="p">,</span>
+    <span class="n">Truss3D</span><span class="p">,</span>
+    <span class="n">Truss2DCorotational</span><span class="p">,</span>
+    <span class="n">BeamColumn2D</span><span class="p">,</span>
+    <span class="n">BeamColumn3D</span><span class="p">,</span>
+    <span class="n">BeamColumn2DCorotational</span><span class="p">,</span>
+    <span class="n">BeamColumn3DCorotational</span><span class="p">,</span>
+    <span class="n">ForceBeamColumn2DCorotational</span><span class="p">,</span>
+    <span class="n">HingedBeamColumn2D</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_cell_type</span><span class="p">(</span><span class="n">element</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">element</span><span class="p">,</span> <span class="n">_LINE_ELEMENTS</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">_VTK_LINE</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">element</span><span class="p">,</span> <span class="n">ShellTri3</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">_VTK_TRIANGLE</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">element</span><span class="p">,</span> <span class="p">(</span><span class="n">Quad4</span><span class="p">,</span> <span class="n">ShellMITC4</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="n">_VTK_QUAD</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">element</span><span class="p">,</span> <span class="n">Tet4</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">_VTK_TETRA</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">element</span><span class="p">,</span> <span class="n">Hex8</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">_VTK_HEXAHEDRON</span>
+    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;VTK output not implemented for </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">element</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+
+
+<span class="c1"># ---------------------------------------------------------------- legacy entry</span>
+<div class="viewcode-block" id="write_vtk_unstructured">
+<a class="viewcode-back" href="../../../api/io.html#femsolver.io.write_vtk_unstructured">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">write_vtk_unstructured</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span>
+                            <span class="n">deformation_scale</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Write the model as a VTK legacy unstructured grid (deformed</span>
+<span class="sd">    shape + nodal displacement vector).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    model : Model</span>
+<span class="sd">    path : str or Path</span>
+<span class="sd">        Output file path. Conventionally ``.vtk``.</span>
+<span class="sd">    deformation_scale : float</span>
+<span class="sd">        If non-zero, displace the points by ``scale * Node.disp[:ndm]``</span>
+<span class="sd">        so that the visualization shows the deformed shape. Use 1.0</span>
+<span class="sd">        for true scale or a larger value for amplified visualization.</span>
+
+<span class="sd">    The displacement vector is written as ``POINT_DATA`` so that</span>
+<span class="sd">    Paraview&#39;s &quot;Warp by Vector&quot; filter (or similar) can apply the</span>
+<span class="sd">    deformation interactively from a single un-warped file.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">write_vtk</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">deformation_scale</span><span class="o">=</span><span class="n">deformation_scale</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------- rich entry</span>
+<div class="viewcode-block" id="write_vtk">
+<a class="viewcode-back" href="../../../api/io.html#femsolver.io.write_vtk">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">write_vtk</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
+               <span class="n">deformation_scale</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+               <span class="n">point_data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+               <span class="n">cell_data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+               <span class="n">include_reactions</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+               <span class="n">include_mode_shapes</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Write the model as a VTK legacy unstructured grid with optional</span>
+<span class="sd">    extra point / cell data fields.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    model : Model</span>
+<span class="sd">    path : str or Path</span>
+<span class="sd">    deformation_scale : float, default 0</span>
+<span class="sd">        Scale applied to ``Node.disp`` when writing point coordinates.</span>
+<span class="sd">    point_data : dict of str -&gt; ndarray</span>
+<span class="sd">        Additional per-node fields. Scalar fields have shape</span>
+<span class="sd">        ``(n_nodes,)``; vector fields have shape ``(n_nodes, 3)``.</span>
+<span class="sd">        Vector fields with fewer than 3 components are zero-padded.</span>
+<span class="sd">    cell_data : dict of str -&gt; ndarray</span>
+<span class="sd">        Additional per-element fields. Shapes mirror ``point_data``</span>
+<span class="sd">        but indexed by element rather than node.</span>
+<span class="sd">    include_reactions : bool, default False</span>
+<span class="sd">        If ``True``, write ``Node.reaction`` as a 3-component vector</span>
+<span class="sd">        ``reaction``.</span>
+<span class="sd">    include_mode_shapes : bool, default False</span>
+<span class="sd">        If ``True``, write each column of ``Node.mode_disp`` as</span>
+<span class="sd">        ``mode_1``, ``mode_2``, ... vectors. Useful for visualizing</span>
+<span class="sd">        eigenmodes or buckling shapes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">nodes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+    <span class="n">tag_to_idx</span> <span class="o">=</span> <span class="p">{</span><span class="n">n</span><span class="o">.</span><span class="n">tag</span><span class="p">:</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">nodes</span><span class="p">)}</span>
+    <span class="n">n_nodes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">nodes</span><span class="p">)</span>
+    <span class="n">ndm</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">ndm</span>
+
+    <span class="c1"># ---------- points</span>
+    <span class="n">points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_nodes</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">nodes</span><span class="p">):</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">n</span><span class="o">.</span><span class="n">coords</span>
+        <span class="n">points</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:</span> <span class="n">c</span><span class="o">.</span><span class="n">size</span><span class="p">]</span> <span class="o">=</span> <span class="n">c</span>
+        <span class="k">if</span> <span class="n">deformation_scale</span> <span class="o">!=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="n">d</span> <span class="o">=</span> <span class="n">n</span><span class="o">.</span><span class="n">disp</span><span class="p">[:</span><span class="n">ndm</span><span class="p">]</span>
+            <span class="n">points</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:</span><span class="n">ndm</span><span class="p">]</span> <span class="o">+=</span> <span class="n">deformation_scale</span> <span class="o">*</span> <span class="n">d</span>
+
+    <span class="c1"># ---------- cells</span>
+    <span class="n">elements</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">elements</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+    <span class="n">cell_data_idxs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">cell_types</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">cell_size_total</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">elements</span><span class="p">:</span>
+        <span class="n">cell_types</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_cell_type</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+        <span class="n">idxs</span> <span class="o">=</span> <span class="p">[</span><span class="n">tag_to_idx</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">e</span><span class="o">.</span><span class="n">node_tags</span><span class="p">]</span>
+        <span class="n">cell_data_idxs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">idxs</span><span class="p">)</span>
+        <span class="n">cell_size_total</span> <span class="o">+=</span> <span class="mi">1</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">idxs</span><span class="p">)</span>
+
+    <span class="n">lines</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;# vtk DataFile Version 3.0&quot;</span><span class="p">)</span>
+    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;femsolver model </span><span class="si">{</span><span class="nb">getattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;name&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;ASCII&quot;</span><span class="p">)</span>
+    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;DATASET UNSTRUCTURED_GRID&quot;</span><span class="p">)</span>
+    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;POINTS </span><span class="si">{</span><span class="n">n_nodes</span><span class="si">}</span><span class="s2"> float&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">points</span><span class="p">:</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="s2">.9g</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s2">.9g</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">p</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="si">:</span><span class="s2">.9g</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;CELLS </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">elements</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">cell_size_total</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">idxs</span> <span class="ow">in</span> <span class="n">cell_data_idxs</span><span class="p">:</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">idxs</span><span class="p">)</span><span class="si">}</span><span class="s2"> &quot;</span> <span class="o">+</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">idxs</span><span class="p">))</span>
+    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;CELL_TYPES </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">elements</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">ct</span> <span class="ow">in</span> <span class="n">cell_types</span><span class="p">:</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">ct</span><span class="p">))</span>
+
+    <span class="c1"># ---------- POINT_DATA</span>
+    <span class="c1"># Always emit displacement; optionally reactions, mode shapes, and</span>
+    <span class="c1"># user-supplied point fields.</span>
+    <span class="k">if</span> <span class="n">n_nodes</span><span class="p">:</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;POINT_DATA </span><span class="si">{</span><span class="n">n_nodes</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">_write_vector</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="s2">&quot;displacement&quot;</span><span class="p">,</span> <span class="n">_gather_vector</span><span class="p">(</span><span class="n">nodes</span><span class="p">,</span> <span class="s2">&quot;disp&quot;</span><span class="p">,</span> <span class="n">ndm</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">include_reactions</span><span class="p">:</span>
+            <span class="n">_write_vector</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="s2">&quot;reaction&quot;</span><span class="p">,</span>
+                            <span class="n">_gather_vector</span><span class="p">(</span><span class="n">nodes</span><span class="p">,</span> <span class="s2">&quot;reaction&quot;</span><span class="p">,</span> <span class="n">ndm</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">include_mode_shapes</span><span class="p">:</span>
+            <span class="n">n_modes</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">n</span><span class="o">.</span><span class="n">mode_disp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">n</span><span class="o">.</span><span class="n">mode_disp</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span> <span class="k">else</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">nodes</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_modes</span><span class="p">):</span>
+                <span class="n">vec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_nodes</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">nodes</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">n</span><span class="o">.</span><span class="n">mode_disp</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">k</span> <span class="o">&lt;</span> <span class="n">n</span><span class="o">.</span><span class="n">mode_disp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+                        <span class="n">vec</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:</span><span class="n">ndm</span><span class="p">]</span> <span class="o">=</span> <span class="n">n</span><span class="o">.</span><span class="n">mode_disp</span><span class="p">[:</span><span class="n">ndm</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span>
+                <span class="n">_write_vector</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;mode_</span><span class="si">{</span><span class="n">k</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">vec</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">point_data</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">arr</span> <span class="ow">in</span> <span class="n">point_data</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">_write_point_field</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">arr</span><span class="p">,</span> <span class="n">n_nodes</span><span class="p">)</span>
+
+    <span class="c1"># ---------- CELL_DATA</span>
+    <span class="k">if</span> <span class="n">cell_data</span> <span class="ow">and</span> <span class="n">elements</span><span class="p">:</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;CELL_DATA </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">elements</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">arr</span> <span class="ow">in</span> <span class="n">cell_data</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">_write_cell_field</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">arr</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">elements</span><span class="p">))</span>
+
+    <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------- helpers</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_gather_vector</span><span class="p">(</span><span class="n">nodes</span><span class="p">,</span> <span class="n">attr</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">ndm</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Stack a 3-component array for each node from ``Node.&lt;attr&gt;``.&quot;&quot;&quot;</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">nodes</span><span class="p">),</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">nodes</span><span class="p">):</span>
+        <span class="n">arr</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+        <span class="n">out</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:</span><span class="n">ndm</span><span class="p">]</span> <span class="o">=</span> <span class="n">arr</span><span class="p">[:</span><span class="n">ndm</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">out</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_write_vector</span><span class="p">(</span><span class="n">lines</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">vec</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;VECTORS </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> float&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">vec</span><span class="p">:</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="s2">.9g</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">v</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s2">.9g</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">v</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="si">:</span><span class="s2">.9g</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_write_scalar</span><span class="p">(</span><span class="n">lines</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">vec</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SCALARS </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> float 1&quot;</span><span class="p">)</span>
+    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;LOOKUP_TABLE default&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">vec</span><span class="p">:</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span><span class="si">:</span><span class="s2">.9g</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_write_point_field</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">arr</span><span class="p">,</span> <span class="n">n_nodes</span><span class="p">):</span>
+    <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">size</span> <span class="o">!=</span> <span class="n">n_nodes</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;point_data[&#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;]: expected length </span><span class="si">{</span><span class="n">n_nodes</span><span class="si">}</span><span class="s2">, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="n">arr</span><span class="o">.</span><span class="n">size</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="n">_write_scalar</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">arr</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">n_nodes</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;point_data[&#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;]: first dim must be </span><span class="si">{</span><span class="n">n_nodes</span><span class="si">}</span><span class="s2">, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="n">arr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="n">pad</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_nodes</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+        <span class="n">pad</span><span class="p">[:,</span> <span class="p">:</span><span class="nb">min</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">arr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])]</span> <span class="o">=</span> <span class="n">arr</span><span class="p">[:,</span> <span class="p">:</span><span class="nb">min</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">arr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])]</span>
+        <span class="n">_write_vector</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">pad</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_write_cell_field</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">arr</span><span class="p">,</span> <span class="n">n_cells</span><span class="p">):</span>
+    <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">size</span> <span class="o">!=</span> <span class="n">n_cells</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;cell_data[&#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;]: expected length </span><span class="si">{</span><span class="n">n_cells</span><span class="si">}</span><span class="s2">, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="n">arr</span><span class="o">.</span><span class="n">size</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="n">_write_scalar</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">arr</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">n_cells</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;cell_data[&#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;]: first dim must be </span><span class="si">{</span><span class="n">n_cells</span><span class="si">}</span><span class="s2">, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="n">arr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="n">pad</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_cells</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+        <span class="n">pad</span><span class="p">[:,</span> <span class="p">:</span><span class="nb">min</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">arr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])]</span> <span class="o">=</span> <span class="n">arr</span><span class="p">[:,</span> <span class="p">:</span><span class="nb">min</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">arr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])]</span>
+        <span class="n">_write_vector</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">pad</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

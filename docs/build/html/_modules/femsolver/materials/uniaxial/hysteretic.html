@@ -1,0 +1,425 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.materials.uniaxial.hysteretic &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.materials.uniaxial.hysteretic</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.materials.uniaxial.hysteretic</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Bilinear hysteretic uniaxial material with pinching.</span>
+
+<span class="sd">For a single load reversal, the trajectory follows a piecewise-linear</span>
+<span class="sd">path from the *reversal point* ``(eps_r, sigma_r)`` through a</span>
+<span class="sd">*pinch point* at ``(pinch_x * eps_target, pinch_y * sigma_target)``</span>
+<span class="sd">and then to the opposite-direction envelope target. ``pinch_x = 1``</span>
+<span class="sd">and ``pinch_y = 1`` recover the direct-reload (no pinching) case,</span>
+<span class="sd">which is structurally identical to ``UniaxialBilinear`` with linear</span>
+<span class="sd">reload. Smaller ``pinch_y`` produces the characteristic squashed</span>
+<span class="sd">hourglass of a cracked-and-reopened RC section.</span>
+
+<span class="sd">Sign convention</span>
+<span class="sd">---------------</span>
+<span class="sd">Strain and stress follow the standard solid-mechanics convention</span>
+<span class="sd">(tension positive). The envelope is symmetric about the origin</span>
+<span class="sd">with positive yield at ``(+eps_y, +sigma_y)`` and negative yield at</span>
+<span class="sd">``(-eps_y, -sigma_y)``.</span>
+
+<span class="sd">State</span>
+<span class="sd">-----</span>
+<span class="sd">The model tracks the most-extreme positive and negative strains</span>
+<span class="sd">ever reached (``eps_max_pos``, ``eps_max_neg``), the current</span>
+<span class="sd">reversal point ``(eps_rev, sigma_rev)``, and the current loading</span>
+<span class="sd">direction. Initial extremes are set at the first-yield strains so</span>
+<span class="sd">that a virgin loading from the origin reproduces pure elastic</span>
+<span class="sd">behaviour ``sigma = E * eps`` regardless of the pinching ratios.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.materials.uniaxial.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">UniaxialMaterial</span>
+
+
+<div class="viewcode-block" id="UniaxialHysteretic">
+<a class="viewcode-back" href="../../../../guide/materials_catalog.html#femsolver.materials.uniaxial.hysteretic.UniaxialHysteretic">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">UniaxialHysteretic</span><span class="p">(</span><span class="n">UniaxialMaterial</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Bilinear envelope + pinching cyclic uniaxial material with</span>
+<span class="sd">    optional strength degradation.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    E : float</span>
+<span class="sd">        Initial elastic modulus.</span>
+<span class="sd">    sigma_y : float</span>
+<span class="sd">        Yield stress magnitude (positive).</span>
+<span class="sd">    b : float, default 0.01</span>
+<span class="sd">        Post-yield stiffness ratio. ``b = 0`` gives EPP envelope.</span>
+<span class="sd">    pinch_x : float, default 1.0</span>
+<span class="sd">        Pinching parameter for strain. ``1.0`` = no pinch (direct</span>
+<span class="sd">        line). ``0`` = pinch through the origin (extreme pinching).</span>
+<span class="sd">    pinch_y : float, default 1.0</span>
+<span class="sd">        Pinching parameter for stress. ``1.0`` = no pinch. Smaller</span>
+<span class="sd">        values squash the loop vertically.</span>
+<span class="sd">    damage_factor : float, default 0.0</span>
+<span class="sd">        Strength-degradation rate (dimensionless). The effective</span>
+<span class="sd">        yield stress is</span>
+
+<span class="sd">            sigma_y_eff = sigma_y / (1 + damage_factor * alpha/eps_y)</span>
+
+<span class="sd">        where ``alpha`` is the cumulative plastic excursion magnitude.</span>
+<span class="sd">        ``damage_factor = 0`` disables degradation (back-compat with</span>
+<span class="sd">        the original undegraded model). Typical values for cyclic</span>
+<span class="sd">        seismic RC: 0.05--0.3.</span>
+<span class="sd">    min_strength_ratio : float, default 0.1</span>
+<span class="sd">        Lower bound on ``sigma_y_eff / sigma_y``. Prevents the</span>
+<span class="sd">        degraded yield from collapsing to zero under extreme cycling.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">E</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">sigma_y</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span><span class="p">,</span>
+                 <span class="n">pinch_x</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">pinch_y</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+                 <span class="n">damage_factor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+                 <span class="n">min_strength_ratio</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">E</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;E must be positive, got </span><span class="si">{</span><span class="n">E</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">sigma_y</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;sigma_y must be positive, got </span><span class="si">{</span><span class="n">sigma_y</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">b</span> <span class="o">&lt;</span> <span class="mf">1.0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;b must be in [0, 1), got </span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mf">0.0</span> <span class="o">&lt;</span> <span class="n">pinch_x</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;pinch_x must be in (0, 1], got </span><span class="si">{</span><span class="n">pinch_x</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mf">0.0</span> <span class="o">&lt;</span> <span class="n">pinch_y</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;pinch_y must be in (0, 1], got </span><span class="si">{</span><span class="n">pinch_y</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">damage_factor</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;damage_factor must be &gt;= 0, got </span><span class="si">{</span><span class="n">damage_factor</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mf">0.0</span> <span class="o">&lt;</span> <span class="n">min_strength_ratio</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;min_strength_ratio must be in (0, 1], &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="n">min_strength_ratio</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">E</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">E</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_y</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">sigma_y</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_y</span> <span class="o">=</span> <span class="n">sigma_y</span> <span class="o">/</span> <span class="n">E</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">b</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pinch_x</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">pinch_x</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pinch_y</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">pinch_y</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">damage_factor</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">damage_factor</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_strength_ratio</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">min_strength_ratio</span><span class="p">)</span>
+        <span class="c1"># Committed state</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_committed</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_committed</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_pos_committed</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_y</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_neg_committed</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">eps_y</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_rev_committed</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_rev_committed</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">direction_committed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="o">+</span><span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha_committed</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>      <span class="c1"># cumulative plastic excursion</span>
+        <span class="c1"># Trial mirrors</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_trial</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_trial</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_pos_trial</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_y</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_neg_trial</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">eps_y</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_rev_trial</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_rev_trial</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">direction_trial</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="o">+</span><span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha_trial</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Et_trial</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">E</span>
+
+    <span class="c1"># ------------------------------------------------------------ degradation</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_strength_ratio</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns sigma_y_eff / sigma_y given cumulative plastic</span>
+<span class="sd">        excursion ``alpha`` (&gt;= 0).&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">damage_factor</span> <span class="o">==</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">alpha</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">1.0</span>
+        <span class="n">ratio</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">damage_factor</span> <span class="o">*</span> <span class="n">alpha</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_y</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="n">ratio</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_strength_ratio</span><span class="p">)</span>
+
+    <span class="c1"># ------------------------------------------------------------ envelope</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_envelope</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">eps</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Bilinear envelope with optional strength degradation.</span>
+
+<span class="sd">        With ``alpha &gt; 0`` and ``damage_factor &gt; 0``, both sigma_y_eff</span>
+<span class="sd">        and eps_y_eff shrink (yielding starts earlier at lower stress).</span>
+<span class="sd">        The elastic modulus and hardening slope are unchanged.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ratio</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_strength_ratio</span><span class="p">(</span><span class="n">alpha</span><span class="p">)</span>
+        <span class="n">sigma_y_eff</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_y</span> <span class="o">*</span> <span class="n">ratio</span>
+        <span class="n">eps_y_eff</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_y</span> <span class="o">*</span> <span class="n">ratio</span>
+        <span class="k">if</span> <span class="n">eps</span> <span class="o">&gt;=</span> <span class="n">eps_y_eff</span><span class="p">:</span>
+            <span class="n">sigma</span> <span class="o">=</span> <span class="n">sigma_y_eff</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">b</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">E</span> <span class="o">*</span> <span class="p">(</span><span class="n">eps</span> <span class="o">-</span> <span class="n">eps_y_eff</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">sigma</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">b</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">E</span>
+        <span class="k">if</span> <span class="n">eps</span> <span class="o">&lt;=</span> <span class="o">-</span><span class="n">eps_y_eff</span><span class="p">:</span>
+            <span class="n">sigma</span> <span class="o">=</span> <span class="o">-</span><span class="n">sigma_y_eff</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">b</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">E</span> <span class="o">*</span> <span class="p">(</span><span class="n">eps</span> <span class="o">+</span> <span class="n">eps_y_eff</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">sigma</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">b</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">E</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">E</span> <span class="o">*</span> <span class="n">eps</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">E</span>
+
+    <span class="c1"># ------------------------------------------------------------ reload</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_reload_segment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">eps</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">direction</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+                         <span class="n">eps_target</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">sigma_target</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+                         <span class="n">eps_rev</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">sigma_rev</span><span class="p">:</span> <span class="nb">float</span>
+                         <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Piecewise-linear reload from ``(eps_rev, sigma_rev)`` through</span>
+<span class="sd">        the pinch point to ``(eps_target, sigma_target)``.&quot;&quot;&quot;</span>
+        <span class="n">eps_pinch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pinch_x</span> <span class="o">*</span> <span class="n">eps_target</span>
+        <span class="n">sigma_pinch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pinch_y</span> <span class="o">*</span> <span class="n">sigma_target</span>
+        <span class="c1"># Identify which segment we&#39;re on. For direction +1 (going</span>
+        <span class="c1"># positive, eps increasing from eps_rev toward eps_target), the</span>
+        <span class="c1"># pinch lies between them on the strain axis when eps_pinch</span>
+        <span class="c1"># is reached first. We branch on eps vs eps_pinch.</span>
+        <span class="k">if</span> <span class="n">direction</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">eps</span> <span class="o">&lt;=</span> <span class="n">eps_pinch</span><span class="p">:</span>
+                <span class="c1"># Segment 1: reversal -&gt; pinch</span>
+                <span class="n">denom</span> <span class="o">=</span> <span class="n">eps_pinch</span> <span class="o">-</span> <span class="n">eps_rev</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Segment 2: pinch -&gt; envelope target</span>
+                <span class="n">denom</span> <span class="o">=</span> <span class="n">eps_target</span> <span class="o">-</span> <span class="n">eps_pinch</span>
+                <span class="n">eps_rev</span> <span class="o">=</span> <span class="n">eps_pinch</span>
+                <span class="n">sigma_rev</span> <span class="o">=</span> <span class="n">sigma_pinch</span>
+                <span class="n">eps_target_local</span><span class="p">,</span> <span class="n">sigma_target_local</span> <span class="o">=</span> <span class="n">eps_target</span><span class="p">,</span> <span class="n">sigma_target</span>
+                <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">denom</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1.0e-30</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">sigma_pinch</span><span class="p">,</span> <span class="mf">0.0</span>
+                <span class="n">slope</span> <span class="o">=</span> <span class="p">(</span><span class="n">sigma_target_local</span> <span class="o">-</span> <span class="n">sigma_rev</span><span class="p">)</span> <span class="o">/</span> <span class="n">denom</span>
+                <span class="k">return</span> <span class="n">sigma_rev</span> <span class="o">+</span> <span class="n">slope</span> <span class="o">*</span> <span class="p">(</span><span class="n">eps</span> <span class="o">-</span> <span class="n">eps_rev</span><span class="p">),</span> <span class="n">slope</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">eps</span> <span class="o">&gt;=</span> <span class="n">eps_pinch</span><span class="p">:</span>
+                <span class="n">denom</span> <span class="o">=</span> <span class="n">eps_pinch</span> <span class="o">-</span> <span class="n">eps_rev</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">denom</span> <span class="o">=</span> <span class="n">eps_target</span> <span class="o">-</span> <span class="n">eps_pinch</span>
+                <span class="n">eps_rev</span> <span class="o">=</span> <span class="n">eps_pinch</span>
+                <span class="n">sigma_rev</span> <span class="o">=</span> <span class="n">sigma_pinch</span>
+                <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">denom</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1.0e-30</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">sigma_pinch</span><span class="p">,</span> <span class="mf">0.0</span>
+                <span class="n">slope</span> <span class="o">=</span> <span class="p">(</span><span class="n">sigma_target</span> <span class="o">-</span> <span class="n">sigma_rev</span><span class="p">)</span> <span class="o">/</span> <span class="n">denom</span>
+                <span class="k">return</span> <span class="n">sigma_rev</span> <span class="o">+</span> <span class="n">slope</span> <span class="o">*</span> <span class="p">(</span><span class="n">eps</span> <span class="o">-</span> <span class="n">eps_rev</span><span class="p">),</span> <span class="n">slope</span>
+        <span class="c1"># Segment 1 fall-through</span>
+        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">denom</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1.0e-30</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">sigma_rev</span><span class="p">,</span> <span class="mf">0.0</span>
+        <span class="n">slope</span> <span class="o">=</span> <span class="p">(</span><span class="n">sigma_pinch</span> <span class="o">-</span> <span class="n">sigma_rev</span><span class="p">)</span> <span class="o">/</span> <span class="n">denom</span>
+        <span class="k">return</span> <span class="n">sigma_rev</span> <span class="o">+</span> <span class="n">slope</span> <span class="o">*</span> <span class="p">(</span><span class="n">eps</span> <span class="o">-</span> <span class="n">eps_rev</span><span class="p">),</span> <span class="n">slope</span>
+
+    <span class="c1"># ------------------------------------------------------------ get_response</span>
+<div class="viewcode-block" id="UniaxialHysteretic.get_response">
+<a class="viewcode-back" href="../../../../guide/materials_catalog.html#femsolver.materials.uniaxial.hysteretic.UniaxialHysteretic.get_response">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">eps</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+        <span class="n">eps</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">eps</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_trial</span> <span class="o">=</span> <span class="n">eps</span>
+        <span class="n">delta</span> <span class="o">=</span> <span class="n">eps</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_committed</span>
+        <span class="k">if</span> <span class="n">delta</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="n">inc_dir</span> <span class="o">=</span> <span class="o">+</span><span class="mi">1</span>
+        <span class="k">elif</span> <span class="n">delta</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="n">inc_dir</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">inc_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">direction_committed</span>
+
+        <span class="n">alpha</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha_committed</span>
+
+        <span class="c1"># ----- Pushing the envelope past previous peaks?</span>
+        <span class="k">if</span> <span class="n">eps</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_pos_committed</span><span class="p">:</span>
+            <span class="c1"># Increment damage by the plastic excursion on envelope</span>
+            <span class="n">delta_alpha</span> <span class="o">=</span> <span class="n">eps</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_pos_committed</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">alpha_trial</span> <span class="o">=</span> <span class="n">alpha</span> <span class="o">+</span> <span class="n">delta_alpha</span>
+            <span class="n">sigma</span><span class="p">,</span> <span class="n">Et</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_envelope</span><span class="p">(</span><span class="n">eps</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha_trial</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_pos_trial</span> <span class="o">=</span> <span class="n">eps</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_neg_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_neg_committed</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">eps_rev_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_rev_committed</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sigma_rev_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_rev_committed</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">direction_trial</span> <span class="o">=</span> <span class="o">+</span><span class="mi">1</span>
+        <span class="k">elif</span> <span class="n">eps</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_neg_committed</span><span class="p">:</span>
+            <span class="n">delta_alpha</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_neg_committed</span> <span class="o">-</span> <span class="n">eps</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">alpha_trial</span> <span class="o">=</span> <span class="n">alpha</span> <span class="o">+</span> <span class="n">delta_alpha</span>
+            <span class="n">sigma</span><span class="p">,</span> <span class="n">Et</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_envelope</span><span class="p">(</span><span class="n">eps</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha_trial</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_neg_trial</span> <span class="o">=</span> <span class="n">eps</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_pos_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_pos_committed</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">eps_rev_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_rev_committed</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sigma_rev_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_rev_committed</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">direction_trial</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Inside the loop.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">alpha_trial</span> <span class="o">=</span> <span class="n">alpha</span>       <span class="c1"># no new envelope excursion</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_pos_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_pos_committed</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_neg_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_neg_committed</span>
+            <span class="n">has_yielded_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_pos_trial</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_y</span>
+            <span class="n">has_yielded_neg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_neg_trial</span> <span class="o">&lt;</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">eps_y</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">has_yielded_pos</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">has_yielded_neg</span><span class="p">:</span>
+                <span class="n">sigma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">E</span> <span class="o">*</span> <span class="n">eps</span>
+                <span class="n">Et</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">E</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">eps_rev_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_rev_committed</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">sigma_rev_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_rev_committed</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">direction_trial</span> <span class="o">=</span> <span class="n">inc_dir</span> <span class="k">if</span> <span class="n">inc_dir</span> <span class="o">!=</span> <span class="mi">0</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">direction_committed</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">inc_dir</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">direction_committed</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">eps_rev_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_committed</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">sigma_rev_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_committed</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">direction_trial</span> <span class="o">=</span> <span class="n">inc_dir</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">eps_rev_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_rev_committed</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">sigma_rev_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_rev_committed</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">direction_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">direction_committed</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">direction_trial</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">eps_target</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_pos_trial</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">eps_target</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_neg_trial</span>
+                <span class="c1"># Reload target uses the *current* (possibly degraded)</span>
+                <span class="c1"># envelope value at the historical peak.</span>
+                <span class="n">sigma_target</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_envelope</span><span class="p">(</span><span class="n">eps_target</span><span class="p">,</span>
+                                                   <span class="n">alpha</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha_trial</span><span class="p">)</span>
+                <span class="n">sigma</span><span class="p">,</span> <span class="n">Et</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reload_segment</span><span class="p">(</span>
+                    <span class="n">eps</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">direction_trial</span><span class="p">,</span>
+                    <span class="n">eps_target</span><span class="p">,</span> <span class="n">sigma_target</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">eps_rev_trial</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_rev_trial</span><span class="p">,</span>
+                <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_trial</span> <span class="o">=</span> <span class="n">sigma</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Et_trial</span> <span class="o">=</span> <span class="n">Et</span>
+        <span class="k">return</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">Et</span></div>
+
+
+    <span class="c1"># ------------------------------------------------------------ state</span>
+<div class="viewcode-block" id="UniaxialHysteretic.commit_state">
+<a class="viewcode-back" href="../../../../guide/materials_catalog.html#femsolver.materials.uniaxial.hysteretic.UniaxialHysteretic.commit_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">commit_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_committed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_trial</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_committed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_trial</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_pos_committed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_pos_trial</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_neg_committed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_neg_trial</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_rev_committed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_rev_trial</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_rev_committed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_rev_trial</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">direction_committed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">direction_trial</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha_committed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha_trial</span></div>
+
+
+<div class="viewcode-block" id="UniaxialHysteretic.revert_state">
+<a class="viewcode-back" href="../../../../guide/materials_catalog.html#femsolver.materials.uniaxial.hysteretic.UniaxialHysteretic.revert_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">revert_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_committed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_committed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_pos_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_pos_committed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_neg_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_neg_committed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_rev_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_rev_committed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_rev_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_rev_committed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">direction_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">direction_committed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha_committed</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;UniaxialHysteretic(E=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">E</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">, sigma_y=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">sigma_y</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;b=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">b</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">, pinch_x=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pinch_x</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;pinch_y=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pinch_y</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">)&quot;</span>
+        <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,302 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.elements.shell_mesh &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.elements.shell_mesh</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.elements.shell_mesh</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Mesh helpers for curved shells using the flat-facet approximation.</span>
+
+<span class="sd">For shells of moderate curvature, the standard practice in</span>
+<span class="sd">commercial-FE software is to mesh the curved surface with flat</span>
+<span class="sd">quadrilateral or triangular facets and rely on the constant-Jacobian</span>
+<span class="sd">mapping inside each facet. ``ShellMITC4`` and ``ShellTri3`` already</span>
+<span class="sd">support this through their internal local-frame construction (the</span>
+<span class="sd">mid-surface plane is derived from the four / three node positions).</span>
+
+<span class="sd">The helpers below generate the most common curved-shell topologies</span>
+<span class="sd">and return ready-to-use node / element lists. They do not generate</span>
+<span class="sd">the model -- they yield arrays that the caller can hand to</span>
+<span class="sd">``Model.add_node`` / ``Model.add_element`` along with the chosen</span>
+<span class="sd">shell element class and material / section.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+
+<div class="viewcode-block" id="cylindrical_shell_mesh">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.shell_mesh.cylindrical_shell_mesh">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">cylindrical_shell_mesh</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">length</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">n_circ</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">n_long</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">theta_start</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+    <span class="n">theta_end</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span>
+    <span class="n">axis</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;z&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a cylindrical-shell mesh with quadrilateral facets.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    radius : float</span>
+<span class="sd">    length : float</span>
+<span class="sd">    n_circ : int</span>
+<span class="sd">        Number of facets around the circumference.</span>
+<span class="sd">    n_long : int</span>
+<span class="sd">        Number of facets along the cylinder axis.</span>
+<span class="sd">    theta_start, theta_end : float</span>
+<span class="sd">        Angular extent (radians). Defaults to a full cylinder</span>
+<span class="sd">        ``[0, 2 pi]``. A partial sweep (e.g. ``0 -&gt; pi``) gives a</span>
+<span class="sd">        half-cylinder.</span>
+<span class="sd">    axis : ``&quot;z&quot;`` (default), ``&quot;x&quot;``, or ``&quot;y&quot;``</span>
+<span class="sd">        Direction of the cylinder axis. Nodes are placed in the plane</span>
+<span class="sd">        perpendicular to this axis.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    nodes : (n, 3) array of node coordinates.</span>
+<span class="sd">    quads : (m, 4) array of zero-indexed node tags forming each quad</span>
+<span class="sd">        facet (CCW seen from the outside).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">n_circ</span> <span class="o">&lt;</span> <span class="mi">1</span> <span class="ow">or</span> <span class="n">n_long</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;n_circ and n_long must be &gt;= 1&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">axis</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;axis must be &#39;x&#39;, &#39;y&#39;, or &#39;z&#39;, got </span><span class="si">{</span><span class="n">axis</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">full</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">theta_end</span> <span class="o">-</span> <span class="n">theta_start</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span> <span class="o">-</span> <span class="mf">1e-12</span>
+    <span class="n">n_circ_nodes</span> <span class="o">=</span> <span class="n">n_circ</span> <span class="k">if</span> <span class="n">full</span> <span class="k">else</span> <span class="n">n_circ</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="n">n_long_nodes</span> <span class="o">=</span> <span class="n">n_long</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="n">nodes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_circ_nodes</span> <span class="o">*</span> <span class="n">n_long_nodes</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="n">thetas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">theta_start</span><span class="p">,</span> <span class="n">theta_end</span><span class="p">,</span> <span class="n">n_circ_nodes</span>
+                              <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="k">if</span> <span class="n">full</span> <span class="k">else</span> <span class="mi">0</span><span class="p">))[:</span><span class="n">n_circ_nodes</span><span class="p">]</span>
+    <span class="n">zs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">n_long_nodes</span><span class="p">)</span>
+    <span class="n">axis_idx</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">}[</span><span class="n">axis</span><span class="p">]</span>
+    <span class="c1"># The two non-axis directions get the radial sweep</span>
+    <span class="n">other</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span> <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="n">axis_idx</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">zj</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">zs</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">ti</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">thetas</span><span class="p">):</span>
+            <span class="n">idx</span> <span class="o">=</span> <span class="n">j</span> <span class="o">*</span> <span class="n">n_circ_nodes</span> <span class="o">+</span> <span class="n">i</span>
+            <span class="n">nodes</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="n">axis_idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">zj</span>
+            <span class="n">nodes</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="n">other</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="n">radius</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">ti</span><span class="p">)</span>
+            <span class="n">nodes</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="n">other</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="n">radius</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">ti</span><span class="p">)</span>
+    <span class="n">quads</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_circ</span> <span class="o">*</span> <span class="n">n_long</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">q</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_long</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_circ</span><span class="p">):</span>
+            <span class="n">n0</span> <span class="o">=</span> <span class="n">j</span> <span class="o">*</span> <span class="n">n_circ_nodes</span> <span class="o">+</span> <span class="n">i</span>
+            <span class="n">n1</span> <span class="o">=</span> <span class="n">j</span> <span class="o">*</span> <span class="n">n_circ_nodes</span> <span class="o">+</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="n">n_circ_nodes</span>
+            <span class="n">n2</span> <span class="o">=</span> <span class="p">(</span><span class="n">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">n_circ_nodes</span> <span class="o">+</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="n">n_circ_nodes</span>
+            <span class="n">n3</span> <span class="o">=</span> <span class="p">(</span><span class="n">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">n_circ_nodes</span> <span class="o">+</span> <span class="n">i</span>
+            <span class="n">quads</span><span class="p">[</span><span class="n">q</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">n0</span><span class="p">,</span> <span class="n">n1</span><span class="p">,</span> <span class="n">n2</span><span class="p">,</span> <span class="n">n3</span><span class="p">]</span>
+            <span class="n">q</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">nodes</span><span class="p">,</span> <span class="n">quads</span></div>
+
+
+
+<div class="viewcode-block" id="spherical_cap_mesh">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.shell_mesh.spherical_cap_mesh">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">spherical_cap_mesh</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">half_angle_deg</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">n_radial</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">n_circ</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a spherical-cap mesh of quadrilaterals.</span>
+
+<span class="sd">    The cap is centered on the +z axis with apex at (0, 0, radius);</span>
+<span class="sd">    points sweep from the apex out to the rim at polar angle</span>
+<span class="sd">    ``half_angle_deg`` from the axis.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    radius : float</span>
+<span class="sd">    half_angle_deg : float</span>
+<span class="sd">        Half-angle (from apex to rim), in degrees. 90 gives a</span>
+<span class="sd">        hemisphere; smaller angles give shallower caps.</span>
+<span class="sd">    n_radial : int</span>
+<span class="sd">        Number of facets along the radial (apex-to-rim) direction.</span>
+<span class="sd">    n_circ : int</span>
+<span class="sd">        Number of facets around the circumference.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    nodes : (n, 3) array of node coordinates.</span>
+<span class="sd">    quads : (m, 4) array of zero-indexed quad node tags.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    The apex is a single point shared by all radial rings. The</span>
+<span class="sd">    &quot;quads&quot; that touch the apex are degenerate (three coincident</span>
+<span class="sd">    corner indices); shell elements at the apex effectively act as</span>
+<span class="sd">    triangles. For higher-quality apex meshing, use a</span>
+<span class="sd">    triangulation with the ``ShellTri3`` element instead.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">half_angle_deg</span> <span class="o">&lt;=</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">half_angle_deg</span> <span class="o">&gt;</span> <span class="mf">180.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;half_angle_deg must lie in (0, 180], got </span><span class="si">{</span><span class="n">half_angle_deg</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">n_radial</span> <span class="o">&lt;</span> <span class="mi">1</span> <span class="ow">or</span> <span class="n">n_circ</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;n_radial and n_circ must be &gt;= 1&quot;</span><span class="p">)</span>
+    <span class="n">n_circ_nodes</span> <span class="o">=</span> <span class="n">n_circ</span>
+    <span class="n">n_radial_nodes</span> <span class="o">=</span> <span class="n">n_radial</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="c1"># Apex node + each ring of n_circ nodes</span>
+    <span class="n">nodes</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">nodes</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">radius</span><span class="p">])</span>     <span class="c1"># apex</span>
+    <span class="n">half_angle</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">half_angle_deg</span><span class="p">)</span>
+    <span class="n">phis</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">half_angle</span><span class="p">,</span> <span class="n">n_radial_nodes</span><span class="p">)[</span><span class="mi">1</span><span class="p">:]</span>
+    <span class="n">thetas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">n_circ_nodes</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)[:</span><span class="n">n_circ_nodes</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">phi</span> <span class="ow">in</span> <span class="n">phis</span><span class="p">:</span>
+        <span class="n">sphi</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span>
+        <span class="n">cphi</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">theta</span> <span class="ow">in</span> <span class="n">thetas</span><span class="p">:</span>
+            <span class="n">nodes</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">radius</span> <span class="o">*</span> <span class="n">sphi</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">theta</span><span class="p">),</span>
+                            <span class="n">radius</span> <span class="o">*</span> <span class="n">sphi</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">theta</span><span class="p">),</span>
+                            <span class="n">radius</span> <span class="o">*</span> <span class="n">cphi</span><span class="p">])</span>
+    <span class="n">nodes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">nodes</span><span class="p">)</span>
+    <span class="c1"># Quads</span>
+    <span class="n">quads</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="c1"># First ring: apex (index 0) + first sweep of n_circ nodes</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_circ_nodes</span><span class="p">):</span>
+        <span class="n">n0</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">n1</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">i</span>
+        <span class="n">n2</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="n">n_circ_nodes</span>
+        <span class="n">n3</span> <span class="o">=</span> <span class="mi">0</span>      <span class="c1"># degenerate corner</span>
+        <span class="n">quads</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">n0</span><span class="p">,</span> <span class="n">n1</span><span class="p">,</span> <span class="n">n2</span><span class="p">,</span> <span class="n">n3</span><span class="p">])</span>
+    <span class="c1"># Subsequent rings (regular quads)</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_radial</span><span class="p">):</span>
+        <span class="n">base0</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="p">(</span><span class="n">k</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">n_circ_nodes</span>
+        <span class="n">base1</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">k</span> <span class="o">*</span> <span class="n">n_circ_nodes</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_circ_nodes</span><span class="p">):</span>
+            <span class="n">n0</span> <span class="o">=</span> <span class="n">base0</span> <span class="o">+</span> <span class="n">i</span>
+            <span class="n">n1</span> <span class="o">=</span> <span class="n">base0</span> <span class="o">+</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="n">n_circ_nodes</span>
+            <span class="n">n2</span> <span class="o">=</span> <span class="n">base1</span> <span class="o">+</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="n">n_circ_nodes</span>
+            <span class="n">n3</span> <span class="o">=</span> <span class="n">base1</span> <span class="o">+</span> <span class="n">i</span>
+            <span class="n">quads</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">n0</span><span class="p">,</span> <span class="n">n1</span><span class="p">,</span> <span class="n">n2</span><span class="p">,</span> <span class="n">n3</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">nodes</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">quads</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -15,6 +15,12 @@ from femsolver.io.extract import (
     gather_node_history,
     mode_shape_table,
 )
+from femsolver.io.ida_hdf5 import (
+    load_ida_record,
+    load_ida_summary,
+    save_ida_record,
+    save_ida_summary,
+)
 
 __all__ = [
     "save_model_json",
@@ -26,4 +32,8 @@ __all__ = [
     "gather_node_history",
     "mode_shape_table",
     "capacity_curve",
+    "save_ida_record",
+    "load_ida_record",
+    "save_ida_summary",
+    "load_ida_summary",
 ]

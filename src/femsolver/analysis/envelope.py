@@ -6,10 +6,12 @@ Given a model, a dict of named :class:`LoadPattern`s, and a list of
 :func:`asce7_lrfd_combinations`), this driver:
 
 1. For each combination:
+
    a. Clears the model's loads and applies the combination via
       :func:`apply_combination`.
    b. Runs :class:`LinearStaticAnalysis`.
    c. Records per-member end forces and per-node displacements.
+
 2. After the sweep, computes for each element the **envelope** of
    its force components: max/min across combos plus the governing
    combo name for each.

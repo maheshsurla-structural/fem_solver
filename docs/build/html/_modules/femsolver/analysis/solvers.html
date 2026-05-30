@@ -1,0 +1,433 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.analysis.solvers &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.analysis.solvers</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.analysis.solvers</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Linear solver abstractions.</span>
+
+<span class="sd">Provides a pluggable ``LinearSolver`` interface for the linear-system</span>
+<span class="sd">solves at the heart of every analysis. The default</span>
+<span class="sd">:class:`DirectSparseSolver` wraps SciPy&#39;s :func:`spsolve` (UMFPACK /</span>
+<span class="sd">SuperLU) and reproduces the existing behaviour of</span>
+<span class="sd">:class:`~femsolver.analysis.linear_static.LinearStaticAnalysis`. The</span>
+<span class="sd">:class:`IterativeSolver` wraps :func:`scipy.sparse.linalg.cg` (for</span>
+<span class="sd">symmetric positive-definite systems) or :func:`gmres` (for general</span>
+<span class="sd">non-symmetric systems) with an optional ILU preconditioner.</span>
+
+<span class="sd">For models in the 10k+ DOF range, the iterative path with a good</span>
+<span class="sd">preconditioner can dramatically outperform the direct path&#39;s memory</span>
+<span class="sd">footprint, while preserving correctness to the requested tolerance.</span>
+<span class="sd">For most engineering structural problems (&lt; 10k DOF), the direct</span>
+<span class="sd">solver is faster and simpler -- stick with the default.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy.sparse</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.sparse.linalg</span><span class="w"> </span><span class="kn">import</span> <span class="n">cg</span><span class="p">,</span> <span class="n">factorized</span><span class="p">,</span> <span class="n">gmres</span><span class="p">,</span> <span class="n">spilu</span><span class="p">,</span> <span class="n">splu</span><span class="p">,</span> <span class="n">spsolve</span>
+
+
+<span class="c1"># Optional PARDISO via pypardiso — graceful fallback if not installed.</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">pypardiso</span>              <span class="c1"># type: ignore</span>
+    <span class="n">_PARDISO_AVAILABLE</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">_PARDISO_AVAILABLE</span> <span class="o">=</span> <span class="kc">False</span>
+
+
+<div class="viewcode-block" id="pardiso_available">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.solvers.pardiso_available">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">pardiso_available</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return True if pypardiso is installed in the current environment.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_PARDISO_AVAILABLE</span></div>
+
+
+
+<div class="viewcode-block" id="LinearSolver">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.solvers.LinearSolver">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">LinearSolver</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract solver for ``A x = b`` with a sparse ``A``.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="LinearSolver.solve">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.solvers.LinearSolver.solve">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">sp</span><span class="o">.</span><span class="n">spmatrix</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the solution vector ``x`` to ``A x = b``.&quot;&quot;&quot;</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="DirectSparseSolver">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.solvers.DirectSparseSolver">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DirectSparseSolver</span><span class="p">(</span><span class="n">LinearSolver</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Default solver: :func:`scipy.sparse.linalg.spsolve` (SuperLU /</span>
+<span class="sd">    UMFPACK).</span>
+
+<span class="sd">    Best for small-to-medium problems (&lt; 10k--50k DOF depending on</span>
+<span class="sd">    sparsity). Reproduces the existing behaviour of femsolver</span>
+<span class="sd">    analyses.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="DirectSparseSolver.solve">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.solvers.DirectSparseSolver.solve">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">sp</span><span class="o">.</span><span class="n">spmatrix</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">spsolve</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">b</span><span class="p">))</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;direct sparse solve failed: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">. Likely cause: singular &quot;</span>
+                <span class="s2">&quot;stiffness matrix (insufficient supports, mechanism, or &quot;</span>
+                <span class="s2">&quot;duplicate elements).&quot;</span>
+            <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">x</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="s2">&quot;direct sparse solve produced non-finite values. Likely &quot;</span>
+                <span class="s2">&quot;cause: singular stiffness matrix (insufficient supports, &quot;</span>
+                <span class="s2">&quot;mechanism, or duplicate elements).&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="IterativeSolver">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.solvers.IterativeSolver">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">IterativeSolver</span><span class="p">(</span><span class="n">LinearSolver</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Iterative solver -- CG (SPD) or GMRES (general) with an</span>
+<span class="sd">    optional ILU preconditioner.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    method : ``&quot;cg&quot;`` (default) or ``&quot;gmres&quot;``</span>
+<span class="sd">        ``&quot;cg&quot;``: conjugate-gradient, requires SPD matrices. Faster</span>
+<span class="sd">        per iteration for structural-FE stiffness matrices when the</span>
+<span class="sd">        model has no rigid-body modes / negative-definite branches.</span>
+
+<span class="sd">        ``&quot;gmres&quot;``: generalized minimal residuals, works for</span>
+<span class="sd">        non-symmetric / indefinite systems. Use when the tangent</span>
+<span class="sd">        matrix loses symmetry (e.g., non-associated plasticity).</span>
+<span class="sd">    tol : float, default 1e-10</span>
+<span class="sd">        Convergence tolerance for the iterative method (relative).</span>
+<span class="sd">    max_iter : int, default 5000</span>
+<span class="sd">    preconditioner : ``&quot;ilu&quot;`` (default) or ``&quot;none&quot;``</span>
+<span class="sd">        ``&quot;ilu&quot;``: incomplete LU factorization as preconditioner;</span>
+<span class="sd">        substantially accelerates convergence for most structural-FE</span>
+<span class="sd">        problems at modest memory cost.</span>
+
+<span class="sd">        ``&quot;none&quot;``: no preconditioning. Convergence may be slow.</span>
+<span class="sd">    drop_tol : float, default 1e-4</span>
+<span class="sd">        Drop tolerance for the ILU preconditioner. Smaller values give</span>
+<span class="sd">        a tighter preconditioner (faster convergence per iteration)</span>
+<span class="sd">        at higher memory cost. ``1e-4`` is a sensible default.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cg&quot;</span><span class="p">,</span>
+        <span class="n">tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0e-10</span><span class="p">,</span>
+        <span class="n">max_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5000</span><span class="p">,</span>
+        <span class="n">preconditioner</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;ilu&quot;</span><span class="p">,</span>
+        <span class="n">drop_tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0e-4</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="n">method</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;cg&quot;</span><span class="p">,</span> <span class="s2">&quot;gmres&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;method must be &#39;cg&#39; or &#39;gmres&#39;, got </span><span class="si">{</span><span class="n">method</span><span class="si">!r}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">preconditioner</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;ilu&quot;</span><span class="p">,</span> <span class="s2">&quot;none&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;preconditioner must be &#39;ilu&#39; or &#39;none&#39;, got &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">preconditioner</span><span class="si">!r}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">tol</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;tol must be positive, got </span><span class="si">{</span><span class="n">tol</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">max_iter</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;max_iter must be &gt;= 1, got </span><span class="si">{</span><span class="n">max_iter</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="n">method</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tol</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">tol</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_iter</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">max_iter</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">preconditioner</span> <span class="o">=</span> <span class="n">preconditioner</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">drop_tol</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">drop_tol</span><span class="p">)</span>
+        <span class="c1"># Diagnostic: number of iterations from the last solve.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_iterations</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_residual</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+<div class="viewcode-block" id="IterativeSolver.solve">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.solvers.IterativeSolver.solve">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">sp</span><span class="o">.</span><span class="n">spmatrix</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">b</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+        <span class="c1"># Build preconditioner</span>
+        <span class="n">M</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">preconditioner</span> <span class="o">==</span> <span class="s2">&quot;ilu&quot;</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">ilu</span> <span class="o">=</span> <span class="n">spilu</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">tocsc</span><span class="p">(),</span> <span class="n">drop_tol</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">drop_tol</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;ILU preconditioner construction failed: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">. &quot;</span>
+                    <span class="s2">&quot;Try preconditioner=&#39;none&#39; or fall back to &quot;</span>
+                    <span class="s2">&quot;DirectSparseSolver.&quot;</span>
+                <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+            <span class="n">M</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">LinearOperator</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">matvec</span><span class="o">=</span><span class="n">ilu</span><span class="o">.</span><span class="n">solve</span><span class="p">)</span>
+        <span class="n">iter_counter</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;n&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_cb</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">iter_counter</span><span class="p">[</span><span class="s2">&quot;n&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;cg&quot;</span><span class="p">:</span>
+            <span class="n">x</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">cg</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">rtol</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tol</span><span class="p">,</span> <span class="n">maxiter</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">max_iter</span><span class="p">,</span>
+                          <span class="n">M</span><span class="o">=</span><span class="n">M</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="n">_cb</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># callback_type=&#39;legacy&#39; silences the scipy DeprecationWarning</span>
+            <span class="c1"># while preserving the current callback signature.</span>
+            <span class="n">x</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">gmres</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">rtol</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tol</span><span class="p">,</span> <span class="n">maxiter</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">max_iter</span><span class="p">,</span>
+                              <span class="n">M</span><span class="o">=</span><span class="n">M</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="n">_cb</span><span class="p">,</span>
+                              <span class="n">callback_type</span><span class="o">=</span><span class="s2">&quot;legacy&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_iterations</span> <span class="o">=</span> <span class="n">iter_counter</span><span class="p">[</span><span class="s2">&quot;n&quot;</span><span class="p">]</span>
+        <span class="c1"># Residual norm for diagnostic</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">b</span> <span class="o">-</span> <span class="n">A</span> <span class="o">@</span> <span class="n">x</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_residual</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">r</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">info</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;iterative solver (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">method</span><span class="si">}</span><span class="s2">) did not converge &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;after </span><span class="si">{</span><span class="n">info</span><span class="si">}</span><span class="s2"> iterations (residual = &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">last_residual</span><span class="si">:</span><span class="s2">.3e</span><span class="si">}</span><span class="s2">). Increase max_iter, tighten &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;drop_tol, or fall back to DirectSparseSolver.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">info</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;iterative solver (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">method</span><span class="si">}</span><span class="s2">) reported &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;illegal-input error code </span><span class="si">{</span><span class="n">info</span><span class="si">}</span><span class="s2">.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span></div>
+</div>
+
+
+
+<span class="c1"># ============================================================ PARDISO</span>
+
+<div class="viewcode-block" id="PardisoSolver">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.solvers.PardisoSolver">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PardisoSolver</span><span class="p">(</span><span class="n">LinearSolver</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Intel MKL PARDISO via pypardiso.</span>
+
+<span class="sd">    Faster than scipy&#39;s SuperLU for many engineering-FE stiffness</span>
+<span class="sd">    matrices, especially in the 10k--500k DOF range, thanks to MKL&#39;s</span>
+<span class="sd">    parallel sparse-direct factorisation.</span>
+
+<span class="sd">    Raises ``ImportError`` on instantiation if ``pypardiso`` is not</span>
+<span class="sd">    installed; check :func:`pardiso_available` first if you want to</span>
+<span class="sd">    fall back gracefully.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">_PARDISO_AVAILABLE</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+                <span class="s2">&quot;PardisoSolver requires the optional &#39;pypardiso&#39; &quot;</span>
+                <span class="s2">&quot;package: pip install pypardiso&quot;</span>
+            <span class="p">)</span>
+
+<div class="viewcode-block" id="PardisoSolver.solve">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.solvers.PardisoSolver.solve">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">sp</span><span class="o">.</span><span class="n">spmatrix</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="c1"># pypardiso accepts CSR or CSC; CSR is its native format</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">b</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">pypardiso</span><span class="o">.</span><span class="n">spsolve</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">tocsr</span><span class="p">(),</span> <span class="n">b</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;PARDISO solve failed: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">. Likely cause: singular &quot;</span>
+                <span class="s2">&quot;matrix or unsupported dtype.&quot;</span>
+            <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">x</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="s2">&quot;PARDISO solve produced non-finite values.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span></div>
+</div>
+
+
+
+<span class="c1"># ============================================================ cached / re-used factor</span>
+
+<div class="viewcode-block" id="CachedFactorSolver">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.solvers.CachedFactorSolver">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CachedFactorSolver</span><span class="p">(</span><span class="n">LinearSolver</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;SuperLU sparse-direct solver that caches its factorisation</span>
+<span class="sd">    across multiple :meth:`solve` calls.</span>
+
+<span class="sd">    Use when the same ``A`` is solved against several different</span>
+<span class="sd">    right-hand sides (e.g., response-spectrum modal decomposition,</span>
+<span class="sd">    multi-load-case linear analysis, or the inner solves of a</span>
+<span class="sd">    transient time-step that keeps the same effective matrix).</span>
+<span class="sd">    The factorisation is computed lazily on the first ``solve``.</span>
+
+<span class="sd">    Call :meth:`reset` to discard the cached factor and force</span>
+<span class="sd">    re-factorisation on the next ``solve`` (e.g., after the model</span>
+<span class="sd">    geometry / material changes).</span>
+
+<span class="sd">    The cache is keyed on ``id(A)``: if the same matrix object is</span>
+<span class="sd">    passed again, the cached factor is reused; otherwise it is</span>
+<span class="sd">    discarded and rebuilt.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cached_id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_factor</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache_hits</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache_misses</span> <span class="o">=</span> <span class="mi">0</span>
+
+<div class="viewcode-block" id="CachedFactorSolver.reset">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.solvers.CachedFactorSolver.reset">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cached_id</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_factor</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="CachedFactorSolver.solve">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.solvers.CachedFactorSolver.solve">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">:</span> <span class="n">sp</span><span class="o">.</span><span class="n">spmatrix</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">A_id</span> <span class="o">=</span> <span class="nb">id</span><span class="p">(</span><span class="n">A</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_id</span> <span class="o">==</span> <span class="n">A_id</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_factor</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cache_hits</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_factor</span> <span class="o">=</span> <span class="n">splu</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">tocsc</span><span class="p">())</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;sparse LU factorisation failed: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cached_id</span> <span class="o">=</span> <span class="n">A_id</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cache_misses</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_factor</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">b</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">())</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">x</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="s2">&quot;cached-factor solve produced non-finite values.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

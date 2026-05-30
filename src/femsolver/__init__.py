@@ -7,14 +7,19 @@ from femsolver.materials.elastic import ElasticIsotropic
 from femsolver.materials.j2_plasticity import J2Plasticity3D
 from femsolver.materials.orthotropic import OrthotropicLamina
 from femsolver.materials.drucker_prager import DruckerPrager3D
+from femsolver.materials.mohr_coulomb import MohrCoulomb3D
+from femsolver.materials.cam_clay import ModifiedCamClay3D
+from femsolver.materials.concrete_damage import ConcreteDamage3D
 from femsolver.elements.truss import Truss2D, Truss3D
 from femsolver.elements.truss_corot import Truss2DCorotational
 from femsolver.elements.beam import BeamColumn2D, BeamColumn3D
+from femsolver.elements.beam_curved import CurvedBeam2D
 from femsolver.elements.beam_corot import BeamColumn2DCorotational
 from femsolver.elements.beam_corot_3d import BeamColumn3DCorotational
 from femsolver.elements.beam_force import ForceBeamColumn2DCorotational
 from femsolver.elements.beam_hinged import HingedBeamColumn2D
-from femsolver.elements.plane import Quad4
+from femsolver.elements.plane import Quad4, Quad8
+from femsolver.elements.membrane_drilling import MembraneQ4Drilling
 from femsolver.elements.shell import ShellMITC4
 from femsolver.elements.shell_mitc9 import ShellMITC9
 from femsolver.elements.shell_dkmq4 import ShellDKMQ4
@@ -24,7 +29,7 @@ from femsolver.elements.shell_mesh import (
     cylindrical_shell_mesh,
     spherical_cap_mesh,
 )
-from femsolver.elements.solid import Hex8, Tet4
+from femsolver.elements.solid import Hex8, Hex20, Tet4
 from femsolver.elements.thermal import (
     ConvectionEdge2D,
     ThermalHex8,

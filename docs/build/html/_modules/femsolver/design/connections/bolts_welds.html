@@ -1,0 +1,437 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.design.connections.bolts_welds &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.design.connections.bolts_welds</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.design.connections.bolts_welds</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Bolt and weld strength calculators (AISC 360 + IS 800).</span>
+
+<span class="sd">Implements:</span>
+
+<span class="sd">* **Bolt shear** (single or double shear plane).</span>
+<span class="sd">* **Bolt bearing** on connected plies.</span>
+<span class="sd">* **Bolt block-shear** rupture.</span>
+<span class="sd">* **Fillet weld** strength on the throat.</span>
+
+<span class="sd">Two code variants are provided side by side: AISC 360-22 (LRFD) and</span>
+<span class="sd">IS 800:2007 (LSD). The interfaces are unified to make code-switching</span>
+<span class="sd">easy. All inputs in SI (Pa, m, N).</span>
+
+<span class="sd">References</span>
+<span class="sd">----------</span>
+<span class="sd">* AISC 360-22, Cl. J3 (bolts) and J2 (welds).</span>
+<span class="sd">* IS 800:2007, Cl. 10.3 (bolts) and Cl. 10.5 (welds).</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+
+
+<span class="c1"># ============================================================ bolt shear</span>
+
+<div class="viewcode-block" id="BoltShearResult">
+<a class="viewcode-back" href="../../../../api/design.html#femsolver.design.connections.bolts_welds.BoltShearResult">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">BoltShearResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Bolt shear strength.&quot;&quot;&quot;</span>
+
+    <span class="n">V_d_single</span><span class="p">:</span> <span class="nb">float</span>           <span class="c1"># design strength per bolt per shear plane (N)</span>
+    <span class="n">V_d_total</span><span class="p">:</span> <span class="nb">float</span>            <span class="c1"># V_d_single * n_bolts * n_shear_planes</span>
+    <span class="n">code</span><span class="p">:</span> <span class="nb">str</span></div>
+
+
+
+<div class="viewcode-block" id="bolt_shear_aisc">
+<a class="viewcode-back" href="../../../../api/design.html#femsolver.design.connections.bolts_welds.bolt_shear_aisc">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">bolt_shear_aisc</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">n_bolts</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">A_b</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">F_nv</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">n_shear_planes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">phi</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.75</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BoltShearResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;AISC 360 Eq. J3-1: ``Rn = F_nv A_b``, ``phi = 0.75``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    n_bolts : int</span>
+<span class="sd">    A_b : float</span>
+<span class="sd">        Nominal bolt area (m^2).</span>
+<span class="sd">    F_nv : float</span>
+<span class="sd">        Nominal shear stress = 0.45 F_u (threads excluded) or</span>
+<span class="sd">        0.563 F_u (threads N) per Table J3.2 (Pa).</span>
+<span class="sd">    n_shear_planes : int, default 1</span>
+<span class="sd">    phi : float, default 0.75</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">n_bolts</span> <span class="o">&lt;</span> <span class="mi">1</span> <span class="ow">or</span> <span class="n">n_shear_planes</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;n_bolts and n_shear_planes must be &gt;= 1&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">A_b</span> <span class="o">&lt;=</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">F_nv</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;A_b and F_nv must be &gt; 0&quot;</span><span class="p">)</span>
+    <span class="n">Rn</span> <span class="o">=</span> <span class="n">F_nv</span> <span class="o">*</span> <span class="n">A_b</span>
+    <span class="n">V_d_single</span> <span class="o">=</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">Rn</span>
+    <span class="n">V_d_total</span> <span class="o">=</span> <span class="n">V_d_single</span> <span class="o">*</span> <span class="n">n_bolts</span> <span class="o">*</span> <span class="n">n_shear_planes</span>
+    <span class="k">return</span> <span class="n">BoltShearResult</span><span class="p">(</span>
+        <span class="n">V_d_single</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">V_d_single</span><span class="p">),</span>
+        <span class="n">V_d_total</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">V_d_total</span><span class="p">),</span>
+        <span class="n">code</span><span class="o">=</span><span class="s2">&quot;AISC 360-22 J3-1&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="bolt_shear_is800">
+<a class="viewcode-back" href="../../../../api/design.html#femsolver.design.connections.bolts_welds.bolt_shear_is800">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">bolt_shear_is800</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">n_bolts</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">f_ub</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">A_nb</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">A_sb</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">n_shear_planes_thread</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">n_shear_planes_shank</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">gamma_mb</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.25</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BoltShearResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;IS 800:2007 Cl. 10.3.3: ``V_dsb = (n_n A_nb + n_s A_sb) f_ub /</span>
+<span class="sd">    (sqrt(3) gamma_mb)`` per bolt.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    n_bolts : int</span>
+<span class="sd">    f_ub : float</span>
+<span class="sd">        Bolt ultimate stress (Pa). E.g. 400 MPa (Gr 4.6), 800 (Gr 8.8),</span>
+<span class="sd">        1000 (Gr 10.9).</span>
+<span class="sd">    A_nb : float</span>
+<span class="sd">        Bolt area at threaded part (root area) (m^2).</span>
+<span class="sd">    A_sb : float, optional</span>
+<span class="sd">        Bolt area at shank (gross) (m^2). Defaults to A_nb.</span>
+<span class="sd">    n_shear_planes_thread, n_shear_planes_shank : int</span>
+<span class="sd">        Number of shear planes passing through threads / shank.</span>
+<span class="sd">    gamma_mb : float, default 1.25</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">A_sb</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">A_sb</span> <span class="o">=</span> <span class="n">A_nb</span>
+    <span class="k">if</span> <span class="n">n_bolts</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;n_bolts must be &gt;= 1&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">f_ub</span> <span class="o">&lt;=</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">A_nb</span> <span class="o">&lt;=</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">A_sb</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;f_ub, A_nb, A_sb must be &gt; 0&quot;</span><span class="p">)</span>
+    <span class="n">V_dsb</span> <span class="o">=</span> <span class="p">(</span><span class="n">n_shear_planes_thread</span> <span class="o">*</span> <span class="n">A_nb</span> <span class="o">+</span> <span class="n">n_shear_planes_shank</span> <span class="o">*</span> <span class="n">A_sb</span><span class="p">)</span> \
+            <span class="o">*</span> <span class="n">f_ub</span> <span class="o">/</span> <span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">3.0</span><span class="p">)</span> <span class="o">*</span> <span class="n">gamma_mb</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">BoltShearResult</span><span class="p">(</span>
+        <span class="n">V_d_single</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">V_dsb</span><span class="p">),</span>
+        <span class="n">V_d_total</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">V_dsb</span> <span class="o">*</span> <span class="n">n_bolts</span><span class="p">),</span>
+        <span class="n">code</span><span class="o">=</span><span class="s2">&quot;IS 800:2007 Cl. 10.3.3&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="c1"># ============================================================ bolt bearing</span>
+
+<div class="viewcode-block" id="BoltBearingResult">
+<a class="viewcode-back" href="../../../../api/design.html#femsolver.design.connections.bolts_welds.BoltBearingResult">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">BoltBearingResult</span><span class="p">:</span>
+    <span class="n">V_d_single</span><span class="p">:</span> <span class="nb">float</span>           <span class="c1"># design bearing strength per bolt per ply (N)</span>
+    <span class="n">V_d_total</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">code</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">note</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="bolt_bearing_aisc">
+<a class="viewcode-back" href="../../../../api/design.html#femsolver.design.connections.bolts_welds.bolt_bearing_aisc">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">bolt_bearing_aisc</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">n_bolts</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">d_b</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">F_u</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">L_c</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">deformation_considered</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">phi</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.75</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BoltBearingResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;AISC 360 Eq. J3-6a: ``Rn = min(1.5 L_c t F_u, 3.0 d_b t F_u)`` if</span>
+<span class="sd">    deformation is considered (Eq. J3-6a); ``Rn = min(1.5 L_c t F_u,</span>
+<span class="sd">    3.6 d_b t F_u)`` if not (Eq. J3-6b).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    L_c : float</span>
+<span class="sd">        Clear distance between holes / edge in the direction of force</span>
+<span class="sd">        (m).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">d_b</span> <span class="o">&lt;=</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">t</span> <span class="o">&lt;=</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">F_u</span> <span class="o">&lt;=</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">L_c</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;bearing inputs must be &gt; 0&quot;</span><span class="p">)</span>
+    <span class="n">coef</span> <span class="o">=</span> <span class="mf">3.0</span> <span class="k">if</span> <span class="n">deformation_considered</span> <span class="k">else</span> <span class="mf">3.6</span>
+    <span class="n">Rn</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mf">1.2</span> <span class="o">*</span> <span class="n">L_c</span> <span class="o">*</span> <span class="n">t</span> <span class="o">*</span> <span class="n">F_u</span><span class="p">,</span> <span class="n">coef</span> <span class="o">*</span> <span class="n">d_b</span> <span class="o">*</span> <span class="n">t</span> <span class="o">*</span> <span class="n">F_u</span><span class="p">)</span>
+    <span class="n">V_d</span> <span class="o">=</span> <span class="n">phi</span> <span class="o">*</span> <span class="n">Rn</span>
+    <span class="k">return</span> <span class="n">BoltBearingResult</span><span class="p">(</span>
+        <span class="n">V_d_single</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">V_d</span><span class="p">),</span>
+        <span class="n">V_d_total</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">V_d</span> <span class="o">*</span> <span class="n">n_bolts</span><span class="p">),</span>
+        <span class="n">code</span><span class="o">=</span><span class="s2">&quot;AISC 360-22 J3-6&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="bolt_bearing_is800">
+<a class="viewcode-back" href="../../../../api/design.html#femsolver.design.connections.bolts_welds.bolt_bearing_is800">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">bolt_bearing_is800</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">n_bolts</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">d_b</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">f_u</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">f_ub</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">e</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">p</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">d_0</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">gamma_mb</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.25</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BoltBearingResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;IS 800 Cl. 10.3.4: ``V_dpb = 2.5 k_b d t f_u / gamma_mb`` per bolt.</span>
+
+<span class="sd">    ``k_b = min(e/(3 d_0), p/(3 d_0) - 0.25, f_ub/f_u, 1.0)``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    e : float</span>
+<span class="sd">        Edge distance (m) in the direction of force.</span>
+<span class="sd">    p : float, optional</span>
+<span class="sd">        Pitch (centre-to-centre) (m). Required for interior bolts.</span>
+<span class="sd">    d_0 : float, optional</span>
+<span class="sd">        Hole diameter (m). Defaults to ``d_b + 1.5 mm`` (standard).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">d_0</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">d_0</span> <span class="o">=</span> <span class="n">d_b</span> <span class="o">+</span> <span class="mf">1.5e-3</span>
+    <span class="k">if</span> <span class="n">d_b</span> <span class="o">&lt;=</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">t</span> <span class="o">&lt;=</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">f_u</span> <span class="o">&lt;=</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">f_ub</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;bearing inputs must be &gt; 0&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">e</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;e must be &gt; 0&quot;</span><span class="p">)</span>
+    <span class="n">terms</span> <span class="o">=</span> <span class="p">[</span><span class="n">e</span> <span class="o">/</span> <span class="p">(</span><span class="mf">3.0</span> <span class="o">*</span> <span class="n">d_0</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="n">p</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">terms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span> <span class="o">/</span> <span class="p">(</span><span class="mf">3.0</span> <span class="o">*</span> <span class="n">d_0</span><span class="p">)</span> <span class="o">-</span> <span class="mf">0.25</span><span class="p">)</span>
+    <span class="n">terms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">f_ub</span> <span class="o">/</span> <span class="n">f_u</span><span class="p">)</span>
+    <span class="n">terms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
+    <span class="n">k_b</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">terms</span><span class="p">)</span>
+    <span class="n">V_dpb</span> <span class="o">=</span> <span class="mf">2.5</span> <span class="o">*</span> <span class="n">k_b</span> <span class="o">*</span> <span class="n">d_b</span> <span class="o">*</span> <span class="n">t</span> <span class="o">*</span> <span class="n">f_u</span> <span class="o">/</span> <span class="n">gamma_mb</span>
+    <span class="k">return</span> <span class="n">BoltBearingResult</span><span class="p">(</span>
+        <span class="n">V_d_single</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">V_dpb</span><span class="p">),</span>
+        <span class="n">V_d_total</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">V_dpb</span> <span class="o">*</span> <span class="n">n_bolts</span><span class="p">),</span>
+        <span class="n">code</span><span class="o">=</span><span class="s2">&quot;IS 800:2007 Cl. 10.3.4&quot;</span><span class="p">,</span>
+        <span class="n">note</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;k_b = </span><span class="si">{</span><span class="n">k_b</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="c1"># ============================================================ block shear</span>
+
+<div class="viewcode-block" id="BlockShearResult">
+<a class="viewcode-back" href="../../../../api/design.html#femsolver.design.connections.bolts_welds.BlockShearResult">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">BlockShearResult</span><span class="p">:</span>
+    <span class="n">R_n</span><span class="p">:</span> <span class="nb">float</span>                  <span class="c1"># nominal block-shear strength (N)</span>
+    <span class="n">R_d</span><span class="p">:</span> <span class="nb">float</span>                  <span class="c1"># design strength (after phi or 1/gamma)</span>
+    <span class="n">code</span><span class="p">:</span> <span class="nb">str</span></div>
+
+
+
+<div class="viewcode-block" id="block_shear_aisc">
+<a class="viewcode-back" href="../../../../api/design.html#femsolver.design.connections.bolts_welds.block_shear_aisc">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">block_shear_aisc</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">A_gv</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">A_nv</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">A_nt</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">F_y</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">F_u</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">U_bs</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">phi</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.75</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BlockShearResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;AISC 360 Eq. J4-5: ``Rn = 0.6 F_u A_nv + U_bs F_u A_nt &lt;=</span>
+<span class="sd">    0.6 F_y A_gv + U_bs F_u A_nt``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">R_n_1</span> <span class="o">=</span> <span class="mf">0.60</span> <span class="o">*</span> <span class="n">F_u</span> <span class="o">*</span> <span class="n">A_nv</span> <span class="o">+</span> <span class="n">U_bs</span> <span class="o">*</span> <span class="n">F_u</span> <span class="o">*</span> <span class="n">A_nt</span>
+    <span class="n">R_n_2</span> <span class="o">=</span> <span class="mf">0.60</span> <span class="o">*</span> <span class="n">F_y</span> <span class="o">*</span> <span class="n">A_gv</span> <span class="o">+</span> <span class="n">U_bs</span> <span class="o">*</span> <span class="n">F_u</span> <span class="o">*</span> <span class="n">A_nt</span>
+    <span class="n">R_n</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">R_n_1</span><span class="p">,</span> <span class="n">R_n_2</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">BlockShearResult</span><span class="p">(</span>
+        <span class="n">R_n</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">R_n</span><span class="p">),</span> <span class="n">R_d</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">phi</span> <span class="o">*</span> <span class="n">R_n</span><span class="p">),</span>
+        <span class="n">code</span><span class="o">=</span><span class="s2">&quot;AISC 360-22 J4-5&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="c1"># ============================================================ fillet weld</span>
+
+<div class="viewcode-block" id="WeldStrengthResult">
+<a class="viewcode-back" href="../../../../api/design.html#femsolver.design.connections.bolts_welds.WeldStrengthResult">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">WeldStrengthResult</span><span class="p">:</span>
+    <span class="n">R_n_per_length</span><span class="p">:</span> <span class="nb">float</span>       <span class="c1"># weld strength per unit length (N/m)</span>
+    <span class="n">R_d_per_length</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">code</span><span class="p">:</span> <span class="nb">str</span></div>
+
+
+
+<div class="viewcode-block" id="fillet_weld_aisc">
+<a class="viewcode-back" href="../../../../api/design.html#femsolver.design.connections.bolts_welds.fillet_weld_aisc">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">fillet_weld_aisc</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">leg_size</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">F_EXX</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">phi</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.75</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">WeldStrengthResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;AISC 360 J2-4: ``Rn = 0.60 F_EXX t_e`` per unit length, with</span>
+<span class="sd">    throat thickness ``t_e = 0.707 leg_size``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    leg_size : float</span>
+<span class="sd">        Fillet weld leg (m).</span>
+<span class="sd">    F_EXX : float</span>
+<span class="sd">        Filler-metal nominal tensile strength (Pa).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">leg_size</span> <span class="o">&lt;=</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">F_EXX</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;inputs must be &gt; 0&quot;</span><span class="p">)</span>
+    <span class="n">t_e</span> <span class="o">=</span> <span class="mf">0.707</span> <span class="o">*</span> <span class="n">leg_size</span>
+    <span class="n">Rn</span> <span class="o">=</span> <span class="mf">0.60</span> <span class="o">*</span> <span class="n">F_EXX</span> <span class="o">*</span> <span class="n">t_e</span>
+    <span class="k">return</span> <span class="n">WeldStrengthResult</span><span class="p">(</span>
+        <span class="n">R_n_per_length</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">Rn</span><span class="p">),</span>
+        <span class="n">R_d_per_length</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">phi</span> <span class="o">*</span> <span class="n">Rn</span><span class="p">),</span>
+        <span class="n">code</span><span class="o">=</span><span class="s2">&quot;AISC 360-22 J2-4&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="fillet_weld_is800">
+<a class="viewcode-back" href="../../../../api/design.html#femsolver.design.connections.bolts_welds.fillet_weld_is800">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">fillet_weld_is800</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">leg_size</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">f_u_weld</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">gamma_mw</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.25</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">WeldStrengthResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;IS 800 Cl. 10.5.7: ``P_dw / l_w = f_u_w t_t / (sqrt(3) gamma_mw)``</span>
+<span class="sd">    per unit length, ``t_t = 0.7 leg_size``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">leg_size</span> <span class="o">&lt;=</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">f_u_weld</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;inputs must be &gt; 0&quot;</span><span class="p">)</span>
+    <span class="n">t_t</span> <span class="o">=</span> <span class="mf">0.7</span> <span class="o">*</span> <span class="n">leg_size</span>
+    <span class="n">Rd_per_length</span> <span class="o">=</span> <span class="n">f_u_weld</span> <span class="o">*</span> <span class="n">t_t</span> <span class="o">/</span> <span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">3.0</span><span class="p">)</span> <span class="o">*</span> <span class="n">gamma_mw</span><span class="p">)</span>
+    <span class="n">Rn_per_length</span> <span class="o">=</span> <span class="n">Rd_per_length</span> <span class="o">*</span> <span class="n">gamma_mw</span>      <span class="c1"># back-calc nominal</span>
+    <span class="k">return</span> <span class="n">WeldStrengthResult</span><span class="p">(</span>
+        <span class="n">R_n_per_length</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">Rn_per_length</span><span class="p">),</span>
+        <span class="n">R_d_per_length</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">Rd_per_length</span><span class="p">),</span>
+        <span class="n">code</span><span class="o">=</span><span class="s2">&quot;IS 800:2007 Cl. 10.5.7&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

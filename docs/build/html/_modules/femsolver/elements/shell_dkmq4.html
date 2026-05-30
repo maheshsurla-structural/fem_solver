@@ -1,0 +1,643 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.elements.shell_dkmq4 &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.elements.shell_dkmq4</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.elements.shell_dkmq4</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;4-node Discrete Kirchhoff plate element (``ShellDKMQ4``).</span>
+
+<span class="sd">Phase 22.7 -- thin-plate Discrete Kirchhoff Quadrilateral</span>
+<span class="sd">(Batoz-Tahar 1982).</span>
+
+<span class="sd">Formulation</span>
+<span class="sd">-----------</span>
+<span class="sd">The rotation field is enriched with hierarchical edge-bubble modes</span>
+<span class="sd">parametrized by 4 hierarchical degrees of freedom ``Δψ_s_k`` (one</span>
+<span class="sd">per edge), eliminated by enforcing **zero transverse shear along</span>
+<span class="sd">each edge** (discrete-Kirchhoff constraint):</span>
+
+<span class="sd">    Δψ_s_k = -(3 / (2 L_k)) (w_{k+1} - w_k) - (3 / 4) (ψ_s_k + ψ_s_{k+1})</span>
+
+<span class="sd">where ``ψ_s_n = C_k θ_y_n - S_k θ_x_n`` is the **effective**</span>
+<span class="sd">tangential rotation in the Reissner-Mindlin tangential shear</span>
+<span class="sd">``γ_s_k = (C_k ∂w/∂x + S_k ∂w/∂y) + ψ_s_k``. This follows the mixed</span>
+<span class="sd">rotation convention of :class:`ShellMITC4` (γ_xz = ∂w/∂x + θ_y,</span>
+<span class="sd">γ_yz = ∂w/∂y - θ_x), in which θ_y = -∂w/∂x and θ_x = +∂w/∂y in</span>
+<span class="sd">the Kirchhoff limit. The result is a thin-plate element whose</span>
+<span class="sd">stiffness matrix involves only the bending strain-displacement</span>
+<span class="sd">matrix -- there is no separate transverse-shear stiffness</span>
+<span class="sd">contribution.</span>
+
+<span class="sd">After the substitution, the rotation field at any interior point</span>
+<span class="sd">of the element is</span>
+
+<span class="sd">    θ_x(ξ, η) = Σ N_i(ξ,η) θ_x_i + Σ_k N_(k+4)(ξ,η) (-S_k) Δψ_s_k</span>
+<span class="sd">    θ_y(ξ, η) = Σ N_i(ξ,η) θ_y_i + Σ_k N_(k+4)(ξ,η) (+C_k) Δψ_s_k</span>
+
+<span class="sd">so that the bubble enrichment of ψ_s by Δψ_s_k along each edge is</span>
+<span class="sd">recovered with ``C_k θ_y_new - S_k θ_x_new = N_(k+4) Δψ_s_k``.</span>
+
+<span class="sd">Curvatures use the standard Reissner-Mindlin form</span>
+
+<span class="sd">    κ_x  = +∂θ_y/∂x</span>
+<span class="sd">    κ_y  = -∂θ_x/∂y</span>
+<span class="sd">    κ_xy = +∂θ_y/∂y - ∂θ_x/∂x</span>
+
+<span class="sd">inherited from :class:`ShellMITC4`.</span>
+
+<span class="sd">Scope and limitations</span>
+<span class="sd">---------------------</span>
+<span class="sd">* **Thin plate only.** This element omits transverse-shear strain</span>
+<span class="sd">  energy by construction. For thick plates (``L/t &lt; 20``) or where</span>
+<span class="sd">  Mindlin shear contributions matter, use :class:`ShellMITC4`. A</span>
+<span class="sd">  future enhancement could add the Katili (1993) Mindlin</span>
+<span class="sd">  substitute-shear field to produce the full **DKMQ4** of</span>
+<span class="sd">  Batoz &amp; Katili 1992.</span>
+<span class="sd">* **Plate bending only.** Membrane stiffness uses the same bilinear</span>
+<span class="sd">  Q4 B-matrix as :class:`ShellMITC4`; membrane and bending decouple</span>
+<span class="sd">  for a flat symmetric element.</span>
+<span class="sd">* **Flat element.** Like MITC4, a warped quad is projected onto</span>
+<span class="sd">  the element-centroid plane.</span>
+
+<span class="sd">Naming -- the class is named ``ShellDKMQ4`` for API consistency</span>
+<span class="sd">with the project&#39;s task labelling, although strictly this is a DKQ</span>
+<span class="sd">(thin-plate) rather than the full Mindlin-shear DKMQ. Future work</span>
+<span class="sd">can extend to DKMQ proper.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.elements.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">Element</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.numerics.quadrature</span><span class="w"> </span><span class="kn">import</span> <span class="n">gauss_legendre_2d_quad</span>
+
+
+<span class="c1"># ============================================================ shape functions</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_N4</span><span class="p">(</span><span class="n">xi</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">eta</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Bilinear Q4 Lagrange shape functions at (ξ, η).&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="mf">0.25</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+        <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">xi</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">eta</span><span class="p">),</span>
+        <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">xi</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">eta</span><span class="p">),</span>
+        <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">xi</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">eta</span><span class="p">),</span>
+        <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">xi</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">eta</span><span class="p">),</span>
+    <span class="p">])</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_dN4_dxi</span><span class="p">(</span><span class="n">xi</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">eta</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns (2, 4): row 0 = dN/dξ, row 1 = dN/dη.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="mf">0.25</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+        <span class="p">[</span><span class="o">-</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">eta</span><span class="p">),</span>  <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">eta</span><span class="p">),</span>  <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">eta</span><span class="p">),</span> <span class="o">-</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">eta</span><span class="p">)],</span>
+        <span class="p">[</span><span class="o">-</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">xi</span><span class="p">),</span>  <span class="o">-</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">xi</span><span class="p">),</span>   <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">xi</span><span class="p">),</span>   <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">xi</span><span class="p">)],</span>
+    <span class="p">])</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_N8_mid</span><span class="p">(</span><span class="n">xi</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">eta</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Q8-serendipity mid-edge shape functions at (ξ, η).</span>
+
+<span class="sd">    Returns (4,) array: [N_5, N_6, N_7, N_8] for edges 1, 2, 3, 4.</span>
+<span class="sd">    N_(k+4) is nonzero on edge k only (vanishes on the other 3 edges).</span>
+<span class="sd">    These are the hierarchical edge-bubble modes used by DK to enrich</span>
+<span class="sd">    the rotation field.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+        <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">xi</span> <span class="o">*</span> <span class="n">xi</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">eta</span><span class="p">),</span>     <span class="c1"># edge 1 (η=-1)</span>
+        <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">xi</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">eta</span> <span class="o">*</span> <span class="n">eta</span><span class="p">),</span>    <span class="c1"># edge 2 (ξ=+1)</span>
+        <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">xi</span> <span class="o">*</span> <span class="n">xi</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">eta</span><span class="p">),</span>     <span class="c1"># edge 3 (η=+1)</span>
+        <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">xi</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">eta</span> <span class="o">*</span> <span class="n">eta</span><span class="p">),</span>    <span class="c1"># edge 4 (ξ=-1)</span>
+    <span class="p">])</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_dN8_mid_dxi</span><span class="p">(</span><span class="n">xi</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">eta</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;(2, 4) derivative array: row 0 = ∂N_(k+4)/∂ξ, row 1 = ∂N_(k+4)/∂η,</span>
+<span class="sd">    for k = 1, 2, 3, 4.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+        <span class="c1"># ∂/∂ξ</span>
+        <span class="p">[</span><span class="o">-</span><span class="n">xi</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">eta</span><span class="p">),</span>          <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">eta</span> <span class="o">*</span> <span class="n">eta</span><span class="p">),</span>
+         <span class="o">-</span><span class="n">xi</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">eta</span><span class="p">),</span>         <span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">eta</span> <span class="o">*</span> <span class="n">eta</span><span class="p">)],</span>
+        <span class="c1"># ∂/∂η</span>
+        <span class="p">[</span><span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">xi</span> <span class="o">*</span> <span class="n">xi</span><span class="p">),</span>    <span class="o">-</span><span class="n">eta</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">xi</span><span class="p">),</span>
+          <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">xi</span> <span class="o">*</span> <span class="n">xi</span><span class="p">),</span>    <span class="o">-</span><span class="n">eta</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">xi</span><span class="p">)],</span>
+    <span class="p">])</span>
+
+
+<span class="c1"># ============================================================ local frame</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_local_frame_q4</span><span class="p">(</span><span class="n">X</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build an orthonormal local frame at the element centroid for a</span>
+<span class="sd">    Q4. Returns (R, X_local2d).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">r1</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">((</span><span class="n">X</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">X</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">X</span><span class="p">[</span><span class="mi">3</span><span class="p">]))</span>
+    <span class="n">r2</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">((</span><span class="n">X</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">-</span> <span class="n">X</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">X</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">r1</span><span class="p">,</span> <span class="n">r2</span><span class="p">)</span>
+    <span class="n">n</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="n">e1</span> <span class="o">=</span> <span class="n">r1</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">r1</span><span class="p">)</span>
+    <span class="n">e2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">e1</span><span class="p">)</span>
+    <span class="n">R</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">,</span> <span class="n">n</span><span class="p">])</span>
+    <span class="n">centroid</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">Xc</span> <span class="o">=</span> <span class="n">X</span> <span class="o">-</span> <span class="n">centroid</span>
+    <span class="n">X_local_3</span> <span class="o">=</span> <span class="n">Xc</span> <span class="o">@</span> <span class="n">R</span>
+    <span class="k">return</span> <span class="n">R</span><span class="p">,</span> <span class="n">X_local_3</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">2</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_jacobian2d_4</span><span class="p">(</span><span class="n">xi</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">eta</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">Xl</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+    <span class="n">dN</span> <span class="o">=</span> <span class="n">_dN4_dxi</span><span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">eta</span><span class="p">)</span>
+    <span class="n">J</span> <span class="o">=</span> <span class="n">dN</span> <span class="o">@</span> <span class="n">Xl</span>
+    <span class="n">detJ</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">J</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">detJ</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;ShellDKMQ4: non-positive Jacobian determinant (</span><span class="si">{</span><span class="n">detJ</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">) &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;at (ξ=</span><span class="si">{</span><span class="n">xi</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">, η=</span><span class="si">{</span><span class="n">eta</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">). Check node ordering (CCW).&quot;</span>
+        <span class="p">)</span>
+    <span class="n">Jinv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">J</span><span class="p">)</span>
+    <span class="n">dN_dx</span> <span class="o">=</span> <span class="n">Jinv</span> <span class="o">@</span> <span class="n">dN</span>
+    <span class="k">return</span> <span class="n">J</span><span class="p">,</span> <span class="n">detJ</span><span class="p">,</span> <span class="n">dN_dx</span><span class="p">,</span> <span class="n">Jinv</span>
+
+
+<span class="c1"># ============================================================ edge geometry</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_edge_geometry</span><span class="p">(</span><span class="n">Xl</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                                              <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute (L_k, C_k = cos α_k, S_k = sin α_k) for each of the 4 edges.</span>
+
+<span class="sd">    Edge k connects nodes (k-1) and (k mod 4) — i.e.:</span>
+<span class="sd">        edge 1: node 0 -&gt; node 1</span>
+<span class="sd">        edge 2: node 1 -&gt; node 2</span>
+<span class="sd">        edge 3: node 2 -&gt; node 3</span>
+<span class="sd">        edge 4: node 3 -&gt; node 0</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">L</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+    <span class="n">C</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+    <span class="n">S</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="n">k</span>
+        <span class="n">j</span> <span class="o">=</span> <span class="p">(</span><span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="mi">4</span>
+        <span class="n">dx</span> <span class="o">=</span> <span class="n">Xl</span><span class="p">[</span><span class="n">j</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">Xl</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="n">dy</span> <span class="o">=</span> <span class="n">Xl</span><span class="p">[</span><span class="n">j</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">Xl</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="n">Lk</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">hypot</span><span class="p">(</span><span class="n">dx</span><span class="p">,</span> <span class="n">dy</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">Lk</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;ShellDKMQ4: zero-length edge </span><span class="si">{</span><span class="n">k</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2"> (nodes &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">j</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">).&quot;</span>
+            <span class="p">)</span>
+        <span class="n">L</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">Lk</span>
+        <span class="n">C</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">dx</span> <span class="o">/</span> <span class="n">Lk</span>
+        <span class="n">S</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">dy</span> <span class="o">/</span> <span class="n">Lk</span>
+    <span class="k">return</span> <span class="n">L</span><span class="p">,</span> <span class="n">C</span><span class="p">,</span> <span class="n">S</span>
+
+
+<span class="c1"># ============================================================ DK substitution</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_dbs_matrix</span><span class="p">(</span><span class="n">L</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">C</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                 <span class="n">S</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build the (4, 12) matrix ``A`` such that</span>
+<span class="sd">    ``[Δψ_s_1, Δψ_s_2, Δψ_s_3, Δψ_s_4]^T = A @ d``,</span>
+<span class="sd">    where ``d`` is the 12-vector of nodal DOFs in order</span>
+<span class="sd">    ``(w_1, θ_x_1, θ_y_1, w_2, θ_x_2, θ_y_2, w_3, θ_x_3, θ_y_3,</span>
+<span class="sd">    w_4, θ_x_4, θ_y_4)``.</span>
+
+<span class="sd">    Discrete-Kirchhoff constraint on edge k (zero shear):</span>
+
+<span class="sd">        γ̄_s_k = 0</span>
+<span class="sd">        ⇒  Δψ_s_k = -(3 / (2 L_k)) (w_{j} - w_{i})</span>
+<span class="sd">                    -(3 / 4) (ψ_s_i + ψ_s_j)</span>
+
+<span class="sd">    where ``ψ_s_n = C_k θ_y_n - S_k θ_x_n`` -- the &quot;effective</span>
+<span class="sd">    tangential rotation&quot; in the Reissner-Mindlin tangential shear</span>
+
+<span class="sd">        γ_s_k = C_k γ_xz + S_k γ_yz</span>
+<span class="sd">              = (C_k ∂w/∂x + S_k ∂w/∂y)</span>
+<span class="sd">                + (C_k θ_y - S_k θ_x)</span>
+
+<span class="sd">    matching the MITC4 mixed-rotation convention</span>
+<span class="sd">    (γ_xz = ∂w/∂x + θ_y, γ_yz = ∂w/∂y - θ_x).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">A</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">4</span><span class="p">,</span> <span class="mi">12</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="n">k</span>                    <span class="c1"># first endpoint</span>
+        <span class="n">j</span> <span class="o">=</span> <span class="p">(</span><span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="mi">4</span>          <span class="c1"># second endpoint</span>
+        <span class="c1"># w coefficients</span>
+        <span class="n">A</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">i</span><span class="p">]</span>     <span class="o">+=</span> <span class="o">+</span><span class="mf">1.5</span> <span class="o">/</span> <span class="n">L</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+        <span class="n">A</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">j</span><span class="p">]</span>     <span class="o">+=</span> <span class="o">-</span><span class="mf">1.5</span> <span class="o">/</span> <span class="n">L</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+        <span class="c1"># ψ_s = C θ_y - S θ_x : θ_x slot in d_pb is 3 n + 1, θ_y is 3 n + 2</span>
+        <span class="n">A</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="o">+</span><span class="mf">0.75</span> <span class="o">*</span> <span class="n">S</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>    <span class="c1"># -0.75 * (-S_k)</span>
+        <span class="n">A</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span> <span class="o">+=</span> <span class="o">-</span><span class="mf">0.75</span> <span class="o">*</span> <span class="n">C</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+        <span class="n">A</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="o">+</span><span class="mf">0.75</span> <span class="o">*</span> <span class="n">S</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+        <span class="n">A</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">j</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span> <span class="o">+=</span> <span class="o">-</span><span class="mf">0.75</span> <span class="o">*</span> <span class="n">C</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">A</span>
+
+
+<span class="c1"># ============================================================ element</span>
+
+<div class="viewcode-block" id="ShellDKMQ4">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.shell_dkmq4.ShellDKMQ4">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ShellDKMQ4</span><span class="p">(</span><span class="n">Element</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;4-node Discrete-Kirchhoff plate element (thin-plate DKQ).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    tag : int</span>
+<span class="sd">    nodes : (4,) sequence of node tags (CCW from the +normal side).</span>
+<span class="sd">    material : ElasticIsotropic</span>
+<span class="sd">    thickness : float</span>
+<span class="sd">    drilling_factor : float, default 1e-3</span>
+<span class="sd">        Fictitious θ_z stiffness fraction (analogous to MITC4) to</span>
+<span class="sd">        prevent global singularity at nodes where only coplanar</span>
+<span class="sd">        shells meet.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    * **Thin-plate only**: zero transverse shear enforced at edges.</span>
+<span class="sd">      For thick plates use :class:`ShellMITC4`.</span>
+<span class="sd">    * 6 DOFs per node (u, v, w, θ_x, θ_y, θ_z) -- 24 DOFs total per</span>
+<span class="sd">      element. Membrane stiffness is the same bilinear Q4 form used</span>
+<span class="sd">      by :class:`ShellMITC4`; bending uses the DK rotation field</span>
+<span class="sd">      with 3x3 Gauss integration.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">n_nodes</span> <span class="o">=</span> <span class="mi">4</span>
+    <span class="n">dofs_per_node</span> <span class="o">=</span> <span class="mi">6</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">tag</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">nodes</span><span class="p">,</span>
+        <span class="n">material</span><span class="p">,</span>
+        <span class="n">thickness</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">drilling_factor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0e-3</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="n">nodes</span><span class="p">,</span> <span class="n">material</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">drilling_factor</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;drilling_factor must be &gt;= 0, got </span><span class="si">{</span><span class="n">drilling_factor</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">thickness</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">thickness</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;thickness must be positive, got </span><span class="si">{</span><span class="n">thickness</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">thickness</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">drilling_factor</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">drilling_factor</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gp_bending_curvature</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gp_membrane_strain</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gp_resultants</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># ----------------------------------------------------- constitutive</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_D_membrane</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">E</span><span class="p">,</span> <span class="n">nu</span><span class="p">,</span> <span class="n">t</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">E</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">nu</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">E</span> <span class="o">*</span> <span class="n">t</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">nu</span> <span class="o">*</span> <span class="n">nu</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">f</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+            <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">nu</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+            <span class="p">[</span><span class="n">nu</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+            <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">nu</span><span class="p">)],</span>
+        <span class="p">])</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_D_bending</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_D_membrane</span><span class="p">()</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">thickness</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">/</span> <span class="mf">12.0</span><span class="p">)</span>
+
+    <span class="c1"># ----------------------------------------------------- local-global</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_local_geom</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_coords</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">_local_frame_q4</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_T_global_to_local</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">R</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">24</span><span class="p">,</span> <span class="mi">24</span><span class="p">))</span>
+        <span class="n">Rt</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">T</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+            <span class="n">T</span><span class="p">[</span><span class="mi">6</span> <span class="o">*</span> <span class="n">i</span><span class="p">:</span><span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">6</span> <span class="o">*</span> <span class="n">i</span><span class="p">:</span><span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">Rt</span>
+            <span class="n">T</span><span class="p">[</span><span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">3</span><span class="p">:</span><span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">3</span><span class="p">:</span><span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">6</span><span class="p">]</span> <span class="o">=</span> <span class="n">Rt</span>
+        <span class="k">return</span> <span class="n">T</span>
+
+    <span class="c1"># ----------------------------------------------------- B matrices</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_Bm_local</span><span class="p">(</span><span class="n">dN_dx</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Membrane B (3, 20) in 5-DOF/node local ordering (u,v,w,θx,θy).</span>
+<span class="sd">        Identical to MITC4&#39;s membrane B.&quot;&quot;&quot;</span>
+        <span class="n">B</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">20</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+            <span class="n">B</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">5</span> <span class="o">*</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">dN_dx</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>
+            <span class="n">B</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">dN_dx</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>
+            <span class="n">B</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span> <span class="o">*</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">dN_dx</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>
+            <span class="n">B</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">dN_dx</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">B</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_Bb_dk_local</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xi</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">eta</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">Xl</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                       <span class="n">L</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">C</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">S</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                       <span class="n">A_dbs</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Bending B matrix at (ξ, η) for the DK rotation field.</span>
+
+<span class="sd">        Returns (3, 12), mapping the 12 plate-bending DOFs ``d_pb``</span>
+<span class="sd">        in order ``(w_i, β_x_i, β_y_i)`` for i=1..4 to the bending</span>
+<span class="sd">        curvatures ``(κ_x, κ_y, κ_xy)``.</span>
+
+<span class="sd">        The rotations are:</span>
+<span class="sd">            β_x = Σ_i N_i β_x_i + Σ_k N_(k+4) Δβ_s_k C_k</span>
+<span class="sd">            β_y = Σ_i N_i β_y_i + Σ_k N_(k+4) Δβ_s_k S_k</span>
+
+<span class="sd">        With Δβ_s = A_dbs @ d_pb, the rotation gradients become:</span>
+<span class="sd">            ∂β_x/∂x = Σ_i ∂N_i/∂x β_x_i + Σ_k ∂N_(k+4)/∂x Δβ_s_k C_k</span>
+<span class="sd">            ...</span>
+
+<span class="sd">        Curvatures (Reissner-Mindlin form):</span>
+<span class="sd">            κ_x  = +∂β_y/∂x</span>
+<span class="sd">            κ_y  = -∂β_x/∂y</span>
+<span class="sd">            κ_xy = +∂β_y/∂y - ∂β_x/∂x</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">dN_dx</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_jacobian2d_4</span><span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">eta</span><span class="p">,</span> <span class="n">Xl</span><span class="p">)</span>         <span class="c1"># (2, 4)</span>
+        <span class="n">dN8_xi</span> <span class="o">=</span> <span class="n">_dN8_mid_dxi</span><span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">eta</span><span class="p">)</span>                        <span class="c1"># (2, 4)</span>
+        <span class="c1"># Push dN8_xi from natural to local-Cartesian via Jinv</span>
+        <span class="n">J</span> <span class="o">=</span> <span class="n">_dN4_dxi</span><span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">eta</span><span class="p">)</span> <span class="o">@</span> <span class="n">Xl</span>
+        <span class="n">Jinv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">J</span><span class="p">)</span>
+        <span class="n">dN8_dx</span> <span class="o">=</span> <span class="n">Jinv</span> <span class="o">@</span> <span class="n">dN8_xi</span>                                 <span class="c1"># (2, 4)</span>
+
+        <span class="c1"># Bilinear contribution to ∂β_x/∂x etc.:</span>
+        <span class="c1"># β_x = Σ_i N_i β_x_i  → ∂β_x/∂x = Σ_i dN_i/dx β_x_i</span>
+        <span class="c1"># In the 12-DOF d_pb vector, β_x_i lives at index 3 i + 1.</span>
+        <span class="c1"># We build separate (12,) row vectors for each of the four</span>
+        <span class="c1"># rotation derivatives.</span>
+        <span class="n">dbxdx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span>
+        <span class="n">dbxdy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span>
+        <span class="n">dbydx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span>
+        <span class="n">dbydy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+            <span class="n">dbxdx</span><span class="p">[</span><span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">dN_dx</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>
+            <span class="n">dbxdy</span><span class="p">[</span><span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">dN_dx</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>
+            <span class="n">dbydx</span><span class="p">[</span><span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">dN_dx</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>
+            <span class="n">dbydy</span><span class="p">[</span><span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">dN_dx</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>
+        <span class="c1"># Add hierarchical contributions: for each edge k, the row of</span>
+        <span class="c1"># A_dbs[k, :] linearly maps d_pb to Δψ_s_k. The bubble enriches</span>
+        <span class="c1"># the rotation field so that the *effective tangential rotation*</span>
+        <span class="c1"># (C_k θ_y - S_k θ_x) picks up an additional N_(k+4) Δψ_s_k. To</span>
+        <span class="c1"># achieve that with rotations (θ_x, θ_y), we add:</span>
+        <span class="c1">#     θ_x += -S_k · N_(k+4) · Δψ_s_k</span>
+        <span class="c1">#     θ_y += +C_k · N_(k+4) · Δψ_s_k</span>
+        <span class="c1"># (so that C_k θ_y_new - S_k θ_x_new = (C_k² + S_k²) N_(k+4) Δψ_s_k</span>
+        <span class="c1"># = N_(k+4) Δψ_s_k for unit-tangent (C_k, S_k).)</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+            <span class="n">dbxdx</span> <span class="o">+=</span> <span class="n">dN8_dx</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span><span class="n">S</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> <span class="o">*</span> <span class="n">A_dbs</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+            <span class="n">dbxdy</span> <span class="o">+=</span> <span class="n">dN8_dx</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span><span class="n">S</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> <span class="o">*</span> <span class="n">A_dbs</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+            <span class="n">dbydx</span> <span class="o">+=</span> <span class="n">dN8_dx</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="o">+</span><span class="n">C</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> <span class="o">*</span> <span class="n">A_dbs</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+            <span class="n">dbydy</span> <span class="o">+=</span> <span class="n">dN8_dx</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="o">+</span><span class="n">C</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> <span class="o">*</span> <span class="n">A_dbs</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+        <span class="n">Bb</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">12</span><span class="p">))</span>
+        <span class="n">Bb</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="o">+</span><span class="n">dbydx</span>                  <span class="c1"># κ_x = +∂β_y/∂x</span>
+        <span class="n">Bb</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="o">-</span><span class="n">dbxdy</span>                  <span class="c1"># κ_y = -∂β_x/∂y</span>
+        <span class="n">Bb</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="o">+</span><span class="n">dbydy</span> <span class="o">-</span> <span class="n">dbxdx</span>          <span class="c1"># κ_xy</span>
+        <span class="k">return</span> <span class="n">Bb</span>
+
+    <span class="c1"># ----------------------------------------------------- stiffness assembly</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_K_local_5dof</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;20×20 local stiffness in 5-DOF-per-node ordering</span>
+<span class="sd">        (u, v, w, θx, θy). Drilling θ_z added in 24-DOF expansion.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">Xl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_local_geom</span><span class="p">()</span>
+        <span class="n">Dm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_D_membrane</span><span class="p">()</span>
+        <span class="n">Db</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_D_bending</span><span class="p">()</span>
+        <span class="n">L</span><span class="p">,</span> <span class="n">C</span><span class="p">,</span> <span class="n">S</span> <span class="o">=</span> <span class="n">_edge_geometry</span><span class="p">(</span><span class="n">Xl</span><span class="p">)</span>
+        <span class="n">A_dbs</span> <span class="o">=</span> <span class="n">_dbs_matrix</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">C</span><span class="p">,</span> <span class="n">S</span><span class="p">)</span>        <span class="c1"># (4, 12)</span>
+        <span class="n">K</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">))</span>
+
+        <span class="c1"># Index map: 12 plate-bending DOFs (w, βx, βy per node) → which</span>
+        <span class="c1"># entries of the 20-vector (5-DOF/node local ordering)? In the</span>
+        <span class="c1"># 20-vector, node i: (u, v, w, θx, θy) at indices 5i, 5i+1,</span>
+        <span class="c1"># 5i+2, 5i+3, 5i+4. The plate DOFs are at indices (5i+2, 5i+3,</span>
+        <span class="c1"># 5i+4) for each node.</span>
+        <span class="c1"># Build a (12, 20) permutation P such that d_pb = P @ d20</span>
+        <span class="n">P</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">12</span><span class="p">,</span> <span class="mi">20</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+            <span class="n">P</span><span class="p">[</span><span class="mi">3</span> <span class="o">*</span> <span class="n">i</span><span class="p">,</span>     <span class="mi">5</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>   <span class="c1"># w</span>
+            <span class="n">P</span><span class="p">[</span><span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>   <span class="c1"># β_x</span>
+            <span class="n">P</span><span class="p">[</span><span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>   <span class="c1"># β_y</span>
+
+        <span class="c1"># 2×2 Gauss for membrane and bending (same as MITC4)</span>
+        <span class="n">xi2</span><span class="p">,</span> <span class="n">eta2</span><span class="p">,</span> <span class="n">w2</span> <span class="o">=</span> <span class="n">gauss_legendre_2d_quad</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">xi2</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+            <span class="n">xq</span><span class="p">,</span> <span class="n">yq</span><span class="p">,</span> <span class="n">wq</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">xi2</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">eta2</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">w2</span><span class="p">[</span><span class="n">q</span><span class="p">])</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">detJ</span><span class="p">,</span> <span class="n">dN_dx</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_jacobian2d_4</span><span class="p">(</span><span class="n">xq</span><span class="p">,</span> <span class="n">yq</span><span class="p">,</span> <span class="n">Xl</span><span class="p">)</span>
+            <span class="n">Bm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Bm_local</span><span class="p">(</span><span class="n">dN_dx</span><span class="p">)</span>                       <span class="c1"># (3, 20)</span>
+            <span class="n">K</span> <span class="o">+=</span> <span class="p">(</span><span class="n">Bm</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">Dm</span> <span class="o">@</span> <span class="n">Bm</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">detJ</span> <span class="o">*</span> <span class="n">wq</span><span class="p">)</span>
+            <span class="c1"># 3×3 Gauss recommended for DK bending; here 2×2 to match</span>
+            <span class="c1"># the standard Q4 K_bend integration order. Reduced-quadrature</span>
+            <span class="c1"># spurious modes are blocked by the bilinear part.</span>
+
+        <span class="c1"># Bending: 3×3 Gauss for accurate DK-rotation field</span>
+        <span class="n">xi3</span><span class="p">,</span> <span class="n">eta3</span><span class="p">,</span> <span class="n">w3</span> <span class="o">=</span> <span class="n">gauss_legendre_2d_quad</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">xi3</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+            <span class="n">xq</span><span class="p">,</span> <span class="n">yq</span><span class="p">,</span> <span class="n">wq</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">xi3</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">eta3</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">w3</span><span class="p">[</span><span class="n">q</span><span class="p">])</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">detJ</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_jacobian2d_4</span><span class="p">(</span><span class="n">xq</span><span class="p">,</span> <span class="n">yq</span><span class="p">,</span> <span class="n">Xl</span><span class="p">)</span>
+            <span class="n">Bb_pb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Bb_dk_local</span><span class="p">(</span><span class="n">xq</span><span class="p">,</span> <span class="n">yq</span><span class="p">,</span> <span class="n">Xl</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">C</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="n">A_dbs</span><span class="p">)</span>   <span class="c1"># (3, 12)</span>
+            <span class="n">Bb20</span> <span class="o">=</span> <span class="n">Bb_pb</span> <span class="o">@</span> <span class="n">P</span>                                      <span class="c1"># (3, 20)</span>
+            <span class="n">K</span> <span class="o">+=</span> <span class="p">(</span><span class="n">Bb20</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">Db</span> <span class="o">@</span> <span class="n">Bb20</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">detJ</span> <span class="o">*</span> <span class="n">wq</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">K</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_K_local_6dof</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">K20</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_K_local_5dof</span><span class="p">()</span>
+        <span class="n">K24</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">24</span><span class="p">,</span> <span class="mi">24</span><span class="p">))</span>
+        <span class="n">idx5</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="n">k</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">)])</span>
+        <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">ia</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">idx5</span><span class="p">):</span>
+            <span class="n">K24</span><span class="p">[</span><span class="n">ia</span><span class="p">,</span> <span class="n">idx5</span><span class="p">]</span> <span class="o">=</span> <span class="n">K20</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="n">k_drill</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">drilling_factor</span> <span class="o">*</span> <span class="nb">max</span><span class="p">(</span>
+            <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">K20</span><span class="p">)))),</span> <span class="mf">1.0</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+            <span class="n">K24</span><span class="p">[</span><span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">5</span><span class="p">]</span> <span class="o">+=</span> <span class="n">k_drill</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="n">j</span><span class="p">:</span>
+                    <span class="n">K24</span><span class="p">[</span><span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span> <span class="o">*</span> <span class="n">j</span> <span class="o">+</span> <span class="mi">5</span><span class="p">]</span> <span class="o">-=</span> <span class="n">k_drill</span> <span class="o">/</span> <span class="mf">4.0</span>
+        <span class="k">return</span> <span class="n">K24</span>
+
+<div class="viewcode-block" id="ShellDKMQ4.K_global">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.shell_dkmq4.ShellDKMQ4.K_global">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">K_global</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">R</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_local_geom</span><span class="p">()</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_T_global_to_local</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
+        <span class="n">K_loc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_K_local_6dof</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">T</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">K_loc</span> <span class="o">@</span> <span class="n">T</span></div>
+
+
+    <span class="c1"># ----------------------------------------------------- mass</span>
+<div class="viewcode-block" id="ShellDKMQ4.M_global">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.shell_dkmq4.ShellDKMQ4.M_global">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">M_global</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lumped</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">rho</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="p">,</span> <span class="s2">&quot;rho&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">rho</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">24</span><span class="p">,</span> <span class="mi">24</span><span class="p">))</span>
+        <span class="n">R</span><span class="p">,</span> <span class="n">Xl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_local_geom</span><span class="p">()</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span>
+        <span class="n">M</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">24</span><span class="p">,</span> <span class="mi">24</span><span class="p">))</span>
+        <span class="n">xi</span><span class="p">,</span> <span class="n">eta</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">gauss_legendre_2d_quad</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">xi</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+            <span class="n">xq</span><span class="p">,</span> <span class="n">yq</span><span class="p">,</span> <span class="n">wq</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">xi</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">eta</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="n">q</span><span class="p">])</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">detJ</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_jacobian2d_4</span><span class="p">(</span><span class="n">xq</span><span class="p">,</span> <span class="n">yq</span><span class="p">,</span> <span class="n">Xl</span><span class="p">)</span>
+            <span class="n">N</span> <span class="o">=</span> <span class="n">_N4</span><span class="p">(</span><span class="n">xq</span><span class="p">,</span> <span class="n">yq</span><span class="p">)</span>
+            <span class="n">jw</span> <span class="o">=</span> <span class="n">rho</span> <span class="o">*</span> <span class="n">t</span> <span class="o">*</span> <span class="n">detJ</span> <span class="o">*</span> <span class="n">wq</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+                    <span class="n">val</span> <span class="o">=</span> <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">N</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">*</span> <span class="n">jw</span>
+                    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+                        <span class="n">M</span><span class="p">[</span><span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="n">k</span><span class="p">,</span> <span class="mi">6</span> <span class="o">*</span> <span class="n">j</span> <span class="o">+</span> <span class="n">k</span><span class="p">]</span> <span class="o">+=</span> <span class="n">val</span>
+                    <span class="n">rot_val</span> <span class="o">=</span> <span class="n">val</span> <span class="o">*</span> <span class="p">(</span><span class="n">t</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">/</span> <span class="mf">12.0</span><span class="p">)</span>
+                    <span class="n">M</span><span class="p">[</span><span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">6</span> <span class="o">*</span> <span class="n">j</span> <span class="o">+</span> <span class="mi">3</span><span class="p">]</span> <span class="o">+=</span> <span class="n">rot_val</span>
+                    <span class="n">M</span><span class="p">[</span><span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">6</span> <span class="o">*</span> <span class="n">j</span> <span class="o">+</span> <span class="mi">4</span><span class="p">]</span> <span class="o">+=</span> <span class="n">rot_val</span>
+        <span class="k">if</span> <span class="n">lumped</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">M</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_T_global_to_local</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">T</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">M</span> <span class="o">@</span> <span class="n">T</span></div>
+
+
+    <span class="c1"># ----------------------------------------------------- recovery</span>
+<div class="viewcode-block" id="ShellDKMQ4.recover">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.shell_dkmq4.ShellDKMQ4.recover">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">recover</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">R</span><span class="p">,</span> <span class="n">Xl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_local_geom</span><span class="p">()</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_T_global_to_local</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
+        <span class="n">u_glob</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gather_u</span><span class="p">()</span>
+        <span class="n">u_loc</span> <span class="o">=</span> <span class="n">T</span> <span class="o">@</span> <span class="n">u_glob</span>
+        <span class="n">idx5</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="n">k</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">)])</span>
+        <span class="n">u5</span> <span class="o">=</span> <span class="n">u_loc</span><span class="p">[</span><span class="n">idx5</span><span class="p">]</span>
+        <span class="n">L</span><span class="p">,</span> <span class="n">C</span><span class="p">,</span> <span class="n">S</span> <span class="o">=</span> <span class="n">_edge_geometry</span><span class="p">(</span><span class="n">Xl</span><span class="p">)</span>
+        <span class="n">A_dbs</span> <span class="o">=</span> <span class="n">_dbs_matrix</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">C</span><span class="p">,</span> <span class="n">S</span><span class="p">)</span>
+        <span class="n">P</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">12</span><span class="p">,</span> <span class="mi">20</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+            <span class="n">P</span><span class="p">[</span><span class="mi">3</span> <span class="o">*</span> <span class="n">i</span><span class="p">,</span>     <span class="mi">5</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+            <span class="n">P</span><span class="p">[</span><span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+            <span class="n">P</span><span class="p">[</span><span class="mi">3</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="n">Dm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_D_membrane</span><span class="p">()</span>
+        <span class="n">Db</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_D_bending</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gp_membrane_strain</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gp_bending_curvature</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gp_resultants</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">xi3</span><span class="p">,</span> <span class="n">eta3</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">gauss_legendre_2d_quad</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">xi3</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+            <span class="n">xq</span><span class="p">,</span> <span class="n">yq</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">xi3</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">eta3</span><span class="p">[</span><span class="n">q</span><span class="p">])</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">dN_dx</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_jacobian2d_4</span><span class="p">(</span><span class="n">xq</span><span class="p">,</span> <span class="n">yq</span><span class="p">,</span> <span class="n">Xl</span><span class="p">)</span>
+            <span class="n">Bm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Bm_local</span><span class="p">(</span><span class="n">dN_dx</span><span class="p">)</span>
+            <span class="n">Bb_pb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Bb_dk_local</span><span class="p">(</span><span class="n">xq</span><span class="p">,</span> <span class="n">yq</span><span class="p">,</span> <span class="n">Xl</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">C</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="n">A_dbs</span><span class="p">)</span>
+            <span class="n">Bb20</span> <span class="o">=</span> <span class="n">Bb_pb</span> <span class="o">@</span> <span class="n">P</span>
+            <span class="n">eps_m</span> <span class="o">=</span> <span class="n">Bm</span> <span class="o">@</span> <span class="n">u5</span>
+            <span class="n">kappa</span> <span class="o">=</span> <span class="n">Bb20</span> <span class="o">@</span> <span class="n">u5</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">gp_membrane_strain</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">eps_m</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">gp_bending_curvature</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">kappa</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">gp_resultants</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">Dm</span> <span class="o">@</span> <span class="n">eps_m</span><span class="p">,</span> <span class="n">Db</span> <span class="o">@</span> <span class="n">kappa</span><span class="p">])</span>
+            <span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

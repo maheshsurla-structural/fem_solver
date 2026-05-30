@@ -1,0 +1,293 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.materials.uniaxial.brb &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.materials.uniaxial.brb</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.materials.uniaxial.brb</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Buckling-Restrained Brace (BRB) uniaxial material.</span>
+
+<span class="sd">A simplified Black-Wada-Aiken style BRB model with the two</span>
+<span class="sd">characteristic properties of buckling-restrained braces:</span>
+
+<span class="sd">* **Asymmetric backbone** -- compression yield is larger than tension</span>
+<span class="sd">  yield by a *compression overstrength factor* ``β &gt;= 1`` (typically</span>
+<span class="sd">  1.05-1.10 for laboratory BRBs, accounting for friction between the</span>
+<span class="sd">  core and the buckling-restraint sleeve when the core is in</span>
+<span class="sd">  compression).</span>
+<span class="sd">* **Combined kinematic + isotropic hardening** -- both Bauschinger</span>
+<span class="sd">  effect (back-stress translation) and cyclic strength growth</span>
+<span class="sd">  (yield-surface expansion with cumulative plastic strain).</span>
+
+<span class="sd">Yield function (asymmetric)</span>
+<span class="sd">---------------------------</span>
+<span class="sd">The yield surface is non-symmetric in the (σ - q) space:</span>
+
+<span class="sd">    f(σ, q, p) = +(σ - q) - σ_y_t · (1 + a_iso · p)     when σ - q ≥ 0</span>
+<span class="sd">    f(σ, q, p) = -(σ - q) - β · σ_y_t · (1 + a_iso · p) when σ - q &lt; 0</span>
+
+<span class="sd">where ``σ_y_t`` is the tension yield, ``β`` is the compression-over-</span>
+<span class="sd">strength factor, ``q`` is the back-stress, and ``p`` is the</span>
+<span class="sd">cumulative plastic strain. Setting ``β = 1`` and ``a_iso = 0`` gives</span>
+<span class="sd">ordinary symmetric kinematic hardening (:class:`UniaxialBilinear`).</span>
+
+<span class="sd">Algorithm (return mapping with combined hardening)</span>
+<span class="sd">---------------------------------------------------</span>
+<span class="sd">1. Predictor:    σ_trial = E · (ε - ε_p_committed)</span>
+<span class="sd">2. ξ_trial    = σ_trial - q_committed</span>
+<span class="sd">3. Direction:    sign = +1 if ξ_trial ≥ 0 else -1</span>
+<span class="sd">4. σ_y_eff   = (σ_y_t if sign &gt; 0 else β · σ_y_t)</span>
+<span class="sd">                · (1 + a_iso · p_committed)</span>
+<span class="sd">5. f_trial   = |ξ_trial| - σ_y_eff</span>
+<span class="sd">6. If f_trial ≤ 0: elastic step</span>
+<span class="sd">7. Else:</span>
+<span class="sd">       H_total   = H_kin + σ_y_eff · a_iso  (kin + iso combined)</span>
+<span class="sd">       Δλ        = f_trial / (E + H_total)</span>
+<span class="sd">       Δε_p      = sign · Δλ</span>
+<span class="sd">       ε_p_trial = ε_p_committed + Δε_p</span>
+<span class="sd">       q_trial   = q_committed + H_kin · Δε_p</span>
+<span class="sd">       p_trial   = p_committed + Δλ</span>
+<span class="sd">       σ         = E · (ε - ε_p_trial)</span>
+<span class="sd">       Et        = E · H_total / (E + H_total)</span>
+
+<span class="sd">References</span>
+<span class="sd">----------</span>
+<span class="sd">Black, C. J., Makris, N., Aiken, I. D. (2004). &quot;Component testing,</span>
+<span class="sd">seismic evaluation, and characterization of buckling-restrained</span>
+<span class="sd">braces.&quot; Journal of Structural Engineering, 130(6), 880-894.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.materials.uniaxial.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">UniaxialMaterial</span>
+
+
+<div class="viewcode-block" id="UniaxialBRB">
+<a class="viewcode-back" href="../../../../guide/materials_catalog.html#femsolver.materials.uniaxial.brb.UniaxialBRB">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">UniaxialBRB</span><span class="p">(</span><span class="n">UniaxialMaterial</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Buckling-restrained brace uniaxial material.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    E : float</span>
+<span class="sd">        Initial elastic modulus.</span>
+<span class="sd">    sigma_y : float</span>
+<span class="sd">        Tension yield stress σ_y_t (positive).</span>
+<span class="sd">    b : float, default 0.02</span>
+<span class="sd">        Strain-hardening ratio (kinematic component); typical 1-3%</span>
+<span class="sd">        for BRB cores.</span>
+<span class="sd">    beta : float, default 1.10</span>
+<span class="sd">        Compression overstrength factor (≥ 1). Compression yield is</span>
+<span class="sd">        ``β · σ_y_t``. Typical 1.05-1.15 for laboratory BRBs.</span>
+<span class="sd">    a_iso : float, default 0.0</span>
+<span class="sd">        Isotropic-growth rate (per unit cumulative plastic strain).</span>
+<span class="sd">        ``0`` = pure kinematic (no cyclic strength growth);</span>
+<span class="sd">        ``50`` ≈ 5% growth per 0.001 plastic strain (typical for</span>
+<span class="sd">        cyclic strength buildup observed in BRB tests).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">E</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">sigma_y</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
+                 <span class="n">b</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.02</span><span class="p">,</span>
+                 <span class="n">beta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.10</span><span class="p">,</span>
+                 <span class="n">a_iso</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">E</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;E must be positive, got </span><span class="si">{</span><span class="n">E</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">sigma_y</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;sigma_y must be positive, got </span><span class="si">{</span><span class="n">sigma_y</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">b</span> <span class="o">&lt;</span> <span class="mf">1.0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;b must be in [0, 1), got </span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">beta</span> <span class="o">&lt;</span> <span class="mf">1.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;beta must be &gt;= 1, got </span><span class="si">{</span><span class="n">beta</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">a_iso</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;a_iso must be &gt;= 0, got </span><span class="si">{</span><span class="n">a_iso</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">E</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">E</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_y</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">sigma_y</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">b</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">beta</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">beta</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">a_iso</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">a_iso</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">H_kin</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">b</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">E</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">b</span><span class="p">))</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">b</span> <span class="o">&gt;</span> <span class="mf">0.0</span> <span class="k">else</span> <span class="mf">0.0</span>
+        <span class="c1"># State</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_p_committed</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">q_committed</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">p_committed</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_p_trial</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">q_trial</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">p_trial</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_trial</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Et</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">E</span>
+
+<div class="viewcode-block" id="UniaxialBRB.get_response">
+<a class="viewcode-back" href="../../../../guide/materials_catalog.html#femsolver.materials.uniaxial.brb.UniaxialBRB.get_response">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">eps</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+        <span class="n">eps</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">eps</span><span class="p">)</span>
+        <span class="n">sigma_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">E</span> <span class="o">*</span> <span class="p">(</span><span class="n">eps</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_p_committed</span><span class="p">)</span>
+        <span class="n">xi</span> <span class="o">=</span> <span class="n">sigma_trial</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">q_committed</span>
+        <span class="n">sign</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="k">if</span> <span class="n">xi</span> <span class="o">&gt;=</span> <span class="mf">0.0</span> <span class="k">else</span> <span class="o">-</span><span class="mf">1.0</span>
+        <span class="c1"># Effective yield strength in the loading direction</span>
+        <span class="n">sigma_y_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_y</span> <span class="k">if</span> <span class="n">sign</span> <span class="o">&gt;</span> <span class="mf">0.0</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">beta</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_y</span>
+        <span class="n">sigma_y_eff</span> <span class="o">=</span> <span class="n">sigma_y_dir</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">a_iso</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">p_committed</span><span class="p">)</span>
+        <span class="n">f_trial</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">xi</span><span class="p">)</span> <span class="o">-</span> <span class="n">sigma_y_eff</span>
+        <span class="k">if</span> <span class="n">f_trial</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">eps_p_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_p_committed</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">q_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">q_committed</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">p_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p_committed</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sigma_trial</span> <span class="o">=</span> <span class="n">sigma_trial</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">Et</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">E</span>
+            <span class="k">return</span> <span class="n">sigma_trial</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">E</span>
+        <span class="c1"># Plastic step</span>
+        <span class="n">H_iso_rate</span> <span class="o">=</span> <span class="n">sigma_y_dir</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">a_iso</span>
+        <span class="n">H_total</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">H_kin</span> <span class="o">+</span> <span class="n">H_iso_rate</span>
+        <span class="n">d_lambda</span> <span class="o">=</span> <span class="n">f_trial</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">E</span> <span class="o">+</span> <span class="n">H_total</span><span class="p">)</span>
+        <span class="n">d_eps_p</span> <span class="o">=</span> <span class="n">sign</span> <span class="o">*</span> <span class="n">d_lambda</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_p_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_p_committed</span> <span class="o">+</span> <span class="n">d_eps_p</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">q_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">q_committed</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">H_kin</span> <span class="o">*</span> <span class="n">d_eps_p</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">p_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p_committed</span> <span class="o">+</span> <span class="n">d_lambda</span>
+        <span class="n">sigma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">E</span> <span class="o">*</span> <span class="p">(</span><span class="n">eps</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_p_trial</span><span class="p">)</span>
+        <span class="n">Et</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">E</span> <span class="o">*</span> <span class="n">H_total</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">E</span> <span class="o">+</span> <span class="n">H_total</span><span class="p">)</span>
+              <span class="k">if</span> <span class="n">H_total</span> <span class="o">&gt;</span> <span class="mf">0.0</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_trial</span> <span class="o">=</span> <span class="n">sigma</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Et</span> <span class="o">=</span> <span class="n">Et</span>
+        <span class="k">return</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">Et</span></div>
+
+
+<div class="viewcode-block" id="UniaxialBRB.commit_state">
+<a class="viewcode-back" href="../../../../guide/materials_catalog.html#femsolver.materials.uniaxial.brb.UniaxialBRB.commit_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">commit_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_p_committed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_p_trial</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">q_committed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">q_trial</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">p_committed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p_trial</span></div>
+
+
+<div class="viewcode-block" id="UniaxialBRB.revert_state">
+<a class="viewcode-back" href="../../../../guide/materials_catalog.html#femsolver.materials.uniaxial.brb.UniaxialBRB.revert_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">revert_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_p_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_p_committed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">q_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">q_committed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">p_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p_committed</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;UniaxialBRB(E=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">E</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">, sigma_y=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">sigma_y</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;b=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">b</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">, beta=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">beta</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">, a_iso=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">a_iso</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">)&quot;</span>
+        <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,686 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.analysis.integrator &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.analysis.integrator</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.analysis.integrator</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Static integrators — assemble the residual and tangent for a given step.</span>
+
+<span class="sd">An :class:`Integrator` decouples *how* the load is applied (load control</span>
+<span class="sd">vs displacement control vs arc length) from the rest of the analysis. For</span>
+<span class="sd">nonlinear static analysis the residual is</span>
+
+<span class="sd">    R(u, lambda) = lambda * F_ref - f_int(u)</span>
+
+<span class="sd">where ``F_ref`` is the reference load pattern (the model&#39;s nodal +</span>
+<span class="sd">element-equivalent loads at unit factor) and ``f_int`` is the assembled</span>
+<span class="sd">internal-force vector.</span>
+
+<span class="sd">Each integrator owns its own *step-advance policy*:</span>
+
+<span class="sd">* :class:`LoadControl` increments ``lambda`` by a fixed amount; the</span>
+<span class="sd">  Newton corrector then adjusts ``u`` to bring ``R`` to zero.</span>
+<span class="sd">* :class:`DisplacementControl` increments a chosen DOF by a fixed</span>
+<span class="sd">  amount; the Newton corrector adjusts both ``u`` and ``lambda``.</span>
+<span class="sd">* :class:`ArcLength` advances along an arc-length parameter; the</span>
+<span class="sd">  Newton corrector enforces a cylindrical (or spherical) constraint on</span>
+<span class="sd">  the displacement-load vector.</span>
+
+<span class="sd">The corrector logic for each is encoded in :meth:`solve_iteration`. The</span>
+<span class="sd">algorithm (``Newton``, ``ModifiedNewton``, ``LineSearchNewton``) just</span>
+<span class="sd">hands the integrator a factored solver and the current residual; the</span>
+<span class="sd">integrator returns the iteration&#39;s ``du_eff`` and may update</span>
+<span class="sd">``self.lambd`` as a side effect.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy.sparse</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.analysis.assembler</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">assemble_force</span><span class="p">,</span>
+    <span class="n">assemble_stiffness</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="StaticIntegrator">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.integrator.StaticIntegrator">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">StaticIntegrator</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for static integrators.&quot;&quot;&quot;</span>
+
+    <span class="c1"># Whether the integrator&#39;s per-iteration ``du`` may be scaled by a</span>
+    <span class="c1"># line-search factor at the algorithm level. For path-following</span>
+    <span class="c1"># integrators (DisplacementControl, ArcLength) the ``du`` returned</span>
+    <span class="c1"># by :meth:`solve_iteration` carries a *constraint-driven*</span>
+    <span class="c1"># ``dlambda`` that has already been applied; scaling ``du`` would</span>
+    <span class="c1"># then violate the constraint. Such integrators set this to False;</span>
+    <span class="c1"># the algorithm skips the line search and uses the full step. Newton</span>
+    <span class="c1"># convergence in path-following analyses is typically robust enough</span>
+    <span class="c1"># that line search is not needed at the algorithm level (the</span>
+    <span class="c1"># element-internal line searches in HingedBeamColumn2D and the</span>
+    <span class="c1"># adaptive predictor sign of ArcLength already handle the main</span>
+    <span class="c1"># difficulty cases).</span>
+    <span class="n">supports_line_search</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_F_ref</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lambd</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+<div class="viewcode-block" id="StaticIntegrator.bind">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.integrator.StaticIntegrator.bind">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">bind</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Capture the reference load pattern. Called once at the start of</span>
+<span class="sd">        the analysis after DOF numbering.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_F_ref</span> <span class="o">=</span> <span class="n">assemble_force</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lambd</span> <span class="o">=</span> <span class="mf">0.0</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">F_ref</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_F_ref</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;integrator not bound to a model&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_F_ref</span>
+
+<div class="viewcode-block" id="StaticIntegrator.new_step">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.integrator.StaticIntegrator.new_step">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">new_step</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Advance to the next step (e.g., increment the load factor).&quot;&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="StaticIntegrator.revert_step">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.integrator.StaticIntegrator.revert_step">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">revert_step</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Roll back ``new_step`` after a non-converged step.&quot;&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="StaticIntegrator.commit_step">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.integrator.StaticIntegrator.commit_step">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">commit_step</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Commit the just-converged step. Default: no-op. Path-following</span>
+<span class="sd">        integrators override to snapshot the converged state for the</span>
+<span class="sd">        next step&#39;s constraint reference.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="StaticIntegrator.tangent">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.integrator.StaticIntegrator.tangent">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">tangent</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">sp</span><span class="o">.</span><span class="n">csc_matrix</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Assemble and return the tangent stiffness at the current state.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">_assemble_tangent</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="StaticIntegrator.residual">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.integrator.StaticIntegrator.residual">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">residual</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return ``R = lambda * F_ref - f_int(u)`` at the current state.&quot;&quot;&quot;</span>
+        <span class="n">f_int</span> <span class="o">=</span> <span class="n">_assemble_internal_force</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">lambd</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">F_ref</span> <span class="o">-</span> <span class="n">f_int</span></div>
+
+
+    <span class="c1"># ----------------------------------------------------- solve hook</span>
+<div class="viewcode-block" id="StaticIntegrator.solve_iteration">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.integrator.StaticIntegrator.solve_iteration">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">solve_iteration</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">K_solve</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+        <span class="n">R_eff</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">F_ref_eff</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">T</span><span class="p">:</span> <span class="n">sp</span><span class="o">.</span><span class="n">csr_matrix</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Solve one Newton iteration&#39;s linear system.</span>
+
+<span class="sd">        Default implementation: standard Newton step ``du = K^{-1} R`` —</span>
+<span class="sd">        correct for load control where ``lambda`` is fixed within the</span>
+<span class="sd">        step.</span>
+
+<span class="sd">        Path-following integrators (displacement-control, arc-length)</span>
+<span class="sd">        override this to additionally solve ``K^{-1} F_ref`` and combine</span>
+<span class="sd">        the two solutions through a constraint that produces a</span>
+<span class="sd">        non-trivial ``Δλ`` per iteration. The integrator is responsible</span>
+<span class="sd">        for updating ``self.lambd``.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        K_solve : callable</span>
+<span class="sd">            Factored linear solver: ``K_solve(b)`` returns the solution</span>
+<span class="sd">            of ``K_eff @ x = b`` where ``K_eff`` is the tangent in</span>
+<span class="sd">            effective (post-MP-constraint) space.</span>
+<span class="sd">        R_eff : ndarray</span>
+<span class="sd">            Residual in effective space.</span>
+<span class="sd">        F_ref_eff : ndarray</span>
+<span class="sd">            Reference-load vector in effective space.</span>
+<span class="sd">        T : sparse matrix or None</span>
+<span class="sd">            Transformation matrix from effective to full DOF space for</span>
+<span class="sd">            MP constraints (``None`` when there are no MP constraints).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        du_eff : ndarray</span>
+<span class="sd">            Displacement increment in effective space (the algorithm</span>
+<span class="sd">            scatters ``T @ du_eff`` onto ``Node.disp``).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">K_solve</span><span class="p">(</span><span class="n">R_eff</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="LoadControl">
+<a class="viewcode-back" href="../../../guide/analysis_types.html#femsolver.analysis.integrator.LoadControl">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">LoadControl</span><span class="p">(</span><span class="n">StaticIntegrator</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Increment the load factor by a fixed amount each step.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dlambda : float</span>
+<span class="sd">        Load increment per step. The total load factor after ``n_steps``</span>
+<span class="sd">        is ``n_steps * dlambda``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dlambda</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">dlambda</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;dlambda must be non-zero&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dlambda</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">dlambda</span><span class="p">)</span>
+
+<div class="viewcode-block" id="LoadControl.new_step">
+<a class="viewcode-back" href="../../../guide/analysis_types.html#femsolver.analysis.integrator.LoadControl.new_step">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">new_step</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lambd</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dlambda</span></div>
+
+
+<div class="viewcode-block" id="LoadControl.revert_step">
+<a class="viewcode-back" href="../../../guide/analysis_types.html#femsolver.analysis.integrator.LoadControl.revert_step">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">revert_step</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lambd</span> <span class="o">-=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dlambda</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="DisplacementControl">
+<a class="viewcode-back" href="../../../guide/analysis_types.html#femsolver.analysis.integrator.DisplacementControl">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DisplacementControl</span><span class="p">(</span><span class="n">StaticIntegrator</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Increment a chosen DOF by a fixed amount each step.</span>
+
+<span class="sd">    Useful for tracing softening branches of a force-displacement curve</span>
+<span class="sd">    that load control cannot follow (mechanism formation, plastic</span>
+<span class="sd">    plateau, etc.). The load factor ``lambda`` becomes an unknown and</span>
+<span class="sd">    is solved alongside the displacement update at each Newton</span>
+<span class="sd">    iteration through the constraint</span>
+
+<span class="sd">        u[control_dof] = u[control_dof]_step_start + du_step</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    node_tag : int</span>
+<span class="sd">        Node containing the controlling DOF.</span>
+<span class="sd">    dof_index : int</span>
+<span class="sd">        Local DOF index within the node (0 for ``u_x``, 1 for ``u_y``,</span>
+<span class="sd">        2 for ``theta_z`` in 2-D models, etc.).</span>
+<span class="sd">    du_step : float</span>
+<span class="sd">        Displacement increment per step on the controlling DOF. May be</span>
+<span class="sd">        negative to reverse the load direction.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    The control DOF must be a *free* DOF (otherwise the constraint is</span>
+<span class="sd">    vacuous) and must not be involved in an MP-constraint (otherwise the</span>
+<span class="sd">    equation-number lookup would need additional plumbing). Both</span>
+<span class="sd">    restrictions are checked at :meth:`bind`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">supports_line_search</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node_tag</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">dof_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">du_step</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">du_step</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;du_step must be non-zero&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">node_tag</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">node_tag</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dof_index</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">dof_index</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">du_step</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">du_step</span><span class="p">)</span>
+        <span class="c1"># Equation number of the controlling DOF (set by bind()).</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_eq</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="c1"># u_d at the start of the current step (set by new_step()).</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_u_d_step_start</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="c1"># Snapshot for revert.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_u_d_before_step_start</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lambd_before_step_start</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+<div class="viewcode-block" id="DisplacementControl.bind">
+<a class="viewcode-back" href="../../../guide/analysis_types.html#femsolver.analysis.integrator.DisplacementControl.bind">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">bind</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+        <span class="n">node</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">node</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">node_tag</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof_index</span> <span class="o">&lt;</span> <span class="n">node</span><span class="o">.</span><span class="n">ndf</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;DisplacementControl: dof_index </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dof_index</span><span class="si">}</span><span class="s2"> out of &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;range for node </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">node_tag</span><span class="si">}</span><span class="s2"> (ndf=</span><span class="si">{</span><span class="n">node</span><span class="o">.</span><span class="n">ndf</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="p">)</span>
+        <span class="n">eq</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">eqn</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">dof_index</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">eq</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;DisplacementControl: node </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">node_tag</span><span class="si">}</span><span class="s2"> dof &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dof_index</span><span class="si">}</span><span class="s2"> is fixed (eqn=</span><span class="si">{</span><span class="n">eq</span><span class="si">}</span><span class="s2">); pick a free DOF&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">mp_constraints</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+                <span class="s2">&quot;DisplacementControl with MP constraints is not yet &quot;</span>
+                <span class="s2">&quot;supported; remove the MP constraint or pick a different &quot;</span>
+                <span class="s2">&quot;control DOF&quot;</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_eq</span> <span class="o">=</span> <span class="n">eq</span>
+        <span class="c1"># Record the starting value of the control DOF so the first</span>
+        <span class="c1"># new_step() has a reference.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_u_d_step_start</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">disp</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">dof_index</span><span class="p">])</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_control_disp</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">node</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">node_tag</span><span class="p">)</span><span class="o">.</span><span class="n">disp</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">dof_index</span><span class="p">])</span>
+
+<div class="viewcode-block" id="DisplacementControl.new_step">
+<a class="viewcode-back" href="../../../guide/analysis_types.html#femsolver.analysis.integrator.DisplacementControl.new_step">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">new_step</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Snapshot for potential revert.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_u_d_before_step_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_u_d_step_start</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lambd_before_step_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lambd</span>
+        <span class="c1"># Set the new step&#39;s reference state — the *current* control DOF</span>
+        <span class="c1"># value (committed state from the previous step).</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_u_d_step_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control_disp</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="DisplacementControl.revert_step">
+<a class="viewcode-back" href="../../../guide/analysis_types.html#femsolver.analysis.integrator.DisplacementControl.revert_step">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">revert_step</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_u_d_step_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_u_d_before_step_start</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lambd</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lambd_before_step_start</span></div>
+
+
+<div class="viewcode-block" id="DisplacementControl.solve_iteration">
+<a class="viewcode-back" href="../../../guide/analysis_types.html#femsolver.analysis.integrator.DisplacementControl.solve_iteration">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">solve_iteration</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">K_solve</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+        <span class="n">R_eff</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">F_ref_eff</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">T</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="c1"># Two solves: tangent-residual and parametric.</span>
+        <span class="n">du_t_eff</span> <span class="o">=</span> <span class="n">K_solve</span><span class="p">(</span><span class="n">R_eff</span><span class="p">)</span>
+        <span class="n">du_p_eff</span> <span class="o">=</span> <span class="n">K_solve</span><span class="p">(</span><span class="n">F_ref_eff</span><span class="p">)</span>
+        <span class="c1"># Without MP constraints, du_eff == du (full). With them, we</span>
+        <span class="c1"># could compute (T @ du_eff)[eq] but we already reject that</span>
+        <span class="c1"># case in bind().</span>
+        <span class="k">if</span> <span class="n">T</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># In the rare case T is not None even after bind (e.g.,</span>
+            <span class="c1"># added after construction), gracefully use the full vector.</span>
+            <span class="n">du_t_full</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">T</span> <span class="o">@</span> <span class="n">du_t_eff</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+            <span class="n">du_p_full</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">T</span> <span class="o">@</span> <span class="n">du_p_eff</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+            <span class="n">du_t_d</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">du_t_full</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_eq</span><span class="p">])</span>
+            <span class="n">du_p_d</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">du_p_full</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_eq</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">du_t_d</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">du_t_eff</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_eq</span><span class="p">])</span>
+            <span class="n">du_p_d</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">du_p_eff</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_eq</span><span class="p">])</span>
+        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">du_p_d</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1e-300</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="s2">&quot;DisplacementControl: control DOF has zero parametric &quot;</span>
+                <span class="s2">&quot;stiffness component — F_ref does not drive this DOF &quot;</span>
+                <span class="s2">&quot;and the constraint is undefined&quot;</span>
+            <span class="p">)</span>
+        <span class="c1"># Constraint at this iteration: bring (u_d_current + du_d_this_iter)</span>
+        <span class="c1"># to (u_d_step_start + du_step). The &quot;du_d_this_iter&quot; is the</span>
+        <span class="c1"># control-DOF component of the iteration&#39;s du.</span>
+        <span class="n">target_du_d</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_u_d_step_start</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">du_step</span><span class="p">)</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_control_disp</span><span class="p">()</span>
+        <span class="n">dlambda</span> <span class="o">=</span> <span class="p">(</span><span class="n">target_du_d</span> <span class="o">-</span> <span class="n">du_t_d</span><span class="p">)</span> <span class="o">/</span> <span class="n">du_p_d</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lambd</span> <span class="o">+=</span> <span class="n">dlambda</span>
+        <span class="k">return</span> <span class="n">du_t_eff</span> <span class="o">+</span> <span class="n">dlambda</span> <span class="o">*</span> <span class="n">du_p_eff</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ArcLength">
+<a class="viewcode-back" href="../../../guide/analysis_types.html#femsolver.analysis.integrator.ArcLength">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ArcLength</span><span class="p">(</span><span class="n">StaticIntegrator</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cylindrical arc-length integrator (Crisfield&#39;s spherical with</span>
+<span class="sd">    ``psi = 0`` — no load-factor weighting).</span>
+
+<span class="sd">    The path-following constraint is</span>
+
+<span class="sd">        || u - u_step_start ||  =  delta_s</span>
+
+<span class="sd">    enforced at each Newton iteration by adjusting ``lambda`` alongside</span>
+<span class="sd">    the displacement update. This allows the analysis to trace</span>
+<span class="sd">    snap-through, snap-back, and post-limit-point branches that load</span>
+<span class="sd">    control cannot follow.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    delta_s : float</span>
+<span class="sd">        Arc-length increment per step (always positive — direction is</span>
+<span class="sd">        controlled by ``initial_direction``).</span>
+<span class="sd">    initial_direction : {+1, -1}, default ``+1``</span>
+<span class="sd">        Sign of ``lambda`` advance on the first step. Subsequent steps</span>
+<span class="sd">        maintain the sign of the previous step&#39;s predictor unless a</span>
+<span class="sd">        limit point is crossed.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Cylindrical arc-length (``psi = 0``) is the simplest and most</span>
+<span class="sd">    commonly used variant. For very stiff problems with extreme</span>
+<span class="sd">    displacement-to-load ratios, spherical arc-length with a tuned</span>
+<span class="sd">    ``psi`` is more robust; that variant is a small extension of this</span>
+<span class="sd">    class (multiply the load-factor term by ``psi^2 * c`` in the</span>
+<span class="sd">    constraint).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">supports_line_search</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delta_s</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">initial_direction</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">delta_s</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;delta_s must be positive&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">initial_direction</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;initial_direction must be +1 or -1&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">delta_s</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">delta_s</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_initial_direction</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">initial_direction</span><span class="p">)</span>
+        <span class="c1"># State at the start of the current step.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_u_step_start</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lambd_step_start</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="c1"># Previous step&#39;s converged displacement increment — used for</span>
+        <span class="c1"># direction tracking (sign of du_p . prev_step_du, the</span>
+        <span class="c1"># &quot;generalized stiffness parameter&quot; of Bergan).</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_prev_step_du</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="c1"># Snapshot for revert.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_u_before</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lambd_before</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_prev_step_du_before</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="ArcLength.bind">
+<a class="viewcode-back" href="../../../guide/analysis_types.html#femsolver.analysis.integrator.ArcLength.bind">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">bind</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">mp_constraints</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+                <span class="s2">&quot;ArcLength with MP constraints is not yet supported&quot;</span>
+            <span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_gather_u</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Snapshot ``Node.disp`` at the free DOFs into an array of size</span>
+<span class="sd">        ``model.neq``.&quot;&quot;&quot;</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">neq</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="o">.</span><span class="n">ndf</span><span class="p">):</span>
+                <span class="n">eq</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">n</span><span class="o">.</span><span class="n">eqn</span><span class="p">[</span><span class="n">j</span><span class="p">])</span>
+                <span class="k">if</span> <span class="n">eq</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">u</span><span class="p">[</span><span class="n">eq</span><span class="p">]</span> <span class="o">=</span> <span class="n">n</span><span class="o">.</span><span class="n">disp</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">u</span>
+
+<div class="viewcode-block" id="ArcLength.new_step">
+<a class="viewcode-back" href="../../../guide/analysis_types.html#femsolver.analysis.integrator.ArcLength.new_step">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">new_step</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Snapshot for revert.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_u_before</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="kc">None</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_u_step_start</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_u_step_start</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lambd_before</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lambd_step_start</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_prev_step_du_before</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="kc">None</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prev_step_du</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prev_step_du</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="p">)</span>
+        <span class="c1"># Record start of step.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_u_step_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gather_u</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lambd_step_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lambd</span></div>
+
+
+<div class="viewcode-block" id="ArcLength.revert_step">
+<a class="viewcode-back" href="../../../guide/analysis_types.html#femsolver.analysis.integrator.ArcLength.revert_step">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">revert_step</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_u_step_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_u_before</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lambd_step_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lambd_before</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_prev_step_du</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prev_step_du_before</span></div>
+
+
+<div class="viewcode-block" id="ArcLength.commit_step">
+<a class="viewcode-back" href="../../../guide/analysis_types.html#femsolver.analysis.integrator.ArcLength.commit_step">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">commit_step</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Snapshot the converged displacement increment of this step so</span>
+<span class="sd">        the next step&#39;s predictor can compute a sign-consistent</span>
+<span class="sd">        direction (Bergan&#39;s GSP heuristic).&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_prev_step_du</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gather_u</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_u_step_start</span></div>
+
+
+<div class="viewcode-block" id="ArcLength.solve_iteration">
+<a class="viewcode-back" href="../../../guide/analysis_types.html#femsolver.analysis.integrator.ArcLength.solve_iteration">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">solve_iteration</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">K_solve</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+        <span class="n">R_eff</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">F_ref_eff</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">T</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">du_t_eff</span> <span class="o">=</span> <span class="n">K_solve</span><span class="p">(</span><span class="n">R_eff</span><span class="p">)</span>
+        <span class="n">du_p_eff</span> <span class="o">=</span> <span class="n">K_solve</span><span class="p">(</span><span class="n">F_ref_eff</span><span class="p">)</span>
+        <span class="c1"># Current displacement-from-step-start (effective space).</span>
+        <span class="n">u_now</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gather_u</span><span class="p">()</span>
+        <span class="n">delta_u</span> <span class="o">=</span> <span class="n">u_now</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_u_step_start</span>
+        <span class="c1"># Two regimes:</span>
+        <span class="c1">#   * predictor (delta_u == 0, first iteration of the step):</span>
+        <span class="c1">#     use ``|du_p| * |dlambda| = delta_s``;</span>
+        <span class="c1">#   * corrector (delta_u != 0, ``orthogonality`` to delta_u).</span>
+        <span class="n">delta_u_norm</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">delta_u</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">delta_u_norm</span> <span class="o">&lt;</span> <span class="mf">1.0e-14</span><span class="p">:</span>
+            <span class="c1"># Predictor step.  Direction selection (Bergan&#39;s GSP):</span>
+            <span class="c1"># sign(du_p . prev_step_du) chooses the consistent</span>
+            <span class="c1"># forward direction across limit points. On the very first</span>
+            <span class="c1"># step there is no prev_step_du, so we fall back to the</span>
+            <span class="c1"># user-supplied ``initial_direction``.</span>
+            <span class="n">denom</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">du_p_eff</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">denom</span> <span class="o">&lt;</span> <span class="mf">1.0e-300</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                    <span class="s2">&quot;ArcLength: parametric solution has zero norm&quot;</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prev_step_du</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">sign</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_initial_direction</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">dot</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">du_p_eff</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prev_step_du</span><span class="p">)</span>
+                <span class="c1"># Tie-break to +1 to avoid getting stuck at zero</span>
+                <span class="n">sign</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="k">if</span> <span class="n">dot</span> <span class="o">&gt;=</span> <span class="mf">0.0</span> <span class="k">else</span> <span class="o">-</span><span class="mf">1.0</span>
+            <span class="n">dlambda</span> <span class="o">=</span> <span class="n">sign</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">delta_s</span> <span class="o">/</span> <span class="n">denom</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Corrector step: enforce delta_u . du_total = 0</span>
+            <span class="c1">#   delta_u . (du_t + dlambda * du_p) = 0</span>
+            <span class="n">num</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">delta_u</span> <span class="o">@</span> <span class="n">du_t_eff</span><span class="p">)</span>
+            <span class="n">den</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">delta_u</span> <span class="o">@</span> <span class="n">du_p_eff</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">den</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1.0e-300</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                    <span class="s2">&quot;ArcLength: corrector denominator vanished — &quot;</span>
+                    <span class="s2">&quot;near-orthogonal increment, try a smaller delta_s&quot;</span>
+                <span class="p">)</span>
+            <span class="n">dlambda</span> <span class="o">=</span> <span class="o">-</span><span class="n">num</span> <span class="o">/</span> <span class="n">den</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lambd</span> <span class="o">+=</span> <span class="n">dlambda</span>
+        <span class="k">return</span> <span class="n">du_t_eff</span> <span class="o">+</span> <span class="n">dlambda</span> <span class="o">*</span> <span class="n">du_p_eff</span></div>
+</div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># helpers shared by Static and (eventually) Transient integrators</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_assemble_tangent</span><span class="p">(</span><span class="n">model</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">sp</span><span class="o">.</span><span class="n">csc_matrix</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Assemble the global tangent stiffness using each element&#39;s</span>
+<span class="sd">    :meth:`Element.K_tangent_global`. Reuses the vectorized COO path of</span>
+<span class="sd">    :func:`assemble_stiffness` by temporarily swapping ``K_global``.&quot;&quot;&quot;</span>
+    <span class="c1"># Easiest correct implementation: replicate the assembly here using</span>
+    <span class="c1"># K_tangent_global so we don&#39;t perturb the original method or rely on</span>
+    <span class="c1"># monkey-patching.</span>
+    <span class="n">neq</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">neq</span>
+    <span class="n">elements</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">elements</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">elements</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">sp</span><span class="o">.</span><span class="n">csc_matrix</span><span class="p">((</span><span class="n">neq</span><span class="p">,</span> <span class="n">neq</span><span class="p">))</span>
+
+    <span class="n">total</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">cache</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">elements</span><span class="p">:</span>
+        <span class="n">Ke</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">K_tangent_global</span><span class="p">()</span>
+        <span class="n">dofs</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">element_dof_map</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+        <span class="n">cache</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">dofs</span><span class="p">,</span> <span class="n">Ke</span><span class="p">))</span>
+        <span class="n">total</span> <span class="o">+=</span> <span class="n">dofs</span><span class="o">.</span><span class="n">size</span> <span class="o">*</span> <span class="n">dofs</span><span class="o">.</span><span class="n">size</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">total</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+    <span class="n">cols</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">total</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+    <span class="n">vals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">total</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">pos</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">dofs</span><span class="p">,</span> <span class="n">Ke</span><span class="p">)</span> <span class="ow">in</span> <span class="n">cache</span><span class="p">:</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="n">dofs</span><span class="o">.</span><span class="n">size</span>
+        <span class="n">nn</span> <span class="o">=</span> <span class="n">n</span> <span class="o">*</span> <span class="n">n</span>
+        <span class="n">rows</span><span class="p">[</span><span class="n">pos</span> <span class="p">:</span> <span class="n">pos</span> <span class="o">+</span> <span class="n">nn</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">dofs</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+        <span class="n">cols</span><span class="p">[</span><span class="n">pos</span> <span class="p">:</span> <span class="n">pos</span> <span class="o">+</span> <span class="n">nn</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">dofs</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+        <span class="n">vals</span><span class="p">[</span><span class="n">pos</span> <span class="p">:</span> <span class="n">pos</span> <span class="o">+</span> <span class="n">nn</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">Ke</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+        <span class="n">pos</span> <span class="o">+=</span> <span class="n">nn</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">rows</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">cols</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">sp</span><span class="o">.</span><span class="n">csc_matrix</span><span class="p">((</span><span class="n">neq</span><span class="p">,</span> <span class="n">neq</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">sp</span><span class="o">.</span><span class="n">coo_matrix</span><span class="p">(</span>
+        <span class="p">(</span><span class="n">vals</span><span class="p">[</span><span class="n">mask</span><span class="p">],</span> <span class="p">(</span><span class="n">rows</span><span class="p">[</span><span class="n">mask</span><span class="p">],</span> <span class="n">cols</span><span class="p">[</span><span class="n">mask</span><span class="p">])),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">neq</span><span class="p">,</span> <span class="n">neq</span><span class="p">)</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">tocsc</span><span class="p">()</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_assemble_internal_force</span><span class="p">(</span><span class="n">model</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Assemble ``f_int = sum_e gather(f_int_e)`` over free DOFs.&quot;&quot;&quot;</span>
+    <span class="n">neq</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">neq</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">neq</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">elements</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+        <span class="n">fe</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">f_int_global</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">fe</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">fe</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="n">dofs</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">element_dof_map</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+        <span class="n">free</span> <span class="o">=</span> <span class="n">dofs</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="n">free</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="n">f</span><span class="p">[</span><span class="n">dofs</span><span class="p">[</span><span class="n">free</span><span class="p">]]</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">fe</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)[</span><span class="n">free</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">f</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

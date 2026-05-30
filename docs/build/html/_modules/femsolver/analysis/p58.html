@@ -1,0 +1,468 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.analysis.p58 &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.analysis.p58</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.analysis.p58</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;FEMA P-58 component-level damage and loss assessment.</span>
+
+<span class="sd">The FEMA P-58 methodology assesses building seismic performance at</span>
+<span class="sd">the **component** level (drywall partitions, ceiling tiles, suspended</span>
+<span class="sd">mechanical equipment, structural beam-column connections, ...) rather</span>
+<span class="sd">than at the system level. For each component:</span>
+
+<span class="sd">1. A **demand parameter** (PSD, PFA, residual drift, ...) is computed</span>
+<span class="sd">   from the structural response.</span>
+<span class="sd">2. A set of **damage states** (DS0=undamaged, DS1, DS2, ..., DS_N) is</span>
+<span class="sd">   defined, each with a **fragility curve**::</span>
+
+<span class="sd">       P(DS &gt;= ds_i | EDP) = Phi( ln(EDP / theta_i) / beta_i )</span>
+
+<span class="sd">   i.e., a lognormal CDF anchored at median ``theta_i`` and log-stddev</span>
+<span class="sd">   ``beta_i``.</span>
+<span class="sd">3. Each damage state carries a **consequence** -- here we model</span>
+<span class="sd">   *repair cost* as a lognormal RV with median ``c_i`` and log-stddev</span>
+<span class="sd">   ``sigma_cost,i``. (Other consequences: repair time, casualties,</span>
+<span class="sd">   recovery quantity -- the framework generalises.)</span>
+<span class="sd">4. The **expected loss** for a component group of ``Q`` units at a</span>
+<span class="sd">   single EDP is::</span>
+
+<span class="sd">       E[L] = Q · sum_{i=1..N} P(DS = ds_i | EDP) · E[cost_i]</span>
+
+<span class="sd">   where ``P(DS = ds_i) = P(DS &gt;= ds_i) - P(DS &gt;= ds_{i+1})``</span>
+<span class="sd">   (sequential damage states).</span>
+<span class="sd">5. **Monte-Carlo** assessment: per realisation, sample the damage</span>
+<span class="sd">   state from the discrete distribution, sample the consequence from</span>
+<span class="sd">   the lognormal, sum across all component groups to get a total-loss</span>
+<span class="sd">   realisation. The empirical CDF of these realisations is the</span>
+<span class="sd">   *building loss curve*.</span>
+
+<span class="sd">References</span>
+<span class="sd">----------</span>
+<span class="sd">* FEMA P-58 (2018) &quot;Seismic Performance Assessment of Buildings.&quot;</span>
+<span class="sd">  Vol 1 (Methodology) and Vol 2 (Implementation Guide).</span>
+<span class="sd">* Porter, K.A. (2003) &quot;An Overview of PEER&#39;s Performance-Based</span>
+<span class="sd">  Earthquake Engineering Methodology.&quot; *Proc. 9th ICASP*, San</span>
+<span class="sd">  Francisco.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+
+<span class="c1"># ============================================================ Damage states</span>
+
+<div class="viewcode-block" id="DamageState">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.p58.DamageState">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">DamageState</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;One damage state with its fragility + repair-cost consequence.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    name : str</span>
+<span class="sd">        Short identifier, e.g. ``&quot;DS1&quot;``, ``&quot;DS2&quot;``.</span>
+<span class="sd">    fragility_theta : float</span>
+<span class="sd">        Median EDP at which this damage state is reached</span>
+<span class="sd">        (P(DS &gt;= this | EDP = theta) = 0.5). Must be &gt; 0.</span>
+<span class="sd">    fragility_beta : float</span>
+<span class="sd">        Log-stddev of the fragility lognormal CDF. Typical 0.3-0.6.</span>
+<span class="sd">    cost_median : float</span>
+<span class="sd">        Median repair cost (USD or any consistent unit) PER UNIT of</span>
+<span class="sd">        component. Must be &gt; 0.</span>
+<span class="sd">    cost_beta : float, default 0.3</span>
+<span class="sd">        Log-stddev of repair cost. Typical 0.2-0.4 for well-defined</span>
+<span class="sd">        damage states.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">fragility_theta</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">fragility_beta</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">cost_median</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">cost_beta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.3</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fragility_theta</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;fragility_theta must be &gt; 0&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fragility_beta</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;fragility_beta must be &gt; 0&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cost_median</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;cost_median must be &gt; 0&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cost_beta</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;cost_beta must be &gt;= 0&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DamageState.prob_exceeds">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.p58.DamageState.prob_exceeds">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">prob_exceeds</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">edp</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;``P(DS &gt;= this | EDP)`` -- the lognormal CDF.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">edp</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">edp</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">fragility_theta</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">fragility_beta</span>
+        <span class="k">return</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">math</span><span class="o">.</span><span class="n">erf</span><span class="p">(</span><span class="n">z</span> <span class="o">/</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">2.0</span><span class="p">)))</span></div>
+
+
+<div class="viewcode-block" id="DamageState.expected_cost">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.p58.DamageState.expected_cost">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">expected_cost</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;E[cost] = median · exp(beta^2 / 2)  (lognormal mean).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cost_median</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">cost_beta</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DamageState.sample_cost">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.p58.DamageState.sample_cost">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">sample_cost</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rng</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">Generator</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Single sample of repair cost from the lognormal.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cost_beta</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cost_median</span>
+        <span class="c1"># ln(cost) ~ Normal(ln median, cost_beta)</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cost_median</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span>
+            <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cost_beta</span><span class="p">)</span>
+        <span class="p">))</span></div>
+</div>
+
+
+
+<span class="c1"># ============================================================ Component</span>
+
+<div class="viewcode-block" id="ComponentFragility">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.p58.ComponentFragility">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ComponentFragility</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A component type with its ordered list of damage states.</span>
+
+<span class="sd">    Damage states are interpreted **sequentially**: ``DS1`` is the</span>
+<span class="sd">    first level of damage, ``DS2`` is more severe than ``DS1``, etc.</span>
+<span class="sd">    The fragility ``theta`` values must therefore be monotonically</span>
+<span class="sd">    increasing across the list. ``cost_median`` values are also</span>
+<span class="sd">    typically increasing.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    name : str</span>
+<span class="sd">        Component identifier, e.g. ``&quot;B1041.001 drywall partition&quot;``.</span>
+<span class="sd">    edp_type : str</span>
+<span class="sd">        EDP driver: ``&quot;PSD&quot;`` (peak story drift), ``&quot;PFA&quot;`` (peak</span>
+<span class="sd">        floor acceleration), or ``&quot;RES&quot;`` (residual drift).</span>
+<span class="sd">    damage_states : list of DamageState</span>
+<span class="sd">        Ordered increasing in fragility_theta.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">edp_type</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">damage_states</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">damage_states</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;at least one damage state required&quot;</span><span class="p">)</span>
+        <span class="n">thetas</span> <span class="o">=</span> <span class="p">[</span><span class="n">ds</span><span class="o">.</span><span class="n">fragility_theta</span> <span class="k">for</span> <span class="n">ds</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">damage_states</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">thetas</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">thetas</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+               <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">thetas</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;damage states must have strictly increasing &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;fragility_theta; got </span><span class="si">{</span><span class="n">thetas</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+<div class="viewcode-block" id="ComponentFragility.damage_state_probs">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.p58.ComponentFragility.damage_state_probs">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">damage_state_probs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">edp</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return ``P(DS = ds_i | EDP)`` for ``i = 0, 1, ..., N``.</span>
+
+<span class="sd">        ``DS0`` is the undamaged state; index ``i = 0`` of the output.</span>
+<span class="sd">        Output sums to 1 (within numerical tolerance).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># P(DS &gt;= ds_i) for i = 1..N</span>
+        <span class="n">cum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">ds</span><span class="o">.</span><span class="n">prob_exceeds</span><span class="p">(</span><span class="n">edp</span><span class="p">)</span>
+                          <span class="k">for</span> <span class="n">ds</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">damage_states</span><span class="p">])</span>
+        <span class="c1"># P(DS = DS0) = 1 - P(DS &gt;= DS1)</span>
+        <span class="c1"># P(DS = ds_i) = P(DS &gt;= ds_i) - P(DS &gt;= ds_{i+1}) for i &lt; N</span>
+        <span class="c1"># P(DS = ds_N) = P(DS &gt;= ds_N)</span>
+        <span class="n">N</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">damage_states</span><span class="p">)</span>
+        <span class="n">probs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">N</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">probs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">cum</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">probs</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">cum</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">cum</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="n">probs</span><span class="p">[</span><span class="n">N</span><span class="p">]</span> <span class="o">=</span> <span class="n">cum</span><span class="p">[</span><span class="n">N</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="c1"># Clip to avoid numerical negatives</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">probs</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># ============================================================ Component group</span>
+
+<div class="viewcode-block" id="ComponentGroup">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.p58.ComponentGroup">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ComponentGroup</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A quantity of identical components seeing the same EDP.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    component : ComponentFragility</span>
+<span class="sd">    quantity : float</span>
+<span class="sd">        Number of units (e.g., 100 m of drywall, 8 ceiling-tile units).</span>
+<span class="sd">    edp_value : float</span>
+<span class="sd">        The driving EDP for this group (e.g., PSD = 0.012 = 1.2 percent).</span>
+<span class="sd">    location : str</span>
+<span class="sd">        Free-text label, e.g. ``&quot;Floor 3, partition&quot;``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">component</span><span class="p">:</span> <span class="n">ComponentFragility</span>
+    <span class="n">quantity</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">edp_value</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">location</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
+<div class="viewcode-block" id="ComponentGroup.expected_loss">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.p58.ComponentGroup.expected_loss">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">expected_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Closed-form expected repair cost for this group.&quot;&quot;&quot;</span>
+        <span class="n">probs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">component</span><span class="o">.</span><span class="n">damage_state_probs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">edp_value</span><span class="p">)</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">ds</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">component</span><span class="o">.</span><span class="n">damage_states</span><span class="p">):</span>
+            <span class="c1"># probs[0] is DS0 (no damage, no cost)</span>
+            <span class="n">loss</span> <span class="o">+=</span> <span class="n">probs</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">ds</span><span class="o">.</span><span class="n">expected_cost</span><span class="p">()</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">quantity</span> <span class="o">*</span> <span class="n">loss</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ComponentGroup.sample_loss">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.p58.ComponentGroup.sample_loss">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">sample_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rng</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">Generator</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;One Monte-Carlo loss realisation for this group.</span>
+
+<span class="sd">        Damage state is sampled from ``damage_state_probs`` and the</span>
+<span class="sd">        repair cost is sampled from the lognormal for that damage</span>
+<span class="sd">        state. The total quantity ``Q`` is treated as a single</span>
+<span class="sd">        aggregate (which assumes all Q units are correlated --</span>
+<span class="sd">        appropriate when they are co-located).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">probs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">component</span><span class="o">.</span><span class="n">damage_state_probs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">edp_value</span><span class="p">)</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">probs</span><span class="p">),</span> <span class="n">p</span><span class="o">=</span><span class="n">probs</span> <span class="o">/</span> <span class="n">probs</span><span class="o">.</span><span class="n">sum</span><span class="p">()))</span>
+        <span class="k">if</span> <span class="n">idx</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">component</span><span class="o">.</span><span class="n">damage_states</span><span class="p">[</span><span class="n">idx</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">quantity</span> <span class="o">*</span> <span class="n">ds</span><span class="o">.</span><span class="n">sample_cost</span><span class="p">(</span><span class="n">rng</span><span class="p">))</span></div>
+</div>
+
+
+
+<span class="c1"># ============================================================ Assessment</span>
+
+<div class="viewcode-block" id="P58AssessmentResult">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.p58.P58AssessmentResult">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">P58AssessmentResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Monte-Carlo loss-distribution result.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    realisation_losses : np.ndarray</span>
+<span class="sd">        Per-realisation total building loss.</span>
+<span class="sd">    expected_loss : float</span>
+<span class="sd">        Closed-form expected loss (analytical, no MC noise).</span>
+<span class="sd">    mean_loss : float</span>
+<span class="sd">        Sample mean from MC.</span>
+<span class="sd">    median_loss : float</span>
+<span class="sd">    p84_loss : float</span>
+<span class="sd">        84-th percentile (mean + 1 sigma in log-space, roughly).</span>
+<span class="sd">    p95_loss : float</span>
+<span class="sd">    n_realisations : int</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">realisation_losses</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">expected_loss</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">mean_loss</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">median_loss</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">p84_loss</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">p95_loss</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">n_realisations</span><span class="p">:</span> <span class="nb">int</span></div>
+
+
+
+<div class="viewcode-block" id="ComponentDamageAssessment">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.p58.ComponentDamageAssessment">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ComponentDamageAssessment</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Building-level damage/loss assessment over many component groups.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    groups : list of ComponentGroup</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">groups</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">ComponentGroup</span><span class="p">]):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">groups</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;need at least one component group&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">groups</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">groups</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ComponentDamageAssessment.expected_loss">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.p58.ComponentDamageAssessment.expected_loss">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">expected_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Closed-form expected total loss = sum of per-group expected losses.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">expected_loss</span><span class="p">()</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="ComponentDamageAssessment.monte_carlo">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.p58.ComponentDamageAssessment.monte_carlo">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">monte_carlo</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">n_realisations</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">P58AssessmentResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run Monte-Carlo loss sampling.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        n_realisations : int, default 1000</span>
+<span class="sd">        seed : int, optional</span>
+<span class="sd">            Random-number-generator seed.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        P58AssessmentResult</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">n_realisations</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;n_realisations must be &gt;= 1, got </span><span class="si">{</span><span class="n">n_realisations</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+        <span class="n">losses</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_realisations</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_realisations</span><span class="p">):</span>
+            <span class="n">total</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">:</span>
+                <span class="n">total</span> <span class="o">+=</span> <span class="n">g</span><span class="o">.</span><span class="n">sample_loss</span><span class="p">(</span><span class="n">rng</span><span class="p">)</span>
+            <span class="n">losses</span><span class="p">[</span><span class="n">r</span><span class="p">]</span> <span class="o">=</span> <span class="n">total</span>
+        <span class="k">return</span> <span class="n">P58AssessmentResult</span><span class="p">(</span>
+            <span class="n">realisation_losses</span><span class="o">=</span><span class="n">losses</span><span class="p">,</span>
+            <span class="n">expected_loss</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">expected_loss</span><span class="p">(),</span>
+            <span class="n">mean_loss</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">losses</span><span class="p">)),</span>
+            <span class="n">median_loss</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">losses</span><span class="p">)),</span>
+            <span class="n">p84_loss</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">losses</span><span class="p">,</span> <span class="mi">84</span><span class="p">)),</span>
+            <span class="n">p95_loss</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">losses</span><span class="p">,</span> <span class="mi">95</span><span class="p">)),</span>
+            <span class="n">n_realisations</span><span class="o">=</span><span class="n">n_realisations</span><span class="p">,</span>
+        <span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

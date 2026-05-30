@@ -1,0 +1,1 @@
+[INFO] Model has 6 nodes and 5 elements

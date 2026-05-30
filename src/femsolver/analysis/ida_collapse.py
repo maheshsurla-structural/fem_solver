@@ -3,11 +3,13 @@
 Builds on the single-record :class:`IDADriver` (Phase 25.1) to:
 
 * **Detect collapse** for each record via three independent criteria:
+
   - Hard EDP limit exceeded (e.g. drift > 10%).
   - NLTHA non-convergence.
   - "Flatlining" of the IDA curve -- the EDP grows by more than a
     factor ``flatline_factor`` for an IM step ``< flatline_slope_min``
     (slope collapse per Vamvatsikos-Cornell 2002).
+
 * Run a **suite** of records via the same model factory, producing
   one :class:`IDARecord` per record and an aggregated
   :class:`IDASummary` with per-record collapse IM values.

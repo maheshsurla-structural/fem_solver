@@ -1,0 +1,287 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.design.connections.pr_connection &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.design.connections.pr_connection</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.design.connections.pr_connection</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Partially-Restrained (PR) connection models.</span>
+
+<span class="sd">A PR connection lies between the idealised pinned (&quot;simple&quot;) and</span>
+<span class="sd">fully-restrained (&quot;rigid&quot;) limits. Its moment-rotation behaviour is</span>
+<span class="sd">characterised by an initial rotational stiffness ``R_ki``, a</span>
+<span class="sd">post-yield (&quot;plastic&quot;) stiffness ``R_kp``, and a transition</span>
+<span class="sd">parameter ``M_0`` (and shape exponent ``n``).</span>
+
+<span class="sd">The **Richard-Abbott four-parameter** model (Richard &amp; Abbott 1975)</span>
+<span class="sd">gives a smooth single-curve relation::</span>
+
+<span class="sd">    M(theta) = (R_ki - R_kp) theta</span>
+<span class="sd">               / ( 1 + |(R_ki - R_kp) theta / M_0|^n )^(1/n)</span>
+<span class="sd">              + R_kp theta</span>
+
+<span class="sd">Parameters</span>
+<span class="sd">----------</span>
+<span class="sd">* ``R_ki`` (N·m/rad): initial rotational stiffness.</span>
+<span class="sd">* ``R_kp`` (N·m/rad): post-yield (or strain-hardening) rotational</span>
+<span class="sd">  stiffness, ``0 &lt;= R_kp &lt;= R_ki``.</span>
+<span class="sd">* ``M_0`` (N·m): characteristic moment at which ``M`` transitions</span>
+<span class="sd">  from the elastic to the plastic asymptote.</span>
+<span class="sd">* ``n`` (-): sharpness exponent (typical 1..5; larger = sharper knee).</span>
+
+<span class="sd">For commonly-encountered PR connection types AISC ASD/LRFD literature</span>
+<span class="sd">suggests parameter ranges; we ship a small preset library</span>
+<span class="sd">(:func:`Pr_preset`) covering:</span>
+
+<span class="sd">* ``&quot;top_seat_double_web&quot;`` -- top + seat angle with double web angle.</span>
+<span class="sd">* ``&quot;end_plate_4_bolts&quot;``  -- unstiffened 4-bolt end-plate connection.</span>
+<span class="sd">* ``&quot;end_plate_extended&quot;`` -- extended (stiff) end-plate connection.</span>
+<span class="sd">* ``&quot;tee_stub&quot;``            -- T-stub connection.</span>
+
+<span class="sd">These presets give *order-of-magnitude* values; for design verification</span>
+<span class="sd">use full member-level calibration.</span>
+
+<span class="sd">References</span>
+<span class="sd">----------</span>
+<span class="sd">* Richard, R.M. &amp; Abbott, B.J. (1975) &quot;Versatile elastic-plastic</span>
+<span class="sd">  stress-strain formula.&quot; *J. Eng. Mech.*, 101(4), 511-515.</span>
+<span class="sd">* Chen, W.F., Goto, Y., Liew, J.Y.R. (1996). *Stability Design of</span>
+<span class="sd">  Semi-Rigid Frames*. Wiley.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+
+
+<div class="viewcode-block" id="RichardAbbottParams">
+<a class="viewcode-back" href="../../../../api/design.html#femsolver.design.connections.pr_connection.RichardAbbottParams">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">RichardAbbottParams</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Four-parameter Richard-Abbott M-theta curve.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    R_ki : float</span>
+<span class="sd">        Initial rotational stiffness (N·m/rad).</span>
+<span class="sd">    R_kp : float</span>
+<span class="sd">        Post-yield rotational stiffness (N·m/rad).</span>
+<span class="sd">    M_0 : float</span>
+<span class="sd">        Transition moment (N·m).</span>
+<span class="sd">    n : float</span>
+<span class="sd">        Sharpness exponent (dimensionless).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">R_ki</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">R_kp</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">M_0</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">n</span><span class="p">:</span> <span class="nb">float</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">R_ki</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;R_ki must be &gt; 0&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">R_kp</span> <span class="o">&lt;</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">R_kp</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">R_ki</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;R_kp must be in [0, R_ki]&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">M_0</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;M_0 must be &gt; 0&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;n must be &gt; 0&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RichardAbbottParams.M">
+<a class="viewcode-back" href="../../../../api/design.html#femsolver.design.connections.pr_connection.RichardAbbottParams.M">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">M</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">theta</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Moment at rotation ``theta``.&quot;&quot;&quot;</span>
+        <span class="n">sign</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="k">if</span> <span class="n">theta</span> <span class="o">&gt;=</span> <span class="mf">0.0</span> <span class="k">else</span> <span class="o">-</span><span class="mf">1.0</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
+        <span class="n">dk</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">R_ki</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">R_kp</span>
+        <span class="k">if</span> <span class="n">dk</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">sign</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">R_ki</span> <span class="o">*</span> <span class="n">t</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">dk</span> <span class="o">*</span> <span class="n">t</span>
+        <span class="n">denom</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="p">(</span><span class="n">x</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">M_0</span><span class="p">)</span> <span class="o">**</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">sign</span> <span class="o">*</span> <span class="p">(</span><span class="n">x</span> <span class="o">/</span> <span class="n">denom</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">R_kp</span> <span class="o">*</span> <span class="n">t</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="RichardAbbottParams.tangent">
+<a class="viewcode-back" href="../../../../api/design.html#femsolver.design.connections.pr_connection.RichardAbbottParams.tangent">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">tangent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">theta</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Tangent stiffness ``dM/dtheta`` at ``theta``.&quot;&quot;&quot;</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
+        <span class="n">dk</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">R_ki</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">R_kp</span>
+        <span class="k">if</span> <span class="n">dk</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">R_ki</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">dk</span> <span class="o">*</span> <span class="n">t</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">M_0</span>
+        <span class="n">x_n</span> <span class="o">=</span> <span class="n">x</span> <span class="o">**</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span>
+        <span class="n">denom_pow</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">x_n</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>
+        <span class="c1"># dM/dtheta = dk / (1 + x^n)^((n+1)/n) + R_kp</span>
+        <span class="n">dM_dtheta</span> <span class="o">=</span> <span class="n">dk</span> <span class="o">/</span> <span class="p">(</span><span class="n">denom_pow</span> <span class="o">**</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">+</span> <span class="mf">1.0</span><span class="p">))</span> <span class="o">**</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>
+        <span class="c1"># Equivalent simpler form using known relation:</span>
+        <span class="n">dM_dtheta</span> <span class="o">=</span> <span class="n">dk</span> <span class="o">/</span> <span class="p">((</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">x_n</span><span class="p">))</span> <span class="o">**</span> <span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">+</span> <span class="mf">1.0</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">R_kp</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">dM_dtheta</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># ============================================================ presets</span>
+
+<span class="n">_PR_PRESETS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;top_seat_double_web&quot;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">R_ki</span><span class="o">=</span><span class="mf">2.5e7</span><span class="p">,</span>                <span class="c1"># ~ 25 MN·m/rad</span>
+        <span class="n">R_kp</span><span class="o">=</span><span class="mf">1.0e6</span><span class="p">,</span>
+        <span class="n">M_0</span><span class="o">=</span><span class="mf">80.0e3</span><span class="p">,</span>                <span class="c1"># ~ 80 kN·m</span>
+        <span class="n">n</span><span class="o">=</span><span class="mf">1.2</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="s2">&quot;end_plate_4_bolts&quot;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">R_ki</span><span class="o">=</span><span class="mf">4.0e7</span><span class="p">,</span>
+        <span class="n">R_kp</span><span class="o">=</span><span class="mf">2.0e6</span><span class="p">,</span>
+        <span class="n">M_0</span><span class="o">=</span><span class="mf">150.0e3</span><span class="p">,</span>
+        <span class="n">n</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="s2">&quot;end_plate_extended&quot;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">R_ki</span><span class="o">=</span><span class="mf">1.2e8</span><span class="p">,</span>
+        <span class="n">R_kp</span><span class="o">=</span><span class="mf">5.0e6</span><span class="p">,</span>
+        <span class="n">M_0</span><span class="o">=</span><span class="mf">300.0e3</span><span class="p">,</span>
+        <span class="n">n</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="s2">&quot;tee_stub&quot;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">R_ki</span><span class="o">=</span><span class="mf">6.0e7</span><span class="p">,</span>
+        <span class="n">R_kp</span><span class="o">=</span><span class="mf">3.0e6</span><span class="p">,</span>
+        <span class="n">M_0</span><span class="o">=</span><span class="mf">200.0e3</span><span class="p">,</span>
+        <span class="n">n</span><span class="o">=</span><span class="mf">1.7</span><span class="p">,</span>
+    <span class="p">),</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="Pr_preset">
+<a class="viewcode-back" href="../../../../api/design.html#femsolver.design.connections.pr_connection.Pr_preset">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">Pr_preset</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RichardAbbottParams</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a Richard-Abbott parameter set for a named PR type.</span>
+
+<span class="sd">    Order-of-magnitude values; calibrate against test data or</span>
+<span class="sd">    full-section component models before design use.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_PR_PRESETS</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;unknown PR preset </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2">; available: &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">_PR_PRESETS</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">RichardAbbottParams</span><span class="p">(</span><span class="o">**</span><span class="n">_PR_PRESETS</span><span class="p">[</span><span class="n">name</span><span class="p">])</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

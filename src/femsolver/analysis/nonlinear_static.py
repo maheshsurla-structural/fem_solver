@@ -200,6 +200,10 @@ class NonlinearStaticAnalysis:
             # commit element state (e.g., plasticity will roll history forward)
             for e in m.elements.values():
                 e.commit_state()
+            # Report iteration count back to the integrator (used by
+            # adaptive arc-length to scale delta_s) before commit_step
+            if hasattr(self.integrator, "record_step_iterations"):
+                self.integrator.record_step_iterations(report.iterations)
             # commit integrator state (path-following integrators use this
             # to update direction tracking, step-start snapshots, etc.)
             self.integrator.commit_step()

@@ -72,8 +72,17 @@ autodoc_typehints_format = "short"
 autodoc_member_order = "bysource"
 autosummary_generate = True
 
-# Suppress autodoc warnings about overloaded methods or `__init__` not found
-suppress_warnings = ["autodoc.import_object"]
+# Suppress autodoc warnings about overloaded methods or `__init__` not found,
+# plus duplicate object descriptions caused by autosummary stubs that re-list
+# attributes already documented under their parent dataclass in api/*.rst.
+suppress_warnings = [
+    "autodoc.import_object",
+    "ref.python",   # duplicate object descriptions are harmless here
+    # Many of our math-heavy docstrings use ``|x|`` for absolute-value
+    # which docutils tries to parse as a substitution reference. They
+    # render correctly as plain text -- silence the cosmetic noise.
+    "docutils",
+]
 
 
 # -- Napoleon (NumPy docstrings) ---------------------------------------------
@@ -83,6 +92,10 @@ napoleon_include_init_with_doc = True
 napoleon_include_private_with_doc = False
 napoleon_use_param = True
 napoleon_use_rtype = True
+# Use :ivar: (instance variable) for Attributes sections instead of
+# generating duplicate :attribute: directives that conflict with
+# autodoc's automatic attribute discovery.
+napoleon_use_ivar = True
 
 
 # -- HTML output -------------------------------------------------------------

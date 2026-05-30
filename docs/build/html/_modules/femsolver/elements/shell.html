@@ -1,0 +1,703 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.elements.shell &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.elements.shell</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.elements.shell</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;4-node MITC shell element (``ShellMITC4``).</span>
+
+<span class="sd">The MITC (&quot;Mixed Interpolation of Tensorial Components&quot;) family of</span>
+<span class="sd">shell elements was introduced by Dvorkin &amp; Bathe (1984) and is the</span>
+<span class="sd">workhorse general-purpose shell in commercial structural-FE codes</span>
+<span class="sd">(SAP2000, ETABS, MIDAS Civil/Gen, ADINA). The 4-node version handles</span>
+<span class="sd">both **thin** (Kirchhoff) and **thick** (Mindlin-Reissner) regimes</span>
+<span class="sd">without shear locking, by replacing the standard bilinear transverse-</span>
+<span class="sd">shear interpolation with a tying scheme:</span>
+
+<span class="sd">* In-plane membrane and bending strains use the standard isoparametric</span>
+<span class="sd">  bilinear B-matrix → consistent rank, no membrane locking for a flat</span>
+<span class="sd">  plate.</span>
+<span class="sd">* Transverse shear ``γ_xz``, ``γ_yz`` is sampled at four tying points</span>
+<span class="sd">  on the element edges and interpolated linearly back to Gauss points.</span>
+<span class="sd">  This is the MITC4 cure for shear locking as ``t → 0``.</span>
+
+<span class="sd">The element has **6 DOF per node** (``u_x, u_y, u_z, θ_x, θ_y, θ_z``)</span>
+<span class="sd">to fit naturally into a 3-D frame model. The in-plane &quot;drilling&quot;</span>
+<span class="sd">rotation ``θ_z`` carries a small fictitious stiffness so the global</span>
+<span class="sd">system stays nonsingular when shells alone meet at a node.</span>
+
+<span class="sd">For an isotropic single-layer shell of thickness ``t``:</span>
+
+<span class="sd">    D_membrane  = (E t / (1 - ν²)) · [[1, ν, 0], [ν, 1, 0], [0, 0, (1-ν)/2]]</span>
+<span class="sd">    D_bending   = D_membrane · t² / 12</span>
+<span class="sd">    D_shear     = κ · G · t · I_2   (κ = 5/6, shear-correction factor)</span>
+
+<span class="sd">Membrane and bending decouple for a symmetric mid-surface (the only</span>
+<span class="sd">case implemented here). Composite layered shells are a future</span>
+<span class="sd">extension.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.elements.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">Element</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.numerics.quadrature</span><span class="w"> </span><span class="kn">import</span> <span class="n">gauss_legendre_2d_quad</span>
+
+
+<span class="c1"># ============================================================ local frame</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_local_frame</span><span class="p">(</span><span class="n">X</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build an orthonormal local frame at the element centroid.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    R : (3, 3) array</span>
+<span class="sd">        Columns are (e1_local, e2_local, n_local) in global coords.</span>
+<span class="sd">        ``X_local = R^T @ (X_global - X_centroid)`` rotates a global</span>
+<span class="sd">        vector into the local plane.</span>
+<span class="sd">    X_local : (4, 2) array</span>
+<span class="sd">        2-D local coordinates of the 4 nodes (z_local dropped — for a</span>
+<span class="sd">        warped quad this is the projection onto the centroid plane,</span>
+<span class="sd">        which is the standard MITC4 approximation).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># e1 from edge-12 → edge-43 average (the &quot;1-3 diagonal of midsides&quot;)</span>
+    <span class="n">r1</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">((</span><span class="n">X</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">X</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">X</span><span class="p">[</span><span class="mi">3</span><span class="p">]))</span>     <span class="c1"># along ξ at η=0</span>
+    <span class="n">r2</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">((</span><span class="n">X</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">-</span> <span class="n">X</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">X</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>     <span class="c1"># along η at ξ=0</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">r1</span><span class="p">,</span> <span class="n">r2</span><span class="p">)</span>
+    <span class="n">n</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="n">e1</span> <span class="o">=</span> <span class="n">r1</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">r1</span><span class="p">)</span>
+    <span class="c1"># Orthogonalize e2 by removing e1 component</span>
+    <span class="n">e2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">e1</span><span class="p">)</span>
+    <span class="n">R</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">,</span> <span class="n">n</span><span class="p">])</span>
+    <span class="n">centroid</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">Xc</span> <span class="o">=</span> <span class="n">X</span> <span class="o">-</span> <span class="n">centroid</span>
+    <span class="n">X_local_3</span> <span class="o">=</span> <span class="n">Xc</span> <span class="o">@</span> <span class="n">R</span>                              <span class="c1"># (4, 3)</span>
+    <span class="k">return</span> <span class="n">R</span><span class="p">,</span> <span class="n">X_local_3</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">2</span><span class="p">]</span>
+
+
+<span class="c1"># ============================================================ shape &amp; B</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_N</span><span class="p">(</span><span class="n">xi</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">eta</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">return</span> <span class="mf">0.25</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+        <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">xi</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">eta</span><span class="p">),</span>
+        <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">xi</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">eta</span><span class="p">),</span>
+        <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">xi</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">eta</span><span class="p">),</span>
+        <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">xi</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">eta</span><span class="p">),</span>
+    <span class="p">])</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_dN_dxi</span><span class="p">(</span><span class="n">xi</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">eta</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns (2, 4): row 0 = dN/dξ, row 1 = dN/dη.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="mf">0.25</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+        <span class="p">[</span><span class="o">-</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">eta</span><span class="p">),</span>  <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">eta</span><span class="p">),</span>  <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">eta</span><span class="p">),</span> <span class="o">-</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">eta</span><span class="p">)],</span>
+        <span class="p">[</span><span class="o">-</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">xi</span><span class="p">),</span>  <span class="o">-</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">xi</span><span class="p">),</span>   <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">xi</span><span class="p">),</span>   <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">xi</span><span class="p">)],</span>
+    <span class="p">])</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_jacobian2d</span><span class="p">(</span><span class="n">xi</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">eta</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">Xl</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;For local 2-D node coords ``Xl`` (4, 2) at (ξ, η).&quot;&quot;&quot;</span>
+    <span class="n">dN</span> <span class="o">=</span> <span class="n">_dN_dxi</span><span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">eta</span><span class="p">)</span>
+    <span class="n">J</span> <span class="o">=</span> <span class="n">dN</span> <span class="o">@</span> <span class="n">Xl</span>                                     <span class="c1"># (2, 2)</span>
+    <span class="n">detJ</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">J</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">detJ</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;ShellMITC4: non-positive Jacobian determinant (</span><span class="si">{</span><span class="n">detJ</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">) &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;at (ξ=</span><span class="si">{</span><span class="n">xi</span><span class="si">}</span><span class="s2">, η=</span><span class="si">{</span><span class="n">eta</span><span class="si">}</span><span class="s2">). Check node ordering (CCW seen from &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;the positive normal side) and avoid degenerate shapes.&quot;</span>
+        <span class="p">)</span>
+    <span class="n">Jinv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">J</span><span class="p">)</span>
+    <span class="n">dN_dx</span> <span class="o">=</span> <span class="n">Jinv</span> <span class="o">@</span> <span class="n">dN</span>                               <span class="c1"># (2, 4)</span>
+    <span class="k">return</span> <span class="n">J</span><span class="p">,</span> <span class="n">detJ</span><span class="p">,</span> <span class="n">dN_dx</span>
+
+
+<span class="c1"># ============================================================ MITC4 shear</span>
+
+<span class="c1">#: Tying points for transverse shear (Dvorkin &amp; Bathe 1984):</span>
+<span class="c1">#:   A: ( 0, -1)  carries γ_xz</span>
+<span class="c1">#:   B: ( 1,  0)  carries γ_yz</span>
+<span class="c1">#:   C: ( 0, +1)  carries γ_xz</span>
+<span class="c1">#:   D: (-1,  0)  carries γ_yz</span>
+<span class="n">_TYING_PTS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;A&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">),</span>
+    <span class="s2">&quot;B&quot;</span><span class="p">:</span> <span class="p">(</span><span class="o">+</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+    <span class="s2">&quot;C&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="o">+</span><span class="mf">1.0</span><span class="p">),</span>
+    <span class="s2">&quot;D&quot;</span><span class="p">:</span> <span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+<span class="p">}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_Bs_at_tying_point</span><span class="p">(</span><span class="n">xi</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">eta</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">Xl</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                        <span class="n">which</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build the transverse-shear B-matrix row at a single tying point.</span>
+
+<span class="sd">    The &quot;natural&quot; transverse shear at the tying point is one of γ_ξz</span>
+<span class="sd">    (at A, C) or γ_ηz (at B, D). We return a (1, 20) row in the</span>
+<span class="sd">    *local* 5-DOF-per-node ordering (u, v, w, θx, θy) suitable for</span>
+<span class="sd">    later transformation via the Jacobian.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">dN</span> <span class="o">=</span> <span class="n">_dN_dxi</span><span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">eta</span><span class="p">)</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="n">_N</span><span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">eta</span><span class="p">)</span>
+    <span class="n">row</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">which</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;A&quot;</span><span class="p">,</span> <span class="s2">&quot;C&quot;</span><span class="p">):</span>
+        <span class="c1"># γ_ξz = dw/dξ + N_i · θ_y_i? No — in shell convention</span>
+        <span class="c1"># γ_xz_local = dw/dx + θ_y (rotation about y bends about y).</span>
+        <span class="c1"># In natural coords, γ_ξz = dw/dξ + Σ N_i · (something).</span>
+        <span class="c1"># Standard MITC4 expression: γ_ξz = dw/dξ + (J^T · θ)_ξ</span>
+        <span class="c1"># which we evaluate by gathering θ in *natural* form.</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+            <span class="n">row</span><span class="p">[</span><span class="mi">5</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">dN</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>            <span class="c1"># dw/dξ on w_i</span>
+            <span class="n">row</span><span class="p">[</span><span class="mi">5</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="mf">0.0</span>          <span class="c1"># θx contribution (filled by Jacobian)</span>
+            <span class="n">row</span><span class="p">[</span><span class="mi">5</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>                <span class="c1"># θy contribution (raw, transformed later)</span>
+    <span class="k">else</span><span class="p">:</span>  <span class="c1"># B, D</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+            <span class="n">row</span><span class="p">[</span><span class="mi">5</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">dN</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>            <span class="c1"># dw/dη on w_i</span>
+            <span class="n">row</span><span class="p">[</span><span class="mi">5</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>               <span class="c1"># θx contribution</span>
+            <span class="n">row</span><span class="p">[</span><span class="mi">5</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="mf">0.0</span>
+    <span class="k">return</span> <span class="n">row</span>
+
+
+<span class="c1"># ============================================================ element</span>
+
+<div class="viewcode-block" id="ShellMITC4">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.shell.ShellMITC4">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ShellMITC4</span><span class="p">(</span><span class="n">Element</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;4-node MITC shell element (flat or mildly warped).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    tag : int</span>
+<span class="sd">    nodes : (4,) sequence of node tags, counter-clockwise when viewed</span>
+<span class="sd">        from the positive-normal side.</span>
+<span class="sd">    material : ElasticIsotropic</span>
+<span class="sd">    thickness : float</span>
+<span class="sd">    k_shear : float, default 5/6</span>
+<span class="sd">        Transverse-shear correction factor.</span>
+<span class="sd">    drilling_factor : float, default 1e-3</span>
+<span class="sd">        Fictitious drilling stiffness as a fraction of the smallest</span>
+<span class="sd">        bending diagonal. Prevents singularity at nodes where only</span>
+<span class="sd">        coplanar shells meet (no out-of-plane rotational coupling</span>
+<span class="sd">        through other elements).</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    * The element is *flat* in its constructed local plane. For a</span>
+<span class="sd">      warped input quad, the four nodes are projected onto the</span>
+<span class="sd">      centroid plane — the standard MITC4 approximation. Severe</span>
+<span class="sd">      warping degrades accuracy.</span>
+<span class="sd">    * 2×2 Gauss quadrature is used for membrane and bending; the</span>
+<span class="sd">      MITC tying-and-interpolation handles transverse shear without</span>
+<span class="sd">      a separate quadrature rule.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">n_nodes</span> <span class="o">=</span> <span class="mi">4</span>
+    <span class="n">dofs_per_node</span> <span class="o">=</span> <span class="mi">6</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">tag</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">nodes</span><span class="p">,</span>
+        <span class="n">material</span><span class="p">,</span>
+        <span class="n">thickness</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">k_shear</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.0</span> <span class="o">/</span> <span class="mf">6.0</span><span class="p">,</span>
+        <span class="n">drilling_factor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0e-3</span><span class="p">,</span>
+        <span class="n">section</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="n">nodes</span><span class="p">,</span> <span class="n">material</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">drilling_factor</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;drilling_factor must be &gt;= 0, got </span><span class="si">{</span><span class="n">drilling_factor</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="c1"># Two construction modes:</span>
+        <span class="c1">#   (a) section= directly (the layered / composite path).</span>
+        <span class="c1">#   (b) material + thickness — internally wrap as an isotropic</span>
+        <span class="c1">#       single-layer ElasticShellSection for D-matrix retrieval.</span>
+        <span class="k">if</span> <span class="n">section</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">section</span> <span class="o">=</span> <span class="n">section</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">section</span><span class="o">.</span><span class="n">thickness</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">k_shear</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">section</span><span class="p">,</span> <span class="s2">&quot;k_shear&quot;</span><span class="p">,</span> <span class="n">k_shear</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">thickness</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">thickness</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;thickness must be positive, got </span><span class="si">{</span><span class="n">thickness</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mf">0.0</span> <span class="o">&lt;</span> <span class="n">k_shear</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;k_shear (transverse-shear correction) must be in (0, 1], &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="n">k_shear</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">thickness</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">k_shear</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">k_shear</span><span class="p">)</span>
+            <span class="c1"># Lazy construction below: D_* methods read from material/thickness.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">section</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">drilling_factor</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">drilling_factor</span><span class="p">)</span>
+        <span class="c1"># Per-Gauss-point recovery buffers (populated by .recover())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gp_membrane_strain</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gp_bending_curvature</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gp_shear_strain</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gp_resultants</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>   <span class="c1"># (N, M, Q) per GP</span>
+
+    <span class="c1"># ----------------------------------------------------- constitutive</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_D_membrane</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">section</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">section</span><span class="o">.</span><span class="n">D_membrane</span><span class="p">()</span>
+        <span class="n">E</span><span class="p">,</span> <span class="n">nu</span><span class="p">,</span> <span class="n">t</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">E</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">nu</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">E</span> <span class="o">*</span> <span class="n">t</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">nu</span> <span class="o">*</span> <span class="n">nu</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">f</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+            <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">nu</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+            <span class="p">[</span><span class="n">nu</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+            <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">nu</span><span class="p">)],</span>
+        <span class="p">])</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_D_bending</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">section</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">section</span><span class="o">.</span><span class="n">D_bending</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_D_membrane</span><span class="p">()</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">thickness</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">/</span> <span class="mf">12.0</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_D_coupling</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Membrane-bending coupling matrix (3, 3). Zero for symmetric</span>
+<span class="sd">        sections; nonzero for asymmetric stacks (e.g. RC slab with</span>
+<span class="sd">        bottom-only reinforcement).&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">section</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">section</span><span class="o">.</span><span class="n">D_coupling</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_D_shear</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">section</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">section</span><span class="o">.</span><span class="n">D_shear</span><span class="p">()</span>
+        <span class="n">G</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">G</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">k_shear</span>
+        <span class="k">return</span> <span class="n">k</span> <span class="o">*</span> <span class="n">G</span> <span class="o">*</span> <span class="n">t</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="c1"># ----------------------------------------------------- local-global</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_local_geom</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return (R, Xl) where R is the (3,3) local→global rotation</span>
+<span class="sd">        and Xl is the (4, 2) local node coords.&quot;&quot;&quot;</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_coords</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">_local_frame</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_T_global_to_local</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">R</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Block-diagonal 24x24 transform: ``u_local = T @ u_global``.</span>
+
+<span class="sd">        Each 6-DOF block of T uses R^T on the 3 translations and R^T</span>
+<span class="sd">        on the 3 rotations.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">24</span><span class="p">,</span> <span class="mi">24</span><span class="p">))</span>
+        <span class="n">Rt</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">T</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+            <span class="n">T</span><span class="p">[</span><span class="mi">6</span> <span class="o">*</span> <span class="n">i</span><span class="p">:</span><span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">6</span> <span class="o">*</span> <span class="n">i</span><span class="p">:</span><span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">Rt</span>
+            <span class="n">T</span><span class="p">[</span><span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">3</span><span class="p">:</span><span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">3</span><span class="p">:</span><span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">6</span><span class="p">]</span> <span class="o">=</span> <span class="n">Rt</span>
+        <span class="k">return</span> <span class="n">T</span>
+
+    <span class="c1"># ----------------------------------------------------- B-matrices in local frame</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_Bm_local</span><span class="p">(</span><span class="n">dN_dx</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Membrane B (3, 20) in 5-DOF-per-node local ordering</span>
+<span class="sd">        (u, v, w, θx, θy).&quot;&quot;&quot;</span>
+        <span class="n">B</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">20</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+            <span class="n">B</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">5</span> <span class="o">*</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">dN_dx</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>              <span class="c1"># ε_xx = du/dx</span>
+            <span class="n">B</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">dN_dx</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>          <span class="c1"># ε_yy = dv/dy</span>
+            <span class="n">B</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span> <span class="o">*</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">dN_dx</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>              <span class="c1"># γ_xy = du/dy + dv/dx</span>
+            <span class="n">B</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">dN_dx</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">B</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_Bb_local</span><span class="p">(</span><span class="n">dN_dx</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Bending B (3, 20) — couples to (θx, θy).</span>
+
+<span class="sd">        Curvatures in Reissner-Mindlin form:</span>
+<span class="sd">            κ_xx = +dθ_y / dx</span>
+<span class="sd">            κ_yy = -dθ_x / dy</span>
+<span class="sd">            κ_xy = +dθ_y / dy - dθ_x / dx</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">B</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">20</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+            <span class="n">B</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">5</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="n">dN_dx</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>          <span class="c1"># +dθ_y / dx</span>
+            <span class="n">B</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">dN_dx</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>         <span class="c1"># -dθ_x / dy</span>
+            <span class="n">B</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="n">dN_dx</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>
+            <span class="n">B</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">dN_dx</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">B</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_Bs_natural_local</span><span class="p">(</span><span class="n">xi</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">eta</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">Xl</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build the (2, 20) shear B-matrix at (ξ, η) using MITC4 tying.</span>
+
+<span class="sd">        Following Dvorkin-Bathe (1984): the covariant shear components</span>
+<span class="sd">        ``γ_ξz`` and ``γ_ηz`` are tied at four edge-midpoint sampling</span>
+<span class="sd">        points to remove shear locking, then interpolated linearly</span>
+<span class="sd">        across the element and pulled back to Cartesian (γ_xz, γ_yz)</span>
+<span class="sd">        through the inverse Jacobian.</span>
+
+<span class="sd">        Returns ``Bs`` such that ``[γ_xz, γ_yz]^T = Bs @ u_local``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Natural shear at the four tying points (covariant components):</span>
+        <span class="c1"># γ_ξz_A at (0, -1): γ_ξz = dw/dξ + Σ N_i^A · θ_y_local_i  (with sign)</span>
+        <span class="c1"># γ_ξz_C at (0, +1)</span>
+        <span class="c1"># γ_ηz_B at ( 1,  0)</span>
+        <span class="c1"># γ_ηz_D at (-1,  0)</span>
+        <span class="n">Bxi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">20</span><span class="p">))</span>
+        <span class="n">Beta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">20</span><span class="p">))</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_row_xi</span><span class="p">(</span><span class="n">xi_t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">eta_t</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;γ_ξz = dw/dξ + (J_ξ · θ)_..., with J from local frame.</span>
+<span class="sd">            In flat-shell MITC4 we use the local Cartesian θ directly</span>
+<span class="sd">            via the Jacobian at the tying point.</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+            <span class="n">dN</span> <span class="o">=</span> <span class="n">_dN_dxi</span><span class="p">(</span><span class="n">xi_t</span><span class="p">,</span> <span class="n">eta_t</span><span class="p">)</span>
+            <span class="n">N</span> <span class="o">=</span> <span class="n">_N</span><span class="p">(</span><span class="n">xi_t</span><span class="p">,</span> <span class="n">eta_t</span><span class="p">)</span>
+            <span class="n">J</span> <span class="o">=</span> <span class="n">dN</span> <span class="o">@</span> <span class="n">Xl</span>                            <span class="c1"># (2, 2)</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+                <span class="n">r</span><span class="p">[</span><span class="mi">5</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">dN</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>                 <span class="c1"># dw/dξ</span>
+                <span class="c1"># θ-contribution: -θ_x sin + θ_y cos in plane projection.</span>
+                <span class="c1"># Standard form: J_ξ · [θ_y_loc, -θ_x_loc].</span>
+                <span class="n">r</span><span class="p">[</span><span class="mi">5</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">J</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>           <span class="c1"># θ_y contrib</span>
+                <span class="n">r</span><span class="p">[</span><span class="mi">5</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">J</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>          <span class="c1"># θ_x contrib</span>
+            <span class="k">return</span> <span class="n">r</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_row_eta</span><span class="p">(</span><span class="n">xi_t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">eta_t</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+            <span class="n">dN</span> <span class="o">=</span> <span class="n">_dN_dxi</span><span class="p">(</span><span class="n">xi_t</span><span class="p">,</span> <span class="n">eta_t</span><span class="p">)</span>
+            <span class="n">N</span> <span class="o">=</span> <span class="n">_N</span><span class="p">(</span><span class="n">xi_t</span><span class="p">,</span> <span class="n">eta_t</span><span class="p">)</span>
+            <span class="n">J</span> <span class="o">=</span> <span class="n">dN</span> <span class="o">@</span> <span class="n">Xl</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+                <span class="n">r</span><span class="p">[</span><span class="mi">5</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">dN</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>                 <span class="c1"># dw/dη</span>
+                <span class="n">r</span><span class="p">[</span><span class="mi">5</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">J</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+                <span class="n">r</span><span class="p">[</span><span class="mi">5</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">J</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">r</span>
+
+        <span class="c1"># Tying points (Dvorkin-Bathe): A=(0,-1) for γ_ξz, C=(0,+1) γ_ξz</span>
+        <span class="n">rA</span> <span class="o">=</span> <span class="n">_row_xi</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">)</span>
+        <span class="n">rC</span> <span class="o">=</span> <span class="n">_row_xi</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="o">+</span><span class="mf">1.0</span><span class="p">)</span>
+        <span class="n">rB</span> <span class="o">=</span> <span class="n">_row_eta</span><span class="p">(</span><span class="o">+</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="n">rD</span> <span class="o">=</span> <span class="n">_row_eta</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="c1"># Bilinear interpolation back to (ξ, η):</span>
+        <span class="c1">#   γ_ξz(ξ, η) = 0.5 * ((1 - η) · γ_ξz_A + (1 + η) · γ_ξz_C)</span>
+        <span class="c1">#   γ_ηz(ξ, η) = 0.5 * ((1 + ξ) · γ_ηz_B + (1 - ξ) · γ_ηz_D)</span>
+        <span class="n">Bxi</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">((</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">eta</span><span class="p">)</span> <span class="o">*</span> <span class="n">rA</span> <span class="o">+</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">eta</span><span class="p">)</span> <span class="o">*</span> <span class="n">rC</span><span class="p">)</span>
+        <span class="n">Beta</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">((</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">xi</span><span class="p">)</span> <span class="o">*</span> <span class="n">rB</span> <span class="o">+</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">xi</span><span class="p">)</span> <span class="o">*</span> <span class="n">rD</span><span class="p">)</span>
+        <span class="c1"># Pull covariant (γ_ξz, γ_ηz) back to Cartesian (γ_xz, γ_yz)</span>
+        <span class="c1"># through Jinv: [γ_xz, γ_yz]^T = Jinv^T · [γ_ξz, γ_ηz]^T</span>
+        <span class="n">J</span> <span class="o">=</span> <span class="n">_dN_dxi</span><span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">eta</span><span class="p">)</span> <span class="o">@</span> <span class="n">Xl</span>
+        <span class="n">Jinv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">J</span><span class="p">)</span>
+        <span class="c1"># The transform is (γ_xy_cart) = Jinv^T · (γ_natural). The 2x2</span>
+        <span class="c1"># acts on the rows of the (2, 20) covariant-shear matrix.</span>
+        <span class="n">cov</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">Bxi</span><span class="p">,</span> <span class="n">Beta</span><span class="p">])</span>                <span class="c1"># (2, 20)</span>
+        <span class="n">Bs</span> <span class="o">=</span> <span class="n">Jinv</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">cov</span>                            <span class="c1"># (2, 20)</span>
+        <span class="k">return</span> <span class="n">Bs</span>
+
+    <span class="c1"># ----------------------------------------------------- stiffness assembly</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_K_local_5dof</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build the (20, 20) local stiffness over 5-DOF-per-node</span>
+<span class="sd">        (u, v, w, θx, θy). Drilling θ_z is added after expansion to 24</span>
+<span class="sd">        DOFs.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">R</span><span class="p">,</span> <span class="n">Xl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_local_geom</span><span class="p">()</span>
+        <span class="n">Dm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_D_membrane</span><span class="p">()</span>
+        <span class="n">Db</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_D_bending</span><span class="p">()</span>
+        <span class="n">Dc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_D_coupling</span><span class="p">()</span>
+        <span class="n">Ds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_D_shear</span><span class="p">()</span>
+        <span class="n">has_coupling</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">Dc</span><span class="p">))</span>
+        <span class="n">K</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">))</span>
+        <span class="n">xi</span><span class="p">,</span> <span class="n">eta</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">gauss_legendre_2d_quad</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">xi</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+            <span class="n">xq</span><span class="p">,</span> <span class="n">yq</span><span class="p">,</span> <span class="n">wq</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">xi</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">eta</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="n">q</span><span class="p">])</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">detJ</span><span class="p">,</span> <span class="n">dN_dx</span> <span class="o">=</span> <span class="n">_jacobian2d</span><span class="p">(</span><span class="n">xq</span><span class="p">,</span> <span class="n">yq</span><span class="p">,</span> <span class="n">Xl</span><span class="p">)</span>
+            <span class="n">Bm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Bm_local</span><span class="p">(</span><span class="n">dN_dx</span><span class="p">)</span>
+            <span class="n">Bb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Bb_local</span><span class="p">(</span><span class="n">dN_dx</span><span class="p">)</span>
+            <span class="n">Bs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Bs_natural_local</span><span class="p">(</span><span class="n">xq</span><span class="p">,</span> <span class="n">yq</span><span class="p">,</span> <span class="n">Xl</span><span class="p">)</span>
+            <span class="n">K</span> <span class="o">+=</span> <span class="p">(</span><span class="n">Bm</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">Dm</span> <span class="o">@</span> <span class="n">Bm</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">detJ</span> <span class="o">*</span> <span class="n">wq</span><span class="p">)</span>
+            <span class="n">K</span> <span class="o">+=</span> <span class="p">(</span><span class="n">Bb</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">Db</span> <span class="o">@</span> <span class="n">Bb</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">detJ</span> <span class="o">*</span> <span class="n">wq</span><span class="p">)</span>
+            <span class="n">K</span> <span class="o">+=</span> <span class="p">(</span><span class="n">Bs</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">Ds</span> <span class="o">@</span> <span class="n">Bs</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">detJ</span> <span class="o">*</span> <span class="n">wq</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">has_coupling</span><span class="p">:</span>
+                <span class="c1"># Symmetric coupling: K_mb + K_mb^T = Bm^T Dc Bb + Bb^T Dc^T Bm</span>
+                <span class="n">K_mb</span> <span class="o">=</span> <span class="p">(</span><span class="n">Bm</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">Dc</span> <span class="o">@</span> <span class="n">Bb</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">detJ</span> <span class="o">*</span> <span class="n">wq</span><span class="p">)</span>
+                <span class="n">K</span> <span class="o">+=</span> <span class="n">K_mb</span> <span class="o">+</span> <span class="n">K_mb</span><span class="o">.</span><span class="n">T</span>
+        <span class="k">return</span> <span class="n">K</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_K_local_6dof</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Expand the 20×20 (u,v,w,θx,θy) stiffness to 24×24 by adding a</span>
+<span class="sd">        drilling stiffness on θ_z.&quot;&quot;&quot;</span>
+        <span class="n">K20</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_K_local_5dof</span><span class="p">()</span>
+        <span class="n">K24</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">24</span><span class="p">,</span> <span class="mi">24</span><span class="p">))</span>
+        <span class="c1"># 5-DOF → 6-DOF index map: local index 5*i + k → 6*i + k, k=0..4</span>
+        <span class="n">idx5</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="n">k</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">)])</span>
+        <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">ia</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">idx5</span><span class="p">):</span>
+            <span class="n">K24</span><span class="p">[</span><span class="n">ia</span><span class="p">,</span> <span class="n">idx5</span><span class="p">]</span> <span class="o">=</span> <span class="n">K20</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="c1"># Drilling: small stiffness on θ_z to prevent singularity.</span>
+        <span class="c1"># Calibrate to the smallest bending diagonal so it scales with E,t.</span>
+        <span class="n">k_drill</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">drilling_factor</span> <span class="o">*</span> <span class="nb">max</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">K20</span><span class="p">))),</span> <span class="mf">1.0</span>
+        <span class="p">)</span>
+        <span class="c1"># Penalize θ_z = (θ_z_i - avg(θ_z)) — relative drilling, not</span>
+        <span class="c1"># absolute, so it doesn&#39;t fight legitimate rigid-body rotations.</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+            <span class="n">K24</span><span class="p">[</span><span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">5</span><span class="p">]</span> <span class="o">+=</span> <span class="n">k_drill</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="n">j</span><span class="p">:</span>
+                    <span class="n">K24</span><span class="p">[</span><span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span> <span class="o">*</span> <span class="n">j</span> <span class="o">+</span> <span class="mi">5</span><span class="p">]</span> <span class="o">-=</span> <span class="n">k_drill</span> <span class="o">/</span> <span class="mf">4.0</span>
+        <span class="k">return</span> <span class="n">K24</span>
+
+<div class="viewcode-block" id="ShellMITC4.K_global">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.shell.ShellMITC4.K_global">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">K_global</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">R</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_local_geom</span><span class="p">()</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_T_global_to_local</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
+        <span class="n">K_loc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_K_local_6dof</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">T</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">K_loc</span> <span class="o">@</span> <span class="n">T</span></div>
+
+
+    <span class="c1"># ----------------------------------------------------- geometric stiffness</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_Gw_local</span><span class="p">(</span><span class="n">dN_dx</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Local out-of-plane displacement gradient.</span>
+
+<span class="sd">        ``[dw/dx, dw/dy]^T = G_w · u5_local``, with the only nonzero</span>
+<span class="sd">        columns at the ``w`` slot of each node (local index ``5 i + 2``).</span>
+<span class="sd">        Shape ``(2, 20)``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">Gw</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">20</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+            <span class="n">Gw</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">5</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">dN_dx</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>
+            <span class="n">Gw</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">dN_dx</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">Gw</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_K_g_local_5dof</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u5_local</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Geometric stiffness (20, 20) from the current membrane</span>
+<span class="sd">        stress field. Dominant out-of-plane term — the contribution</span>
+<span class="sd">        from in-plane displacement gradients of (u, v) is small at the</span>
+<span class="sd">        pre-buckling state (Bathe 6.6.4).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">Xl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_local_geom</span><span class="p">()</span>
+        <span class="n">Dm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_D_membrane</span><span class="p">()</span>
+        <span class="n">K_g</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">))</span>
+        <span class="n">xi</span><span class="p">,</span> <span class="n">eta</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">gauss_legendre_2d_quad</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">xi</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+            <span class="n">xq</span><span class="p">,</span> <span class="n">yq</span><span class="p">,</span> <span class="n">wq</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">xi</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">eta</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="n">q</span><span class="p">])</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">detJ</span><span class="p">,</span> <span class="n">dN_dx</span> <span class="o">=</span> <span class="n">_jacobian2d</span><span class="p">(</span><span class="n">xq</span><span class="p">,</span> <span class="n">yq</span><span class="p">,</span> <span class="n">Xl</span><span class="p">)</span>
+            <span class="n">Bm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Bm_local</span><span class="p">(</span><span class="n">dN_dx</span><span class="p">)</span>
+            <span class="n">eps_m</span> <span class="o">=</span> <span class="n">Bm</span> <span class="o">@</span> <span class="n">u5_local</span>
+            <span class="n">N</span> <span class="o">=</span> <span class="n">Dm</span> <span class="o">@</span> <span class="n">eps_m</span>          <span class="c1"># [Nxx, Nyy, Nxy] resultants</span>
+            <span class="n">S</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">N</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">N</span><span class="p">[</span><span class="mi">2</span><span class="p">]],</span> <span class="p">[</span><span class="n">N</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">N</span><span class="p">[</span><span class="mi">1</span><span class="p">]]])</span>
+            <span class="n">Gw</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Gw_local</span><span class="p">(</span><span class="n">dN_dx</span><span class="p">)</span>
+            <span class="n">K_g</span> <span class="o">+=</span> <span class="p">(</span><span class="n">Gw</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">S</span> <span class="o">@</span> <span class="n">Gw</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">detJ</span> <span class="o">*</span> <span class="n">wq</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">K_g</span>
+
+<div class="viewcode-block" id="ShellMITC4.K_tangent_global">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.shell.ShellMITC4.K_tangent_global">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">K_tangent_global</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Tangent stiffness at the current state: elastic + geometric.</span>
+
+<span class="sd">        Built so that ``K_tangent_global - K_global`` isolates the</span>
+<span class="sd">        geometric part, exactly the form expected by</span>
+<span class="sd">        :class:`~femsolver.analysis.buckling.LinearBucklingAnalysis`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">R</span><span class="p">,</span> <span class="n">Xl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_local_geom</span><span class="p">()</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_T_global_to_local</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
+        <span class="n">u_glob</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gather_u</span><span class="p">()</span>
+        <span class="n">u_loc</span> <span class="o">=</span> <span class="n">T</span> <span class="o">@</span> <span class="n">u_glob</span>
+        <span class="n">idx5</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="n">k</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">)])</span>
+        <span class="n">u5</span> <span class="o">=</span> <span class="n">u_loc</span><span class="p">[</span><span class="n">idx5</span><span class="p">]</span>
+        <span class="n">K_e_loc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_K_local_6dof</span><span class="p">()</span>
+        <span class="n">K_g20</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_K_g_local_5dof</span><span class="p">(</span><span class="n">u5</span><span class="p">)</span>
+        <span class="c1"># Expand 20x20 K_g into 24x24 (drilling rows/cols stay zero)</span>
+        <span class="n">K_g24</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">24</span><span class="p">,</span> <span class="mi">24</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">ia</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">idx5</span><span class="p">):</span>
+            <span class="n">K_g24</span><span class="p">[</span><span class="n">ia</span><span class="p">,</span> <span class="n">idx5</span><span class="p">]</span> <span class="o">=</span> <span class="n">K_g20</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="k">return</span> <span class="n">T</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="p">(</span><span class="n">K_e_loc</span> <span class="o">+</span> <span class="n">K_g24</span><span class="p">)</span> <span class="o">@</span> <span class="n">T</span></div>
+
+
+    <span class="c1"># ----------------------------------------------------- mass</span>
+<div class="viewcode-block" id="ShellMITC4.M_global">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.shell.ShellMITC4.M_global">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">M_global</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">lumped</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">rho</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="p">,</span> <span class="s2">&quot;rho&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">rho</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">24</span><span class="p">,</span> <span class="mi">24</span><span class="p">))</span>
+        <span class="n">R</span><span class="p">,</span> <span class="n">Xl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_local_geom</span><span class="p">()</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span>
+        <span class="c1"># Translational mass: lumped per node = rho*t*A_node, where</span>
+        <span class="c1"># A_node = integral of N_i dA. For a Q4 with 2x2 quad, this gives</span>
+        <span class="c1"># equal quarter-area lumps for a square; for a general quad we</span>
+        <span class="c1"># integrate consistently and (optionally) row-sum.</span>
+        <span class="n">M</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">24</span><span class="p">,</span> <span class="mi">24</span><span class="p">))</span>
+        <span class="n">xi</span><span class="p">,</span> <span class="n">eta</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">gauss_legendre_2d_quad</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">xi</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+            <span class="n">xq</span><span class="p">,</span> <span class="n">yq</span><span class="p">,</span> <span class="n">wq</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">xi</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">eta</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="n">q</span><span class="p">])</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">detJ</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_jacobian2d</span><span class="p">(</span><span class="n">xq</span><span class="p">,</span> <span class="n">yq</span><span class="p">,</span> <span class="n">Xl</span><span class="p">)</span>
+            <span class="n">N</span> <span class="o">=</span> <span class="n">_N</span><span class="p">(</span><span class="n">xq</span><span class="p">,</span> <span class="n">yq</span><span class="p">)</span>
+            <span class="n">jw</span> <span class="o">=</span> <span class="n">rho</span> <span class="o">*</span> <span class="n">t</span> <span class="o">*</span> <span class="n">detJ</span> <span class="o">*</span> <span class="n">wq</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+                    <span class="n">val</span> <span class="o">=</span> <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">N</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">*</span> <span class="n">jw</span>
+                    <span class="c1"># translations on u, v, w</span>
+                    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+                        <span class="n">M</span><span class="p">[</span><span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="n">k</span><span class="p">,</span> <span class="mi">6</span> <span class="o">*</span> <span class="n">j</span> <span class="o">+</span> <span class="n">k</span><span class="p">]</span> <span class="o">+=</span> <span class="n">val</span>
+                    <span class="c1"># rotary inertia (small — rho * t^3 / 12 on θx, θy)</span>
+                    <span class="n">rot_val</span> <span class="o">=</span> <span class="n">val</span> <span class="o">*</span> <span class="p">(</span><span class="n">t</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">/</span> <span class="mf">12.0</span><span class="p">)</span>
+                    <span class="n">M</span><span class="p">[</span><span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">6</span> <span class="o">*</span> <span class="n">j</span> <span class="o">+</span> <span class="mi">3</span><span class="p">]</span> <span class="o">+=</span> <span class="n">rot_val</span>
+                    <span class="n">M</span><span class="p">[</span><span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">6</span> <span class="o">*</span> <span class="n">j</span> <span class="o">+</span> <span class="mi">4</span><span class="p">]</span> <span class="o">+=</span> <span class="n">rot_val</span>
+        <span class="k">if</span> <span class="n">lumped</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">M</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+        <span class="c1"># Rotate to global (mass is invariant under orthogonal transform)</span>
+        <span class="c1"># — but since rho is isotropic and the mass tensor is diagonal in</span>
+        <span class="c1"># local axes per-node, rotating gives back the same global block.</span>
+        <span class="c1"># For rotary terms the transform is also identity because we</span>
+        <span class="c1"># use a diagonal rotary inertia. We still apply T for consistency.</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_T_global_to_local</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">T</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">M</span> <span class="o">@</span> <span class="n">T</span></div>
+
+
+    <span class="c1"># ----------------------------------------------------- recovery</span>
+<div class="viewcode-block" id="ShellMITC4.recover">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.shell.ShellMITC4.recover">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">recover</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">R</span><span class="p">,</span> <span class="n">Xl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_local_geom</span><span class="p">()</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_T_global_to_local</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
+        <span class="n">u_glob</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gather_u</span><span class="p">()</span>                    <span class="c1"># (24,)</span>
+        <span class="n">u_loc</span> <span class="o">=</span> <span class="n">T</span> <span class="o">@</span> <span class="n">u_glob</span>                           <span class="c1"># (24,)</span>
+        <span class="c1"># Reduce to (20,) for the 5-DOF B-matrices</span>
+        <span class="n">idx5</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">6</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="n">k</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">)])</span>
+        <span class="n">u5</span> <span class="o">=</span> <span class="n">u_loc</span><span class="p">[</span><span class="n">idx5</span><span class="p">]</span>
+        <span class="n">Dm</span><span class="p">,</span> <span class="n">Db</span><span class="p">,</span> <span class="n">Ds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_D_membrane</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_D_bending</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_D_shear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gp_membrane_strain</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gp_bending_curvature</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gp_shear_strain</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gp_resultants</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">xi</span><span class="p">,</span> <span class="n">eta</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">gauss_legendre_2d_quad</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">xi</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+            <span class="n">xq</span><span class="p">,</span> <span class="n">yq</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">xi</span><span class="p">[</span><span class="n">q</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">eta</span><span class="p">[</span><span class="n">q</span><span class="p">])</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">dN_dx</span> <span class="o">=</span> <span class="n">_jacobian2d</span><span class="p">(</span><span class="n">xq</span><span class="p">,</span> <span class="n">yq</span><span class="p">,</span> <span class="n">Xl</span><span class="p">)</span>
+            <span class="n">Bm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Bm_local</span><span class="p">(</span><span class="n">dN_dx</span><span class="p">)</span>
+            <span class="n">Bb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Bb_local</span><span class="p">(</span><span class="n">dN_dx</span><span class="p">)</span>
+            <span class="n">Bs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Bs_natural_local</span><span class="p">(</span><span class="n">xq</span><span class="p">,</span> <span class="n">yq</span><span class="p">,</span> <span class="n">Xl</span><span class="p">)</span>
+            <span class="n">eps_m</span> <span class="o">=</span> <span class="n">Bm</span> <span class="o">@</span> <span class="n">u5</span>
+            <span class="n">kappa</span> <span class="o">=</span> <span class="n">Bb</span> <span class="o">@</span> <span class="n">u5</span>
+            <span class="n">gamma</span> <span class="o">=</span> <span class="n">Bs</span> <span class="o">@</span> <span class="n">u5</span>
+            <span class="n">N</span> <span class="o">=</span> <span class="n">Dm</span> <span class="o">@</span> <span class="n">eps_m</span>
+            <span class="n">M</span> <span class="o">=</span> <span class="n">Db</span> <span class="o">@</span> <span class="n">kappa</span>
+            <span class="n">Q</span> <span class="o">=</span> <span class="n">Ds</span> <span class="o">@</span> <span class="n">gamma</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">gp_membrane_strain</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">eps_m</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">gp_bending_curvature</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">kappa</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">gp_shear_strain</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">gamma</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">gp_resultants</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">N</span><span class="p">,</span> <span class="n">M</span><span class="p">,</span> <span class="n">Q</span><span class="p">])</span>
+            <span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

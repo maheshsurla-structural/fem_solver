@@ -1,0 +1,716 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.sections.wall &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.sections.wall</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.sections.wall</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Wall fiber sections with confined boundary elements.</span>
+
+<span class="sd">Reinforced-concrete shear walls in tall-building practice are</span>
+<span class="sd">analysed with fiber sections whose layout differs from a beam in</span>
+<span class="sd">three ways:</span>
+
+<span class="sd">1. **Two concrete materials** -- a *confined* concrete at the two</span>
+<span class="sd">   ends (the boundary elements, where transverse hoops + cross-ties</span>
+<span class="sd">   raise the concrete&#39;s f_c and ultimate strain) and an *unconfined*</span>
+<span class="sd">   concrete in the middle (web).</span>
+<span class="sd">2. **Smeared vertical reinforcement** -- the vertical bars are</span>
+<span class="sd">   represented as a uniform steel &quot;shadow&quot; over each region with</span>
+<span class="sd">   reinforcement ratio rho. Each concrete fiber&#39;s area is reduced</span>
+<span class="sd">   by ``(1 - rho)`` and a paired steel fiber of the same y-position</span>
+<span class="sd">   carries the ``rho`` fraction.</span>
+<span class="sd">3. **Boundary-element + web split** -- the cross-section is split</span>
+<span class="sd">   into three regions: a left boundary of length ``L_be``, a web of</span>
+<span class="sd">   length ``L_w - 2 L_be``, and a right boundary of length ``L_be``.</span>
+<span class="sd">   Each region uses its own concrete and rho values.</span>
+
+<span class="sd">The function :func:`wall_section_2d` builds this layout and returns a</span>
+<span class="sd">standard :class:`FiberSection2D`. Such a section drives an ordinary</span>
+<span class="sd">:class:`BeamColumn2D` (vertically oriented), giving the macro-fiber</span>
+<span class="sd">wall element familiar from PERFORM-3D / OpenSees ``Wall``.</span>
+
+<span class="sd">For 3D wall cross-sections (T, L, U, C, I shapes) see the</span>
+<span class="sd">:func:`t_wall_section_3d`, :func:`l_wall_section_3d`,</span>
+<span class="sd">:func:`u_wall_section_3d`, and :func:`i_wall_section_3d` factories.</span>
+
+<span class="sd">References</span>
+<span class="sd">----------</span>
+<span class="sd">* Wallace, J.W. (1995) &quot;Seismic design of RC structural walls. Part I:</span>
+<span class="sd">  New code format.&quot; *J. Struct. Eng.*, 121(1), 75-87.</span>
+<span class="sd">* Orakcal, K. &amp; Wallace, J.W. (2006) &quot;Flexural modeling of reinforced</span>
+<span class="sd">  concrete walls -- experimental verification.&quot; *ACI Struct. J.*,</span>
+<span class="sd">  103(2), 196-206.</span>
+<span class="sd">* ACI 318-19 §18.10 &quot;Special structural walls&quot;.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.materials.uniaxial.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">UniaxialMaterial</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.sections.fiber</span><span class="w"> </span><span class="kn">import</span> <span class="n">Fiber</span><span class="p">,</span> <span class="n">FiberSection2D</span><span class="p">,</span> <span class="n">FiberSection3D</span>
+
+
+<span class="c1"># ============================================================ wall region</span>
+
+<div class="viewcode-block" id="WallRegion">
+<a class="viewcode-back" href="../../../api/sections.html#femsolver.sections.wall.WallRegion">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">WallRegion</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;One vertical region of a wall cross-section (boundary element or web).</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    y_start, y_end : float</span>
+<span class="sd">        Region extent along the section&#39;s y-axis (m). ``y_start &lt; y_end``.</span>
+<span class="sd">    concrete : UniaxialMaterial</span>
+<span class="sd">        Concrete material for this region (confined for boundary</span>
+<span class="sd">        elements, unconfined for web).</span>
+<span class="sd">    rebar_material : UniaxialMaterial</span>
+<span class="sd">        Vertical reinforcement material.</span>
+<span class="sd">    rho : float</span>
+<span class="sd">        Vertical reinforcement ratio (steel area / gross area), in</span>
+<span class="sd">        ``[0, 0.10]``. Boundary elements typically 0.01-0.06 per</span>
+<span class="sd">        ACI 318 §18.10.6; web reinforcement minimum 0.0025.</span>
+<span class="sd">    n_fibers : int</span>
+<span class="sd">        Number of concrete fibers in this region (steel fibers</span>
+<span class="sd">        are added at the same y-positions).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">y_start</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">y_end</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">concrete</span><span class="p">:</span> <span class="n">UniaxialMaterial</span>
+    <span class="n">rebar_material</span><span class="p">:</span> <span class="n">UniaxialMaterial</span>
+    <span class="n">rho</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">n_fibers</span><span class="p">:</span> <span class="nb">int</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_build_region_fibers</span><span class="p">(</span>
+    <span class="n">region</span><span class="p">:</span> <span class="n">WallRegion</span><span class="p">,</span>
+    <span class="n">thickness</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Fiber</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Discretize ``region`` into concrete + steel fiber pairs.</span>
+
+<span class="sd">    Each fiber strip has total area ``thickness * dy``. The concrete</span>
+<span class="sd">    fiber takes ``(1 - rho)`` of that area; the steel fiber takes</span>
+<span class="sd">    ``rho`` of that area, sharing the same y-coordinate.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">region</span><span class="o">.</span><span class="n">n_fibers</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;n_fibers must be &gt;= 1, got </span><span class="si">{</span><span class="n">region</span><span class="o">.</span><span class="n">n_fibers</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">region</span><span class="o">.</span><span class="n">y_end</span> <span class="o">&lt;=</span> <span class="n">region</span><span class="o">.</span><span class="n">y_start</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;region span empty: y_start=</span><span class="si">{</span><span class="n">region</span><span class="o">.</span><span class="n">y_start</span><span class="si">}</span><span class="s2"> &gt;= &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;y_end=</span><span class="si">{</span><span class="n">region</span><span class="o">.</span><span class="n">y_end</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">region</span><span class="o">.</span><span class="n">rho</span> <span class="o">&lt;=</span> <span class="mf">0.10</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;reinforcement ratio rho must be in [0, 0.10], got &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">region</span><span class="o">.</span><span class="n">rho</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+    <span class="n">L_region</span> <span class="o">=</span> <span class="n">region</span><span class="o">.</span><span class="n">y_end</span> <span class="o">-</span> <span class="n">region</span><span class="o">.</span><span class="n">y_start</span>
+    <span class="n">dy</span> <span class="o">=</span> <span class="n">L_region</span> <span class="o">/</span> <span class="n">region</span><span class="o">.</span><span class="n">n_fibers</span>
+    <span class="n">fibers</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Fiber</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">region</span><span class="o">.</span><span class="n">n_fibers</span><span class="p">):</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">region</span><span class="o">.</span><span class="n">y_start</span> <span class="o">+</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">*</span> <span class="n">dy</span>
+        <span class="n">strip_area</span> <span class="o">=</span> <span class="n">thickness</span> <span class="o">*</span> <span class="n">dy</span>
+        <span class="c1"># Concrete and steel share the strip area in proportion (1-rho) / rho</span>
+        <span class="c1"># Use shared materials with separate clones so each fiber has</span>
+        <span class="c1"># independent history.</span>
+        <span class="k">if</span> <span class="n">region</span><span class="o">.</span><span class="n">rho</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="n">fibers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Fiber</span><span class="p">(</span>
+                <span class="n">y</span><span class="o">=</span><span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                <span class="n">area</span><span class="o">=</span><span class="n">strip_area</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">region</span><span class="o">.</span><span class="n">rho</span><span class="p">),</span>
+                <span class="n">material</span><span class="o">=</span><span class="n">region</span><span class="o">.</span><span class="n">concrete</span><span class="o">.</span><span class="n">clone</span><span class="p">(),</span>
+            <span class="p">))</span>
+            <span class="n">fibers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Fiber</span><span class="p">(</span>
+                <span class="n">y</span><span class="o">=</span><span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                <span class="n">area</span><span class="o">=</span><span class="n">strip_area</span> <span class="o">*</span> <span class="n">region</span><span class="o">.</span><span class="n">rho</span><span class="p">,</span>
+                <span class="n">material</span><span class="o">=</span><span class="n">region</span><span class="o">.</span><span class="n">rebar_material</span><span class="o">.</span><span class="n">clone</span><span class="p">(),</span>
+            <span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fibers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Fiber</span><span class="p">(</span>
+                <span class="n">y</span><span class="o">=</span><span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                <span class="n">area</span><span class="o">=</span><span class="n">strip_area</span><span class="p">,</span>
+                <span class="n">material</span><span class="o">=</span><span class="n">region</span><span class="o">.</span><span class="n">concrete</span><span class="o">.</span><span class="n">clone</span><span class="p">(),</span>
+            <span class="p">))</span>
+    <span class="k">return</span> <span class="n">fibers</span>
+
+
+<span class="c1"># ============================================================ 2D wall</span>
+
+<div class="viewcode-block" id="wall_section_2d">
+<a class="viewcode-back" href="../../../api/sections.html#femsolver.sections.wall.wall_section_2d">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">wall_section_2d</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">L_w</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">t_w</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">L_be</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">web_concrete</span><span class="p">:</span> <span class="n">UniaxialMaterial</span><span class="p">,</span>
+    <span class="n">boundary_concrete</span><span class="p">:</span> <span class="n">UniaxialMaterial</span><span class="p">,</span>
+    <span class="n">rebar_material</span><span class="p">:</span> <span class="n">UniaxialMaterial</span><span class="p">,</span>
+    <span class="n">web_rho</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0025</span><span class="p">,</span>
+    <span class="n">boundary_rho</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.02</span><span class="p">,</span>
+    <span class="n">n_web_fibers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
+    <span class="n">n_be_fibers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FiberSection2D</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a 2D wall fiber section with confined boundary elements.</span>
+
+<span class="sd">    Cross-section layout (looking down the wall axis)::</span>
+
+<span class="sd">        |&lt;-L_be-&gt;|&lt;------- L_w - 2 L_be --------&gt;|&lt;-L_be-&gt;|</span>
+<span class="sd">        +========+================================+========+</span>
+<span class="sd">        | confined |        web (unconfined)      | confined |</span>
+<span class="sd">        +========+================================+========+</span>
+<span class="sd">                &lt;----------- L_w -----------&gt;</span>
+<span class="sd">                       (in y-direction)</span>
+
+<span class="sd">    All fibers have the same z (= 0); the wall thickness ``t_w`` is</span>
+<span class="sd">    multiplied into each fiber&#39;s strip area.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    L_w : float</span>
+<span class="sd">        Total wall length (m, in the section&#39;s y-direction).</span>
+<span class="sd">    t_w : float</span>
+<span class="sd">        Wall thickness (m, normal to the wall plane).</span>
+<span class="sd">    L_be : float</span>
+<span class="sd">        Boundary-element length at EACH end (m). Must satisfy</span>
+<span class="sd">        ``2 L_be &lt; L_w``.</span>
+<span class="sd">    web_concrete : UniaxialMaterial</span>
+<span class="sd">        Unconfined concrete (e.g. :class:`ConcreteKentPark`).</span>
+<span class="sd">    boundary_concrete : UniaxialMaterial</span>
+<span class="sd">        Confined concrete (e.g. :class:`ConcreteMander`).</span>
+<span class="sd">    rebar_material : UniaxialMaterial</span>
+<span class="sd">        Vertical reinforcement material (e.g.</span>
+<span class="sd">        :class:`UniaxialMenegottoPinto`).</span>
+<span class="sd">    web_rho : float, default 0.0025</span>
+<span class="sd">        Web vertical reinforcement ratio (ACI 318 §11.6 minimum).</span>
+<span class="sd">    boundary_rho : float, default 0.02</span>
+<span class="sd">        Boundary-element vertical reinforcement ratio.</span>
+<span class="sd">    n_web_fibers : int, default 20</span>
+<span class="sd">    n_be_fibers : int, default 6</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    FiberSection2D</span>
+<span class="sd">        Centred on the wall centroid so ``y in [-L_w/2, +L_w/2]``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">L_w</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;L_w must be positive, got </span><span class="si">{</span><span class="n">L_w</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">t_w</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;t_w must be positive, got </span><span class="si">{</span><span class="n">t_w</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">L_be</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;L_be must be positive, got </span><span class="si">{</span><span class="n">L_be</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">L_be</span> <span class="o">&gt;=</span> <span class="n">L_w</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;2 L_be (</span><span class="si">{</span><span class="mi">2</span><span class="o">*</span><span class="n">L_be</span><span class="si">}</span><span class="s2">) must be &lt; L_w (</span><span class="si">{</span><span class="n">L_w</span><span class="si">}</span><span class="s2">)&quot;</span>
+        <span class="p">)</span>
+
+    <span class="n">half</span> <span class="o">=</span> <span class="n">L_w</span> <span class="o">/</span> <span class="mf">2.0</span>
+    <span class="n">left_be</span> <span class="o">=</span> <span class="n">WallRegion</span><span class="p">(</span>
+        <span class="n">y_start</span><span class="o">=-</span><span class="n">half</span><span class="p">,</span> <span class="n">y_end</span><span class="o">=-</span><span class="n">half</span> <span class="o">+</span> <span class="n">L_be</span><span class="p">,</span>
+        <span class="n">concrete</span><span class="o">=</span><span class="n">boundary_concrete</span><span class="p">,</span>
+        <span class="n">rebar_material</span><span class="o">=</span><span class="n">rebar_material</span><span class="p">,</span>
+        <span class="n">rho</span><span class="o">=</span><span class="n">boundary_rho</span><span class="p">,</span>
+        <span class="n">n_fibers</span><span class="o">=</span><span class="n">n_be_fibers</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">web</span> <span class="o">=</span> <span class="n">WallRegion</span><span class="p">(</span>
+        <span class="n">y_start</span><span class="o">=-</span><span class="n">half</span> <span class="o">+</span> <span class="n">L_be</span><span class="p">,</span> <span class="n">y_end</span><span class="o">=</span><span class="n">half</span> <span class="o">-</span> <span class="n">L_be</span><span class="p">,</span>
+        <span class="n">concrete</span><span class="o">=</span><span class="n">web_concrete</span><span class="p">,</span>
+        <span class="n">rebar_material</span><span class="o">=</span><span class="n">rebar_material</span><span class="p">,</span>
+        <span class="n">rho</span><span class="o">=</span><span class="n">web_rho</span><span class="p">,</span>
+        <span class="n">n_fibers</span><span class="o">=</span><span class="n">n_web_fibers</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">right_be</span> <span class="o">=</span> <span class="n">WallRegion</span><span class="p">(</span>
+        <span class="n">y_start</span><span class="o">=</span><span class="n">half</span> <span class="o">-</span> <span class="n">L_be</span><span class="p">,</span> <span class="n">y_end</span><span class="o">=</span><span class="n">half</span><span class="p">,</span>
+        <span class="n">concrete</span><span class="o">=</span><span class="n">boundary_concrete</span><span class="p">,</span>
+        <span class="n">rebar_material</span><span class="o">=</span><span class="n">rebar_material</span><span class="p">,</span>
+        <span class="n">rho</span><span class="o">=</span><span class="n">boundary_rho</span><span class="p">,</span>
+        <span class="n">n_fibers</span><span class="o">=</span><span class="n">n_be_fibers</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">fibers</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Fiber</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">region</span> <span class="ow">in</span> <span class="p">(</span><span class="n">left_be</span><span class="p">,</span> <span class="n">web</span><span class="p">,</span> <span class="n">right_be</span><span class="p">):</span>
+        <span class="n">fibers</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_build_region_fibers</span><span class="p">(</span><span class="n">region</span><span class="p">,</span> <span class="n">thickness</span><span class="o">=</span><span class="n">t_w</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">FiberSection2D</span><span class="p">(</span><span class="n">fibers</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># ============================================================ 3D wall builders</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_rect_fibers_3d</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">y_centre</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">z_centre</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">width_y</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">width_z</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">n_y</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">n_z</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">concrete</span><span class="p">:</span> <span class="n">UniaxialMaterial</span><span class="p">,</span>
+    <span class="n">rebar_material</span><span class="p">:</span> <span class="n">UniaxialMaterial</span><span class="p">,</span>
+    <span class="n">rho</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Fiber</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Discretize a rectangle into ``n_y x n_z`` smeared concrete+steel fibers.</span>
+
+<span class="sd">    The rectangle is centred at (y_centre, z_centre) with side lengths</span>
+<span class="sd">    ``width_y, width_z`` along (y, z). Each cell carries a concrete</span>
+<span class="sd">    fiber + (if rho &gt; 0) a steel fiber at the same (y, z).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">n_y</span> <span class="o">&lt;</span> <span class="mi">1</span> <span class="ow">or</span> <span class="n">n_z</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;n_y, n_z must be &gt;= 1, got </span><span class="si">{</span><span class="p">(</span><span class="n">n_y</span><span class="p">,</span><span class="w"> </span><span class="n">n_z</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">width_y</span> <span class="o">&lt;=</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">width_z</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;widths must be positive&quot;</span><span class="p">)</span>
+    <span class="n">dy</span> <span class="o">=</span> <span class="n">width_y</span> <span class="o">/</span> <span class="n">n_y</span>
+    <span class="n">dz</span> <span class="o">=</span> <span class="n">width_z</span> <span class="o">/</span> <span class="n">n_z</span>
+    <span class="n">fibers</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Fiber</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_y</span><span class="p">):</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">y_centre</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">width_y</span> <span class="o">+</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">*</span> <span class="n">dy</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_z</span><span class="p">):</span>
+            <span class="n">z</span> <span class="o">=</span> <span class="n">z_centre</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">width_z</span> <span class="o">+</span> <span class="p">(</span><span class="n">j</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">*</span> <span class="n">dz</span>
+            <span class="n">cell_area</span> <span class="o">=</span> <span class="n">dy</span> <span class="o">*</span> <span class="n">dz</span>
+            <span class="k">if</span> <span class="n">rho</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">:</span>
+                <span class="n">fibers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Fiber</span><span class="p">(</span>
+                    <span class="n">y</span><span class="o">=</span><span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="n">z</span><span class="p">,</span>
+                    <span class="n">area</span><span class="o">=</span><span class="n">cell_area</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">rho</span><span class="p">),</span>
+                    <span class="n">material</span><span class="o">=</span><span class="n">concrete</span><span class="o">.</span><span class="n">clone</span><span class="p">(),</span>
+                <span class="p">))</span>
+                <span class="n">fibers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Fiber</span><span class="p">(</span>
+                    <span class="n">y</span><span class="o">=</span><span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="n">z</span><span class="p">,</span>
+                    <span class="n">area</span><span class="o">=</span><span class="n">cell_area</span> <span class="o">*</span> <span class="n">rho</span><span class="p">,</span>
+                    <span class="n">material</span><span class="o">=</span><span class="n">rebar_material</span><span class="o">.</span><span class="n">clone</span><span class="p">(),</span>
+                <span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">fibers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Fiber</span><span class="p">(</span>
+                    <span class="n">y</span><span class="o">=</span><span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="n">z</span><span class="p">,</span> <span class="n">area</span><span class="o">=</span><span class="n">cell_area</span><span class="p">,</span>
+                    <span class="n">material</span><span class="o">=</span><span class="n">concrete</span><span class="o">.</span><span class="n">clone</span><span class="p">(),</span>
+                <span class="p">))</span>
+    <span class="k">return</span> <span class="n">fibers</span>
+
+
+<div class="viewcode-block" id="t_wall_section_3d">
+<a class="viewcode-back" href="../../../api/sections.html#femsolver.sections.wall.t_wall_section_3d">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">t_wall_section_3d</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">web_length</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">web_thickness</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">flange_length</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">flange_thickness</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">L_be</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">web_concrete</span><span class="p">:</span> <span class="n">UniaxialMaterial</span><span class="p">,</span>
+    <span class="n">boundary_concrete</span><span class="p">:</span> <span class="n">UniaxialMaterial</span><span class="p">,</span>
+    <span class="n">rebar_material</span><span class="p">:</span> <span class="n">UniaxialMaterial</span><span class="p">,</span>
+    <span class="n">web_rho</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0025</span><span class="p">,</span>
+    <span class="n">boundary_rho</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.02</span><span class="p">,</span>
+    <span class="n">n_web_y</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span> <span class="n">n_web_z</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="n">n_flange_y</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span> <span class="n">n_flange_z</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="n">n_be_y</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="n">n_be_z</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="n">GJ</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0e8</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FiberSection3D</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;T-shaped reinforced-concrete wall section.</span>
+
+<span class="sd">    Layout (in the section y-z plane, looking down the wall axis)::</span>
+
+<span class="sd">        +-------------------------+ &lt;- flange</span>
+<span class="sd">        |  unconfined concrete    |</span>
+<span class="sd">        +---+-------------+-------+</span>
+<span class="sd">            |             |</span>
+<span class="sd">            |     web     |</span>
+<span class="sd">            |  unconfined |</span>
+<span class="sd">            |             |</span>
+<span class="sd">            +=============+    &lt;- bottom (boundary element)</span>
+<span class="sd">                  |</span>
+<span class="sd">              confined</span>
+
+<span class="sd">    The flange runs along the y-axis (its length is ``flange_length``,</span>
+<span class="sd">    thickness ``flange_thickness``). The web extends in the</span>
+<span class="sd">    z-direction with the boundary element at its far end.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    web_length, web_thickness : float</span>
+<span class="sd">        Web dimensions (z-direction length, y-direction thickness).</span>
+<span class="sd">    flange_length, flange_thickness : float</span>
+<span class="sd">        Flange dimensions (y-direction length, z-direction thickness).</span>
+<span class="sd">    L_be : float</span>
+<span class="sd">        Boundary-element length at the web tip (m).</span>
+<span class="sd">    web_concrete, boundary_concrete, rebar_material : UniaxialMaterial</span>
+<span class="sd">    web_rho, boundary_rho : float</span>
+<span class="sd">    n_web_y, n_web_z, n_flange_y, n_flange_z, n_be_y, n_be_z : int</span>
+<span class="sd">        Discretisation parameters per region.</span>
+<span class="sd">    GJ : float</span>
+<span class="sd">        Torsional rigidity (St-Venant approximation).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    FiberSection3D</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">L_be</span> <span class="o">&gt;=</span> <span class="n">web_length</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;L_be (</span><span class="si">{</span><span class="n">L_be</span><span class="si">}</span><span class="s2">) must be &lt; web_length (</span><span class="si">{</span><span class="n">web_length</span><span class="si">}</span><span class="s2">)&quot;</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Flange: centred at (y=0, z=+web_length/2), spans (-flange_length/2,</span>
+    <span class="c1"># +flange_length/2) in y and (web_length/2, web_length/2 + flange_thickness)</span>
+    <span class="c1"># in z. Simplification: flange contains both unconfined concrete +</span>
+    <span class="c1"># smeared reinforcement; no separate confined region at flange ends.</span>
+    <span class="n">fibers</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Fiber</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">flange_z_centre</span> <span class="o">=</span> <span class="n">web_length</span> <span class="o">/</span> <span class="mf">2.0</span> <span class="o">+</span> <span class="n">flange_thickness</span> <span class="o">/</span> <span class="mf">2.0</span>
+    <span class="n">fibers</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_rect_fibers_3d</span><span class="p">(</span>
+        <span class="n">y_centre</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">z_centre</span><span class="o">=</span><span class="n">flange_z_centre</span><span class="p">,</span>
+        <span class="n">width_y</span><span class="o">=</span><span class="n">flange_length</span><span class="p">,</span> <span class="n">width_z</span><span class="o">=</span><span class="n">flange_thickness</span><span class="p">,</span>
+        <span class="n">n_y</span><span class="o">=</span><span class="n">n_flange_y</span><span class="p">,</span> <span class="n">n_z</span><span class="o">=</span><span class="n">n_flange_z</span><span class="p">,</span>
+        <span class="n">concrete</span><span class="o">=</span><span class="n">web_concrete</span><span class="p">,</span> <span class="n">rebar_material</span><span class="o">=</span><span class="n">rebar_material</span><span class="p">,</span>
+        <span class="n">rho</span><span class="o">=</span><span class="n">web_rho</span><span class="p">,</span>
+    <span class="p">))</span>
+
+    <span class="c1"># Web (unconfined part, in z-direction from 0 to web_length - L_be)</span>
+    <span class="n">web_unconf_length</span> <span class="o">=</span> <span class="n">web_length</span> <span class="o">-</span> <span class="n">L_be</span>
+    <span class="n">fibers</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_rect_fibers_3d</span><span class="p">(</span>
+        <span class="n">y_centre</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">z_centre</span><span class="o">=-</span><span class="n">web_length</span> <span class="o">/</span> <span class="mf">2.0</span> <span class="o">+</span> <span class="n">web_unconf_length</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span>
+        <span class="n">width_y</span><span class="o">=</span><span class="n">web_thickness</span><span class="p">,</span> <span class="n">width_z</span><span class="o">=</span><span class="n">web_unconf_length</span><span class="p">,</span>
+        <span class="n">n_y</span><span class="o">=</span><span class="n">n_web_y</span><span class="p">,</span> <span class="n">n_z</span><span class="o">=</span><span class="n">n_web_z</span><span class="p">,</span>
+        <span class="n">concrete</span><span class="o">=</span><span class="n">web_concrete</span><span class="p">,</span> <span class="n">rebar_material</span><span class="o">=</span><span class="n">rebar_material</span><span class="p">,</span>
+        <span class="n">rho</span><span class="o">=</span><span class="n">web_rho</span><span class="p">,</span>
+    <span class="p">))</span>
+
+    <span class="c1"># Boundary element at the web tip (confined concrete)</span>
+    <span class="n">fibers</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_rect_fibers_3d</span><span class="p">(</span>
+        <span class="n">y_centre</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">z_centre</span><span class="o">=-</span><span class="n">web_length</span> <span class="o">/</span> <span class="mf">2.0</span> <span class="o">+</span> <span class="n">web_unconf_length</span> <span class="o">+</span> <span class="n">L_be</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span>
+        <span class="n">width_y</span><span class="o">=</span><span class="n">web_thickness</span><span class="p">,</span> <span class="n">width_z</span><span class="o">=</span><span class="n">L_be</span><span class="p">,</span>
+        <span class="n">n_y</span><span class="o">=</span><span class="n">n_be_y</span><span class="p">,</span> <span class="n">n_z</span><span class="o">=</span><span class="n">n_be_z</span><span class="p">,</span>
+        <span class="n">concrete</span><span class="o">=</span><span class="n">boundary_concrete</span><span class="p">,</span> <span class="n">rebar_material</span><span class="o">=</span><span class="n">rebar_material</span><span class="p">,</span>
+        <span class="n">rho</span><span class="o">=</span><span class="n">boundary_rho</span><span class="p">,</span>
+    <span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">FiberSection3D</span><span class="p">(</span><span class="n">fibers</span><span class="p">,</span> <span class="n">GJ</span><span class="o">=</span><span class="n">GJ</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="l_wall_section_3d">
+<a class="viewcode-back" href="../../../api/sections.html#femsolver.sections.wall.l_wall_section_3d">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">l_wall_section_3d</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">leg1_length</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">leg1_thickness</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">leg2_length</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">leg2_thickness</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">L_be</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">web_concrete</span><span class="p">:</span> <span class="n">UniaxialMaterial</span><span class="p">,</span>
+    <span class="n">boundary_concrete</span><span class="p">:</span> <span class="n">UniaxialMaterial</span><span class="p">,</span>
+    <span class="n">rebar_material</span><span class="p">:</span> <span class="n">UniaxialMaterial</span><span class="p">,</span>
+    <span class="n">web_rho</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0025</span><span class="p">,</span>
+    <span class="n">boundary_rho</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.02</span><span class="p">,</span>
+    <span class="n">n_leg_y</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span> <span class="n">n_leg_z</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="n">n_be_y</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="n">n_be_z</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="n">GJ</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0e8</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FiberSection3D</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;L-shaped wall section (two perpendicular legs).</span>
+
+<span class="sd">    Leg 1 along the +y axis, leg 2 along the +z axis, joined at the</span>
+<span class="sd">    corner. A boundary element is placed at the FREE end of each leg.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    leg1_length, leg1_thickness : float</span>
+<span class="sd">        Leg 1 (along y) dimensions.</span>
+<span class="sd">    leg2_length, leg2_thickness : float</span>
+<span class="sd">        Leg 2 (along z) dimensions.</span>
+<span class="sd">    L_be : float</span>
+<span class="sd">        Boundary-element length at each leg&#39;s free end.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">L_be</span> <span class="o">&gt;=</span> <span class="n">leg1_length</span> <span class="ow">or</span> <span class="n">L_be</span> <span class="o">&gt;=</span> <span class="n">leg2_length</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;L_be must be &lt; both leg lengths&quot;</span><span class="p">)</span>
+
+    <span class="n">fibers</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Fiber</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># Leg 1: along +y, from y=0 to y=leg1_length, z centred on 0</span>
+    <span class="n">leg1_unconf</span> <span class="o">=</span> <span class="n">leg1_length</span> <span class="o">-</span> <span class="n">L_be</span>
+    <span class="n">fibers</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_rect_fibers_3d</span><span class="p">(</span>
+        <span class="n">y_centre</span><span class="o">=</span><span class="n">leg1_unconf</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">z_centre</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">width_y</span><span class="o">=</span><span class="n">leg1_unconf</span><span class="p">,</span> <span class="n">width_z</span><span class="o">=</span><span class="n">leg1_thickness</span><span class="p">,</span>
+        <span class="n">n_y</span><span class="o">=</span><span class="n">n_leg_y</span><span class="p">,</span> <span class="n">n_z</span><span class="o">=</span><span class="n">n_leg_z</span><span class="p">,</span>
+        <span class="n">concrete</span><span class="o">=</span><span class="n">web_concrete</span><span class="p">,</span> <span class="n">rebar_material</span><span class="o">=</span><span class="n">rebar_material</span><span class="p">,</span>
+        <span class="n">rho</span><span class="o">=</span><span class="n">web_rho</span><span class="p">,</span>
+    <span class="p">))</span>
+    <span class="n">fibers</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_rect_fibers_3d</span><span class="p">(</span>
+        <span class="n">y_centre</span><span class="o">=</span><span class="n">leg1_unconf</span> <span class="o">+</span> <span class="n">L_be</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">z_centre</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">width_y</span><span class="o">=</span><span class="n">L_be</span><span class="p">,</span> <span class="n">width_z</span><span class="o">=</span><span class="n">leg1_thickness</span><span class="p">,</span>
+        <span class="n">n_y</span><span class="o">=</span><span class="n">n_be_y</span><span class="p">,</span> <span class="n">n_z</span><span class="o">=</span><span class="n">n_be_z</span><span class="p">,</span>
+        <span class="n">concrete</span><span class="o">=</span><span class="n">boundary_concrete</span><span class="p">,</span> <span class="n">rebar_material</span><span class="o">=</span><span class="n">rebar_material</span><span class="p">,</span>
+        <span class="n">rho</span><span class="o">=</span><span class="n">boundary_rho</span><span class="p">,</span>
+    <span class="p">))</span>
+
+    <span class="c1"># Leg 2: along +z, from z=leg2_thickness/2 upward (avoid double-count</span>
+    <span class="c1"># at the corner). For simplicity, span [leg1_thickness/2, leg2_length].</span>
+    <span class="n">leg2_unconf</span> <span class="o">=</span> <span class="n">leg2_length</span> <span class="o">-</span> <span class="n">L_be</span>
+    <span class="n">fibers</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_rect_fibers_3d</span><span class="p">(</span>
+        <span class="n">y_centre</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">z_centre</span><span class="o">=</span><span class="n">leg1_thickness</span> <span class="o">/</span> <span class="mf">2.0</span> <span class="o">+</span> <span class="n">leg2_unconf</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span>
+        <span class="n">width_y</span><span class="o">=</span><span class="n">leg2_thickness</span><span class="p">,</span>
+        <span class="n">width_z</span><span class="o">=</span><span class="n">leg2_unconf</span><span class="p">,</span>
+        <span class="n">n_y</span><span class="o">=</span><span class="n">n_leg_z</span><span class="p">,</span> <span class="n">n_z</span><span class="o">=</span><span class="n">n_leg_y</span><span class="p">,</span>
+        <span class="n">concrete</span><span class="o">=</span><span class="n">web_concrete</span><span class="p">,</span> <span class="n">rebar_material</span><span class="o">=</span><span class="n">rebar_material</span><span class="p">,</span>
+        <span class="n">rho</span><span class="o">=</span><span class="n">web_rho</span><span class="p">,</span>
+    <span class="p">))</span>
+    <span class="n">fibers</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_rect_fibers_3d</span><span class="p">(</span>
+        <span class="n">y_centre</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">z_centre</span><span class="o">=</span><span class="n">leg1_thickness</span> <span class="o">/</span> <span class="mf">2.0</span> <span class="o">+</span> <span class="n">leg2_unconf</span> <span class="o">+</span> <span class="n">L_be</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span>
+        <span class="n">width_y</span><span class="o">=</span><span class="n">leg2_thickness</span><span class="p">,</span>
+        <span class="n">width_z</span><span class="o">=</span><span class="n">L_be</span><span class="p">,</span>
+        <span class="n">n_y</span><span class="o">=</span><span class="n">n_leg_z</span><span class="p">,</span> <span class="n">n_z</span><span class="o">=</span><span class="n">n_be_y</span><span class="p">,</span>
+        <span class="n">concrete</span><span class="o">=</span><span class="n">boundary_concrete</span><span class="p">,</span> <span class="n">rebar_material</span><span class="o">=</span><span class="n">rebar_material</span><span class="p">,</span>
+        <span class="n">rho</span><span class="o">=</span><span class="n">boundary_rho</span><span class="p">,</span>
+    <span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">FiberSection3D</span><span class="p">(</span><span class="n">fibers</span><span class="p">,</span> <span class="n">GJ</span><span class="o">=</span><span class="n">GJ</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="i_wall_section_3d">
+<a class="viewcode-back" href="../../../api/sections.html#femsolver.sections.wall.i_wall_section_3d">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">i_wall_section_3d</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">web_length</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">web_thickness</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">flange_length</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">flange_thickness</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">L_be</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">web_concrete</span><span class="p">:</span> <span class="n">UniaxialMaterial</span><span class="p">,</span>
+    <span class="n">boundary_concrete</span><span class="p">:</span> <span class="n">UniaxialMaterial</span><span class="p">,</span>
+    <span class="n">rebar_material</span><span class="p">:</span> <span class="n">UniaxialMaterial</span><span class="p">,</span>
+    <span class="n">web_rho</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0025</span><span class="p">,</span>
+    <span class="n">boundary_rho</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.02</span><span class="p">,</span>
+    <span class="n">n_web_y</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="n">n_web_z</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span>
+    <span class="n">n_flange_y</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="n">n_flange_z</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="n">GJ</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0e8</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FiberSection3D</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;I-shaped wall section: web with flanges (acting as boundary elements)</span>
+<span class="sd">    at both ends.</span>
+
+<span class="sd">    The two flanges act as confined boundary elements at each end of</span>
+<span class="sd">    the web. This is the canonical &#39;barbell&#39; shear wall of seismic</span>
+<span class="sd">    codes.</span>
+
+<span class="sd">    Layout (y-z plane, looking down the wall axis)::</span>
+
+<span class="sd">       +============+         flange (top, confined)</span>
+<span class="sd">       +============+</span>
+<span class="sd">             ||</span>
+<span class="sd">             ||  web (unconfined)</span>
+<span class="sd">             ||</span>
+<span class="sd">       +============+         flange (bot, confined)</span>
+<span class="sd">       +============+</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fibers</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Fiber</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># Top flange (confined)</span>
+    <span class="n">fibers</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_rect_fibers_3d</span><span class="p">(</span>
+        <span class="n">y_centre</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">z_centre</span><span class="o">=</span><span class="n">web_length</span> <span class="o">/</span> <span class="mf">2.0</span> <span class="o">+</span> <span class="n">flange_thickness</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span>
+        <span class="n">width_y</span><span class="o">=</span><span class="n">flange_length</span><span class="p">,</span> <span class="n">width_z</span><span class="o">=</span><span class="n">flange_thickness</span><span class="p">,</span>
+        <span class="n">n_y</span><span class="o">=</span><span class="n">n_flange_y</span><span class="p">,</span> <span class="n">n_z</span><span class="o">=</span><span class="n">n_flange_z</span><span class="p">,</span>
+        <span class="n">concrete</span><span class="o">=</span><span class="n">boundary_concrete</span><span class="p">,</span> <span class="n">rebar_material</span><span class="o">=</span><span class="n">rebar_material</span><span class="p">,</span>
+        <span class="n">rho</span><span class="o">=</span><span class="n">boundary_rho</span><span class="p">,</span>
+    <span class="p">))</span>
+    <span class="c1"># Web (unconfined)</span>
+    <span class="n">fibers</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_rect_fibers_3d</span><span class="p">(</span>
+        <span class="n">y_centre</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">z_centre</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">width_y</span><span class="o">=</span><span class="n">web_thickness</span><span class="p">,</span> <span class="n">width_z</span><span class="o">=</span><span class="n">web_length</span><span class="p">,</span>
+        <span class="n">n_y</span><span class="o">=</span><span class="n">n_web_y</span><span class="p">,</span> <span class="n">n_z</span><span class="o">=</span><span class="n">n_web_z</span><span class="p">,</span>
+        <span class="n">concrete</span><span class="o">=</span><span class="n">web_concrete</span><span class="p">,</span> <span class="n">rebar_material</span><span class="o">=</span><span class="n">rebar_material</span><span class="p">,</span>
+        <span class="n">rho</span><span class="o">=</span><span class="n">web_rho</span><span class="p">,</span>
+    <span class="p">))</span>
+    <span class="c1"># Bottom flange (confined)</span>
+    <span class="n">fibers</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_rect_fibers_3d</span><span class="p">(</span>
+        <span class="n">y_centre</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">z_centre</span><span class="o">=-</span><span class="n">web_length</span> <span class="o">/</span> <span class="mf">2.0</span> <span class="o">-</span> <span class="n">flange_thickness</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span>
+        <span class="n">width_y</span><span class="o">=</span><span class="n">flange_length</span><span class="p">,</span> <span class="n">width_z</span><span class="o">=</span><span class="n">flange_thickness</span><span class="p">,</span>
+        <span class="n">n_y</span><span class="o">=</span><span class="n">n_flange_y</span><span class="p">,</span> <span class="n">n_z</span><span class="o">=</span><span class="n">n_flange_z</span><span class="p">,</span>
+        <span class="n">concrete</span><span class="o">=</span><span class="n">boundary_concrete</span><span class="p">,</span> <span class="n">rebar_material</span><span class="o">=</span><span class="n">rebar_material</span><span class="p">,</span>
+        <span class="n">rho</span><span class="o">=</span><span class="n">boundary_rho</span><span class="p">,</span>
+    <span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">FiberSection3D</span><span class="p">(</span><span class="n">fibers</span><span class="p">,</span> <span class="n">GJ</span><span class="o">=</span><span class="n">GJ</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="u_wall_section_3d">
+<a class="viewcode-back" href="../../../api/sections.html#femsolver.sections.wall.u_wall_section_3d">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">u_wall_section_3d</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">web_length</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">web_thickness</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">flange_length</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">flange_thickness</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">L_be</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">web_concrete</span><span class="p">:</span> <span class="n">UniaxialMaterial</span><span class="p">,</span>
+    <span class="n">boundary_concrete</span><span class="p">:</span> <span class="n">UniaxialMaterial</span><span class="p">,</span>
+    <span class="n">rebar_material</span><span class="p">:</span> <span class="n">UniaxialMaterial</span><span class="p">,</span>
+    <span class="n">web_rho</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0025</span><span class="p">,</span>
+    <span class="n">boundary_rho</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.02</span><span class="p">,</span>
+    <span class="n">n_web_y</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="n">n_web_z</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span>
+    <span class="n">n_flange_y</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="n">n_flange_z</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="n">n_be_y</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="n">n_be_z</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="n">GJ</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0e8</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FiberSection3D</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;U-shaped (channel) wall section: web with one flange returning</span>
+<span class="sd">    on both sides.</span>
+
+<span class="sd">    Layout::</span>
+
+<span class="sd">       +========+              flange returns at the open end</span>
+<span class="sd">       +        +</span>
+<span class="sd">       +   web  +</span>
+<span class="sd">       +        +</span>
+<span class="sd">       +========+</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fibers</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Fiber</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># Web (unconfined) -- runs from -web_length/2 to +web_length/2 in z</span>
+    <span class="n">fibers</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_rect_fibers_3d</span><span class="p">(</span>
+        <span class="n">y_centre</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">z_centre</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">width_y</span><span class="o">=</span><span class="n">web_thickness</span><span class="p">,</span> <span class="n">width_z</span><span class="o">=</span><span class="n">web_length</span><span class="p">,</span>
+        <span class="n">n_y</span><span class="o">=</span><span class="n">n_web_y</span><span class="p">,</span> <span class="n">n_z</span><span class="o">=</span><span class="n">n_web_z</span><span class="p">,</span>
+        <span class="n">concrete</span><span class="o">=</span><span class="n">web_concrete</span><span class="p">,</span> <span class="n">rebar_material</span><span class="o">=</span><span class="n">rebar_material</span><span class="p">,</span>
+        <span class="n">rho</span><span class="o">=</span><span class="n">web_rho</span><span class="p">,</span>
+    <span class="p">))</span>
+
+    <span class="c1"># Top flange (perpendicular to web at +z end)</span>
+    <span class="n">fibers</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_rect_fibers_3d</span><span class="p">(</span>
+        <span class="n">y_centre</span><span class="o">=</span><span class="n">flange_length</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span>
+        <span class="n">z_centre</span><span class="o">=</span><span class="n">web_length</span> <span class="o">/</span> <span class="mf">2.0</span> <span class="o">+</span> <span class="n">flange_thickness</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span>
+        <span class="n">width_y</span><span class="o">=</span><span class="n">flange_length</span><span class="p">,</span> <span class="n">width_z</span><span class="o">=</span><span class="n">flange_thickness</span><span class="p">,</span>
+        <span class="n">n_y</span><span class="o">=</span><span class="n">n_flange_y</span><span class="p">,</span> <span class="n">n_z</span><span class="o">=</span><span class="n">n_flange_z</span><span class="p">,</span>
+        <span class="n">concrete</span><span class="o">=</span><span class="n">boundary_concrete</span><span class="p">,</span> <span class="n">rebar_material</span><span class="o">=</span><span class="n">rebar_material</span><span class="p">,</span>
+        <span class="n">rho</span><span class="o">=</span><span class="n">boundary_rho</span><span class="p">,</span>
+    <span class="p">))</span>
+    <span class="c1"># Bottom flange (perpendicular to web at -z end)</span>
+    <span class="n">fibers</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_rect_fibers_3d</span><span class="p">(</span>
+        <span class="n">y_centre</span><span class="o">=</span><span class="n">flange_length</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span>
+        <span class="n">z_centre</span><span class="o">=-</span><span class="n">web_length</span> <span class="o">/</span> <span class="mf">2.0</span> <span class="o">-</span> <span class="n">flange_thickness</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span>
+        <span class="n">width_y</span><span class="o">=</span><span class="n">flange_length</span><span class="p">,</span> <span class="n">width_z</span><span class="o">=</span><span class="n">flange_thickness</span><span class="p">,</span>
+        <span class="n">n_y</span><span class="o">=</span><span class="n">n_flange_y</span><span class="p">,</span> <span class="n">n_z</span><span class="o">=</span><span class="n">n_flange_z</span><span class="p">,</span>
+        <span class="n">concrete</span><span class="o">=</span><span class="n">boundary_concrete</span><span class="p">,</span> <span class="n">rebar_material</span><span class="o">=</span><span class="n">rebar_material</span><span class="p">,</span>
+        <span class="n">rho</span><span class="o">=</span><span class="n">boundary_rho</span><span class="p">,</span>
+    <span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">FiberSection3D</span><span class="p">(</span><span class="n">fibers</span><span class="p">,</span> <span class="n">GJ</span><span class="o">=</span><span class="n">GJ</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

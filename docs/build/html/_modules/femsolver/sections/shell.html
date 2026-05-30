@@ -1,0 +1,603 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.sections.shell &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.sections.shell</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.sections.shell</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Shell sections — through-thickness integration of layered shells.</span>
+
+<span class="sd">A shell section abstracts the cross-section response in the</span>
+<span class="sd">generalized-strain ↔ generalized-stress sense, parallel to how</span>
+<span class="sd">``SectionBase`` does for beam-columns. Shell sections expose four</span>
+<span class="sd">D-matrices:</span>
+
+<span class="sd">* ``D_membrane`` (3, 3) — in-plane membrane stiffness.</span>
+<span class="sd">  N = D_m * eps_m,  eps_m = (eps_xx, eps_yy, gamma_xy)</span>
+<span class="sd">* ``D_bending`` (3, 3) — out-of-plane bending stiffness.</span>
+<span class="sd">  M = D_b * kappa,   kappa = (kappa_xx, kappa_yy, kappa_xy)</span>
+<span class="sd">* ``D_coupling`` (3, 3) — membrane-bending coupling. Zero for</span>
+<span class="sd">  symmetric mid-surface sections; nonzero for asymmetric stacks</span>
+<span class="sd">  (e.g. sandwich with different face sheets).</span>
+<span class="sd">* ``D_shear`` (2, 2) — transverse-shear stiffness.</span>
+<span class="sd">  Q = D_s * gamma_s,  gamma_s = (gamma_xz, gamma_yz)</span>
+
+<span class="sd">The simple isotropic single-layer section is the default and matches</span>
+<span class="sd">the hard-coded constitutive used inside ``ShellMITC4``/``ShellTri3``.</span>
+<span class="sd">A layered section sums each layer&#39;s contribution analytically:</span>
+
+<span class="sd">    D_m = Sum_i D_m_i * t_i</span>
+<span class="sd">    D_c = Sum_i D_m_i * t_i * z_mid_i</span>
+<span class="sd">    D_b = Sum_i D_m_i * (z_top_i^3 - z_bot_i^3) / 3</span>
+<span class="sd">    D_s = Sum_i k_i * G_i * t_i</span>
+
+<span class="sd">This is the workhorse RC-slab / composite-sandwich formulation.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+
+<div class="viewcode-block" id="ShellSectionBase">
+<a class="viewcode-back" href="../../../api/sections.html#femsolver.sections.shell.ShellSectionBase">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ShellSectionBase</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract base for shell sections (membrane + bending + shear).&quot;&quot;&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">thickness</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Total through-thickness measure (sum of layer thicknesses).&quot;&quot;&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">density</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Effective mass per unit area / thickness = mean density.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ShellSectionBase.D_membrane">
+<a class="viewcode-back" href="../../../api/sections.html#femsolver.sections.shell.ShellSectionBase.D_membrane">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">D_membrane</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span> <span class="o">...</span></div>
+
+
+<div class="viewcode-block" id="ShellSectionBase.D_bending">
+<a class="viewcode-back" href="../../../api/sections.html#femsolver.sections.shell.ShellSectionBase.D_bending">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">D_bending</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span> <span class="o">...</span></div>
+
+
+<div class="viewcode-block" id="ShellSectionBase.D_coupling">
+<a class="viewcode-back" href="../../../api/sections.html#femsolver.sections.shell.ShellSectionBase.D_coupling">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">D_coupling</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span> <span class="o">...</span></div>
+
+
+<div class="viewcode-block" id="ShellSectionBase.D_shear">
+<a class="viewcode-back" href="../../../api/sections.html#femsolver.sections.shell.ShellSectionBase.D_shear">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">D_shear</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span> <span class="o">...</span></div>
+</div>
+
+
+
+<span class="c1"># ============================================================ isotropic helper</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_isotropic_plane_stress_D</span><span class="p">(</span><span class="n">E</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">nu</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Plane-stress D (3x3) per unit thickness for an isotropic layer.&quot;&quot;&quot;</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="n">E</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">nu</span> <span class="o">*</span> <span class="n">nu</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">f</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+        <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">nu</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+        <span class="p">[</span><span class="n">nu</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+        <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">nu</span><span class="p">)],</span>
+    <span class="p">])</span>
+
+
+<span class="c1"># ============================================================ single layer</span>
+
+<div class="viewcode-block" id="ElasticShellSection">
+<a class="viewcode-back" href="../../../api/sections.html#femsolver.sections.shell.ElasticShellSection">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ElasticShellSection</span><span class="p">(</span><span class="n">ShellSectionBase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Isotropic, single-layer elastic shell section.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    material : ElasticIsotropic</span>
+<span class="sd">    thickness : float</span>
+<span class="sd">    k_shear : float, default 5/6</span>
+<span class="sd">        Transverse-shear correction factor.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Backward-compatibility shell for the case ``ShellMITC4`` /</span>
+<span class="sd">    ``ShellTri3`` already handle directly. Useful for explicit</span>
+<span class="sd">    section passing and for comparison tests with</span>
+<span class="sd">    ``LayeredShellSection``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">material</span><span class="p">,</span> <span class="n">thickness</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
+                 <span class="n">k_shear</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.0</span> <span class="o">/</span> <span class="mf">6.0</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">thickness</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;thickness must be positive, got </span><span class="si">{</span><span class="n">thickness</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mf">0.0</span> <span class="o">&lt;</span> <span class="n">k_shear</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;k_shear must be in (0, 1], got </span><span class="si">{</span><span class="n">k_shear</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">material</span> <span class="o">=</span> <span class="n">material</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_thickness</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">thickness</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">k_shear</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">k_shear</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">thickness</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_thickness</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">density</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="p">,</span> <span class="s2">&quot;rho&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ElasticShellSection.D_membrane">
+<a class="viewcode-back" href="../../../api/sections.html#femsolver.sections.shell.ElasticShellSection.D_membrane">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">D_membrane</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_isotropic_plane_stress_D</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">E</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">nu</span>
+        <span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_thickness</span></div>
+
+
+<div class="viewcode-block" id="ElasticShellSection.D_bending">
+<a class="viewcode-back" href="../../../api/sections.html#femsolver.sections.shell.ElasticShellSection.D_bending">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">D_bending</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_isotropic_plane_stress_D</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">E</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">nu</span>
+        <span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_thickness</span> <span class="o">**</span> <span class="mi">3</span> <span class="o">/</span> <span class="mf">12.0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ElasticShellSection.D_coupling">
+<a class="viewcode-back" href="../../../api/sections.html#femsolver.sections.shell.ElasticShellSection.D_coupling">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">D_coupling</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>      <span class="c1"># symmetric -&gt; no coupling</span></div>
+
+
+<div class="viewcode-block" id="ElasticShellSection.D_shear">
+<a class="viewcode-back" href="../../../api/sections.html#femsolver.sections.shell.ElasticShellSection.D_shear">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">D_shear</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">k_shear</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">G</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_thickness</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># ============================================================ layered</span>
+
+<div class="viewcode-block" id="ShellLayer">
+<a class="viewcode-back" href="../../../api/sections.html#femsolver.sections.shell.ShellLayer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ShellLayer</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A single layer in a layered shell section.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    material : ElasticIsotropic or OrthotropicLamina</span>
+<span class="sd">        Layer constitutive. Isotropic materials use the legacy</span>
+<span class="sd">        E/nu path; orthotropic laminae produce a rotated Q-bar</span>
+<span class="sd">        matrix using ``theta_deg``.</span>
+<span class="sd">    thickness : float</span>
+<span class="sd">        Through-thickness extent of this layer.</span>
+<span class="sd">    z_mid : float, optional</span>
+<span class="sd">        z-coordinate of the layer&#39;s mid-surface relative to the</span>
+<span class="sd">        section reference plane (default 0). The stacking helper</span>
+<span class="sd">        ``LayeredShellSection.from_layers_centered`` fills these in</span>
+<span class="sd">        for you given an ordered list of (material, thickness)</span>
+<span class="sd">        layers.</span>
+<span class="sd">    theta_deg : float, default 0.0</span>
+<span class="sd">        Fiber orientation in degrees (CCW from global x). Used only</span>
+<span class="sd">        for orthotropic ``OrthotropicLamina`` materials; ignored for</span>
+<span class="sd">        isotropic materials.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">material</span><span class="p">,</span> <span class="n">thickness</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">z_mid</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+                 <span class="n">theta_deg</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">thickness</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;layer thickness must be positive, got </span><span class="si">{</span><span class="n">thickness</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">material</span> <span class="o">=</span> <span class="n">material</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">thickness</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">z_mid</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">z_mid</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">theta_deg</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">theta_deg</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">z_top</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">z_mid</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">z_bot</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">z_mid</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_Q_inplane</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the rotated 3x3 in-plane D-matrix of this layer.&quot;&quot;&quot;</span>
+        <span class="n">mat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">material</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">mat</span><span class="p">,</span> <span class="s2">&quot;Q_bar&quot;</span><span class="p">):</span>
+            <span class="c1"># OrthotropicLamina</span>
+            <span class="k">return</span> <span class="n">mat</span><span class="o">.</span><span class="n">Q_bar</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">theta_deg</span><span class="p">)</span>
+        <span class="c1"># Fall back to isotropic</span>
+        <span class="k">return</span> <span class="n">_isotropic_plane_stress_D</span><span class="p">(</span><span class="n">mat</span><span class="o">.</span><span class="n">E</span><span class="p">,</span> <span class="n">mat</span><span class="o">.</span><span class="n">nu</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_Qs_transverse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k_shear</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the rotated 2x2 transverse-shear D-matrix of this</span>
+<span class="sd">        layer (with shear-correction factor applied).&quot;&quot;&quot;</span>
+        <span class="n">mat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">material</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">mat</span><span class="p">,</span> <span class="s2">&quot;Qs_bar&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">k_shear</span> <span class="o">*</span> <span class="n">mat</span><span class="o">.</span><span class="n">Qs_bar</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">theta_deg</span><span class="p">)</span>
+        <span class="c1"># Isotropic fall-back: G * I_2</span>
+        <span class="k">return</span> <span class="n">k_shear</span> <span class="o">*</span> <span class="n">mat</span><span class="o">.</span><span class="n">G</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">density</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="p">,</span> <span class="s2">&quot;rho&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="LayeredShellSection">
+<a class="viewcode-back" href="../../../api/sections.html#femsolver.sections.shell.LayeredShellSection">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">LayeredShellSection</span><span class="p">(</span><span class="n">ShellSectionBase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Multi-layer shell section. Each layer is an isotropic linear-</span>
+<span class="sd">    elastic slab; the section integrates membrane / coupling / bending</span>
+<span class="sd">    / shear analytically across the layered stack.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    layers : sequence of :class:`ShellLayer`</span>
+<span class="sd">        Layers in any order; their ``z_mid`` values define the</span>
+<span class="sd">        through-thickness layout. Use</span>
+<span class="sd">        :meth:`from_layers_centered` to auto-stack centered on the</span>
+<span class="sd">        mid-surface.</span>
+<span class="sd">    k_shear : float, default 5/6</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    For a symmetric (same material, same thickness on both sides of</span>
+<span class="sd">    the mid-surface) stack, the coupling matrix is identically zero</span>
+<span class="sd">    and membrane decouples from bending — the standard case for</span>
+<span class="sd">    slabs and reinforced-concrete decks with symmetric reinforcement.</span>
+
+<span class="sd">    For an asymmetric stack (e.g. RC slab with bottom-only steel,</span>
+<span class="sd">    or sandwich plate with different face sheets), ``D_coupling`` is</span>
+<span class="sd">    nonzero and membrane forces produce out-of-plane curvature.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">layers</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">ShellLayer</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span>
+                 <span class="n">k_shear</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.0</span> <span class="o">/</span> <span class="mf">6.0</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">layers</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;need at least one layer&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mf">0.0</span> <span class="o">&lt;</span> <span class="n">k_shear</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;k_shear must be in (0, 1], got </span><span class="si">{</span><span class="n">k_shear</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layers</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">layers</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">k_shear</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">k_shear</span><span class="p">)</span>
+
+<div class="viewcode-block" id="LayeredShellSection.from_layers_centered">
+<a class="viewcode-back" href="../../../api/sections.html#femsolver.sections.shell.LayeredShellSection.from_layers_centered">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_layers_centered</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span>
+        <span class="n">layers</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">tuple</span><span class="p">],</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">k_shear</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.0</span> <span class="o">/</span> <span class="mf">6.0</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;LayeredShellSection&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build a layered section from a list of layer specs.</span>
+
+<span class="sd">        Each spec may be either:</span>
+
+<span class="sd">        * ``(material, thickness)`` -- isotropic layer, fiber angle 0.</span>
+<span class="sd">        * ``(material, thickness, theta_deg)`` -- orthotropic lamina</span>
+<span class="sd">          with the given fiber orientation (CCW from global x).</span>
+
+<span class="sd">        Stacks layers bottom-to-top centered on the reference plane.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">total</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">spec</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="n">layers</span><span class="p">)</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">total</span>
+        <span class="n">built</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">ShellLayer</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="n">layers</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="n">material</span><span class="p">,</span> <span class="n">thickness</span> <span class="o">=</span> <span class="n">spec</span>
+                <span class="n">theta_deg</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="n">material</span><span class="p">,</span> <span class="n">thickness</span><span class="p">,</span> <span class="n">theta_deg</span> <span class="o">=</span> <span class="n">spec</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;layer spec must be (material, thickness) or &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;(material, thickness, theta_deg); got </span><span class="si">{</span><span class="n">spec</span><span class="si">!r}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="n">z_mid</span> <span class="o">=</span> <span class="n">z</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">thickness</span>
+            <span class="n">built</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ShellLayer</span><span class="p">(</span>
+                <span class="n">material</span><span class="p">,</span> <span class="n">thickness</span><span class="p">,</span> <span class="n">z_mid</span><span class="o">=</span><span class="n">z_mid</span><span class="p">,</span> <span class="n">theta_deg</span><span class="o">=</span><span class="n">theta_deg</span><span class="p">,</span>
+            <span class="p">))</span>
+            <span class="n">z</span> <span class="o">+=</span> <span class="n">thickness</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">built</span><span class="p">,</span> <span class="n">k_shear</span><span class="o">=</span><span class="n">k_shear</span><span class="p">)</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">thickness</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">layer</span><span class="o">.</span><span class="n">thickness</span> <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">density</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="c1"># Thickness-weighted average density</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span>
+        <span class="k">if</span> <span class="n">T</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">layer</span><span class="o">.</span><span class="n">density</span> <span class="o">*</span> <span class="n">layer</span><span class="o">.</span><span class="n">thickness</span>
+                   <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="p">)</span> <span class="o">/</span> <span class="n">T</span>
+
+<div class="viewcode-block" id="LayeredShellSection.D_membrane">
+<a class="viewcode-back" href="../../../api/sections.html#femsolver.sections.shell.LayeredShellSection.D_membrane">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">D_membrane</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Membrane (A) matrix: integral of Q_bar over thickness.&quot;&quot;&quot;</span>
+        <span class="n">D</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="p">:</span>
+            <span class="n">D</span> <span class="o">+=</span> <span class="n">layer</span><span class="o">.</span><span class="n">_Q_inplane</span><span class="p">()</span> <span class="o">*</span> <span class="n">layer</span><span class="o">.</span><span class="n">thickness</span>
+        <span class="k">return</span> <span class="n">D</span></div>
+
+
+<div class="viewcode-block" id="LayeredShellSection.D_coupling">
+<a class="viewcode-back" href="../../../api/sections.html#femsolver.sections.shell.LayeredShellSection.D_coupling">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">D_coupling</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Coupling (B) matrix: integral of Q_bar * z dz.</span>
+
+<span class="sd">        For each layer, contribution = Q_bar_layer * (z_top^2 - z_bot^2)/2</span>
+<span class="sd">        which equals Q_bar * t * z_mid for layers of constant Q_bar.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">D</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="p">:</span>
+            <span class="n">D</span> <span class="o">+=</span> <span class="n">layer</span><span class="o">.</span><span class="n">_Q_inplane</span><span class="p">()</span> <span class="o">*</span> <span class="p">(</span>
+                <span class="p">(</span><span class="n">layer</span><span class="o">.</span><span class="n">z_top</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">-</span> <span class="n">layer</span><span class="o">.</span><span class="n">z_bot</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">D</span></div>
+
+
+<div class="viewcode-block" id="LayeredShellSection.D_bending">
+<a class="viewcode-back" href="../../../api/sections.html#femsolver.sections.shell.LayeredShellSection.D_bending">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">D_bending</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Bending (D) matrix: integral of Q_bar * z^2 dz over thickness.</span>
+<span class="sd">        Each layer contributes Q_bar * (z_top^3 - z_bot^3) / 3.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">D</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="p">:</span>
+            <span class="n">D</span> <span class="o">+=</span> <span class="n">layer</span><span class="o">.</span><span class="n">_Q_inplane</span><span class="p">()</span> <span class="o">*</span> <span class="p">(</span>
+                <span class="p">(</span><span class="n">layer</span><span class="o">.</span><span class="n">z_top</span> <span class="o">**</span> <span class="mi">3</span> <span class="o">-</span> <span class="n">layer</span><span class="o">.</span><span class="n">z_bot</span> <span class="o">**</span> <span class="mi">3</span><span class="p">)</span> <span class="o">/</span> <span class="mf">3.0</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">D</span></div>
+
+
+<div class="viewcode-block" id="LayeredShellSection.D_shear">
+<a class="viewcode-back" href="../../../api/sections.html#femsolver.sections.shell.LayeredShellSection.D_shear">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">D_shear</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Transverse-shear (2x2) stiffness summed over layers.</span>
+
+<span class="sd">        Each isotropic layer contributes ``k_shear * G * t * I``; each</span>
+<span class="sd">        orthotropic layer contributes its rotated Q_s matrix scaled by</span>
+<span class="sd">        thickness. The shear-correction factor ``k_shear`` is applied</span>
+<span class="sd">        uniformly (composite shear-correction factors are an active</span>
+<span class="sd">        area of research; the default 5/6 is widely accepted).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">D</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="p">:</span>
+            <span class="n">D</span> <span class="o">+=</span> <span class="n">layer</span><span class="o">.</span><span class="n">_Qs_transverse</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">k_shear</span><span class="p">)</span> <span class="o">*</span> <span class="n">layer</span><span class="o">.</span><span class="n">thickness</span>
+        <span class="k">return</span> <span class="n">D</span></div>
+
+
+    <span class="c1"># ------------------------------------------------------ stress recovery</span>
+<div class="viewcode-block" id="LayeredShellSection.ply_stresses">
+<a class="viewcode-back" href="../../../api/sections.html#femsolver.sections.shell.LayeredShellSection.ply_stresses">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ply_stresses</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">eps_membrane</span><span class="p">,</span> <span class="n">kappa</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
+                       <span class="n">z</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;all&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Recover per-ply stresses from the laminate&#39;s generalized</span>
+<span class="sd">        strains using Classical Laminate Theory.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        eps_membrane : sequence of 3 floats</span>
+<span class="sd">            Mid-plane membrane strains ``(eps_xx, eps_yy, gamma_xy)``</span>
+<span class="sd">            in the global (laminate) axes -- the strains returned by</span>
+<span class="sd">            the shell element&#39;s ``recover`` at any Gauss point.</span>
+<span class="sd">        kappa : sequence of 3 floats</span>
+<span class="sd">            Curvatures ``(kappa_xx, kappa_yy, kappa_xy)`` in the same</span>
+<span class="sd">            global axes.</span>
+<span class="sd">        z : ``&quot;all&quot;``, ``&quot;top&quot;``, ``&quot;bot&quot;``, or ``&quot;mid&quot;``, default ``&quot;all&quot;``</span>
+<span class="sd">            Which through-thickness positions to evaluate per ply.</span>
+
+<span class="sd">            * ``&quot;all&quot;``: top, mid, bottom of each ply (3 stations per ply)</span>
+<span class="sd">            * ``&quot;top&quot;`` / ``&quot;bot&quot;`` / ``&quot;mid&quot;``: just that station</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list of dict, one per (ply, z-station) pair, each containing:</span>
+
+<span class="sd">        * ``&quot;layer&quot;`` : 0-based layer index in the laminate</span>
+<span class="sd">        * ``&quot;z&quot;``     : signed z-coordinate from the mid-surface</span>
+<span class="sd">        * ``&quot;theta_deg&quot;`` : ply fiber orientation</span>
+<span class="sd">        * ``&quot;sigma_global&quot;`` : (sigma_xx, sigma_yy, sigma_xy) in global axes</span>
+<span class="sd">        * ``&quot;sigma_local&quot;``  : (sigma_11, sigma_22, sigma_12) in the</span>
+<span class="sd">                                ply&#39;s material (1-2) axes</span>
+<span class="sd">        * ``&quot;eps_global&quot;``   : the laminate strain at this z</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">eps_m</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">eps_membrane</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+        <span class="n">kap</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">kappa</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+        <span class="n">results</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">station_keys</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;top&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;top&quot;</span><span class="p">,),</span>
+            <span class="s2">&quot;bot&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;bot&quot;</span><span class="p">,),</span>
+            <span class="s2">&quot;mid&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;mid&quot;</span><span class="p">,),</span>
+            <span class="s2">&quot;all&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;top&quot;</span><span class="p">,</span> <span class="s2">&quot;mid&quot;</span><span class="p">,</span> <span class="s2">&quot;bot&quot;</span><span class="p">),</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="n">z</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">station_keys</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;z must be &#39;all&#39;, &#39;top&#39;, &#39;bot&#39;, or &#39;mid&#39;; got </span><span class="si">{</span><span class="n">z</span><span class="si">!r}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">layer</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="p">):</span>
+            <span class="n">Q_bar</span> <span class="o">=</span> <span class="n">layer</span><span class="o">.</span><span class="n">_Q_inplane</span><span class="p">()</span>
+            <span class="n">theta</span> <span class="o">=</span> <span class="n">layer</span><span class="o">.</span><span class="n">theta_deg</span>
+            <span class="n">T</span> <span class="o">=</span> <span class="n">_stress_rotation_to_local</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">station</span> <span class="ow">in</span> <span class="n">station_keys</span><span class="p">[</span><span class="n">z</span><span class="p">]:</span>
+                <span class="n">z_val</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s2">&quot;top&quot;</span><span class="p">:</span> <span class="n">layer</span><span class="o">.</span><span class="n">z_top</span><span class="p">,</span>
+                    <span class="s2">&quot;bot&quot;</span><span class="p">:</span> <span class="n">layer</span><span class="o">.</span><span class="n">z_bot</span><span class="p">,</span>
+                    <span class="s2">&quot;mid&quot;</span><span class="p">:</span> <span class="n">layer</span><span class="o">.</span><span class="n">z_mid</span><span class="p">,</span>
+                <span class="p">}[</span><span class="n">station</span><span class="p">]</span>
+                <span class="n">eps_at_z</span> <span class="o">=</span> <span class="n">eps_m</span> <span class="o">+</span> <span class="n">z_val</span> <span class="o">*</span> <span class="n">kap</span>
+                <span class="n">sigma_global</span> <span class="o">=</span> <span class="n">Q_bar</span> <span class="o">@</span> <span class="n">eps_at_z</span>
+                <span class="n">sigma_local</span> <span class="o">=</span> <span class="n">T</span> <span class="o">@</span> <span class="n">sigma_global</span>
+                <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                    <span class="s2">&quot;layer&quot;</span><span class="p">:</span> <span class="n">k</span><span class="p">,</span>
+                    <span class="s2">&quot;station&quot;</span><span class="p">:</span> <span class="n">station</span><span class="p">,</span>
+                    <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="n">z_val</span><span class="p">,</span>
+                    <span class="s2">&quot;theta_deg&quot;</span><span class="p">:</span> <span class="n">theta</span><span class="p">,</span>
+                    <span class="s2">&quot;sigma_global&quot;</span><span class="p">:</span> <span class="n">sigma_global</span><span class="p">,</span>
+                    <span class="s2">&quot;sigma_local&quot;</span><span class="p">:</span> <span class="n">sigma_local</span><span class="p">,</span>
+                    <span class="s2">&quot;eps_global&quot;</span><span class="p">:</span> <span class="n">eps_at_z</span><span class="p">,</span>
+                <span class="p">})</span>
+        <span class="k">return</span> <span class="n">results</span></div>
+</div>
+
+
+
+<span class="c1"># ============================================================ helpers</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_stress_rotation_to_local</span><span class="p">(</span><span class="n">theta_deg</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Stress-rotation matrix T that takes global-axis stresses</span>
+<span class="sd">    ``(sigma_xx, sigma_yy, sigma_xy)`` to lamina (1-2) material axes</span>
+<span class="sd">    ``(sigma_11, sigma_22, sigma_12)`` for a ply rotated by ``theta_deg``</span>
+<span class="sd">    CCW from global x to fiber direction.</span>
+
+<span class="sd">    The transformation is</span>
+
+<span class="sd">        T(theta) = [[c^2,   s^2,    2 c s],</span>
+<span class="sd">                    [s^2,   c^2,   -2 c s],</span>
+<span class="sd">                    [-c s,  c s,   c^2 - s^2]]</span>
+
+<span class="sd">    where c = cos(theta), s = sin(theta). (Reuter form, engineering</span>
+<span class="sd">    Voigt convention.)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+    <span class="n">theta</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">theta_deg</span><span class="p">)</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+        <span class="p">[</span><span class="n">c</span> <span class="o">*</span> <span class="n">c</span><span class="p">,</span>     <span class="n">s</span> <span class="o">*</span> <span class="n">s</span><span class="p">,</span>    <span class="mf">2.0</span> <span class="o">*</span> <span class="n">c</span> <span class="o">*</span> <span class="n">s</span><span class="p">],</span>
+        <span class="p">[</span><span class="n">s</span> <span class="o">*</span> <span class="n">s</span><span class="p">,</span>     <span class="n">c</span> <span class="o">*</span> <span class="n">c</span><span class="p">,</span>   <span class="o">-</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">c</span> <span class="o">*</span> <span class="n">s</span><span class="p">],</span>
+        <span class="p">[</span><span class="o">-</span><span class="n">c</span> <span class="o">*</span> <span class="n">s</span><span class="p">,</span>    <span class="n">c</span> <span class="o">*</span> <span class="n">s</span><span class="p">,</span>    <span class="n">c</span> <span class="o">*</span> <span class="n">c</span> <span class="o">-</span> <span class="n">s</span> <span class="o">*</span> <span class="n">s</span><span class="p">],</span>
+    <span class="p">])</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

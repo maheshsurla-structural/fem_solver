@@ -1,0 +1,8 @@
+item	quantity	unit	description
+concrete	0.640	m3	Col-1: L=4.00 m, A=1600 cm^2
+concrete	0.640	m3	Col-2: L=4.00 m, A=1600 cm^2
+concrete	0.640	m3	Col-3: L=4.00 m, A=1600 cm^2
+concrete	0.900	m3	Beam-4: L=6.00 m, A=1500 cm^2
+concrete	0.900	m3	Beam-5: L=6.00 m, A=1500 cm^2
+rebar	334.800	kg	90.0 kg/m^3 over 3.72 m^3
+formwork	14.880	m2	approx. 4 m^2 / m^3 (frame typ.)

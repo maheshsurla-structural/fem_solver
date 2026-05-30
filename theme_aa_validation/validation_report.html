@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html><head><meta charset='utf-8'><title>femsolver cross-platform validation</title><style>body{font-family:Helvetica,Arial,sans-serif;margin:24px;color:#222} h1{border-bottom:2px solid #333;padding-bottom:6px} th{background:#eef}</style></head><body><h1>femsolver cross-platform validation</h1><p><b>6/6</b> benchmarks passed all reference checks.</p>
+<table border='1' cellpadding='6' cellspacing='0' style='border-collapse:collapse;'>
+<tr><th>Benchmark</th><th>Category</th><th>Units</th><th>Computed</th>
+<th>Bernoulli closed form</th>
+<th>Timoshenko 1959 p.42</th>
+<th>NAFEMS LE1 (analytical)</th>
+<th>Method of sections</th>
+<th>Cook, Malkus, Plesha p.18</th>
+<th>Euler-Bernoulli closed form</th>
+<th>Blevins 1979 Table 8-1</th>
+<th>NAFEMS Free Vibration LE3 (analytical)</th>
+<th>Euler closed form</th>
+<th>Timoshenko &amp; Gere 1961 p.46</th>
+<th>AISC 360-22 E3.4 (Fe column)</th>
+<th>Stiffness-method closed form</th>
+<th>Hibbeler Structural Analysis 10e Ex 12.2</th>
+<th>AISC Steel Manual Tab 3-23 case 12</th>
+<th>Roark 7th Ed Tab 8.1 case 1</th>
+<th>AISC Steel Construction Manual</th>
+<th>Overall</th></tr>
+<tr>
+<td>LE1 short cantilever tip deflection</td>
+<td>linear-static</td>
+<td>m</td>
+<td>13.33</td>
+<td style='background:#d8f3d8;'>0.00%</td>
+<td style='background:#d8f3d8;'>0.00%</td>
+<td style='background:#d8f3d8;'>0.00%</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td style='background:#d8f3d8;'><b>PASS</b></td>
+</tr>
+<tr>
+<td>LE2 two-bar truss apex deflection</td>
+<td>linear-static</td>
+<td>m</td>
+<td>3.494e-05</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td style='background:#d8f3d8;'>0.00%</td>
+<td style='background:#d8f3d8;'>0.00%</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td style='background:#d8f3d8;'><b>PASS</b></td>
+</tr>
+<tr>
+<td>LE3 cantilever fundamental frequency</td>
+<td>modal</td>
+<td>Hz</td>
+<td>40.77</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td style='background:#d8f3d8;'>0.00%</td>
+<td style='background:#d8f3d8;'>0.00%</td>
+<td style='background:#d8f3d8;'>0.00%</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td style='background:#d8f3d8;'><b>PASS</b></td>
+</tr>
+<tr>
+<td>LE5 pin-pin column Euler buckling</td>
+<td>buckling</td>
+<td>N</td>
+<td>2.222e+04</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td style='background:#d8f3d8;'>1.31%</td>
+<td style='background:#d8f3d8;'>1.31%</td>
+<td style='background:#d8f3d8;'>1.31%</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td style='background:#d8f3d8;'><b>PASS</b></td>
+</tr>
+<tr>
+<td>Propped cantilever UDL pinned reaction</td>
+<td>linear-static</td>
+<td>N</td>
+<td>1.502e+04</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td style='background:#d8f3d8;'>0.13%</td>
+<td style='background:#d8f3d8;'>0.13%</td>
+<td style='background:#d8f3d8;'>0.13%</td>
+<td>-</td>
+<td>-</td>
+<td style='background:#d8f3d8;'><b>PASS</b></td>
+</tr>
+<tr>
+<td>SS beam UDL midspan deflection</td>
+<td>linear-static</td>
+<td>m</td>
+<td>0.08391</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td style='background:#d8f3d8;'>0.56%</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td style='background:#d8f3d8;'>0.56%</td>
+<td style='background:#d8f3d8;'>0.56%</td>
+<td style='background:#d8f3d8;'><b>PASS</b></td>
+</tr>
+</table></body></html>

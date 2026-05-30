@@ -1,0 +1,776 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.analysis.modal_pushover &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.analysis.modal_pushover</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.analysis.modal_pushover</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Modal Pushover Analysis (Chopra &amp; Goel, 2002).</span>
+
+<span class="sd">Standard single-mode nonlinear-static pushover assumes the structure</span>
+<span class="sd">responds in one (usually fundamental) mode shape. For tall or</span>
+<span class="sd">plan-irregular buildings this misses higher-mode contributions that</span>
+<span class="sd">dominate upper-story EDPs (e.g. interstory drift in stories above the</span>
+<span class="sd">half-height, beam moments in the upper third). Modal Pushover Analysis</span>
+<span class="sd">(MPA) addresses the gap by performing *N* independent pushovers --</span>
+<span class="sd">one per significant mode -- each with an invariant force pattern</span>
+
+<span class="sd">    s_n = M phi_n</span>
+
+<span class="sd">derived from the mass matrix and the n-th mode shape. The MDOF</span>
+<span class="sd">capacity curve from each modal pushover is converted to an equivalent</span>
+<span class="sd">SDOF via the modal participation factor Gamma_n, bilinearized, and</span>
+<span class="sd">its target displacement determined against the design spectrum</span>
+<span class="sd">(either by the N2 method or the ASCE 41 coefficient method). The</span>
+<span class="sd">modal nodal responses at each target are then combined by SRSS or</span>
+<span class="sd">CQC.</span>
+
+<span class="sd">Theoretical foundation</span>
+<span class="sd">----------------------</span>
+<span class="sd">For an undamped MDOF system the inertial force in mode n under</span>
+<span class="sd">ground excitation u_g_ddot is</span>
+
+<span class="sd">    f_n(t) = - s_n * Gamma_n * A_n(t)</span>
+
+<span class="sd">where ``A_n(t)`` is the n-th-mode pseudo-acceleration. The</span>
+<span class="sd">peak response in mode n is therefore obtained by applying the</span>
+<span class="sd">invariant pattern ``s_n = M phi_n`` and pushing to the peak modal</span>
+<span class="sd">displacement, which corresponds to the equivalent SDOF target</span>
+<span class="sd">displacement scaled by Gamma_n.</span>
+
+<span class="sd">Reference: Chopra &amp; Goel, &quot;A modal pushover analysis procedure for</span>
+<span class="sd">estimating seismic demands for buildings,&quot; Earthquake Engineering &amp;</span>
+<span class="sd">Structural Dynamics, 31(3), 2002, pp. 561-582.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Sequence</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.analysis.assembler</span><span class="w"> </span><span class="kn">import</span> <span class="n">assemble_mass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.analysis.capacity_design</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">BilinearCurve</span><span class="p">,</span>
+    <span class="n">EquivalentSDOF</span><span class="p">,</span>
+    <span class="n">bilinearize_capacity_curve</span><span class="p">,</span>
+    <span class="n">coefficient_method_target</span><span class="p">,</span>
+    <span class="n">equivalent_sdof</span><span class="p">,</span>
+    <span class="n">n2_target_displacement</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.analysis.eigen</span><span class="w"> </span><span class="kn">import</span> <span class="n">EigenAnalysis</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.analysis.integrator</span><span class="w"> </span><span class="kn">import</span> <span class="n">DisplacementControl</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.analysis.nonlinear_static</span><span class="w"> </span><span class="kn">import</span> <span class="n">NonlinearStaticAnalysis</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.analysis.response_spectrum</span><span class="w"> </span><span class="kn">import</span> <span class="n">cqc_correlation_coefficient</span>
+
+
+<span class="c1"># ============================================================ helpers</span>
+
+<span class="n">_DIRECTION_INDEX</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_influence_vector</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">direction_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build the influence vector ``iota`` (size ``neq``): a 1 at each</span>
+<span class="sd">    free DOF whose nodal DOF index equals ``direction_index``, else 0.</span>
+<span class="sd">    Matches the convention used by ResponseSpectrumAnalysis.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">iota</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">neq</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">direction_index</span> <span class="o">&lt;</span> <span class="n">node</span><span class="o">.</span><span class="n">ndf</span><span class="p">:</span>
+            <span class="n">eq</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">eqn</span><span class="p">[</span><span class="n">direction_index</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">eq</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">iota</span><span class="p">[</span><span class="n">eq</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="k">return</span> <span class="n">iota</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_scatter_mode_shape</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">phi_free</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Map a free-DOF mode-shape column onto per-node displacement</span>
+<span class="sd">    arrays.&quot;&quot;&quot;</span>
+    <span class="n">nodal</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">ndf</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">ndf</span><span class="p">):</span>
+            <span class="n">eq</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">eqn</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">eq</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">v</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">phi_free</span><span class="p">[</span><span class="n">eq</span><span class="p">]</span>
+        <span class="n">nodal</span><span class="p">[</span><span class="n">node</span><span class="o">.</span><span class="n">tag</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+    <span class="k">return</span> <span class="n">nodal</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_interp_disp_snapshot</span><span class="p">(</span>
+    <span class="n">drifts</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">snapshots</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]],</span>
+    <span class="n">d_target</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Linearly interpolate nodal displacement snapshots at the target</span>
+<span class="sd">    drift. Snapshots are committed-state nodal disps captured after</span>
+<span class="sd">    each pushover step; drifts is the control-DOF reading at each step.</span>
+<span class="sd">    Clamps to the last snapshot if d_target exceeds the pushover range.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">abs_drifts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">drifts</span><span class="p">)</span>
+    <span class="n">abs_target</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">d_target</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">abs_target</span> <span class="o">&lt;=</span> <span class="n">abs_drifts</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">tag</span><span class="p">:</span> <span class="n">arr</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">arr</span> <span class="ow">in</span> <span class="n">snapshots</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+    <span class="k">if</span> <span class="n">abs_target</span> <span class="o">&gt;=</span> <span class="n">abs_drifts</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">tag</span><span class="p">:</span> <span class="n">arr</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">arr</span> <span class="ow">in</span> <span class="n">snapshots</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+    <span class="n">idx</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">abs_drifts</span><span class="p">,</span> <span class="n">abs_target</span><span class="p">))</span>
+    <span class="c1"># idx is the first step with abs_drift &gt;= abs_target</span>
+    <span class="k">if</span> <span class="n">idx</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">tag</span><span class="p">:</span> <span class="n">arr</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">arr</span> <span class="ow">in</span> <span class="n">snapshots</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+    <span class="n">d1</span> <span class="o">=</span> <span class="n">abs_drifts</span><span class="p">[</span><span class="n">idx</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="n">d2</span> <span class="o">=</span> <span class="n">abs_drifts</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">d2</span> <span class="o">==</span> <span class="n">d1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">tag</span><span class="p">:</span> <span class="n">arr</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">arr</span> <span class="ow">in</span> <span class="n">snapshots</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="p">(</span><span class="n">abs_target</span> <span class="o">-</span> <span class="n">d1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">d2</span> <span class="o">-</span> <span class="n">d1</span><span class="p">)</span>
+    <span class="n">interp</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">arr2</span> <span class="ow">in</span> <span class="n">snapshots</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">arr1</span> <span class="o">=</span> <span class="n">snapshots</span><span class="p">[</span><span class="n">idx</span> <span class="o">-</span> <span class="mi">1</span><span class="p">][</span><span class="n">tag</span><span class="p">]</span>
+        <span class="n">interp</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span> <span class="o">=</span> <span class="n">arr1</span> <span class="o">+</span> <span class="n">t</span> <span class="o">*</span> <span class="p">(</span><span class="n">arr2</span> <span class="o">-</span> <span class="n">arr1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">interp</span>
+
+
+<span class="c1"># ============================================================ driver</span>
+
+<div class="viewcode-block" id="ModalPushoverAnalysis">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.modal_pushover.ModalPushoverAnalysis">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ModalPushoverAnalysis</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Chopra-Goel Modal Pushover Analysis.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    model_factory : Callable[[], Model]</span>
+<span class="sd">        Zero-argument callable that returns a *fresh* Model with mesh,</span>
+<span class="sd">        materials, sections, supports, and mass distribution already</span>
+<span class="sd">        defined but **no** nodal loads. The factory is called once per</span>
+<span class="sd">        modal pushover so each mode&#39;s analysis starts from undeformed</span>
+<span class="sd">        state -- this is the core MPA assumption (modal responses are</span>
+<span class="sd">        independent and superposed only at the post-processing stage).</span>
+<span class="sd">    spectrum : ResponseSpectrum</span>
+<span class="sd">        Elastic design spectrum (pseudo-acceleration Sa(T)).</span>
+<span class="sd">    control_node : int</span>
+<span class="sd">        Node tag at which to track drift (typically the roof).</span>
+<span class="sd">    control_dof : int</span>
+<span class="sd">        DOF index at the control node (0 = x, 1 = y, ...).</span>
+<span class="sd">    direction : ``&quot;x&quot;`` | ``&quot;y&quot;`` | ``&quot;z&quot;`` (default ``&quot;x&quot;``)</span>
+<span class="sd">        Ground motion direction. Used to (a) build the influence vector</span>
+<span class="sd">        iota for modal participation factors, and (b) restrict the</span>
+<span class="sd">        modal force pattern to the lateral direction.</span>
+<span class="sd">    max_drift : float</span>
+<span class="sd">        The pushover sweeps the control DOF from 0 to this displacement</span>
+<span class="sd">        magnitude in each mode. Should be set comfortably past the</span>
+<span class="sd">        expected target (e.g. 2-3x the estimated target).</span>
+<span class="sd">    num_modes : int, default 3</span>
+<span class="sd">        Number of modes to retain. 3 is typical for buildings up to</span>
+<span class="sd">        ~15 stories; taller / irregular structures may need 4-6.</span>
+<span class="sd">    num_steps : int, default 100</span>
+<span class="sd">        Pushover steps from 0 to max_drift, per mode.</span>
+<span class="sd">    combination : ``&quot;srss&quot;`` | ``&quot;cqc&quot;`` (default ``&quot;srss&quot;``)</span>
+<span class="sd">        Modal-response combination rule. SRSS is the Chopra-Goel</span>
+<span class="sd">        recommendation; CQC accounts for closely-spaced modes using</span>
+<span class="sd">        damping-based correlation coefficients.</span>
+<span class="sd">    target_method : ``&quot;n2&quot;`` | ``&quot;coefficient&quot;`` (default ``&quot;n2&quot;``)</span>
+<span class="sd">        How to obtain each mode&#39;s target displacement from the SDOF</span>
+<span class="sd">        capacity curve.</span>
+<span class="sd">    Tc : float, default 0.5</span>
+<span class="sd">        N2-method corner period (only used if ``target_method=&quot;n2&quot;``).</span>
+<span class="sd">    damping_ratio : float, default 0.05</span>
+<span class="sd">        Modal damping ratio (used for CQC and for spectrum lookup if</span>
+<span class="sd">        the spectrum has a different damping).</span>
+<span class="sd">    lateral_only_pattern : bool, default True</span>
+<span class="sd">        If True the modal force pattern is restricted to nodal DOFs</span>
+<span class="sd">        in ``direction`` (the standard MPA pattern: only lateral</span>
+<span class="sd">        inertia forces are applied). If False, the full ``M phi_n``</span>
+<span class="sd">        vector is applied at every DOF (rotational + vertical</span>
+<span class="sd">        components included).</span>
+<span class="sd">    algorithm : str, default ``&quot;newton&quot;``</span>
+<span class="sd">    convergence : str, default ``&quot;unbalance&quot;``</span>
+<span class="sd">    tol : float, default 1e-6</span>
+<span class="sd">    max_iter : int, default 25</span>
+<span class="sd">    secant_ratio : float, default 0.6</span>
+<span class="sd">        Secant-stiffness fraction for bilinearization.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    The implementation uses mass-normalized mode shapes</span>
+<span class="sd">    (``phi_n^T M phi_n = 1``) throughout, so ``Gamma_n = phi_n^T M iota``</span>
+<span class="sd">    and ``m_eff_n = Gamma_n^2`` directly.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model_factory</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span>
+        <span class="n">spectrum</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">control_node</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">control_dof</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">max_drift</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">direction</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;x&quot;</span><span class="p">,</span>
+        <span class="n">num_modes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+        <span class="n">num_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+        <span class="n">combination</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;srss&quot;</span><span class="p">,</span>
+        <span class="n">target_method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;n2&quot;</span><span class="p">,</span>
+        <span class="n">Tc</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span>
+        <span class="n">damping_ratio</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
+        <span class="n">lateral_only_pattern</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">algorithm</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;newton&quot;</span><span class="p">,</span>
+        <span class="n">convergence</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;unbalance&quot;</span><span class="p">,</span>
+        <span class="n">tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0e-6</span><span class="p">,</span>
+        <span class="n">max_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">25</span><span class="p">,</span>
+        <span class="n">secant_ratio</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.6</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">callable</span><span class="p">(</span><span class="n">model_factory</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;model_factory must be a zero-argument callable &quot;</span>
+                              <span class="s2">&quot;returning a fresh Model&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">num_modes</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;num_modes must be &gt;= 1, got </span><span class="si">{</span><span class="n">num_modes</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">num_steps</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;num_steps must be &gt;= 2, got </span><span class="si">{</span><span class="n">num_steps</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">combination</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;srss&quot;</span><span class="p">,</span> <span class="s2">&quot;cqc&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;unknown combination </span><span class="si">{</span><span class="n">combination</span><span class="si">!r}</span><span class="s2">; expected &#39;srss&#39; or &#39;cqc&#39;&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">target_method</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;n2&quot;</span><span class="p">,</span> <span class="s2">&quot;coefficient&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;unknown target_method </span><span class="si">{</span><span class="n">target_method</span><span class="si">!r}</span><span class="s2">; expected &#39;n2&#39; or &quot;</span>
+                <span class="s2">&quot;&#39;coefficient&#39;&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">direction</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_DIRECTION_INDEX</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;unknown direction </span><span class="si">{</span><span class="n">direction</span><span class="si">!r}</span><span class="s2">; expected &#39;x&#39;, &#39;y&#39;, or &#39;z&#39;&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">max_drift</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;max_drift must be nonzero&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">damping_ratio</span> <span class="o">&lt;</span> <span class="mf">1.0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;damping_ratio must be in [0, 1), got </span><span class="si">{</span><span class="n">damping_ratio</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">model_factory</span> <span class="o">=</span> <span class="n">model_factory</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spectrum</span> <span class="o">=</span> <span class="n">spectrum</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">control_node</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">control_node</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">control_dof</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">control_dof</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_drift</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">max_drift</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">direction</span> <span class="o">=</span> <span class="n">direction</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_modes</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">num_modes</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_steps</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">num_steps</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">combination</span> <span class="o">=</span> <span class="n">combination</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_method</span> <span class="o">=</span> <span class="n">target_method</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Tc</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">Tc</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">damping_ratio</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">damping_ratio</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lateral_only_pattern</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">lateral_only_pattern</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">algorithm</span> <span class="o">=</span> <span class="n">algorithm</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">convergence</span> <span class="o">=</span> <span class="n">convergence</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tol</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">tol</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_iter</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">max_iter</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">secant_ratio</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">secant_ratio</span><span class="p">)</span>
+
+        <span class="c1"># populated after run()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">modal_results</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">combined_nodal_disps</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="c1"># =============================================== run</span>
+<div class="viewcode-block" id="ModalPushoverAnalysis.run">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.modal_pushover.ModalPushoverAnalysis.run">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="c1"># --- 1. Eigen analysis on a fresh model ---</span>
+        <span class="n">eig_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_factory</span><span class="p">()</span>
+        <span class="n">eig</span> <span class="o">=</span> <span class="n">EigenAnalysis</span><span class="p">(</span><span class="n">eig_model</span><span class="p">,</span> <span class="n">num_modes</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_modes</span><span class="p">)</span>
+        <span class="n">eig</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+
+        <span class="c1"># Mass matrix in the eigen model&#39;s DOF numbering</span>
+        <span class="n">M_eig</span> <span class="o">=</span> <span class="n">assemble_mass</span><span class="p">(</span><span class="n">eig_model</span><span class="p">)</span>
+        <span class="n">M_dense</span> <span class="o">=</span> <span class="n">M_eig</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">M_eig</span><span class="p">,</span> <span class="s2">&quot;toarray&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">M_eig</span><span class="p">)</span>
+        <span class="n">iota_eig</span> <span class="o">=</span> <span class="n">_influence_vector</span><span class="p">(</span><span class="n">eig_model</span><span class="p">,</span> <span class="n">_DIRECTION_INDEX</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">direction</span><span class="p">])</span>
+
+        <span class="c1"># Mass-normalize the eigenvectors so phi_n^T M phi_n = 1</span>
+        <span class="n">Phi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">eig</span><span class="o">.</span><span class="n">mode_shapes</span><span class="p">)</span>         <span class="c1"># (neq, num_modes)</span>
+        <span class="n">modal_mass</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+            <span class="nb">float</span><span class="p">(</span><span class="n">Phi</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">@</span> <span class="p">(</span><span class="n">M_dense</span> <span class="o">@</span> <span class="n">Phi</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]))</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_modes</span><span class="p">)</span>
+        <span class="p">])</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">modal_mass</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="s2">&quot;non-positive modal mass detected -- check that elements &quot;</span>
+                <span class="s2">&quot;have positive density&quot;</span>
+            <span class="p">)</span>
+        <span class="n">Phi_n</span> <span class="o">=</span> <span class="n">Phi</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">modal_mass</span><span class="p">)[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span>  <span class="c1"># mass-normalized</span>
+
+        <span class="c1"># Participation factors and effective modal masses</span>
+        <span class="n">Gamma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+            <span class="nb">float</span><span class="p">(</span><span class="n">Phi_n</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">@</span> <span class="p">(</span><span class="n">M_dense</span> <span class="o">@</span> <span class="n">iota_eig</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_modes</span><span class="p">)</span>
+        <span class="p">])</span>
+        <span class="n">m_eff</span> <span class="o">=</span> <span class="n">Gamma</span> <span class="o">*</span> <span class="n">Gamma</span>     <span class="c1"># since phi_n^T M phi_n = 1</span>
+        <span class="n">periods</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">eig</span><span class="o">.</span><span class="n">periods</span><span class="p">)</span>
+        <span class="n">omegas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">periods</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="n">periods</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span>
+
+        <span class="c1"># Map the mass-normalized mode shapes (in the eigen model&#39;s DOF</span>
+        <span class="c1"># numbering) onto per-node arrays, keyed by node tag. This works</span>
+        <span class="c1"># *if* the model_factory produces models with the same node tags</span>
+        <span class="c1"># and DOF ordering each time (which is the standard pattern).</span>
+        <span class="n">modal_shapes_nodal</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">_scatter_mode_shape</span><span class="p">(</span><span class="n">eig_model</span><span class="p">,</span> <span class="n">Phi_n</span><span class="p">[:,</span> <span class="n">i</span><span class="p">])</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_modes</span><span class="p">)</span>
+        <span class="p">]</span>
+        <span class="c1"># If the mode shape has negative control-DOF entry, flip it so</span>
+        <span class="c1"># the pushover proceeds in the +control_dof direction. We also</span>
+        <span class="c1"># flip Gamma for consistency.</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_modes</span><span class="p">):</span>
+            <span class="n">ctrl_val</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">modal_shapes_nodal</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">control_node</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">control_dof</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">ctrl_val</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">modal_shapes_nodal</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+                    <span class="n">modal_shapes_nodal</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">tag</span><span class="p">]</span> <span class="o">*=</span> <span class="o">-</span><span class="mf">1.0</span>
+                <span class="n">Gamma</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">Gamma</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="n">Phi_n</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">Phi_n</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span>
+
+        <span class="c1"># ``Gamma_conv[n]`` is the dimensionless participation factor used</span>
+        <span class="c1"># by the existing N2-method machinery -- it equals the mass-norm</span>
+        <span class="c1"># Gamma multiplied by the mode-shape entry at the control DOF (a</span>
+        <span class="c1"># rescaling equivalent to choosing the conventional &quot;phi[top] = 1&quot;</span>
+        <span class="c1"># normalization). This makes ``d_star = u_top / Gamma_conv`` the</span>
+        <span class="c1"># actual SDOF displacement, in length units. ``m_eff`` is</span>
+        <span class="c1"># scale-invariant.</span>
+        <span class="n">phi_rn</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+            <span class="nb">float</span><span class="p">(</span><span class="n">modal_shapes_nodal</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">control_node</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">control_dof</span><span class="p">])</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_modes</span><span class="p">)</span>
+        <span class="p">])</span>
+        <span class="n">Gamma_conv</span> <span class="o">=</span> <span class="n">Gamma</span> <span class="o">*</span> <span class="n">phi_rn</span>
+
+        <span class="c1"># --- 2. Per-mode pushover ---</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">modal_results</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_modes</span><span class="p">):</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_one_mode</span><span class="p">(</span>
+                <span class="n">mode_index</span><span class="o">=</span><span class="n">n</span><span class="p">,</span>
+                <span class="n">phi_n_nodal</span><span class="o">=</span><span class="n">modal_shapes_nodal</span><span class="p">[</span><span class="n">n</span><span class="p">],</span>
+                <span class="n">Gamma_n</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">Gamma</span><span class="p">[</span><span class="n">n</span><span class="p">]),</span>
+                <span class="n">Gamma_conv_n</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">Gamma_conv</span><span class="p">[</span><span class="n">n</span><span class="p">]),</span>
+                <span class="n">m_eff_n</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">m_eff</span><span class="p">[</span><span class="n">n</span><span class="p">]),</span>
+                <span class="n">T_n</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">periods</span><span class="p">[</span><span class="n">n</span><span class="p">]),</span>
+                <span class="n">omega_n</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">omegas</span><span class="p">[</span><span class="n">n</span><span class="p">]),</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">modal_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+
+        <span class="c1"># --- 3. Modal combination ---</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">combined_nodal_disps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_combine_modal_responses</span><span class="p">(</span><span class="n">omegas</span><span class="p">)</span>
+
+        <span class="c1"># Scatter combined displacements onto the eigen model&#39;s nodes</span>
+        <span class="c1"># for inspection convenience.</span>
+        <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">vec</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">combined_nodal_disps</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">node</span> <span class="o">=</span> <span class="n">eig_model</span><span class="o">.</span><span class="n">node</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span>
+            <span class="n">node</span><span class="o">.</span><span class="n">disp</span><span class="p">[:</span><span class="n">vec</span><span class="o">.</span><span class="n">size</span><span class="p">]</span> <span class="o">=</span> <span class="n">vec</span>
+
+        <span class="c1"># --- 4. Summary ---</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;num_modes&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_modes</span><span class="p">,</span>
+            <span class="s2">&quot;direction&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">direction</span><span class="p">,</span>
+            <span class="s2">&quot;combination&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">combination</span><span class="p">,</span>
+            <span class="s2">&quot;target_method&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_method</span><span class="p">,</span>
+            <span class="s2">&quot;periods_s&quot;</span><span class="p">:</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">periods</span><span class="p">],</span>
+            <span class="s2">&quot;Gamma&quot;</span><span class="p">:</span> <span class="n">Gamma</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+            <span class="s2">&quot;m_eff&quot;</span><span class="p">:</span> <span class="n">m_eff</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+            <span class="s2">&quot;total_participating_mass&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">m_eff</span><span class="p">)),</span>
+            <span class="s2">&quot;modal_results&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">modal_results</span><span class="p">,</span>
+        <span class="p">}</span></div>
+
+
+    <span class="c1"># =============================================== single mode</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_run_one_mode</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">mode_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">phi_n_nodal</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+        <span class="n">Gamma_n</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">Gamma_conv_n</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">m_eff_n</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">T_n</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">omega_n</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build a fresh model, apply the modal force pattern, sweep</span>
+<span class="sd">        the control DOF, then post-process to a modal target displacement</span>
+<span class="sd">        and capture nodal disps at that target.&quot;&quot;&quot;</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_factory</span><span class="p">()</span>
+
+        <span class="c1"># Build s_n = M @ phi_n in the fresh model&#39;s DOF numbering.</span>
+        <span class="c1"># We re-number DOFs and build the influence + M @ phi vector.</span>
+        <span class="n">m</span><span class="o">.</span><span class="n">number_dofs</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">neq</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;model has no free DOFs -- check supports&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Reconstruct the free-DOF phi vector for this model from the</span>
+        <span class="c1"># per-node mapping.</span>
+        <span class="n">phi_free</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">neq</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">m</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="n">phi_n_nodal</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">tag</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">ndf</span><span class="p">):</span>
+                <span class="n">eq</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">eqn</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                <span class="k">if</span> <span class="n">eq</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">v</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+                    <span class="n">phi_free</span><span class="p">[</span><span class="n">eq</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+        <span class="n">M_sp</span> <span class="o">=</span> <span class="n">assemble_mass</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+        <span class="n">M_dense</span> <span class="o">=</span> <span class="n">M_sp</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">M_sp</span><span class="p">,</span> <span class="s2">&quot;toarray&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">M_sp</span><span class="p">)</span>
+        <span class="n">s_free</span> <span class="o">=</span> <span class="n">M_dense</span> <span class="o">@</span> <span class="n">phi_free</span>     <span class="c1"># size (neq,)</span>
+
+        <span class="c1"># Scatter s_free back onto nodes as nodal loads. If</span>
+        <span class="c1"># lateral_only_pattern is True, zero out everything except the</span>
+        <span class="c1"># direction-of-interest DOF -- this is the standard MPA pattern.</span>
+        <span class="n">direction_index</span> <span class="o">=</span> <span class="n">_DIRECTION_INDEX</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">direction</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">m</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">ndf</span><span class="p">):</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">lateral_only_pattern</span> <span class="ow">and</span> <span class="n">i</span> <span class="o">!=</span> <span class="n">direction_index</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">eq</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">eqn</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                <span class="k">if</span> <span class="n">eq</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">node</span><span class="o">.</span><span class="n">_load</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">s_free</span><span class="p">[</span><span class="n">eq</span><span class="p">])</span>
+
+        <span class="c1"># Verify the control DOF will move in the +direction. The applied</span>
+        <span class="c1"># force at the control DOF should be positive (we already flipped</span>
+        <span class="c1"># phi_n&#39;s sign to make this so, but verify -- a zero control-DOF</span>
+        <span class="c1"># mass would make this break).</span>
+        <span class="n">ctrl_load</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">node</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">control_node</span><span class="p">)</span><span class="o">.</span><span class="n">_load</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">control_dof</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">ctrl_load</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;mode </span><span class="si">{</span><span class="n">mode_index</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">: applied load at control DOF &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">control_node</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">control_dof</span><span class="si">}</span><span class="s2">) is zero -- this &quot;</span>
+                <span class="s2">&quot;mode has no inertial force at the control DOF (check that &quot;</span>
+                <span class="s2">&quot;the control node has mass in the chosen direction)&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># --- displacement-controlled pushover ---</span>
+        <span class="n">du_step</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_drift</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_steps</span>
+        <span class="n">integrator</span> <span class="o">=</span> <span class="n">DisplacementControl</span><span class="p">(</span>
+            <span class="n">node_tag</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">control_node</span><span class="p">,</span>
+            <span class="n">dof_index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">control_dof</span><span class="p">,</span>
+            <span class="n">du_step</span><span class="o">=</span><span class="n">du_step</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">analysis</span> <span class="o">=</span> <span class="n">NonlinearStaticAnalysis</span><span class="p">(</span>
+            <span class="n">m</span><span class="p">,</span> <span class="n">num_steps</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_steps</span><span class="p">,</span>
+            <span class="n">integrator</span><span class="o">=</span><span class="n">integrator</span><span class="p">,</span>
+            <span class="n">algorithm</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">algorithm</span><span class="p">,</span>
+            <span class="n">convergence</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">convergence</span><span class="p">,</span>
+            <span class="n">tol</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tol</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">max_iter</span><span class="p">,</span>
+            <span class="n">track</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">control_node</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">control_dof</span><span class="p">),</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Capture nodal-displacement snapshots after each step by</span>
+        <span class="c1"># monkey-patching the analysis loop. The cleanest implementation</span>
+        <span class="c1"># would have NonlinearStaticAnalysis take a per-step callback;</span>
+        <span class="c1"># for now we re-implement the step loop here in place.</span>
+        <span class="n">snapshots</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_with_snapshots</span><span class="p">(</span><span class="n">analysis</span><span class="p">,</span> <span class="n">m</span><span class="p">)</span>
+
+        <span class="n">drifts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">snapshots</span><span class="p">[</span><span class="s2">&quot;drifts&quot;</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+        <span class="n">applied_forces</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">snapshots</span><span class="p">[</span><span class="s2">&quot;lambdas&quot;</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span> <span class="o">*</span> <span class="n">ctrl_load</span>
+        <span class="c1"># Base shear in MPA is the total applied force in `direction`:</span>
+        <span class="c1">#     V_b = sum over nodes of f_n[direction] * lambda</span>
+        <span class="c1"># That sum equals s_free&#39;s `direction` components dot 1, scaled</span>
+        <span class="c1"># by lambda. Equivalent to lambda * (sum of all applied loads in</span>
+        <span class="c1"># `direction`).</span>
+        <span class="n">F_ref_sum</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">m</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">F_ref_sum</span> <span class="o">+=</span> <span class="nb">float</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">_load</span><span class="p">[</span><span class="n">direction_index</span><span class="p">])</span>
+        <span class="n">base_shear</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">snapshots</span><span class="p">[</span><span class="s2">&quot;lambdas&quot;</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span> <span class="o">*</span> <span class="n">F_ref_sum</span>
+
+        <span class="c1"># --- equivalent SDOF, bilinearization, target ---</span>
+        <span class="c1"># Use absolute values since pushover may go in negative direction.</span>
+        <span class="n">d_top</span> <span class="o">=</span> <span class="n">drifts</span>
+        <span class="n">V_base</span> <span class="o">=</span> <span class="n">base_shear</span>
+        <span class="c1"># Sort by drift sign so bilinearize sees monotonic ascending</span>
+        <span class="n">sign</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="k">if</span> <span class="n">d_top</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mf">0.0</span> <span class="k">else</span> <span class="o">-</span><span class="mf">1.0</span>
+        <span class="n">d_top_abs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">d_top</span><span class="p">)</span>
+        <span class="n">V_base_abs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">V_base</span><span class="p">)</span>
+
+        <span class="n">sdof</span> <span class="o">=</span> <span class="n">equivalent_sdof</span><span class="p">(</span>
+            <span class="n">d_top_abs</span><span class="p">,</span> <span class="n">V_base_abs</span><span class="p">,</span>
+            <span class="n">Gamma</span><span class="o">=</span><span class="nb">abs</span><span class="p">(</span><span class="n">Gamma_conv_n</span><span class="p">),</span> <span class="n">m_eff</span><span class="o">=</span><span class="n">m_eff_n</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">bilinear</span> <span class="o">=</span> <span class="n">bilinearize_capacity_curve</span><span class="p">(</span>
+            <span class="n">sdof</span><span class="o">.</span><span class="n">d_star</span><span class="p">,</span> <span class="n">sdof</span><span class="o">.</span><span class="n">F_star</span><span class="p">,</span> <span class="n">secant_ratio</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">secant_ratio</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_method</span> <span class="o">==</span> <span class="s2">&quot;n2&quot;</span><span class="p">:</span>
+            <span class="n">target_info</span> <span class="o">=</span> <span class="n">n2_target_displacement</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">spectrum</span><span class="p">,</span> <span class="n">sdof</span><span class="p">,</span> <span class="n">bilinear</span><span class="p">,</span> <span class="n">Tc</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">Tc</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">d_t_top</span> <span class="o">=</span> <span class="n">target_info</span><span class="p">[</span><span class="s2">&quot;d_t_top&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">target_info</span> <span class="o">=</span> <span class="n">coefficient_method_target</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">spectrum</span><span class="p">,</span> <span class="n">T_eff</span><span class="o">=</span><span class="n">sdof</span><span class="o">.</span><span class="n">T_eff</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">d_t_top</span> <span class="o">=</span> <span class="n">target_info</span><span class="p">[</span><span class="s2">&quot;d_t_top&quot;</span><span class="p">]</span>
+
+        <span class="c1"># Interpolate nodal-disp snapshot at the target drift (in the</span>
+        <span class="c1"># +direction)</span>
+        <span class="n">d_t_top_signed</span> <span class="o">=</span> <span class="n">sign</span> <span class="o">*</span> <span class="n">d_t_top</span>
+        <span class="n">nodal_at_target</span> <span class="o">=</span> <span class="n">_interp_disp_snapshot</span><span class="p">(</span>
+            <span class="n">drifts</span><span class="p">,</span> <span class="n">snapshots</span><span class="p">[</span><span class="s2">&quot;nodal&quot;</span><span class="p">],</span> <span class="n">d_t_top_signed</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;mode&quot;</span><span class="p">:</span> <span class="n">mode_index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="s2">&quot;period&quot;</span><span class="p">:</span> <span class="n">T_n</span><span class="p">,</span>
+            <span class="s2">&quot;omega&quot;</span><span class="p">:</span> <span class="n">omega_n</span><span class="p">,</span>
+            <span class="s2">&quot;Gamma&quot;</span><span class="p">:</span> <span class="n">Gamma_n</span><span class="p">,</span>           <span class="c1"># mass-normalized convention</span>
+            <span class="s2">&quot;Gamma_conv&quot;</span><span class="p">:</span> <span class="n">Gamma_conv_n</span><span class="p">,</span> <span class="c1"># phi[control]=1 convention (N2)</span>
+            <span class="s2">&quot;m_eff&quot;</span><span class="p">:</span> <span class="n">m_eff_n</span><span class="p">,</span>
+            <span class="s2">&quot;drift_curve&quot;</span><span class="p">:</span> <span class="n">d_top</span><span class="p">,</span>
+            <span class="s2">&quot;force_curve&quot;</span><span class="p">:</span> <span class="n">V_base</span><span class="p">,</span>
+            <span class="s2">&quot;sdof_d_star&quot;</span><span class="p">:</span> <span class="n">sdof</span><span class="o">.</span><span class="n">d_star</span><span class="p">,</span>
+            <span class="s2">&quot;sdof_F_star&quot;</span><span class="p">:</span> <span class="n">sdof</span><span class="o">.</span><span class="n">F_star</span><span class="p">,</span>
+            <span class="s2">&quot;T_eff&quot;</span><span class="p">:</span> <span class="n">sdof</span><span class="o">.</span><span class="n">T_eff</span><span class="p">,</span>
+            <span class="s2">&quot;bilinear&quot;</span><span class="p">:</span> <span class="n">bilinear</span><span class="p">,</span>
+            <span class="s2">&quot;target_info&quot;</span><span class="p">:</span> <span class="n">target_info</span><span class="p">,</span>
+            <span class="s2">&quot;d_t_top&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">d_t_top_signed</span><span class="p">),</span>
+            <span class="s2">&quot;nodal_disps_at_target&quot;</span><span class="p">:</span> <span class="n">nodal_at_target</span><span class="p">,</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_run_with_snapshots</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">analysis</span><span class="p">:</span> <span class="n">NonlinearStaticAnalysis</span><span class="p">,</span>
+                              <span class="n">m</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run the pushover step-by-step, capturing nodal disp</span>
+<span class="sd">        snapshots after each committed step. Replicates the body of</span>
+<span class="sd">        NonlinearStaticAnalysis.run() to inject snapshot capture.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.analysis.algorithm</span><span class="w"> </span><span class="kn">import</span> <span class="n">NotConvergedError</span>
+
+        <span class="n">m</span><span class="o">.</span><span class="n">reset_results</span><span class="p">()</span>
+        <span class="n">m</span><span class="o">.</span><span class="n">number_dofs</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">neq</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="s2">&quot;no free DOFs -- model is fully constrained or empty&quot;</span>
+            <span class="p">)</span>
+        <span class="n">analysis</span><span class="o">.</span><span class="n">integrator</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">scatter_du</span><span class="p">(</span><span class="n">du</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">m</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">ndf</span><span class="p">):</span>
+                    <span class="n">eq</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">eqn</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                    <span class="k">if</span> <span class="n">eq</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">node</span><span class="o">.</span><span class="n">disp</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="n">du</span><span class="p">[</span><span class="n">eq</span><span class="p">]</span>
+
+        <span class="n">drifts</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">lambdas</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">nodal_snapshots</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">analysis</span><span class="o">.</span><span class="n">num_steps</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">analysis</span><span class="o">.</span><span class="n">integrator</span><span class="o">.</span><span class="n">new_step</span><span class="p">()</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">analysis</span><span class="o">.</span><span class="n">algorithm</span><span class="o">.</span><span class="n">solve_step</span><span class="p">(</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">integrator</span><span class="p">,</span> <span class="n">analysis</span><span class="o">.</span><span class="n">convergence</span><span class="p">,</span>
+                    <span class="n">scatter_du</span><span class="o">=</span><span class="n">scatter_du</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">except</span> <span class="n">NotConvergedError</span><span class="p">:</span>
+                <span class="n">analysis</span><span class="o">.</span><span class="n">integrator</span><span class="o">.</span><span class="n">revert_step</span><span class="p">()</span>
+                <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">m</span><span class="o">.</span><span class="n">elements</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                    <span class="n">e</span><span class="o">.</span><span class="n">revert_state</span><span class="p">()</span>
+                <span class="c1"># Truncate: keep what converged</span>
+                <span class="k">break</span>
+
+            <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">m</span><span class="o">.</span><span class="n">elements</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                <span class="n">e</span><span class="o">.</span><span class="n">commit_state</span><span class="p">()</span>
+            <span class="n">analysis</span><span class="o">.</span><span class="n">integrator</span><span class="o">.</span><span class="n">commit_step</span><span class="p">()</span>
+
+            <span class="n">drifts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">node</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">control_node</span><span class="p">)</span><span class="o">.</span><span class="n">disp</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">control_dof</span><span class="p">]))</span>
+            <span class="n">lambdas</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">analysis</span><span class="o">.</span><span class="n">integrator</span><span class="o">.</span><span class="n">lambd</span><span class="p">))</span>
+            <span class="c1"># snapshot every node&#39;s disp</span>
+            <span class="n">snap</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">m</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                <span class="n">snap</span><span class="p">[</span><span class="n">node</span><span class="o">.</span><span class="n">tag</span><span class="p">]</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">disp</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="n">nodal_snapshots</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">snap</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">drifts</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="s2">&quot;modal pushover failed at the first step -- check tolerances &quot;</span>
+                <span class="s2">&quot;or supports&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;drifts&quot;</span><span class="p">:</span> <span class="n">drifts</span><span class="p">,</span>
+            <span class="s2">&quot;lambdas&quot;</span><span class="p">:</span> <span class="n">lambdas</span><span class="p">,</span>
+            <span class="s2">&quot;nodal&quot;</span><span class="p">:</span> <span class="n">nodal_snapshots</span><span class="p">,</span>
+        <span class="p">}</span>
+
+    <span class="c1"># =============================================== modal combination</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_combine_modal_responses</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">omegas</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Combine per-mode nodal displacements at each mode&#39;s target</span>
+<span class="sd">        into a single peak-response field per node.</span>
+
+<span class="sd">        SRSS: u_peak[node, dof] = sqrt(sum_n u_n[node, dof]^2)</span>
+<span class="sd">        CQC:  u_peak[node, dof]^2 = sum_{n, k} rho_nk * u_n * u_k</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Gather all node tags</span>
+        <span class="n">node_tags</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">modal_results</span><span class="p">:</span>
+            <span class="n">node_tags</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="s2">&quot;nodal_disps_at_target&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="c1"># Determine ndf per node (use the eigen model)</span>
+        <span class="c1"># Each result&#39;s nodal_disps_at_target maps tag -&gt; ndarray(ndf,)</span>
+        <span class="n">ndf_by_tag</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">modal_results</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">arr</span> <span class="ow">in</span> <span class="n">r</span><span class="p">[</span><span class="s2">&quot;nodal_disps_at_target&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">tag</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ndf_by_tag</span><span class="p">:</span>
+                    <span class="n">ndf_by_tag</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+
+        <span class="c1"># Build per-mode arrays of shape (sum_ndf,) across all (node, dof) pairs</span>
+        <span class="c1"># We process node by node to keep it readable.</span>
+        <span class="n">combined</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">combination</span> <span class="o">==</span> <span class="s2">&quot;srss&quot;</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">node_tags</span><span class="p">:</span>
+                <span class="n">ndf</span> <span class="o">=</span> <span class="n">ndf_by_tag</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span>
+                <span class="n">modal_vecs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">ndf</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">modal_results</span><span class="p">)))</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">r</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">modal_results</span><span class="p">):</span>
+                    <span class="n">v</span> <span class="o">=</span> <span class="n">r</span><span class="p">[</span><span class="s2">&quot;nodal_disps_at_target&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="k">continue</span>
+                    <span class="n">modal_vecs</span><span class="p">[:</span><span class="n">v</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+                <span class="n">combined</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">modal_vecs</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>    <span class="c1"># cqc</span>
+            <span class="n">N</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">modal_results</span><span class="p">)</span>
+            <span class="n">rho</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">N</span><span class="p">,</span> <span class="n">N</span><span class="p">))</span>
+            <span class="n">zeta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">damping_ratio</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">omegas</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">omegas</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">rho</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">cqc_correlation_coefficient</span><span class="p">(</span>
+                            <span class="nb">float</span><span class="p">(</span><span class="n">omegas</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">omegas</span><span class="p">[</span><span class="n">j</span><span class="p">]),</span> <span class="n">zeta</span><span class="p">,</span> <span class="n">zeta</span><span class="p">,</span>
+                        <span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">rho</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="n">j</span> <span class="k">else</span> <span class="mf">0.0</span>
+            <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">node_tags</span><span class="p">:</span>
+                <span class="n">ndf</span> <span class="o">=</span> <span class="n">ndf_by_tag</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span>
+                <span class="n">modal_vecs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">ndf</span><span class="p">,</span> <span class="n">N</span><span class="p">))</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">r</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">modal_results</span><span class="p">):</span>
+                    <span class="n">v</span> <span class="o">=</span> <span class="n">r</span><span class="p">[</span><span class="s2">&quot;nodal_disps_at_target&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="k">continue</span>
+                    <span class="n">modal_vecs</span><span class="p">[:</span><span class="n">v</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+                <span class="c1"># u_peak[j]^2 = sum_{i,k} rho[i,k] * modal_vecs[j, i] * modal_vecs[j, k]</span>
+                <span class="c1"># Use signed values inside CQC; only the SQRT at the end is</span>
+                <span class="c1"># absolute. (Standard CQC for RSA.)</span>
+                <span class="n">quad</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span>
+                    <span class="s2">&quot;ji,ik,jk-&gt;j&quot;</span><span class="p">,</span> <span class="n">modal_vecs</span><span class="p">,</span> <span class="n">rho</span><span class="p">,</span> <span class="n">modal_vecs</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="c1"># quad should be non-negative; clamp small negatives</span>
+                <span class="n">quad</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">quad</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">quad</span><span class="p">)</span>
+                <span class="n">combined</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">quad</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">combined</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

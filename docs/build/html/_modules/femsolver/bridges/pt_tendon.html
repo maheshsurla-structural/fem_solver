@@ -1,0 +1,441 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.bridges.pt_tendon &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.bridges.pt_tendon</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.bridges.pt_tendon</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Post-tensioned tendon: profile, friction/wobble losses, anchorage</span>
+<span class="sd">slip, and equivalent prestress load.</span>
+
+<span class="sd">A post-tensioned (PT) tendon is a high-strength steel cable that is</span>
+<span class="sd">stressed AFTER the concrete has hardened. The jacking force ``P_0``</span>
+<span class="sd">is applied at one (or both) ends, but is attenuated along the cable</span>
+<span class="sd">by:</span>
+
+<span class="sd">* **Curvature friction** (``mu * alpha``) -- friction between the</span>
+<span class="sd">  cable and the duct curving through the structure.</span>
+<span class="sd">* **Wobble friction** (``k * x``) -- unintended wavy deviations of</span>
+<span class="sd">  the duct, linear in the path length ``x``.</span>
+<span class="sd">* **Anchorage slip** -- as the wedges seat, the tendon shortens at</span>
+<span class="sd">  the anchorage by an amount ``Delta_a``; the prestress redistributes</span>
+<span class="sd">  over an &quot;affected length&quot; ``l_a`` near the jacking end.</span>
+
+<span class="sd">The tendon&#39;s friction loss formula (AASHTO LRFD 5.9.5.2; IS 1343</span>
+<span class="sd">Cl. 18.5.2):</span>
+
+<span class="sd">    P(x) = P_0 * exp(-(mu * alpha(x) + k * x))</span>
+
+<span class="sd">This module provides:</span>
+
+<span class="sd">* :class:`TendonProfile` -- piecewise straight + circular-arc</span>
+<span class="sd">  geometry (the canonical PT idealisation).</span>
+<span class="sd">* :func:`friction_loss` -- closed-form ``P(x) / P_0`` for the</span>
+<span class="sd">  profile.</span>
+<span class="sd">* :func:`anchorage_slip_loss` -- effective length and prestress</span>
+<span class="sd">  redistribution from anchor slip.</span>
+<span class="sd">* :func:`equivalent_prestress_load` -- distributed load on the</span>
+<span class="sd">  structure equivalent to the prestress (the &quot;balanced load&quot; method).</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+
+<span class="c1"># ============================================================ tendon profile</span>
+
+<div class="viewcode-block" id="TendonProfile">
+<a class="viewcode-back" href="../../../api/bridges.html#femsolver.bridges.pt_tendon.TendonProfile">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TendonProfile</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A piecewise tendon profile of ``n`` segments.</span>
+
+<span class="sd">    Each segment is either a straight or a circular arc; we capture</span>
+<span class="sd">    only the cumulative angle change ``alpha(x)`` (the only friction-</span>
+<span class="sd">    relevant geometry) and the length.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    segment_lengths : np.ndarray</span>
+<span class="sd">        Length of each segment (m).</span>
+<span class="sd">    segment_dalpha : np.ndarray</span>
+<span class="sd">        Angle subtended by each segment (rad). For straight segments,</span>
+<span class="sd">        ``dalpha = 0``; for circular arcs, ``dalpha = arc_length /</span>
+<span class="sd">        radius``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">segment_lengths</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">segment_dalpha</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">segment_lengths</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">segment_lengths</span><span class="p">,</span>
+                                            <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">segment_dalpha</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">segment_dalpha</span><span class="p">,</span>
+                                           <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">segment_lengths</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">segment_dalpha</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;segment_lengths and segment_dalpha must have same shape&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">segment_lengths</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;segment_lengths must be &gt;= 0&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">segment_dalpha</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;segment_dalpha (absolute) must be &gt;= 0&quot;</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">total_length</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">segment_lengths</span><span class="p">))</span>
+
+<div class="viewcode-block" id="TendonProfile.cumulative_x_and_alpha">
+<a class="viewcode-back" href="../../../api/bridges.html#femsolver.bridges.pt_tendon.TendonProfile.cumulative_x_and_alpha">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cumulative_x_and_alpha</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return ``(x, alpha)`` at segment ENDPOINTS (n+1 points,</span>
+<span class="sd">        starting at the jacking end with x=0, alpha=0).&quot;&quot;&quot;</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([[</span><span class="mf">0.0</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">segment_lengths</span><span class="p">)])</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([[</span><span class="mf">0.0</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">segment_dalpha</span><span class="p">)])</span>
+        <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">a</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="parabolic_drape_profile">
+<a class="viewcode-back" href="../../../api/bridges.html#femsolver.bridges.pt_tendon.parabolic_drape_profile">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">parabolic_drape_profile</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">L</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">drape</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">n_segments</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TendonProfile</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Approximate a parabolic tendon profile y = -4·drape·x·(L-x)/L^2</span>
+<span class="sd">    with ``n_segments`` equal-length straight chords. Computes the</span>
+<span class="sd">    cumulative angle change between consecutive chord directions.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    L : float</span>
+<span class="sd">        Span length (m).</span>
+<span class="sd">    drape : float</span>
+<span class="sd">        Maximum sag of the tendon below the centroid at mid-span (m,</span>
+<span class="sd">        positive).</span>
+<span class="sd">    n_segments : int, default 20</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">L</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;L must be &gt; 0&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">drape</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;drape must be &gt; 0&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">n_segments</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;need &gt;= 4 segments to capture the curve&quot;</span><span class="p">)</span>
+    <span class="n">x_nodes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">n_segments</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">y_nodes</span> <span class="o">=</span> <span class="o">-</span><span class="mf">4.0</span> <span class="o">*</span> <span class="n">drape</span> <span class="o">*</span> <span class="n">x_nodes</span> <span class="o">*</span> <span class="p">(</span><span class="n">L</span> <span class="o">-</span> <span class="n">x_nodes</span><span class="p">)</span> <span class="o">/</span> <span class="n">L</span> <span class="o">**</span> <span class="mi">2</span>
+    <span class="n">dx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">x_nodes</span><span class="p">)</span>
+    <span class="n">dy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">y_nodes</span><span class="p">)</span>
+    <span class="n">seg_len</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hypot</span><span class="p">(</span><span class="n">dx</span><span class="p">,</span> <span class="n">dy</span><span class="p">)</span>
+    <span class="c1"># Direction angle of each chord</span>
+    <span class="n">theta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="n">dy</span><span class="p">,</span> <span class="n">dx</span><span class="p">)</span>
+    <span class="c1"># Cumulative deviation magnitude</span>
+    <span class="n">dalpha</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">seg_len</span><span class="p">)</span>
+    <span class="n">dalpha</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">theta</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">TendonProfile</span><span class="p">(</span><span class="n">segment_lengths</span><span class="o">=</span><span class="n">seg_len</span><span class="p">,</span>
+                          <span class="n">segment_dalpha</span><span class="o">=</span><span class="n">dalpha</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># ============================================================ friction loss</span>
+
+<div class="viewcode-block" id="FrictionLossResult">
+<a class="viewcode-back" href="../../../api/bridges.html#femsolver.bridges.pt_tendon.FrictionLossResult">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">FrictionLossResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Friction + wobble loss along the tendon.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : np.ndarray</span>
+<span class="sd">        Distance from the jacking end at each segment endpoint (m).</span>
+<span class="sd">    P_over_P0 : np.ndarray</span>
+<span class="sd">        Force ratio P(x) / P_0 at each endpoint.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    The cumulative angle change ``alpha(x)`` is available from the</span>
+<span class="sd">    underlying profile via :meth:`TendonProfile.cumulative_x_and_alpha`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">P_over_P0</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span></div>
+
+
+
+<div class="viewcode-block" id="friction_loss">
+<a class="viewcode-back" href="../../../api/bridges.html#femsolver.bridges.pt_tendon.friction_loss">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">friction_loss</span><span class="p">(</span>
+    <span class="n">profile</span><span class="p">:</span> <span class="n">TendonProfile</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">mu</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.20</span><span class="p">,</span>
+    <span class="n">k</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0066</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FrictionLossResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Friction-loss profile P(x)/P_0 = exp(-(mu·alpha + k·x)).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mu : float, default 0.20</span>
+<span class="sd">        Curvature friction coefficient (typical 0.15-0.30 for</span>
+<span class="sd">        seven-wire strand in galvanised duct).</span>
+<span class="sd">    k : float, default 0.0066 /m</span>
+<span class="sd">        Wobble (length-effect) coefficient (typical 0.001-0.015 /m).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">mu</span> <span class="o">&lt;</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">k</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;mu and k must be &gt;= 0&quot;</span><span class="p">)</span>
+    <span class="n">x</span><span class="p">,</span> <span class="n">alpha</span> <span class="o">=</span> <span class="n">profile</span><span class="o">.</span><span class="n">cumulative_x_and_alpha</span><span class="p">()</span>
+    <span class="n">P_over_P0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">mu</span> <span class="o">*</span> <span class="n">alpha</span> <span class="o">+</span> <span class="n">k</span> <span class="o">*</span> <span class="n">x</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">FrictionLossResult</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">P_over_P0</span><span class="o">=</span><span class="n">P_over_P0</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># ============================================================ anchorage slip</span>
+
+<div class="viewcode-block" id="AnchorageSlipResult">
+<a class="viewcode-back" href="../../../api/bridges.html#femsolver.bridges.pt_tendon.AnchorageSlipResult">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">AnchorageSlipResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Anchorage-slip redistribution at the jacking end.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    l_a : float</span>
+<span class="sd">        Length over which the slip is absorbed (m).</span>
+<span class="sd">    P0_after_seating : float</span>
+<span class="sd">        Force at the jacking end AFTER seating (N).</span>
+<span class="sd">    P_profile : np.ndarray</span>
+<span class="sd">        Force at each sample point along the tendon AFTER seating (N).</span>
+<span class="sd">    x_sample : np.ndarray</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">l_a</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">P0_after_seating</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">P_profile</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">x_sample</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span></div>
+
+
+
+<div class="viewcode-block" id="anchorage_slip_loss">
+<a class="viewcode-back" href="../../../api/bridges.html#femsolver.bridges.pt_tendon.anchorage_slip_loss">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">anchorage_slip_loss</span><span class="p">(</span>
+    <span class="n">profile</span><span class="p">:</span> <span class="n">TendonProfile</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">P_0</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">mu</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.20</span><span class="p">,</span>
+    <span class="n">k</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0066</span><span class="p">,</span>
+    <span class="n">slip</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.006</span><span class="p">,</span>
+    <span class="n">E_s</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.95e11</span><span class="p">,</span>
+    <span class="n">A_ps</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AnchorageSlipResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Anchorage-slip prestress loss (after-seating profile).</span>
+
+<span class="sd">    The seating slip ``Delta_a`` at the anchor causes the tendon to</span>
+<span class="sd">    shorten by that much; the friction loss curve is mirrored about</span>
+<span class="sd">    the friction-loss-slope line over the affected length ``l_a``,</span>
+<span class="sd">    where::</span>
+
+<span class="sd">        Delta_a = (1 / (E_s A_ps)) * integral over l_a of (P_jack(x) - P_after(x)) dx</span>
+<span class="sd">                ≈ (l_a · DP_loss(l_a)) / (E_s A_ps)         (small-loss approx)</span>
+
+<span class="sd">    A simplified analytical solution (assuming constant friction</span>
+<span class="sd">    slope p = P_0 · (mu·alpha&#39;(0) + k)) gives::</span>
+
+<span class="sd">        l_a = sqrt(Delta_a · E_s · A_ps / p)</span>
+
+<span class="sd">    Force after seating is then::</span>
+
+<span class="sd">        P_after(x) = P_jack(2·l_a - x) for 0 &lt;= x &lt;= l_a</span>
+<span class="sd">                    = P_jack(x)         for x &gt; l_a</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fric</span> <span class="o">=</span> <span class="n">friction_loss</span><span class="p">(</span><span class="n">profile</span><span class="p">,</span> <span class="n">mu</span><span class="o">=</span><span class="n">mu</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="n">k</span><span class="p">)</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">fric</span><span class="o">.</span><span class="n">x</span>
+    <span class="n">P_jack</span> <span class="o">=</span> <span class="n">P_0</span> <span class="o">*</span> <span class="n">fric</span><span class="o">.</span><span class="n">P_over_P0</span>
+
+    <span class="c1"># Friction-loss slope near the anchor (use the first segment).</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;profile must have at least 1 segment&quot;</span><span class="p">)</span>
+    <span class="n">p_slope</span> <span class="o">=</span> <span class="p">(</span><span class="n">P_0</span> <span class="o">-</span> <span class="n">P_jack</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>     <span class="c1"># N / m</span>
+    <span class="k">if</span> <span class="n">p_slope</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="c1"># No friction loss at all -- slip is absorbed only at the</span>
+        <span class="c1"># anchor; effective l_a -&gt; 0.</span>
+        <span class="n">l_a</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="n">P_after</span> <span class="o">=</span> <span class="n">P_jack</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">AnchorageSlipResult</span><span class="p">(</span>
+            <span class="n">l_a</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">P0_after_seating</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">P_jack</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+            <span class="n">P_profile</span><span class="o">=</span><span class="n">P_after</span><span class="p">,</span> <span class="n">x_sample</span><span class="o">=</span><span class="n">x</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="n">l_a</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">slip</span> <span class="o">*</span> <span class="n">E_s</span> <span class="o">*</span> <span class="n">A_ps</span> <span class="o">/</span> <span class="n">p_slope</span><span class="p">))</span>
+    <span class="n">l_a</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">l_a</span><span class="p">,</span> <span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="c1"># Mirror the friction curve about its slope line over [0, l_a]</span>
+    <span class="c1"># to produce the post-seating curve.</span>
+    <span class="c1"># P_after(x) = P_jack(x) - 2*p_slope*(l_a - x) for x in [0, l_a]</span>
+    <span class="n">P_after</span> <span class="o">=</span> <span class="n">P_jack</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">in_la</span> <span class="o">=</span> <span class="n">x</span> <span class="o">&lt;=</span> <span class="n">l_a</span>
+    <span class="n">P_after</span><span class="p">[</span><span class="n">in_la</span><span class="p">]</span> <span class="o">=</span> <span class="n">P_jack</span><span class="p">[</span><span class="n">in_la</span><span class="p">]</span> <span class="o">-</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">p_slope</span> <span class="o">*</span> <span class="p">(</span><span class="n">l_a</span> <span class="o">-</span> <span class="n">x</span><span class="p">[</span><span class="n">in_la</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">AnchorageSlipResult</span><span class="p">(</span>
+        <span class="n">l_a</span><span class="o">=</span><span class="n">l_a</span><span class="p">,</span>
+        <span class="n">P0_after_seating</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">P_after</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+        <span class="n">P_profile</span><span class="o">=</span><span class="n">P_after</span><span class="p">,</span>
+        <span class="n">x_sample</span><span class="o">=</span><span class="n">x</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="c1"># ============================================================ equivalent prestress load</span>
+
+<div class="viewcode-block" id="equivalent_uniform_load_parabolic">
+<a class="viewcode-back" href="../../../api/bridges.html#femsolver.bridges.pt_tendon.equivalent_uniform_load_parabolic">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">equivalent_uniform_load_parabolic</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">P</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">drape</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">L</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Equivalent upward UDL from a parabolic tendon profile.</span>
+
+<span class="sd">    For a parabolic drape ``y = -4·drape·x·(L-x)/L^2`` with constant</span>
+<span class="sd">    prestress ``P`` along the tendon, the equivalent upward distributed</span>
+<span class="sd">    load on the beam is::</span>
+
+<span class="sd">        w_eq = 8 P drape / L^2</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    P : float</span>
+<span class="sd">        Effective prestress force (N), assumed constant along span.</span>
+<span class="sd">    drape : float</span>
+<span class="sd">        Maximum tendon eccentricity below the section centroid (m).</span>
+<span class="sd">    L : float</span>
+<span class="sd">        Span length (m).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">P</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;P must be &gt; 0&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">drape</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;drape must be &gt; 0&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">L</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;L must be &gt; 0&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="mf">8.0</span> <span class="o">*</span> <span class="n">P</span> <span class="o">*</span> <span class="n">drape</span> <span class="o">/</span> <span class="n">L</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

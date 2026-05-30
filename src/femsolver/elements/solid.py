@@ -1,5 +1,5 @@
-"""3-D continuum elements -- Hex8 (trilinear brick) and Tet4 (linear
-tetrahedron).
+"""3-D continuum elements -- Hex8 (trilinear), Hex20 (serendipity
+quadratic), and Tet4 (linear tetrahedron).
 
 Both elements use the standard isoparametric formulation and the
 6-component Voigt strain ordering
@@ -451,3 +451,216 @@ class Tet4(Element):
         u = self.gather_u()
         self.strain = B @ u
         self.stress = D @ self.strain
+
+
+# ============================================================ Hex20
+
+#: Master coords of the 20 nodes of the bi-unit cube for the
+#: serendipity quadratic hex. Corners 1..8 (Hex8 ordering); then
+#: edges 9..12 on the bottom face, 13..16 on the top, 17..20 vertical.
+_HEX20_MASTER = np.array([
+    [-1, -1, -1], [+1, -1, -1], [+1, +1, -1], [-1, +1, -1],  # 1-4 bottom corners
+    [-1, -1, +1], [+1, -1, +1], [+1, +1, +1], [-1, +1, +1],  # 5-8 top corners
+    [ 0, -1, -1], [+1,  0, -1], [ 0, +1, -1], [-1,  0, -1],  # 9-12 bottom edges
+    [ 0, -1, +1], [+1,  0, +1], [ 0, +1, +1], [-1,  0, +1],  # 13-16 top edges
+    [-1, -1,  0], [+1, -1,  0], [+1, +1,  0], [-1, +1,  0],  # 17-20 vertical edges
+], dtype=float)
+
+
+def _hex20_shape(xi: float, eta: float, zeta: float) -> np.ndarray:
+    """20-vector of serendipity-quadratic shape functions."""
+    N = np.empty(20)
+    # Corners (i = 0..7)
+    for i in range(8):
+        xi_i, eta_i, zeta_i = _HEX20_MASTER[i]
+        N[i] = 0.125 * (1.0 + xi * xi_i) * (1.0 + eta * eta_i) \
+               * (1.0 + zeta * zeta_i) \
+               * (xi * xi_i + eta * eta_i + zeta * zeta_i - 2.0)
+    # Mid-edges: pick the master coord with 0
+    for i in range(8, 20):
+        xi_i, eta_i, zeta_i = _HEX20_MASTER[i]
+        if xi_i == 0.0:
+            N[i] = 0.25 * (1.0 - xi * xi) * (1.0 + eta * eta_i) \
+                   * (1.0 + zeta * zeta_i)
+        elif eta_i == 0.0:
+            N[i] = 0.25 * (1.0 - eta * eta) * (1.0 + xi * xi_i) \
+                   * (1.0 + zeta * zeta_i)
+        else:                 # zeta_i == 0
+            N[i] = 0.25 * (1.0 - zeta * zeta) * (1.0 + xi * xi_i) \
+                   * (1.0 + eta * eta_i)
+    return N
+
+
+def _hex20_dN_dxi(xi: float, eta: float, zeta: float) -> np.ndarray:
+    """(3, 20) array of shape-function derivatives in master coords."""
+    dN = np.zeros((3, 20))
+    # Corners
+    for i in range(8):
+        xi_i, eta_i, zeta_i = _HEX20_MASTER[i]
+        f = (1.0 + xi * xi_i)
+        g = (1.0 + eta * eta_i)
+        h = (1.0 + zeta * zeta_i)
+        s = xi * xi_i + eta * eta_i + zeta * zeta_i - 2.0
+        dN[0, i] = 0.125 * xi_i * g * h * (s + f)
+        dN[1, i] = 0.125 * eta_i * f * h * (s + g)
+        dN[2, i] = 0.125 * zeta_i * f * g * (s + h)
+    # Mid-edges
+    for i in range(8, 20):
+        xi_i, eta_i, zeta_i = _HEX20_MASTER[i]
+        if xi_i == 0.0:
+            f0 = (1.0 - xi * xi)
+            g = (1.0 + eta * eta_i)
+            h = (1.0 + zeta * zeta_i)
+            dN[0, i] = -0.5 * xi * g * h
+            dN[1, i] = 0.25 * eta_i * f0 * h
+            dN[2, i] = 0.25 * zeta_i * f0 * g
+        elif eta_i == 0.0:
+            f = (1.0 + xi * xi_i)
+            g0 = (1.0 - eta * eta)
+            h = (1.0 + zeta * zeta_i)
+            dN[0, i] = 0.25 * xi_i * g0 * h
+            dN[1, i] = -0.5 * eta * f * h
+            dN[2, i] = 0.25 * zeta_i * f * g0
+        else:           # zeta_i == 0
+            f = (1.0 + xi * xi_i)
+            g = (1.0 + eta * eta_i)
+            h0 = (1.0 - zeta * zeta)
+            dN[0, i] = 0.25 * xi_i * g * h0
+            dN[1, i] = 0.25 * eta_i * f * h0
+            dN[2, i] = -0.5 * zeta * f * g
+    return dN
+
+
+class Hex20(Element):
+    """20-node serendipity quadratic hexahedron.
+
+    Parameters
+    ----------
+    tag : int
+    nodes : sequence of 20 node tags. Corners 1-8 (Hex8 order), then
+        12 mid-edge nodes: 9-12 bottom edges, 13-16 top edges,
+        17-20 vertical edges.
+    material : ElasticIsotropic
+    quadrature : int, default 3
+        Gauss points per direction. 3 = 27 GPs (full integration for
+        quadratic shapes), 2 = 8 GPs (reduced).
+    """
+
+    n_nodes = 20
+    dofs_per_node = 3
+
+    def __init__(self, tag, nodes, material, *, quadrature: int = 3):
+        super().__init__(tag, nodes, material)
+        self.quadrature = int(quadrature)
+        self.gp_stress: list[np.ndarray] = []
+        self.gp_strain: list[np.ndarray] = []
+        self._body_force: np.ndarray = np.zeros(3)
+
+    def _jacobian(self, xi, eta, zeta, X):
+        dN = _hex20_dN_dxi(xi, eta, zeta)
+        J = dN @ X                # (3, 3)
+        detJ = float(np.linalg.det(J))
+        if detJ <= 0.0:
+            raise ValueError(
+                f"Hex20 element {self.tag}: non-positive Jacobian "
+                f"({detJ:g}) at ({xi}, {eta}, {zeta})."
+            )
+        Jinv = np.linalg.inv(J)
+        dN_dx = Jinv @ dN         # (3, 20)
+        return J, detJ, dN_dx
+
+    def K_global(self) -> np.ndarray:
+        X = self.node_coords()              # (20, 3)
+        D = self.material.D_3d()
+        K = np.zeros((60, 60))
+        xi, eta, zeta, w = gauss_legendre_3d_hex(self.quadrature)
+        for q in range(xi.size):
+            _, detJ, dN_dx = self._jacobian(
+                float(xi[q]), float(eta[q]), float(zeta[q]), X,
+            )
+            B = _voigt_B_3d(dN_dx, n_nodes=20)
+            K += (B.T @ D @ B) * (detJ * float(w[q]))
+        return K
+
+    def K_tangent_global(self) -> np.ndarray:
+        return self.K_global()
+
+    def M_global(self, *, lumped: bool = False) -> np.ndarray:
+        rho = self.material.rho
+        if rho == 0.0:
+            return np.zeros((60, 60))
+        X = self.node_coords()
+        M = np.zeros((60, 60))
+        xi, eta, zeta, w = gauss_legendre_3d_hex(self.quadrature)
+        for q in range(xi.size):
+            N = _hex20_shape(
+                float(xi[q]), float(eta[q]), float(zeta[q]),
+            )
+            _, detJ, _ = self._jacobian(
+                float(xi[q]), float(eta[q]), float(zeta[q]), X,
+            )
+            jw = rho * detJ * float(w[q])
+            Nbar = np.zeros((3, 60))
+            for i in range(20):
+                Nbar[0, 3 * i + 0] = N[i]
+                Nbar[1, 3 * i + 1] = N[i]
+                Nbar[2, 3 * i + 2] = N[i]
+            M += (Nbar.T @ Nbar) * jw
+        if lumped:
+            # HRZ for 20-node hex: scale diagonal so per-direction total
+            # mass matches the consistent mass.
+            diag = np.diag(M).copy()
+            for d in range(3):
+                slot = diag[d::3]
+                total = float(M.sum(axis=1)[d::3].sum())
+                weights_sum = float(slot.sum())
+                if weights_sum > 0:
+                    slot[:] *= total / weights_sum
+                diag[d::3] = slot
+            return np.diag(diag)
+        return M
+
+    def set_body_force(self, bx: float, by: float, bz: float) -> None:
+        self._body_force = np.array([float(bx), float(by), float(bz)])
+
+    def clear_distributed_loads(self) -> None:
+        self._body_force = np.zeros(3)
+
+    def f_eq_global(self) -> np.ndarray:
+        if not np.any(self._body_force):
+            return np.zeros(60)
+        X = self.node_coords()
+        f = np.zeros(60)
+        b = self._body_force
+        xi, eta, zeta, w = gauss_legendre_3d_hex(self.quadrature)
+        for q in range(xi.size):
+            N = _hex20_shape(
+                float(xi[q]), float(eta[q]), float(zeta[q]),
+            )
+            _, detJ, _ = self._jacobian(
+                float(xi[q]), float(eta[q]), float(zeta[q]), X,
+            )
+            jw = detJ * float(w[q])
+            for i in range(20):
+                f[3 * i + 0] += N[i] * b[0] * jw
+                f[3 * i + 1] += N[i] * b[1] * jw
+                f[3 * i + 2] += N[i] * b[2] * jw
+        return f
+
+    def recover(self) -> None:
+        X = self.node_coords()
+        u = self.gather_u()
+        D = self.material.D_3d()
+        self.gp_stress = []
+        self.gp_strain = []
+        xi, eta, zeta, _ = gauss_legendre_3d_hex(self.quadrature)
+        for q in range(xi.size):
+            _, _, dN_dx = self._jacobian(
+                float(xi[q]), float(eta[q]), float(zeta[q]), X,
+            )
+            B = _voigt_B_3d(dN_dx, n_nodes=20)
+            eps = B @ u
+            sig = D @ eps
+            self.gp_strain.append(eps)
+            self.gp_stress.append(sig)
+

@@ -1,0 +1,237 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.elements.truss_corot &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.elements.truss_corot</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.elements.truss_corot</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Corotational 2D truss element with engineering strain.</span>
+
+<span class="sd">Same kinematics as the linear :class:`Truss2D` (2 nodes, 2 DOF/node), but</span>
+<span class="sd">the chord direction and length are recomputed from the *current*</span>
+<span class="sd">configuration each iteration. The tangent stiffness picks up a</span>
+<span class="sd">geometric-stiffness contribution proportional to the current axial</span>
+<span class="sd">force, which is what allows snap-through and large-rotation behaviour</span>
+<span class="sd">to be captured.</span>
+
+<span class="sd">Formulation</span>
+<span class="sd">-----------</span>
+
+<span class="sd">Reference (initial) chord vector ``D = X2 - X1`` of length ``L0``;</span>
+<span class="sd">current chord ``d = D + (u2 - u1)`` of length ``L`` and unit vector</span>
+<span class="sd">``n_hat = d / L``. With engineering strain ``eps = (L - L0) / L0`` and</span>
+<span class="sd">axial force ``N = E A eps``:</span>
+
+<span class="sd">    f_int_e = N * [-n_hat; n_hat]    (4-vector, in global coords)</span>
+
+<span class="sd">    K_T = [[A, -A], [-A, A]]         (block 4x4, each block 2x2)</span>
+
+<span class="sd">with</span>
+
+<span class="sd">    A = (E A / L0) * n_hat n_hat^T  +  (N / L) * (I - n_hat n_hat^T)</span>
+
+<span class="sd">The first term is the material tangent (positive definite, present even</span>
+<span class="sd">when N=0); the second is the geometric stiffness, which is</span>
+<span class="sd">*destabilising* in compression (N&lt;0) and stiffens transverse motion in</span>
+<span class="sd">tension (the cable-stiffening effect).</span>
+
+<span class="sd">At ``u=0`` the element reduces to :class:`Truss2D` exactly — used as a</span>
+<span class="sd">free verification path.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.elements.truss</span><span class="w"> </span><span class="kn">import</span> <span class="n">Truss2D</span>
+
+
+<div class="viewcode-block" id="Truss2DCorotational">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.truss_corot.Truss2DCorotational">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Truss2DCorotational</span><span class="p">(</span><span class="n">Truss2D</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Corotational truss in 2D — geometrically-nonlinear, materially-linear.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_current_geometry</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return ``(L0, n_hat, L, N)`` at the current state.</span>
+
+<span class="sd">        ``L0`` and the initial direction come from node coordinates;</span>
+<span class="sd">        ``L``, ``n_hat`` come from coords + current ``Node.disp``.</span>
+<span class="sd">        ``N = E A eps`` with engineering strain.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">L0</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">length_and_dirs</span><span class="p">()</span>
+        <span class="n">coords</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_coords</span><span class="p">()</span>
+        <span class="n">D</span> <span class="o">=</span> <span class="n">coords</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">coords</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gather_u</span><span class="p">()</span>
+        <span class="n">u1</span> <span class="o">=</span> <span class="n">u</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">u2</span> <span class="o">=</span> <span class="n">u</span><span class="p">[</span><span class="mi">2</span><span class="p">:</span><span class="mi">4</span><span class="p">]</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="n">D</span> <span class="o">+</span> <span class="p">(</span><span class="n">u2</span> <span class="o">-</span> <span class="n">u1</span><span class="p">)</span>
+        <span class="n">L</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">d</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">L</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;corotational truss </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">tag</span><span class="si">}</span><span class="s2">: nodes coincide at current state&quot;</span>
+            <span class="p">)</span>
+        <span class="n">n_hat</span> <span class="o">=</span> <span class="n">d</span> <span class="o">/</span> <span class="n">L</span>
+        <span class="n">eps</span> <span class="o">=</span> <span class="p">(</span><span class="n">L</span> <span class="o">-</span> <span class="n">L0</span><span class="p">)</span> <span class="o">/</span> <span class="n">L0</span>
+        <span class="n">N</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">E</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">area</span> <span class="o">*</span> <span class="n">eps</span>
+        <span class="k">return</span> <span class="n">L0</span><span class="p">,</span> <span class="n">n_hat</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">N</span>
+
+    <span class="c1"># K_global remains the *initial* stiffness inherited from Truss2D — used</span>
+    <span class="c1"># when this element is asked for an initial-stiffness K (e.g., linear</span>
+    <span class="c1"># static analysis or the first iteration of modified Newton).</span>
+
+<div class="viewcode-block" id="Truss2DCorotational.K_tangent_global">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.truss_corot.Truss2DCorotational.K_tangent_global">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">K_tangent_global</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">L0</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">N</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_geometry</span><span class="p">()</span>
+        <span class="n">I2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">nn</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+        <span class="n">A</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">E</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">area</span> <span class="o">/</span> <span class="n">L0</span><span class="p">)</span> <span class="o">*</span> <span class="n">nn</span> <span class="o">+</span> <span class="p">(</span><span class="n">N</span> <span class="o">/</span> <span class="n">L</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">I2</span> <span class="o">-</span> <span class="n">nn</span><span class="p">)</span>
+        <span class="n">K</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+        <span class="n">K</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">A</span>
+        <span class="n">K</span><span class="p">[</span><span class="mi">2</span><span class="p">:</span><span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span><span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="n">A</span>
+        <span class="n">K</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span><span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">A</span>
+        <span class="n">K</span><span class="p">[</span><span class="mi">2</span><span class="p">:</span><span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">A</span>
+        <span class="k">return</span> <span class="n">K</span></div>
+
+
+<div class="viewcode-block" id="Truss2DCorotational.f_int_global">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.truss_corot.Truss2DCorotational.f_int_global">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">f_int_global</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">N</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_geometry</span><span class="p">()</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+        <span class="n">f</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">N</span> <span class="o">*</span> <span class="n">n</span>
+        <span class="n">f</span><span class="p">[</span><span class="mi">2</span><span class="p">:</span><span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="n">N</span> <span class="o">*</span> <span class="n">n</span>
+        <span class="k">return</span> <span class="n">f</span></div>
+
+
+    <span class="c1"># mass: inherit from Truss2D — the consistent mass is unchanged by</span>
+    <span class="c1"># geometric nonlinearity at this level (still uses initial geometry,</span>
+    <span class="c1"># which is a standard approximation).</span>
+
+<div class="viewcode-block" id="Truss2DCorotational.recover">
+<a class="viewcode-back" href="../../../api/elements.html#femsolver.elements.truss_corot.Truss2DCorotational.recover">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">recover</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">L0</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">N</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_geometry</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">axial_force</span> <span class="o">=</span> <span class="n">N</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">axial_stress</span> <span class="o">=</span> <span class="n">N</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">area</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

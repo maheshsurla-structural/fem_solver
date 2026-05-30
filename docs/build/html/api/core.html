@@ -1,0 +1,518 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Core model &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Materials" href="materials.html" />
+    <link rel="prev" title="V&amp;V benchmark suite" href="../guide/vv_benchmarks.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Core model</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#femsolver.core.model.Model"><code class="docutils literal notranslate"><span class="pre">Model</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.model.Model.add_node"><code class="docutils literal notranslate"><span class="pre">Model.add_node()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.model.Model.node"><code class="docutils literal notranslate"><span class="pre">Model.node()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.model.Model.nodes"><code class="docutils literal notranslate"><span class="pre">Model.nodes</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.model.Model.add_element"><code class="docutils literal notranslate"><span class="pre">Model.add_element()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.model.Model.element"><code class="docutils literal notranslate"><span class="pre">Model.element()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.model.Model.elements"><code class="docutils literal notranslate"><span class="pre">Model.elements</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.model.Model.add_material"><code class="docutils literal notranslate"><span class="pre">Model.add_material()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.model.Model.material"><code class="docutils literal notranslate"><span class="pre">Model.material()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.model.Model.fix"><code class="docutils literal notranslate"><span class="pre">Model.fix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.model.Model.add_mp_constraint"><code class="docutils literal notranslate"><span class="pre">Model.add_mp_constraint()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.model.Model.mp_constraints"><code class="docutils literal notranslate"><span class="pre">Model.mp_constraints</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.model.Model.equal_dof"><code class="docutils literal notranslate"><span class="pre">Model.equal_dof()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.model.Model.rigid_link"><code class="docutils literal notranslate"><span class="pre">Model.rigid_link()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.model.Model.rigid_diaphragm"><code class="docutils literal notranslate"><span class="pre">Model.rigid_diaphragm()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.model.Model.add_nodal_load"><code class="docutils literal notranslate"><span class="pre">Model.add_nodal_load()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.model.Model.clear_loads"><code class="docutils literal notranslate"><span class="pre">Model.clear_loads()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.model.Model.number_dofs"><code class="docutils literal notranslate"><span class="pre">Model.number_dofs()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.model.Model.neq"><code class="docutils literal notranslate"><span class="pre">Model.neq</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.model.Model.element_dof_map"><code class="docutils literal notranslate"><span class="pre">Model.element_dof_map()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.model.Model.reset_results"><code class="docutils literal notranslate"><span class="pre">Model.reset_results()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#femsolver.core.node.Node"><code class="docutils literal notranslate"><span class="pre">Node</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.node.Node.tag"><code class="docutils literal notranslate"><span class="pre">Node.tag</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.node.Node.coords"><code class="docutils literal notranslate"><span class="pre">Node.coords</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.node.Node.ndf"><code class="docutils literal notranslate"><span class="pre">Node.ndf</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.node.Node.fixity"><code class="docutils literal notranslate"><span class="pre">Node.fixity</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.node.Node.eqn"><code class="docutils literal notranslate"><span class="pre">Node.eqn</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.node.Node.disp"><code class="docutils literal notranslate"><span class="pre">Node.disp</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.node.Node.reaction"><code class="docutils literal notranslate"><span class="pre">Node.reaction</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.node.Node.mode_disp"><code class="docutils literal notranslate"><span class="pre">Node.mode_disp</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.node.Node.velocity"><code class="docutils literal notranslate"><span class="pre">Node.velocity</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.node.Node.acceleration"><code class="docutils literal notranslate"><span class="pre">Node.acceleration</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.node.Node.fix"><code class="docutils literal notranslate"><span class="pre">Node.fix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.node.Node.free"><code class="docutils literal notranslate"><span class="pre">Node.free()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.node.Node.add_load"><code class="docutils literal notranslate"><span class="pre">Node.add_load()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.node.Node.load"><code class="docutils literal notranslate"><span class="pre">Node.load</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#femsolver.core.node.Node.reset_results"><code class="docutils literal notranslate"><span class="pre">Node.reset_results()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Core model</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/core.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="core-model">
+<h1>Core model<a class="headerlink" href="#core-model" title="Link to this heading"></a></h1>
+<p>The model assembly layer: nodes, the model container, and DOF numbering.</p>
+<p id="module-femsolver.core.model">Model — the top-level container, equivalent to OpenSees’ Domain.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="femsolver.core.model.Model">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">femsolver.core.model.</span></span><span class="sig-name descname"><span class="pre">Model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ndm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ndf</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/core/model.html#Model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.core.model.Model" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Container for nodes, elements, materials, constraints, and loads.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ndm</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of model dimensions (2 or 3).</p></li>
+<li><p><strong>ndf</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Default number of DOFs per node. Common combinations:
+(2,2)=2D truss, (2,3)=2D frame, (3,3)=3D truss, (3,6)=3D frame.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="femsolver.core.model.Model.add_node">
+<span class="sig-name descname"><span class="pre">add_node</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tag</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">coords</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/core/model.html#Model.add_node"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.core.model.Model.add_node" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>tag</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#femsolver.core.node.Node" title="femsolver.core.node.Node"><em>Node</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="femsolver.core.model.Model.node">
+<span class="sig-name descname"><span class="pre">node</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tag</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/core/model.html#Model.node"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.core.model.Model.node" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>tag</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#femsolver.core.node.Node" title="femsolver.core.node.Node"><em>Node</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="femsolver.core.model.Model.nodes">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">nodes</span></span><a class="headerlink" href="#femsolver.core.model.Model.nodes" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="femsolver.core.model.Model.add_element">
+<span class="sig-name descname"><span class="pre">add_element</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">element</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/core/model.html#Model.add_element"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.core.model.Model.add_element" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="femsolver.core.model.Model.element">
+<span class="sig-name descname"><span class="pre">element</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tag</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/core/model.html#Model.element"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.core.model.Model.element" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>tag</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="femsolver.core.model.Model.elements">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">elements</span></span><a class="headerlink" href="#femsolver.core.model.Model.elements" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="femsolver.core.model.Model.add_material">
+<span class="sig-name descname"><span class="pre">add_material</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">material</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/core/model.html#Model.add_material"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.core.model.Model.add_material" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="femsolver.core.model.Model.material">
+<span class="sig-name descname"><span class="pre">material</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tag</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/core/model.html#Model.material"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.core.model.Model.material" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>tag</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="femsolver.core.model.Model.fix">
+<span class="sig-name descname"><span class="pre">fix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node_tag</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/core/model.html#Model.fix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.core.model.Model.fix" title="Link to this definition"></a></dt>
+<dd><p>Apply single-point constraints (boundary conditions) at a node.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>node_tag</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>mask</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterable" title="(in Python v3.14)"><em>Iterable</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>]</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="femsolver.core.model.Model.add_mp_constraint">
+<span class="sig-name descname"><span class="pre">add_mp_constraint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">constraint</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/core/model.html#Model.add_mp_constraint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.core.model.Model.add_mp_constraint" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="femsolver.core.model.Model.mp_constraints">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">mp_constraints</span></span><a class="headerlink" href="#femsolver.core.model.Model.mp_constraints" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="femsolver.core.model.Model.equal_dof">
+<span class="sig-name descname"><span class="pre">equal_dof</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">retained</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">constrained</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dofs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/core/model.html#Model.equal_dof"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.core.model.Model.equal_dof" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>retained</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>constrained</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>dofs</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterable" title="(in Python v3.14)"><em>Iterable</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>]</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="femsolver.core.model.Model.rigid_link">
+<span class="sig-name descname"><span class="pre">rigid_link</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">retained</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">constrained</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kind</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'beam'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/core/model.html#Model.rigid_link"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.core.model.Model.rigid_link" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>retained</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>constrained</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>kind</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="femsolver.core.model.Model.rigid_diaphragm">
+<span class="sig-name descname"><span class="pre">rigid_diaphragm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">master</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">slaves</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">perp_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/core/model.html#Model.rigid_diaphragm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.core.model.Model.rigid_diaphragm" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>master</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>slaves</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterable" title="(in Python v3.14)"><em>Iterable</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>]</em>)</p></li>
+<li><p><strong>perp_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="femsolver.core.model.Model.add_nodal_load">
+<span class="sig-name descname"><span class="pre">add_nodal_load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node_tag</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/core/model.html#Model.add_nodal_load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.core.model.Model.add_nodal_load" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>node_tag</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="femsolver.core.model.Model.clear_loads">
+<span class="sig-name descname"><span class="pre">clear_loads</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/core/model.html#Model.clear_loads"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.core.model.Model.clear_loads" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="femsolver.core.model.Model.number_dofs">
+<span class="sig-name descname"><span class="pre">number_dofs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/core/model.html#Model.number_dofs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.core.model.Model.number_dofs" title="Link to this definition"></a></dt>
+<dd><p>Assign equation numbers to free DOFs. Fixed DOFs get -1.</p>
+<p>Returns the number of free equations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="femsolver.core.model.Model.neq">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">neq</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="headerlink" href="#femsolver.core.model.Model.neq" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="femsolver.core.model.Model.element_dof_map">
+<span class="sig-name descname"><span class="pre">element_dof_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">element</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/core/model.html#Model.element_dof_map"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.core.model.Model.element_dof_map" title="Link to this definition"></a></dt>
+<dd><p>Return the global equation numbers for the DOFs of an element.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>ndarray</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="femsolver.core.model.Model.reset_results">
+<span class="sig-name descname"><span class="pre">reset_results</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/core/model.html#Model.reset_results"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.core.model.Model.reset_results" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<p id="module-femsolver.core.node">Nodes carry coordinates, DOF state, equation numbers, displacements, and reactions.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="femsolver.core.node.Node">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">femsolver.core.node.</span></span><span class="sig-name descname"><span class="pre">Node</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tag</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coords</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ndf</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/core/node.html#Node"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.core.node.Node" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tag</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>coords</strong> (<em>np.ndarray</em>)</p></li>
+<li><p><strong>ndf</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="femsolver.core.node.Node.tag">
+<span class="sig-name descname"><span class="pre">tag</span></span><a class="headerlink" href="#femsolver.core.node.Node.tag" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="femsolver.core.node.Node.coords">
+<span class="sig-name descname"><span class="pre">coords</span></span><a class="headerlink" href="#femsolver.core.node.Node.coords" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="femsolver.core.node.Node.ndf">
+<span class="sig-name descname"><span class="pre">ndf</span></span><a class="headerlink" href="#femsolver.core.node.Node.ndf" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="femsolver.core.node.Node.fixity">
+<span class="sig-name descname"><span class="pre">fixity</span></span><a class="headerlink" href="#femsolver.core.node.Node.fixity" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="femsolver.core.node.Node.eqn">
+<span class="sig-name descname"><span class="pre">eqn</span></span><a class="headerlink" href="#femsolver.core.node.Node.eqn" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="femsolver.core.node.Node.disp">
+<span class="sig-name descname"><span class="pre">disp</span></span><a class="headerlink" href="#femsolver.core.node.Node.disp" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="femsolver.core.node.Node.reaction">
+<span class="sig-name descname"><span class="pre">reaction</span></span><a class="headerlink" href="#femsolver.core.node.Node.reaction" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="femsolver.core.node.Node.mode_disp">
+<span class="sig-name descname"><span class="pre">mode_disp</span></span><a class="headerlink" href="#femsolver.core.node.Node.mode_disp" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="femsolver.core.node.Node.velocity">
+<span class="sig-name descname"><span class="pre">velocity</span></span><a class="headerlink" href="#femsolver.core.node.Node.velocity" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="femsolver.core.node.Node.acceleration">
+<span class="sig-name descname"><span class="pre">acceleration</span></span><a class="headerlink" href="#femsolver.core.node.Node.acceleration" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="femsolver.core.node.Node.fix">
+<span class="sig-name descname"><span class="pre">fix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mask</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/core/node.html#Node.fix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.core.node.Node.fix" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="femsolver.core.node.Node.free">
+<span class="sig-name descname"><span class="pre">free</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mask</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/core/node.html#Node.free"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.core.node.Node.free" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="femsolver.core.node.Node.add_load">
+<span class="sig-name descname"><span class="pre">add_load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">load</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/core/node.html#Node.add_load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.core.node.Node.add_load" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="femsolver.core.node.Node.load">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">load</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><span class="pre">ndarray</span></a></span><a class="headerlink" href="#femsolver.core.node.Node.load" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="femsolver.core.node.Node.reset_results">
+<span class="sig-name descname"><span class="pre">reset_results</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/core/node.html#Node.reset_results"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.core.node.Node.reset_results" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../guide/vv_benchmarks.html" class="btn btn-neutral float-left" title="V&amp;V benchmark suite" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="materials.html" class="btn btn-neutral float-right" title="Materials" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

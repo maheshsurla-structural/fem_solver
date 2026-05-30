@@ -1,0 +1,528 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.design.concrete.column &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.design.concrete.column</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.design.concrete.column</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Rectangular tied-column P-M interaction surface per ACI 318-19 Ch. 22.4.</span>
+
+<span class="sd">For a given trial neutral-axis depth ``c`` (measured from the extreme</span>
+<span class="sd">compression fiber), strain compatibility and equilibrium give one</span>
+<span class="sd">point ``(P_n, M_n)`` on the nominal interaction surface:</span>
+
+<span class="sd">* Concrete contributes through the Whitney stress block: uniform</span>
+<span class="sd">  stress ``0.85 f_c&#39;`` over depth ``a = β_1 c`` (capped at ``h``).</span>
+<span class="sd">* Each rebar layer contributes ``A_si · (f_si - 0.85 f_c&#39;)`` when it</span>
+<span class="sd">  lies in the compression block (the bar displaces concrete), or</span>
+<span class="sd">  ``A_si · f_si`` otherwise, where ``f_si = clip(E_s ε_i, -f_y, +f_y)``</span>
+<span class="sd">  and ``ε_i = ε_cu (c - d_i) / c``.</span>
+
+<span class="sd">Convention</span>
+<span class="sd">----------</span>
+<span class="sd">* Compression is **positive** for both axial force ``P_n`` and the</span>
+<span class="sd">  stress at each fiber.</span>
+<span class="sd">* Positive moment ``M_n`` produces tension at the bottom of the</span>
+<span class="sd">  section (sagging) -- i.e., compression at the top.</span>
+<span class="sd">* The &quot;extreme compression fiber&quot; is at the top of the section</span>
+<span class="sd">  (depth 0); ``d_i`` is the depth from this fiber to each rebar</span>
+<span class="sd">  layer.</span>
+
+<span class="sd">ACI provisions</span>
+<span class="sd">--------------</span>
+<span class="sd">* §22.4.2.1: ``P_n_max = 0.80 · P_o`` for **tied** columns;</span>
+<span class="sd">  ``0.85 · P_o`` for **spirally-reinforced** columns.</span>
+<span class="sd">* §22.4.2.2: ``P_o = 0.85 f_c&#39; (A_g - A_st) + f_y A_st``.</span>
+<span class="sd">* Strain compatibility: ``ε_cu = 0.003`` at extreme compression</span>
+<span class="sd">  fiber.</span>
+<span class="sd">* §21.2.2: ``φ`` is interpolated from 0.65 (tied, compression-</span>
+<span class="sd">  controlled) / 0.75 (spiral) to 0.90 (tension-controlled) based on</span>
+<span class="sd">  the extreme tension steel&#39;s strain ``ε_t``.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.design.concrete.section</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">EPSILON_CU</span><span class="p">,</span>
+    <span class="n">E_STEEL</span><span class="p">,</span>
+    <span class="n">ConcreteSection</span><span class="p">,</span>
+    <span class="n">phi_for_strain</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<span class="c1"># ============================================================ result types</span>
+
+<div class="viewcode-block" id="InteractionPoint">
+<a class="viewcode-back" href="../../../../api/design.html#femsolver.design.concrete.column.InteractionPoint">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">InteractionPoint</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;One point on the P-M interaction surface.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    c : float</span>
+<span class="sd">        Neutral-axis depth from extreme compression fiber (m). Can be</span>
+<span class="sd">        ``inf`` for the pure-axial-compression cap.</span>
+<span class="sd">    P_n : float</span>
+<span class="sd">        Nominal axial capacity (N), compression positive.</span>
+<span class="sd">    M_n : float</span>
+<span class="sd">        Nominal moment capacity (N·m).</span>
+<span class="sd">    phi : float</span>
+<span class="sd">        Strength-reduction factor per Table 21.2.2.</span>
+<span class="sd">    phi_P_n : float</span>
+<span class="sd">        Design axial capacity = ``φ · P_n``.</span>
+<span class="sd">    phi_M_n : float</span>
+<span class="sd">        Design moment capacity = ``φ · M_n``.</span>
+<span class="sd">    epsilon_t : float</span>
+<span class="sd">        Strain in the extreme tension steel (positive when tensile,</span>
+<span class="sd">        zero when no tension steel exists in tension zone).</span>
+<span class="sd">    section_type : str</span>
+<span class="sd">        ``&quot;tension-controlled&quot;`` / ``&quot;transition&quot;`` /</span>
+<span class="sd">        ``&quot;compression-controlled&quot;`` / ``&quot;pure-compression-cap&quot;``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">c</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">P_n</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">M_n</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">phi</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">phi_P_n</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">phi_M_n</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">epsilon_t</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">section_type</span><span class="p">:</span> <span class="nb">str</span></div>
+
+
+
+<div class="viewcode-block" id="InteractionSurface">
+<a class="viewcode-back" href="../../../../api/design.html#femsolver.design.concrete.column.InteractionSurface">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">InteractionSurface</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Full P-M interaction surface for a column section.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    points : list[InteractionPoint]</span>
+<span class="sd">        Surface points sorted by descending ``P_n`` (top of curve</span>
+<span class="sd">        first). The list starts with the ``P_n_max`` cap, sweeps</span>
+<span class="sd">        through the balanced and tension-controlled regions, and ends</span>
+<span class="sd">        at the pure-tension point.</span>
+<span class="sd">    P_o : float</span>
+<span class="sd">        Pure-axial-compression capacity per 22.4.2.2:</span>
+<span class="sd">        ``0.85 f_c&#39; (A_g - A_st) + f_y A_st``.</span>
+<span class="sd">    P_n_max : float</span>
+<span class="sd">        Cap on the axial capacity per 22.4.2.1: ``0.80 P_o`` (tied)</span>
+<span class="sd">        or ``0.85 P_o`` (spiral).</span>
+<span class="sd">    P_n_pure_tension : float</span>
+<span class="sd">        Pure axial-tension capacity = ``-A_st · f_y`` (negative).</span>
+<span class="sd">    M_o : float</span>
+<span class="sd">        Pure flexural capacity (M_n at P_n = 0, approximate by</span>
+<span class="sd">        interpolation of the surface).</span>
+<span class="sd">    spiral : bool</span>
+<span class="sd">        Whether the column is spirally reinforced.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">points</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">InteractionPoint</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">P_o</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">P_n_max</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">P_n_pure_tension</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">M_o</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">spiral</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Ensure sorted by descending P_n</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">points</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="o">-</span><span class="n">p</span><span class="o">.</span><span class="n">P_n</span><span class="p">)</span>
+
+<div class="viewcode-block" id="InteractionSurface.phi_M_n_at_P_u">
+<a class="viewcode-back" href="../../../../api/design.html#femsolver.design.concrete.column.InteractionSurface.phi_M_n_at_P_u">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">phi_M_n_at_P_u</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">P_u</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Design moment capacity at axial demand ``P_u`` (linear</span>
+<span class="sd">        interpolation across the surface points).&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="c1"># Sort by P_n ascending for searchsorted-style interpolation</span>
+        <span class="n">pts</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">P_n</span><span class="p">)</span>
+        <span class="n">Ps</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">P_n</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">P_u</span> <span class="o">&gt;=</span> <span class="n">Ps</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="c1"># Above max P_n on the surface: capacity is essentially</span>
+            <span class="c1"># the P_n_max cap with M_n -&gt; 0</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="k">if</span> <span class="n">P_u</span> <span class="o">&lt;=</span> <span class="n">Ps</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="n">pts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">phi_M_n</span>
+        <span class="c1"># Find bracketing pair</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">Ps</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">Ps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">P_u</span> <span class="o">&lt;=</span> <span class="n">Ps</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]:</span>
+                <span class="n">t</span> <span class="o">=</span> <span class="p">((</span><span class="n">P_u</span> <span class="o">-</span> <span class="n">Ps</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="n">Ps</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">Ps</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                     <span class="k">if</span> <span class="n">Ps</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">Ps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">pts</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">phi_M_n</span> <span class="o">+</span> <span class="n">t</span> <span class="o">*</span> <span class="p">(</span><span class="n">pts</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">phi_M_n</span>
+                                                <span class="o">-</span> <span class="n">pts</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">phi_M_n</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mf">0.0</span></div>
+
+
+<div class="viewcode-block" id="InteractionSurface.dcr">
+<a class="viewcode-back" href="../../../../api/design.html#femsolver.design.concrete.column.InteractionSurface.dcr">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">dcr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">P_u</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">M_u</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Demand-capacity ratio for a demand ``(P_u, M_u)``.</span>
+
+<span class="sd">        Uses the standard &quot;moment usage at axial demand&quot; check:</span>
+<span class="sd">        ``DCR = |M_u| / φ M_n(P_u)``. Returns ``inf`` if</span>
+<span class="sd">        ``φ M_n(P_u) = 0`` (i.e., demand is at or above the P_n_max</span>
+<span class="sd">        cap).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">phi_M</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">phi_M_n_at_P_u</span><span class="p">(</span><span class="n">P_u</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">phi_M</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">M_u</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0.0</span> <span class="k">else</span> <span class="mf">0.0</span>
+        <span class="k">return</span> <span class="nb">abs</span><span class="p">(</span><span class="n">M_u</span><span class="p">)</span> <span class="o">/</span> <span class="n">phi_M</span></div>
+</div>
+
+
+
+<span class="c1"># ============================================================ point evaluator</span>
+
+<div class="viewcode-block" id="column_interaction_point">
+<a class="viewcode-back" href="../../../../api/design.html#femsolver.design.concrete.column.column_interaction_point">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">column_interaction_point</span><span class="p">(</span><span class="n">section</span><span class="p">:</span> <span class="n">ConcreteSection</span><span class="p">,</span> <span class="n">c</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
+                                <span class="n">spiral</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">InteractionPoint</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute one point ``(P_n, M_n)`` on the interaction surface for a</span>
+<span class="sd">    given neutral-axis depth ``c``.</span>
+
+<span class="sd">    The bar layout used is from ``section.rebar``: ``top_bars`` at</span>
+<span class="sd">    depth ``top_cover`` from the extreme compression fiber, and</span>
+<span class="sd">    ``bottom_bars`` at depth ``h - bottom_cover``. Steel-area centroid</span>
+<span class="sd">    is treated as concentrated at each layer&#39;s depth (acceptable for</span>
+<span class="sd">    typical layouts).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">c</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;c must be positive, got </span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">fc</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">fc_prime</span>
+    <span class="n">fy</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">fy</span>
+    <span class="n">beta_1</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">beta_1</span>
+    <span class="n">eps_ty</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">epsilon_ty</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">b</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">h</span>
+
+    <span class="c1"># Bar layers (depth from compression fiber, area)</span>
+    <span class="n">bar_layers</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">section</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">As_top</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="n">bar_layers</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">section</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">top_cover</span><span class="p">,</span> <span class="n">section</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">As_top</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">section</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">As_bottom</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="n">bar_layers</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">h</span> <span class="o">-</span> <span class="n">section</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">bottom_cover</span><span class="p">,</span>
+                            <span class="n">section</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">As_bottom</span><span class="p">))</span>
+
+    <span class="c1"># Concrete force (Whitney block, depth a from top, capped at h)</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">beta_1</span> <span class="o">*</span> <span class="n">c</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>
+    <span class="n">F_c</span> <span class="o">=</span> <span class="mf">0.85</span> <span class="o">*</span> <span class="n">fc</span> <span class="o">*</span> <span class="n">b</span> <span class="o">*</span> <span class="n">a</span>
+    <span class="n">M_c</span> <span class="o">=</span> <span class="n">F_c</span> <span class="o">*</span> <span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">h</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">a</span><span class="p">)</span>        <span class="c1"># arm = h/2 - a/2</span>
+
+    <span class="c1"># Steel forces -- with concrete displacement correction for bars</span>
+    <span class="c1"># in the compression block.</span>
+    <span class="n">F_s_total</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">M_s_total</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">eps_t_signed</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>     <span class="c1"># track most-tensile (most-negative) strain</span>
+    <span class="k">for</span> <span class="n">d_i</span><span class="p">,</span> <span class="n">A_si</span> <span class="ow">in</span> <span class="n">bar_layers</span><span class="p">:</span>
+        <span class="n">eps_i</span> <span class="o">=</span> <span class="n">EPSILON_CU</span> <span class="o">*</span> <span class="p">(</span><span class="n">c</span> <span class="o">-</span> <span class="n">d_i</span><span class="p">)</span> <span class="o">/</span> <span class="n">c</span>
+        <span class="c1"># Clip stress to yield</span>
+        <span class="n">f_si</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="o">-</span><span class="n">fy</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">fy</span><span class="p">,</span> <span class="n">E_STEEL</span> <span class="o">*</span> <span class="n">eps_i</span><span class="p">))</span>
+        <span class="c1"># Concrete-displacement correction: bar inside the Whitney</span>
+        <span class="c1"># block displaces concrete that we already counted in F_c</span>
+        <span class="k">if</span> <span class="n">d_i</span> <span class="o">&lt;=</span> <span class="n">a</span><span class="p">:</span>
+            <span class="n">f_si_eff</span> <span class="o">=</span> <span class="n">f_si</span> <span class="o">-</span> <span class="mf">0.85</span> <span class="o">*</span> <span class="n">fc</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">f_si_eff</span> <span class="o">=</span> <span class="n">f_si</span>
+        <span class="n">F_si</span> <span class="o">=</span> <span class="n">A_si</span> <span class="o">*</span> <span class="n">f_si_eff</span>
+        <span class="n">F_s_total</span> <span class="o">+=</span> <span class="n">F_si</span>
+        <span class="n">M_s_total</span> <span class="o">+=</span> <span class="n">F_si</span> <span class="o">*</span> <span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">h</span> <span class="o">-</span> <span class="n">d_i</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">eps_i</span> <span class="o">&lt;</span> <span class="n">eps_t_signed</span><span class="p">:</span>
+            <span class="n">eps_t_signed</span> <span class="o">=</span> <span class="n">eps_i</span>
+
+    <span class="n">P_n</span> <span class="o">=</span> <span class="n">F_c</span> <span class="o">+</span> <span class="n">F_s_total</span>
+    <span class="n">M_n</span> <span class="o">=</span> <span class="n">M_c</span> <span class="o">+</span> <span class="n">M_s_total</span>
+
+    <span class="c1"># Extreme tension steel strain (positive when tensile)</span>
+    <span class="n">eps_t</span> <span class="o">=</span> <span class="o">-</span><span class="n">eps_t_signed</span> <span class="k">if</span> <span class="n">eps_t_signed</span> <span class="o">&lt;</span> <span class="mf">0.0</span> <span class="k">else</span> <span class="mf">0.0</span>
+    <span class="n">phi</span> <span class="o">=</span> <span class="n">phi_for_strain</span><span class="p">(</span><span class="n">eps_t</span><span class="p">,</span> <span class="n">eps_ty</span><span class="p">,</span> <span class="n">spiral</span><span class="o">=</span><span class="n">spiral</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">eps_t</span> <span class="o">&gt;=</span> <span class="mf">0.005</span><span class="p">:</span>
+        <span class="n">section_type</span> <span class="o">=</span> <span class="s2">&quot;tension-controlled&quot;</span>
+    <span class="k">elif</span> <span class="n">eps_t</span> <span class="o">&lt;=</span> <span class="n">eps_ty</span><span class="p">:</span>
+        <span class="n">section_type</span> <span class="o">=</span> <span class="s2">&quot;compression-controlled&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">section_type</span> <span class="o">=</span> <span class="s2">&quot;transition&quot;</span>
+
+    <span class="k">return</span> <span class="n">InteractionPoint</span><span class="p">(</span>
+        <span class="n">c</span><span class="o">=</span><span class="n">c</span><span class="p">,</span> <span class="n">P_n</span><span class="o">=</span><span class="n">P_n</span><span class="p">,</span> <span class="n">M_n</span><span class="o">=</span><span class="n">M_n</span><span class="p">,</span> <span class="n">phi</span><span class="o">=</span><span class="n">phi</span><span class="p">,</span>
+        <span class="n">phi_P_n</span><span class="o">=</span><span class="n">phi</span> <span class="o">*</span> <span class="n">P_n</span><span class="p">,</span> <span class="n">phi_M_n</span><span class="o">=</span><span class="n">phi</span> <span class="o">*</span> <span class="n">M_n</span><span class="p">,</span>
+        <span class="n">epsilon_t</span><span class="o">=</span><span class="n">eps_t</span><span class="p">,</span> <span class="n">section_type</span><span class="o">=</span><span class="n">section_type</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="c1"># ============================================================ surface builder</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_Po</span><span class="p">(</span><span class="n">section</span><span class="p">:</span> <span class="n">ConcreteSection</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pure axial-compression capacity per ACI 22.4.2.2:</span>
+<span class="sd">    ``P_o = 0.85 f_c&#39; (A_g - A_st) + f_y A_st``.&quot;&quot;&quot;</span>
+    <span class="n">fc</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">fc_prime</span>
+    <span class="n">fy</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">fy</span>
+    <span class="n">A_st</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">As_top</span> <span class="o">+</span> <span class="n">section</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">As_bottom</span>
+    <span class="n">A_g</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">b</span> <span class="o">*</span> <span class="n">section</span><span class="o">.</span><span class="n">h</span>
+    <span class="k">return</span> <span class="mf">0.85</span> <span class="o">*</span> <span class="n">fc</span> <span class="o">*</span> <span class="p">(</span><span class="n">A_g</span> <span class="o">-</span> <span class="n">A_st</span><span class="p">)</span> <span class="o">+</span> <span class="n">fy</span> <span class="o">*</span> <span class="n">A_st</span>
+
+
+<div class="viewcode-block" id="column_interaction_surface">
+<a class="viewcode-back" href="../../../../api/design.html#femsolver.design.concrete.column.column_interaction_surface">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">column_interaction_surface</span><span class="p">(</span>
+    <span class="n">section</span><span class="p">:</span> <span class="n">ConcreteSection</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">n_points</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">40</span><span class="p">,</span>
+    <span class="n">spiral</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">InteractionSurface</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct the full nominal+design P-M interaction surface for a</span>
+<span class="sd">    rectangular tied column with the given section.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    section : ConcreteSection</span>
+<span class="sd">    n_points : int, default 40</span>
+<span class="sd">        Number of neutral-axis depths to sweep. The c values are</span>
+<span class="sd">        chosen on a logarithmic-style grid that captures the</span>
+<span class="sd">        compression-controlled, balanced, and tension-controlled</span>
+<span class="sd">        regions evenly.</span>
+<span class="sd">    spiral : bool, default False</span>
+<span class="sd">        ``True`` for spirally-reinforced columns (changes the</span>
+<span class="sd">        ``P_n_max`` cap and the compression-controlled φ from 0.65</span>
+<span class="sd">        to 0.75).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    InteractionSurface</span>
+<span class="sd">        Points sorted by descending P_n, including the</span>
+<span class="sd">        ``P_n_max`` cap and the pure-tension end.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">h</span>
+    <span class="n">d_t</span> <span class="o">=</span> <span class="n">h</span> <span class="o">-</span> <span class="n">section</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">bottom_cover</span>     <span class="c1"># extreme tension steel depth</span>
+    <span class="k">if</span> <span class="n">d_t</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;section has no usable tension steel for P-M surface&quot;</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Range of c: from very small (deep tension-controlled, eps_t huge)</span>
+    <span class="c1"># to very large (whole section in compression).</span>
+    <span class="c1"># c_balanced ~ ε_cu / (ε_cu + ε_ty) · d_t</span>
+    <span class="n">eps_ty</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">epsilon_ty</span>
+    <span class="n">c_bal</span> <span class="o">=</span> <span class="n">EPSILON_CU</span> <span class="o">*</span> <span class="n">d_t</span> <span class="o">/</span> <span class="p">(</span><span class="n">EPSILON_CU</span> <span class="o">+</span> <span class="n">eps_ty</span><span class="p">)</span>
+    <span class="n">c_tc</span> <span class="o">=</span> <span class="n">EPSILON_CU</span> <span class="o">*</span> <span class="n">d_t</span> <span class="o">/</span> <span class="p">(</span><span class="n">EPSILON_CU</span> <span class="o">+</span> <span class="mf">0.005</span><span class="p">)</span>    <span class="c1"># tension-ctrl boundary</span>
+    <span class="c1"># Sweep c from a small fraction of c_tc to a large multiple of h.</span>
+    <span class="n">c_min</span> <span class="o">=</span> <span class="mf">0.05</span> <span class="o">*</span> <span class="n">c_tc</span>
+    <span class="n">c_max</span> <span class="o">=</span> <span class="mf">5.0</span> <span class="o">*</span> <span class="n">h</span>
+    <span class="n">cs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="c1"># Concentrate points near balanced/transition zones</span>
+    <span class="n">n_low</span> <span class="o">=</span> <span class="n">n_points</span> <span class="o">//</span> <span class="mi">3</span>
+    <span class="n">n_high</span> <span class="o">=</span> <span class="n">n_points</span> <span class="o">-</span> <span class="n">n_low</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_low</span><span class="p">):</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="n">i</span> <span class="o">/</span> <span class="p">(</span><span class="n">n_low</span> <span class="o">-</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">n_low</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">cs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c_min</span> <span class="o">*</span> <span class="p">(</span><span class="n">c_tc</span> <span class="o">/</span> <span class="n">c_min</span><span class="p">)</span> <span class="o">**</span> <span class="n">t</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_high</span><span class="p">):</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">n_high</span>
+        <span class="n">cs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c_tc</span> <span class="o">*</span> <span class="p">(</span><span class="n">c_max</span> <span class="o">/</span> <span class="n">c_tc</span><span class="p">)</span> <span class="o">**</span> <span class="n">t</span><span class="p">)</span>
+
+    <span class="c1"># Build points</span>
+    <span class="n">pts</span> <span class="o">=</span> <span class="p">[</span><span class="n">column_interaction_point</span><span class="p">(</span><span class="n">section</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">spiral</span><span class="o">=</span><span class="n">spiral</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cs</span><span class="p">]</span>
+
+    <span class="c1"># Add pure-tension end (M = 0, P = -A_st · f_y, phi for ε_t → ∞)</span>
+    <span class="n">A_st</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">As_top</span> <span class="o">+</span> <span class="n">section</span><span class="o">.</span><span class="n">rebar</span><span class="o">.</span><span class="n">As_bottom</span>
+    <span class="n">P_pure_tens</span> <span class="o">=</span> <span class="o">-</span><span class="n">A_st</span> <span class="o">*</span> <span class="n">section</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">fy</span>
+    <span class="n">pts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">InteractionPoint</span><span class="p">(</span>
+        <span class="n">c</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">P_n</span><span class="o">=</span><span class="n">P_pure_tens</span><span class="p">,</span>
+        <span class="n">M_n</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">phi</span><span class="o">=</span><span class="mf">0.90</span><span class="p">,</span>        <span class="c1"># tension-controlled</span>
+        <span class="n">phi_P_n</span><span class="o">=</span><span class="mf">0.90</span> <span class="o">*</span> <span class="n">P_pure_tens</span><span class="p">,</span>
+        <span class="n">phi_M_n</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">epsilon_t</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">),</span>
+        <span class="n">section_type</span><span class="o">=</span><span class="s2">&quot;tension-controlled&quot;</span><span class="p">,</span>
+    <span class="p">))</span>
+
+    <span class="c1"># Add the pure-compression cap (P_n_max) per 22.4.2.1</span>
+    <span class="n">P_o</span> <span class="o">=</span> <span class="n">_Po</span><span class="p">(</span><span class="n">section</span><span class="p">)</span>
+    <span class="n">cap_factor</span> <span class="o">=</span> <span class="mf">0.85</span> <span class="k">if</span> <span class="n">spiral</span> <span class="k">else</span> <span class="mf">0.80</span>
+    <span class="n">P_n_max</span> <span class="o">=</span> <span class="n">cap_factor</span> <span class="o">*</span> <span class="n">P_o</span>
+    <span class="n">phi_comp</span> <span class="o">=</span> <span class="mf">0.75</span> <span class="k">if</span> <span class="n">spiral</span> <span class="k">else</span> <span class="mf">0.65</span>
+    <span class="n">pts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">InteractionPoint</span><span class="p">(</span>
+        <span class="n">c</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">),</span>
+        <span class="n">P_n</span><span class="o">=</span><span class="n">P_n_max</span><span class="p">,</span>
+        <span class="n">M_n</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">phi</span><span class="o">=</span><span class="n">phi_comp</span><span class="p">,</span>
+        <span class="n">phi_P_n</span><span class="o">=</span><span class="n">phi_comp</span> <span class="o">*</span> <span class="n">P_n_max</span><span class="p">,</span>
+        <span class="n">phi_M_n</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">epsilon_t</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">section_type</span><span class="o">=</span><span class="s2">&quot;pure-compression-cap&quot;</span><span class="p">,</span>
+    <span class="p">))</span>
+
+    <span class="c1"># Cap any computed P_n above P_n_max at the cap value, with M_n -&gt; 0</span>
+    <span class="c1"># (this enforces ACI 22.4.2.1 over the high-axial region).</span>
+    <span class="n">pts</span> <span class="o">=</span> <span class="n">_apply_axial_cap</span><span class="p">(</span><span class="n">pts</span><span class="p">,</span> <span class="n">P_n_max</span><span class="p">,</span> <span class="n">phi_comp</span><span class="p">)</span>
+
+    <span class="c1"># M_o (capacity at P_n ~ 0): interpolate</span>
+    <span class="c1"># Find points bracketing P_n = 0</span>
+    <span class="n">sorted_pts</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">pts</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">P_n</span><span class="p">)</span>
+    <span class="n">M_o</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">sorted_pts</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">sorted_pts</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">P_n</span> <span class="o">&lt;=</span> <span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">sorted_pts</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">P_n</span><span class="p">:</span>
+            <span class="n">t</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.0</span> <span class="o">-</span> <span class="n">sorted_pts</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">P_n</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span>
+                <span class="n">sorted_pts</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">P_n</span> <span class="o">-</span> <span class="n">sorted_pts</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">P_n</span>
+            <span class="p">)</span> <span class="k">if</span> <span class="n">sorted_pts</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">P_n</span> <span class="o">!=</span> <span class="n">sorted_pts</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">P_n</span> <span class="k">else</span> <span class="mf">0.0</span>
+            <span class="n">M_o</span> <span class="o">=</span> <span class="p">(</span><span class="n">sorted_pts</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">phi_M_n</span>
+                   <span class="o">+</span> <span class="n">t</span> <span class="o">*</span> <span class="p">(</span><span class="n">sorted_pts</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">phi_M_n</span>
+                          <span class="o">-</span> <span class="n">sorted_pts</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">phi_M_n</span><span class="p">))</span>
+            <span class="k">break</span>
+
+    <span class="k">return</span> <span class="n">InteractionSurface</span><span class="p">(</span>
+        <span class="n">points</span><span class="o">=</span><span class="n">pts</span><span class="p">,</span>
+        <span class="n">P_o</span><span class="o">=</span><span class="n">P_o</span><span class="p">,</span>
+        <span class="n">P_n_max</span><span class="o">=</span><span class="n">P_n_max</span><span class="p">,</span>
+        <span class="n">P_n_pure_tension</span><span class="o">=</span><span class="n">P_pure_tens</span><span class="p">,</span>
+        <span class="n">M_o</span><span class="o">=</span><span class="n">M_o</span><span class="p">,</span>
+        <span class="n">spiral</span><span class="o">=</span><span class="n">spiral</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_apply_axial_cap</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">InteractionPoint</span><span class="p">],</span> <span class="n">P_n_max</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+                      <span class="n">phi_comp</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">InteractionPoint</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Clip any point with ``P_n &gt; P_n_max`` down to ``(P_n_max, 0)``</span>
+<span class="sd">    with compression-controlled φ -- per ACI 22.4.2.1.&quot;&quot;&quot;</span>
+    <span class="n">capped</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">InteractionPoint</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">points</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">P_n</span> <span class="o">&gt;</span> <span class="n">P_n_max</span><span class="p">:</span>
+            <span class="n">capped</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">InteractionPoint</span><span class="p">(</span>
+                <span class="n">c</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">c</span><span class="p">,</span> <span class="n">P_n</span><span class="o">=</span><span class="n">P_n_max</span><span class="p">,</span> <span class="n">M_n</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                <span class="n">phi</span><span class="o">=</span><span class="n">phi_comp</span><span class="p">,</span>
+                <span class="n">phi_P_n</span><span class="o">=</span><span class="n">phi_comp</span> <span class="o">*</span> <span class="n">P_n_max</span><span class="p">,</span>
+                <span class="n">phi_M_n</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                <span class="n">epsilon_t</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">epsilon_t</span><span class="p">,</span>
+                <span class="n">section_type</span><span class="o">=</span><span class="s2">&quot;pure-compression-cap&quot;</span><span class="p">,</span>
+            <span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">capped</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">capped</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

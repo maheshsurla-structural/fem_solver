@@ -1,0 +1,428 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>I/O and post-processing &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Tutorial examples" href="../tutorials/index.html" />
+    <link rel="prev" title="V&amp;V benchmark suite" href="benchmarks.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">I/O and post-processing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#femsolver.io.save_model_json"><code class="docutils literal notranslate"><span class="pre">save_model_json()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#femsolver.io.load_model_json"><code class="docutils literal notranslate"><span class="pre">load_model_json()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#femsolver.io.write_vtk"><code class="docutils literal notranslate"><span class="pre">write_vtk()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#femsolver.io.write_vtk_unstructured"><code class="docutils literal notranslate"><span class="pre">write_vtk_unstructured()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#femsolver.io.beam_force_diagram"><code class="docutils literal notranslate"><span class="pre">beam_force_diagram()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#femsolver.io.plot_beam_diagrams"><code class="docutils literal notranslate"><span class="pre">plot_beam_diagrams()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#femsolver.io.gather_node_history"><code class="docutils literal notranslate"><span class="pre">gather_node_history()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#femsolver.io.mode_shape_table"><code class="docutils literal notranslate"><span class="pre">mode_shape_table()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#femsolver.io.capacity_curve"><code class="docutils literal notranslate"><span class="pre">capacity_curve()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#femsolver.io.save_ida_record"><code class="docutils literal notranslate"><span class="pre">save_ida_record()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#femsolver.io.load_ida_record"><code class="docutils literal notranslate"><span class="pre">load_ida_record()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#femsolver.io.save_ida_summary"><code class="docutils literal notranslate"><span class="pre">save_ida_summary()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#femsolver.io.load_ida_summary"><code class="docutils literal notranslate"><span class="pre">load_ida_summary()</span></code></a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">I/O and post-processing</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/io.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="i-o-and-post-processing">
+<h1>I/O and post-processing<a class="headerlink" href="#i-o-and-post-processing" title="Link to this heading"></a></h1>
+<p>VTK export, JSON model deck, beam force diagrams, time-history /
+mode-shape extraction.</p>
+<p id="module-femsolver.io">I/O and post-processing utilities for femsolver models and results.</p>
+<ul class="simple">
+<li><p>JSON model deck: <a class="reference internal" href="#femsolver.io.save_model_json" title="femsolver.io.save_model_json"><code class="xref py py-func docutils literal notranslate"><span class="pre">save_model_json()</span></code></a>, <a class="reference internal" href="#femsolver.io.load_model_json" title="femsolver.io.load_model_json"><code class="xref py py-func docutils literal notranslate"><span class="pre">load_model_json()</span></code></a>.</p></li>
+<li><p>VTK export: <a class="reference internal" href="#femsolver.io.write_vtk" title="femsolver.io.write_vtk"><code class="xref py py-func docutils literal notranslate"><span class="pre">write_vtk()</span></code></a> (rich), <a class="reference internal" href="#femsolver.io.write_vtk_unstructured" title="femsolver.io.write_vtk_unstructured"><code class="xref py py-func docutils literal notranslate"><span class="pre">write_vtk_unstructured()</span></code></a>
+(legacy / backward-compat).</p></li>
+<li><p>Beam force diagrams: <a class="reference internal" href="#femsolver.io.beam_force_diagram" title="femsolver.io.beam_force_diagram"><code class="xref py py-func docutils literal notranslate"><span class="pre">beam_force_diagram()</span></code></a>.</p></li>
+<li><p>Extraction utilities: <a class="reference internal" href="#femsolver.io.gather_node_history" title="femsolver.io.gather_node_history"><code class="xref py py-func docutils literal notranslate"><span class="pre">gather_node_history()</span></code></a>,
+<a class="reference internal" href="#femsolver.io.mode_shape_table" title="femsolver.io.mode_shape_table"><code class="xref py py-func docutils literal notranslate"><span class="pre">mode_shape_table()</span></code></a>, <a class="reference internal" href="#femsolver.io.capacity_curve" title="femsolver.io.capacity_curve"><code class="xref py py-func docutils literal notranslate"><span class="pre">capacity_curve()</span></code></a>.</p></li>
+</ul>
+<dl class="py function">
+<dt class="sig sig-object py" id="femsolver.io.save_model_json">
+<span class="sig-prename descclassname"><span class="pre">femsolver.io.</span></span><span class="sig-name descname"><span class="pre">save_model_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/io/json_io.html#save_model_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.io.save_model_json" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<a class="reference internal" href="core.html#femsolver.core.model.Model" title="femsolver.core.model.Model"><em>Model</em></a>)</p></li>
+<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="femsolver.io.load_model_json">
+<span class="sig-prename descclassname"><span class="pre">femsolver.io.</span></span><span class="sig-name descname"><span class="pre">load_model_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/io/json_io.html#load_model_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.io.load_model_json" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="core.html#femsolver.core.model.Model" title="femsolver.core.model.Model"><em>Model</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="femsolver.io.write_vtk">
+<span class="sig-prename descclassname"><span class="pre">femsolver.io.</span></span><span class="sig-name descname"><span class="pre">write_vtk</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">deformation_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">point_data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cell_data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_reactions</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_mode_shapes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/io/vtk_io.html#write_vtk"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.io.write_vtk" title="Link to this definition"></a></dt>
+<dd><p>Write the model as a VTK legacy unstructured grid with optional
+extra point / cell data fields.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<a class="reference internal" href="core.html#femsolver.core.model.Model" title="femsolver.core.model.Model"><em>Model</em></a>)</p></li>
+<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> or </em><em>Path</em>)</p></li>
+<li><p><strong>deformation_scale</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0</em>) – Scale applied to <code class="docutils literal notranslate"><span class="pre">Node.disp</span></code> when writing point coordinates.</p></li>
+<li><p><strong>point_data</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em> of </em><em>str -&gt; ndarray</em>) – Additional per-node fields. Scalar fields have shape
+<code class="docutils literal notranslate"><span class="pre">(n_nodes,)</span></code>; vector fields have shape <code class="docutils literal notranslate"><span class="pre">(n_nodes,</span> <span class="pre">3)</span></code>.
+Vector fields with fewer than 3 components are zero-padded.</p></li>
+<li><p><strong>cell_data</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em> of </em><em>str -&gt; ndarray</em>) – Additional per-element fields. Shapes mirror <code class="docutils literal notranslate"><span class="pre">point_data</span></code>
+but indexed by element rather than node.</p></li>
+<li><p><strong>include_reactions</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>default False</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, write <code class="docutils literal notranslate"><span class="pre">Node.reaction</span></code> as a 3-component vector
+<code class="docutils literal notranslate"><span class="pre">reaction</span></code>.</p></li>
+<li><p><strong>include_mode_shapes</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>default False</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, write each column of <code class="docutils literal notranslate"><span class="pre">Node.mode_disp</span></code> as
+<code class="docutils literal notranslate"><span class="pre">mode_1</span></code>, <code class="docutils literal notranslate"><span class="pre">mode_2</span></code>, … vectors. Useful for visualizing
+eigenmodes or buckling shapes.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="femsolver.io.write_vtk_unstructured">
+<span class="sig-prename descclassname"><span class="pre">femsolver.io.</span></span><span class="sig-name descname"><span class="pre">write_vtk_unstructured</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deformation_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/io/vtk_io.html#write_vtk_unstructured"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.io.write_vtk_unstructured" title="Link to this definition"></a></dt>
+<dd><p>Write the model as a VTK legacy unstructured grid (deformed
+shape + nodal displacement vector).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<a class="reference internal" href="core.html#femsolver.core.model.Model" title="femsolver.core.model.Model"><em>Model</em></a>)</p></li>
+<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> or </em><em>Path</em>) – Output file path. Conventionally <code class="docutils literal notranslate"><span class="pre">.vtk</span></code>.</p></li>
+<li><p><strong>deformation_scale</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – If non-zero, displace the points by <code class="docutils literal notranslate"><span class="pre">scale</span> <span class="pre">*</span> <span class="pre">Node.disp[:ndm]</span></code>
+so that the visualization shows the deformed shape. Use 1.0
+for true scale or a larger value for amplified visualization.</p></li>
+<li><p><strong>that</strong> (<em>The displacement vector is written as POINT_DATA so</em>)</p></li>
+<li><p><strong>the</strong> (<em>Paraview's &quot;Warp by Vector&quot; filter</em><em> (or </em><em>similar</em><em>) </em><em>can apply</em>)</p></li>
+<li><p><strong>file.</strong> (<em>deformation interactively from a single un-warped</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="femsolver.io.beam_force_diagram">
+<span class="sig-prename descclassname"><span class="pre">femsolver.io.</span></span><span class="sig-name descname"><span class="pre">beam_force_diagram</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">element</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_points</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/io/diagrams.html#beam_force_diagram"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.io.beam_force_diagram" title="Link to this definition"></a></dt>
+<dd><p>Sample internal forces along a 2-D beam-column element.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>element</strong> (<em>a 2-D beam-column element</em>) – Must be one of the supported beam types in 2-D. The element
+must be bound to a model and must have been “recovered”
+(the analysis driver has run <code class="docutils literal notranslate"><span class="pre">element.recover()</span></code> or the
+element has up-to-date local forces).</p></li>
+<li><p><strong>n_points</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>default 50</em>) – Number of sampling stations along the element axis (including
+both ends).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>dict with keys</em></p></li>
+<li><p><strong>* ``s``</strong> (<em>(n_points,)  arc-length from node-1 in local x.</em>)</p></li>
+<li><p><strong>* ``N``</strong> (<em>(n_points,)  axial force (positive in tension).</em>)</p></li>
+<li><p><strong>* ``V``</strong> (<em>(n_points,)  local-y shear.</em>)</p></li>
+<li><p><strong>* ``M``</strong> (<em>(n_points,)  bending moment about local z.</em>)</p></li>
+<li><p><strong>* ``length``</strong> (<em>float        element chord length.</em>)</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>For 2-D beam-column elements without distributed loads, <code class="docutils literal notranslate"><span class="pre">N</span></code> and
+<code class="docutils literal notranslate"><span class="pre">V</span></code> are constant and <code class="docutils literal notranslate"><span class="pre">M</span></code> varies linearly between the two end
+moments. With distributed loads, <code class="docutils literal notranslate"><span class="pre">V</span></code> varies linearly and <code class="docutils literal notranslate"><span class="pre">M</span></code>
+is parabolic. This implementation uses the equivalent-nodal-force
+vector to recover the linear/parabolic shape automatically.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="femsolver.io.plot_beam_diagrams">
+<span class="sig-prename descclassname"><span class="pre">femsolver.io.</span></span><span class="sig-name descname"><span class="pre">plot_beam_diagrams</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">element</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_points</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_axial</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_shear</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_moment</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/io/diagrams.html#plot_beam_diagrams"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.io.plot_beam_diagrams" title="Link to this definition"></a></dt>
+<dd><p>matplotlib helper that draws N / V / M vs arc-length.</p>
+<p>Returns the Figure object. Requires <code class="docutils literal notranslate"><span class="pre">matplotlib</span></code> (an optional
+dependency for the I/O layer).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n_points</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>show_axial</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>)</p></li>
+<li><p><strong>show_shear</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>)</p></li>
+<li><p><strong>show_moment</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>)</p></li>
+<li><p><strong>title</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="femsolver.io.gather_node_history">
+<span class="sig-prename descclassname"><span class="pre">femsolver.io.</span></span><span class="sig-name descname"><span class="pre">gather_node_history</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">results</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_tag</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dof</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/io/extract.html#gather_node_history"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.io.gather_node_history" title="Link to this definition"></a></dt>
+<dd><p>Return a single DOF’s time history from a transient analysis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<a class="reference internal" href="core.html#femsolver.core.model.Model" title="femsolver.core.model.Model"><em>Model</em></a>) – The model the analysis was run on (used to look up the node).</p></li>
+<li><p><strong>results</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – A <code class="docutils literal notranslate"><span class="pre">TransientAnalysis.run()</span></code> result dictionary. Must contain
+either <code class="docutils literal notranslate"><span class="pre">&quot;tracked_disp&quot;</span></code> (if the analysis tracked the same
+DOF) or per-step state captured externally.</p></li>
+<li><p><strong>node_tag</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>dof</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – DOF index within the node (0 = x, 1 = y, etc.).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>With keys <code class="docutils literal notranslate"><span class="pre">&quot;times&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;disp&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;node&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;dof&quot;</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="femsolver.io.mode_shape_table">
+<span class="sig-prename descclassname"><span class="pre">femsolver.io.</span></span><span class="sig-name descname"><span class="pre">mode_shape_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eig_result</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/io/extract.html#mode_shape_table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.io.mode_shape_table" title="Link to this definition"></a></dt>
+<dd><p>Turn an EigenAnalysis result into a structured table.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>eig_result</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – Output of <code class="docutils literal notranslate"><span class="pre">EigenAnalysis.run()</span></code>. Expected keys:
+<code class="docutils literal notranslate"><span class="pre">&quot;frequencies_hz&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;periods_s&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;omegas_rad_s&quot;</span></code>,
+optionally <code class="docutils literal notranslate"><span class="pre">&quot;modal_results&quot;</span></code> (from ResponseSpectrumAnalysis).</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict with arrays for each tabulated quantity.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="femsolver.io.capacity_curve">
+<span class="sig-prename descclassname"><span class="pre">femsolver.io.</span></span><span class="sig-name descname"><span class="pre">capacity_curve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">results</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">drift_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'tracked'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'lambdas'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/io/extract.html#capacity_curve"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.io.capacity_curve" title="Link to this definition"></a></dt>
+<dd><p>Extract a capacity curve (drift vs base shear or load factor)
+from a nonlinear-static or pushover analysis result.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>results</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – Output dict from <code class="docutils literal notranslate"><span class="pre">NonlinearStaticAnalysis.run()</span></code>. Must
+contain a tracked displacement key and either explicit force
+history or a list of load factors / lambda values.</p></li>
+<li><p><strong>drift_key</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Keys to read for drift and force, respectively.</p></li>
+<li><p><strong>force_key</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Keys to read for drift and force, respectively.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict with <code class="docutils literal notranslate"><span class="pre">&quot;drift&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;force&quot;</span></code> arrays of equal length.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="femsolver.io.save_ida_record">
+<span class="sig-prename descclassname"><span class="pre">femsolver.io.</span></span><span class="sig-name descname"><span class="pre">save_ida_record</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">record</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/io/ida_hdf5.html#save_ida_record"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.io.save_ida_record" title="Link to this definition"></a></dt>
+<dd><p>Save one <code class="xref py py-class docutils literal notranslate"><span class="pre">IDARecord</span></code> to <code class="docutils literal notranslate"><span class="pre">path</span></code> (HDF5).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>record</strong> (<a class="reference internal" href="analysis.html#femsolver.analysis.ida.IDARecord" title="femsolver.analysis.ida.IDARecord"><em>IDARecord</em></a>)</p></li>
+<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="femsolver.io.load_ida_record">
+<span class="sig-prename descclassname"><span class="pre">femsolver.io.</span></span><span class="sig-name descname"><span class="pre">load_ida_record</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">record_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/io/ida_hdf5.html#load_ida_record"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.io.load_ida_record" title="Link to this definition"></a></dt>
+<dd><p>Load a single <code class="xref py py-class docutils literal notranslate"><span class="pre">IDARecord</span></code> from <code class="docutils literal notranslate"><span class="pre">path</span></code>.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">record_name</span></code> is None and the file contains exactly one
+record, that record is returned. Otherwise the name must be given.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
+<li><p><strong>record_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="analysis.html#femsolver.analysis.ida.IDARecord" title="femsolver.analysis.ida.IDARecord"><em>IDARecord</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="femsolver.io.save_ida_summary">
+<span class="sig-prename descclassname"><span class="pre">femsolver.io.</span></span><span class="sig-name descname"><span class="pre">save_ida_summary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">summary</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/io/ida_hdf5.html#save_ida_summary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.io.save_ida_summary" title="Link to this definition"></a></dt>
+<dd><p>Save a full <code class="xref py py-class docutils literal notranslate"><span class="pre">IDASummary</span></code> (multi-record + collapse) to HDF5.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>summary</strong> (<a class="reference internal" href="analysis.html#femsolver.analysis.ida_collapse.IDASummary" title="femsolver.analysis.ida_collapse.IDASummary"><em>IDASummary</em></a>)</p></li>
+<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="femsolver.io.load_ida_summary">
+<span class="sig-prename descclassname"><span class="pre">femsolver.io.</span></span><span class="sig-name descname"><span class="pre">load_ida_summary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/femsolver/io/ida_hdf5.html#load_ida_summary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#femsolver.io.load_ida_summary" title="Link to this definition"></a></dt>
+<dd><p>Load an <code class="xref py py-class docutils literal notranslate"><span class="pre">IDASummary</span></code> written by <a class="reference internal" href="#femsolver.io.save_ida_summary" title="femsolver.io.save_ida_summary"><code class="xref py py-func docutils literal notranslate"><span class="pre">save_ida_summary()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="analysis.html#femsolver.analysis.ida_collapse.IDASummary" title="femsolver.analysis.ida_collapse.IDASummary"><em>IDASummary</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="benchmarks.html" class="btn btn-neutral float-left" title="V&amp;V benchmark suite" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../tutorials/index.html" class="btn btn-neutral float-right" title="Tutorial examples" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -290,59 +290,105 @@ class DisplacementControl(StaticIntegrator):
 
 
 class ArcLength(StaticIntegrator):
-    """Cylindrical arc-length integrator (Crisfield's spherical with
-    ``psi = 0`` — no load-factor weighting).
+    """Arc-length integrator (Crisfield) with optional load-factor weighting
+    and adaptive step sizing.
 
-    The path-following constraint is
+    The path-following constraint, in its spherical form, is
 
-        || u - u_step_start ||  =  delta_s
+        || u - u_step_start ||^2 + psi^2 * (lambda - lambda_0)^2 * |F|^2 = delta_s^2
 
-    enforced at each Newton iteration by adjusting ``lambda`` alongside
-    the displacement update. This allows the analysis to trace
-    snap-through, snap-back, and post-limit-point branches that load
-    control cannot follow.
+    The ``psi = 0`` special case is the **cylindrical** variant (the
+    most commonly used). For very stiff problems with extreme
+    displacement-to-load ratios the spherical variant with a tuned
+    ``psi`` is more robust.
+
+    Both flavors are enforced at each Newton iteration by adjusting
+    ``lambda`` alongside the displacement update. The integrator
+    automatically detects limit points (snap-through, snap-back,
+    post-buckling) using Bergan's generalised-stiffness-parameter
+    heuristic.
 
     Parameters
     ----------
     delta_s : float
-        Arc-length increment per step (always positive — direction is
+        Arc-length increment per step (always positive -- direction is
         controlled by ``initial_direction``).
+    psi : float, default 0.0
+        Load-factor weighting in the constraint norm. ``0`` =
+        cylindrical (no load weighting); typical spherical values are
+        ``0.5 ... 2.0``.
     initial_direction : {+1, -1}, default ``+1``
         Sign of ``lambda`` advance on the first step. Subsequent steps
         maintain the sign of the previous step's predictor unless a
         limit point is crossed.
-
-    Notes
-    -----
-    Cylindrical arc-length (``psi = 0``) is the simplest and most
-    commonly used variant. For very stiff problems with extreme
-    displacement-to-load ratios, spherical arc-length with a tuned
-    ``psi`` is more robust; that variant is a small extension of this
-    class (multiply the load-factor term by ``psi^2 * c`` in the
-    constraint).
+    adaptive : bool, default False
+        If True, scale ``delta_s`` between steps by
+        ``(target_iterations / actual_iterations)^0.5`` after each
+        converged step. Caps the step at
+        ``[delta_s_min, delta_s_max]`` if those are given. Commercial
+        codes universally use this -- a step that converged in 2
+        iterations becomes ~2x larger, a step that needed 12 becomes
+        ~0.7x.
+    target_iterations : int, default 4
+        Reference iteration count for adaptive sizing.
+    delta_s_min, delta_s_max : float or None
+        Optional caps on the adaptive step size.
     """
 
     supports_line_search = False
 
-    def __init__(self, delta_s: float, *, initial_direction: int = 1):
+    def __init__(
+        self,
+        delta_s: float,
+        *,
+        psi: float = 0.0,
+        initial_direction: int = 1,
+        adaptive: bool = False,
+        target_iterations: int = 4,
+        delta_s_min: float | None = None,
+        delta_s_max: float | None = None,
+    ):
         super().__init__()
         if delta_s <= 0.0:
             raise ValueError("delta_s must be positive")
         if initial_direction not in (1, -1):
             raise ValueError("initial_direction must be +1 or -1")
+        if psi < 0.0:
+            raise ValueError("psi must be >= 0")
+        if target_iterations < 1:
+            raise ValueError("target_iterations must be >= 1")
         self.delta_s = float(delta_s)
+        self.psi = float(psi)
         self._initial_direction = int(initial_direction)
+        self.adaptive = bool(adaptive)
+        self.target_iterations = int(target_iterations)
+        self.delta_s_min = (
+            float(delta_s_min) if delta_s_min is not None else None
+        )
+        self.delta_s_max = (
+            float(delta_s_max) if delta_s_max is not None else None
+        )
         # State at the start of the current step.
         self._u_step_start: np.ndarray | None = None
         self._lambd_step_start: float = 0.0
-        # Previous step's converged displacement increment — used for
+        # Previous step's converged displacement increment -- used for
         # direction tracking (sign of du_p . prev_step_du, the
         # "generalized stiffness parameter" of Bergan).
         self._prev_step_du: np.ndarray | None = None
+        # Previous step's converged dlambda -- limit points are detected
+        # from sign changes of this quantity (snap-through / snap-back).
+        self._prev_step_dlambda: float | None = None
+        # Limit-point flags per step (set on commit if sign flipped)
+        self._limit_points: list[int] = []
         # Snapshot for revert.
         self._u_before: np.ndarray | None = None
         self._lambd_before: float = 0.0
         self._prev_step_du_before: np.ndarray | None = None
+        # Step counter for adaptive sizing
+        self._step_index: int = 0
+        # Last step's iteration count -- updated by the algorithm via
+        # ``record_step_iterations`` after a step finishes.
+        self._last_iter_count: int = 0
 
     def bind(self, model) -> None:
         super().bind(model)
@@ -383,8 +429,50 @@ class ArcLength(StaticIntegrator):
     def commit_step(self) -> None:
         """Snapshot the converged displacement increment of this step so
         the next step's predictor can compute a sign-consistent
-        direction (Bergan's GSP heuristic)."""
-        self._prev_step_du = self._gather_u() - self._u_step_start
+        direction (Bergan's GSP heuristic). Also detect limit points
+        from the sign change of dlambda between consecutive steps and
+        optionally adapt ``delta_s`` from the step's iteration count.
+        """
+        new_du = self._gather_u() - self._u_step_start
+        new_dlambda = self.lambd - self._lambd_step_start
+        # Limit-point detection: at a limit point the load-factor
+        # increment reverses sign while the displacement keeps
+        # advancing. Snap-through (peak) and snap-back (trough) both
+        # show as dlambda sign flips between consecutive committed
+        # steps. (Pure displacement reversal in u-space is also
+        # captured by checking du . prev_du for the rare "u-reversal"
+        # limit point.)
+        if self._prev_step_du is not None:
+            prev_dlambda = self._prev_step_dlambda
+            if prev_dlambda is not None and prev_dlambda * new_dlambda < 0.0:
+                self._limit_points.append(self._step_index)
+            elif float(new_du @ self._prev_step_du) < 0.0:
+                self._limit_points.append(self._step_index)
+        self._prev_step_du = new_du
+        self._prev_step_dlambda = new_dlambda
+        self._step_index += 1
+        # Adaptive step sizing -- scale delta_s for the next step
+        if self.adaptive and self._last_iter_count > 0:
+            scale = (self.target_iterations / self._last_iter_count) ** 0.5
+            new_delta = self.delta_s * scale
+            if self.delta_s_min is not None:
+                new_delta = max(new_delta, self.delta_s_min)
+            if self.delta_s_max is not None:
+                new_delta = min(new_delta, self.delta_s_max)
+            self.delta_s = new_delta
+
+    def record_step_iterations(self, n_iter: int) -> None:
+        """Tell the integrator how many iterations the last solved step
+        took. Used by :attr:`adaptive` step sizing. Driver code calls
+        this from ``NonlinearStaticAnalysis.run`` after each step."""
+        self._last_iter_count = int(n_iter)
+
+    @property
+    def limit_points(self) -> list[int]:
+        """Step indices where a limit point was crossed (GSP sign
+        flip). Indices are 0-based and refer to the step *after* which
+        the sign change was detected."""
+        return list(self._limit_points)
 
     def solve_iteration(
         self,
@@ -402,33 +490,38 @@ class ArcLength(StaticIntegrator):
         #   * predictor (delta_u == 0, first iteration of the step):
         #     use ``|du_p| * |dlambda| = delta_s``;
         #   * corrector (delta_u != 0, ``orthogonality`` to delta_u).
+        psi2_FF = (
+            (self.psi * self.psi) * float(F_ref_eff @ F_ref_eff)
+            if self.psi > 0.0 else 0.0
+        )
         delta_u_norm = float(np.linalg.norm(delta_u))
-        if delta_u_norm < 1.0e-14:
-            # Predictor step.  Direction selection (Bergan's GSP):
-            # sign(du_p . prev_step_du) chooses the consistent
-            # forward direction across limit points. On the very first
-            # step there is no prev_step_du, so we fall back to the
-            # user-supplied ``initial_direction``.
-            denom = float(np.linalg.norm(du_p_eff))
-            if denom < 1.0e-300:
+        delta_lambda_step = self.lambd - self._lambd_step_start
+        if delta_u_norm < 1.0e-14 and abs(delta_lambda_step) < 1.0e-14:
+            # Predictor step. Spherical constraint:
+            #     |dlambda * du_p|^2 + psi^2 |F|^2 dlambda^2 = ds^2
+            # =>  dlambda^2 (|du_p|^2 + psi^2 |F|^2) = ds^2
+            denom2 = float(du_p_eff @ du_p_eff) + psi2_FF
+            if denom2 < 1.0e-300:
                 raise RuntimeError(
                     "ArcLength: parametric solution has zero norm"
                 )
+            magnitude = self.delta_s / np.sqrt(denom2)
+            # Direction selection (Bergan's GSP)
             if self._prev_step_du is None:
                 sign = float(self._initial_direction)
             else:
                 dot = float(du_p_eff @ self._prev_step_du)
-                # Tie-break to +1 to avoid getting stuck at zero
                 sign = 1.0 if dot >= 0.0 else -1.0
-            dlambda = sign * self.delta_s / denom
+            dlambda = sign * magnitude
         else:
-            # Corrector step: enforce delta_u . du_total = 0
-            #   delta_u . (du_t + dlambda * du_p) = 0
+            # Corrector step: enforce orthogonality
+            #   delta_u . (du_t + dlambda * du_p)
+            #   + psi^2 |F|^2 * delta_lambda * dlambda = 0
             num = float(delta_u @ du_t_eff)
-            den = float(delta_u @ du_p_eff)
+            den = float(delta_u @ du_p_eff) + psi2_FF * delta_lambda_step
             if abs(den) < 1.0e-300:
                 raise RuntimeError(
-                    "ArcLength: corrector denominator vanished — "
+                    "ArcLength: corrector denominator vanished -- "
                     "near-orthogonal increment, try a smaller delta_s"
                 )
             dlambda = -num / den

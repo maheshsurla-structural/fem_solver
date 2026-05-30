@@ -1,0 +1,382 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.analysis.fragility &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.analysis.fragility</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.analysis.fragility</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Lognormal fragility-curve fitting from collapse-IM samples.</span>
+
+<span class="sd">The classical seismic-collapse fragility curve (FEMA P695, Baker 2015)</span>
+<span class="sd">is a lognormal CDF in the intensity measure ``IM``:</span>
+
+<span class="sd">    P(collapse | IM) = Φ( ln(IM / θ) / β )</span>
+
+<span class="sd">where ``θ`` is the **median** collapse IM and ``β`` the **logarithmic</span>
+<span class="sd">standard deviation** (dispersion). The two parameters are estimated</span>
+<span class="sd">from a set of per-record collapse IMs via:</span>
+
+<span class="sd">* **Method-of-moments** (Baker 2015, &quot;Efficient analytical fragility</span>
+<span class="sd">  function fitting&quot;): θ = exp(mean(ln IM_i)),</span>
+<span class="sd">                       β = std(ln IM_i, sample).</span>
+<span class="sd">  This is the standard estimator when every record collapsed within</span>
+<span class="sd">  the IDA sweep. Returns the maximum-likelihood estimates of θ and β</span>
+<span class="sd">  for a lognormal model.</span>
+
+<span class="sd">* **Maximum-likelihood / SPO2IDA-style** robust to non-collapsing</span>
+<span class="sd">  records via censoring (FEMA P695, Appendix F). Records that did not</span>
+<span class="sd">  collapse contribute via ``P(no collapse | IM_max) = 1 - Φ(...)``,</span>
+<span class="sd">  preventing the median from being biased downward when some records</span>
+<span class="sd">  flatlined at the top of the sweep.</span>
+
+<span class="sd">Use :func:`fit_lognormal_method_of_moments` when all records collapsed,</span>
+<span class="sd">and :func:`fit_lognormal_mle` when some did not.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+
+<span class="c1"># ============================================================ result type</span>
+
+<div class="viewcode-block" id="FragilityFit">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.fragility.FragilityFit">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">FragilityFit</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Result of fitting a lognormal collapse fragility.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    theta : float</span>
+<span class="sd">        Median collapse IM.</span>
+<span class="sd">    beta : float</span>
+<span class="sd">        Logarithmic standard deviation (dispersion).</span>
+<span class="sd">    n_records : int</span>
+<span class="sd">        Total number of records considered (collapsed + censored).</span>
+<span class="sd">    n_collapsed : int</span>
+<span class="sd">        Number of records that actually collapsed (used in MLE</span>
+<span class="sd">        censoring).</span>
+<span class="sd">    method : str</span>
+<span class="sd">        ``&quot;moments&quot;`` or ``&quot;mle&quot;``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">theta</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">beta</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">n_records</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">n_collapsed</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">method</span><span class="p">:</span> <span class="nb">str</span>
+
+<div class="viewcode-block" id="FragilityFit.P_collapse">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.fragility.FragilityFit.P_collapse">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">P_collapse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">IM</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Probability of collapse at intensity ``IM``: lognormal CDF.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">IM</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">IM</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">theta</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">beta</span>
+        <span class="k">return</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">math</span><span class="o">.</span><span class="n">erf</span><span class="p">(</span><span class="n">z</span> <span class="o">/</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">2.0</span><span class="p">)))</span></div>
+
+
+<div class="viewcode-block" id="FragilityFit.P_collapse_array">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.fragility.FragilityFit.P_collapse_array">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">P_collapse_array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">IMs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">P_collapse</span><span class="p">(</span><span class="n">im</span><span class="p">)</span> <span class="k">for</span> <span class="n">im</span> <span class="ow">in</span> <span class="n">IMs</span><span class="p">])</span></div>
+</div>
+
+
+
+<span class="c1"># ============================================================ method of moments</span>
+
+<div class="viewcode-block" id="fit_lognormal_method_of_moments">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.fragility.fit_lognormal_method_of_moments">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">fit_lognormal_method_of_moments</span><span class="p">(</span><span class="n">collapse_IMs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FragilityFit</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fit a lognormal fragility from a list of per-record collapse</span>
+<span class="sd">    IMs using the method-of-moments / maximum-likelihood estimator</span>
+<span class="sd">    when all records collapsed.</span>
+
+<span class="sd">    Discards non-finite (``inf``, ``nan``) entries, then estimates:</span>
+
+<span class="sd">        θ = exp(mean(ln IM_i))</span>
+<span class="sd">        β = std(ln IM_i, sample)    (i.e., dividing by N-1)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    collapse_IMs : array-like</span>
+<span class="sd">        Per-record collapse intensity-measure values. Use ``inf`` for</span>
+<span class="sd">        records that did not collapse (those will be ignored by this</span>
+<span class="sd">        estimator; use :func:`fit_lognormal_mle` to include them</span>
+<span class="sd">        properly via censoring).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    FragilityFit</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">collapse_IMs</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">finite</span> <span class="o">=</span> <span class="n">arr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">arr</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="n">finite</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;need at least 2 finite collapse IMs, got </span><span class="si">{</span><span class="n">finite</span><span class="o">.</span><span class="n">size</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+    <span class="n">ln_IM</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">finite</span><span class="p">)</span>
+    <span class="n">theta</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">ln_IM</span><span class="p">)))</span>
+    <span class="n">beta</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">ln_IM</span><span class="p">,</span> <span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">FragilityFit</span><span class="p">(</span>
+        <span class="n">theta</span><span class="o">=</span><span class="n">theta</span><span class="p">,</span> <span class="n">beta</span><span class="o">=</span><span class="n">beta</span><span class="p">,</span>
+        <span class="n">n_records</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">size</span><span class="p">),</span>
+        <span class="n">n_collapsed</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">finite</span><span class="o">.</span><span class="n">size</span><span class="p">),</span>
+        <span class="n">method</span><span class="o">=</span><span class="s2">&quot;moments&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="c1"># ============================================================ MLE (censored)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_lognormal_log_likelihood</span><span class="p">(</span>
+    <span class="n">theta</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">beta</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">collapse_IMs</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">no_collapse_IM_max</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Log-likelihood for a censored-collapse sample.</span>
+
+<span class="sd">    Records with finite collapse IM contribute the log-density of the</span>
+<span class="sd">    lognormal at that IM. Records that survived (did not collapse) up</span>
+<span class="sd">    to IM_max contribute log(1 - F(IM_max)), where F is the lognormal</span>
+<span class="sd">    CDF.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">beta</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+    <span class="c1"># Density part</span>
+    <span class="n">ll</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="k">if</span> <span class="n">collapse_IMs</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">collapse_IMs</span> <span class="o">/</span> <span class="n">theta</span><span class="p">)</span> <span class="o">/</span> <span class="n">beta</span>
+        <span class="c1"># log-pdf = -log(IM β √(2π)) - z²/2</span>
+        <span class="n">ll</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
+            <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">collapse_IMs</span> <span class="o">*</span> <span class="n">beta</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span><span class="p">))</span>
+            <span class="o">-</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">z</span> <span class="o">*</span> <span class="n">z</span>
+        <span class="p">)</span>
+    <span class="c1"># Censoring part</span>
+    <span class="k">if</span> <span class="n">no_collapse_IM_max</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">z_c</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">no_collapse_IM_max</span> <span class="o">/</span> <span class="n">theta</span><span class="p">)</span> <span class="o">/</span> <span class="n">beta</span>
+        <span class="c1"># 1 - Φ(z) using erfc for numerical stability</span>
+        <span class="n">survival</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">math</span><span class="o">.</span><span class="n">erfc</span><span class="p">(</span><span class="n">zi</span> <span class="o">/</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">2.0</span><span class="p">))</span>
+                                      <span class="k">for</span> <span class="n">zi</span> <span class="ow">in</span> <span class="n">z_c</span><span class="p">])</span>
+        <span class="n">survival</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">survival</span><span class="p">,</span> <span class="mf">1.0e-300</span><span class="p">)</span>    <span class="c1"># avoid log(0)</span>
+        <span class="n">ll</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">survival</span><span class="p">))</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">ll</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="fit_lognormal_mle">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.fragility.fit_lognormal_mle">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">fit_lognormal_mle</span><span class="p">(</span>
+    <span class="n">collapse_IMs</span><span class="p">,</span>
+    <span class="n">no_collapse_IM_max</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">theta_grid</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">beta_grid</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FragilityFit</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fit a censored-data lognormal fragility via grid-search MLE.</span>
+
+<span class="sd">    Records that collapsed contribute their actual collapse IM;</span>
+<span class="sd">    records that did not collapse contribute via censoring at their</span>
+<span class="sd">    maximum-IM-tested value (the IDA sweep cap).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    collapse_IMs : array-like</span>
+<span class="sd">        Collapse IMs for records that DID collapse.</span>
+<span class="sd">    no_collapse_IM_max : array-like</span>
+<span class="sd">        Maximum IM tested for records that did NOT collapse (their</span>
+<span class="sd">        IDA sweep cap, i.e., they survived this much).</span>
+<span class="sd">    theta_grid : array, optional</span>
+<span class="sd">        Grid of θ candidates. If omitted, spans 0.1× to 10× the</span>
+<span class="sd">        method-of-moments θ estimate from the collapsed records.</span>
+<span class="sd">    beta_grid : array, optional</span>
+<span class="sd">        Grid of β candidates. If omitted, spans 0.10 to 1.20 in</span>
+<span class="sd">        steps of 0.02.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">c_IMs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">collapse_IMs</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">nc_IMs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">no_collapse_IM_max</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">c_IMs</span> <span class="o">=</span> <span class="n">c_IMs</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">c_IMs</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">c_IMs</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)]</span>
+    <span class="n">nc_IMs</span> <span class="o">=</span> <span class="n">nc_IMs</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">nc_IMs</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">nc_IMs</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)]</span>
+    <span class="n">n_total</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">c_IMs</span><span class="o">.</span><span class="n">size</span> <span class="o">+</span> <span class="n">nc_IMs</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">n_total</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;need &gt;= 2 records total, got </span><span class="si">{</span><span class="n">n_total</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">theta_grid</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Use a moments-style seed if we have any collapses</span>
+        <span class="k">if</span> <span class="n">c_IMs</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">theta0</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">c_IMs</span><span class="p">))))</span>
+        <span class="k">elif</span> <span class="n">nc_IMs</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">theta0</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">nc_IMs</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">theta0</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="n">theta_grid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">theta0</span> <span class="o">/</span> <span class="mf">10.0</span><span class="p">),</span>
+                          <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">theta0</span> <span class="o">*</span> <span class="mf">10.0</span><span class="p">),</span> <span class="mi">100</span><span class="p">)</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">beta_grid</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">beta_grid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mf">0.10</span><span class="p">,</span> <span class="mf">1.21</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">)</span>
+
+    <span class="n">best_ll</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+    <span class="n">best_theta</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">theta_grid</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">best_beta</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">beta_grid</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="k">for</span> <span class="n">th</span> <span class="ow">in</span> <span class="n">theta_grid</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">bt</span> <span class="ow">in</span> <span class="n">beta_grid</span><span class="p">:</span>
+            <span class="n">ll</span> <span class="o">=</span> <span class="n">_lognormal_log_likelihood</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">th</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">bt</span><span class="p">),</span>
+                                              <span class="n">c_IMs</span><span class="p">,</span> <span class="n">nc_IMs</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">ll</span> <span class="o">&gt;</span> <span class="n">best_ll</span><span class="p">:</span>
+                <span class="n">best_ll</span> <span class="o">=</span> <span class="n">ll</span>
+                <span class="n">best_theta</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">th</span><span class="p">)</span>
+                <span class="n">best_beta</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">bt</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">FragilityFit</span><span class="p">(</span>
+        <span class="n">theta</span><span class="o">=</span><span class="n">best_theta</span><span class="p">,</span> <span class="n">beta</span><span class="o">=</span><span class="n">best_beta</span><span class="p">,</span>
+        <span class="n">n_records</span><span class="o">=</span><span class="n">n_total</span><span class="p">,</span>
+        <span class="n">n_collapsed</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">c_IMs</span><span class="o">.</span><span class="n">size</span><span class="p">),</span>
+        <span class="n">method</span><span class="o">=</span><span class="s2">&quot;mle&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="c1"># ============================================================ convenience</span>
+
+<div class="viewcode-block" id="fit_collapse_fragility">
+<a class="viewcode-back" href="../../../api/analysis.html#femsolver.analysis.fragility.fit_collapse_fragility">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">fit_collapse_fragility</span><span class="p">(</span>
+    <span class="n">collapse_IMs</span><span class="p">,</span>
+    <span class="n">no_collapse_IM_max</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FragilityFit</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Dispatch to the appropriate fragility-fit method.</span>
+
+<span class="sd">    If ``no_collapse_IM_max`` is provided AND non-empty, uses</span>
+<span class="sd">    :func:`fit_lognormal_mle`. Otherwise (all records collapsed)</span>
+<span class="sd">    uses :func:`fit_lognormal_method_of_moments`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">no_collapse_IM_max</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">nc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">no_collapse_IM_max</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+        <span class="n">nc</span> <span class="o">=</span> <span class="n">nc</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">nc</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">nc</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)]</span>
+        <span class="k">if</span> <span class="n">nc</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">fit_lognormal_mle</span><span class="p">(</span><span class="n">collapse_IMs</span><span class="p">,</span> <span class="n">nc</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fit_lognormal_method_of_moments</span><span class="p">(</span><span class="n">collapse_IMs</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

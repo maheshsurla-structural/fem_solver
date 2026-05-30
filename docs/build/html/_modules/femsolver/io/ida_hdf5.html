@@ -1,0 +1,379 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.io.ida_hdf5 &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.io.ida_hdf5</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.io.ida_hdf5</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;HDF5 persistence for IDA results (Phase 48.1).</span>
+
+<span class="sd">For a typical PBE study -- 30 records x 50 IM levels x 1000 time</span>
+<span class="sd">steps x 1000 DOFs -- the in-memory storage of an :class:`IDASummary`</span>
+<span class="sd">is fine, but **time-history traces** would not fit. This module</span>
+<span class="sd">gives a non-invasive way to spill IDA results to a single HDF5 file</span>
+<span class="sd">that can be re-loaded later for fragility fitting, P-58 input, or</span>
+<span class="sd">just inspection.</span>
+
+<span class="sd">Storage layout</span>
+<span class="sd">--------------</span>
+
+<span class="sd">::</span>
+
+<span class="sd">    /</span>
+<span class="sd">    ├── meta/</span>
+<span class="sd">    │   ├── n_records         : int</span>
+<span class="sd">    │   ├── edp_names         : list[str] (variable-length strings)</span>
+<span class="sd">    │   └── created           : ISO timestamp</span>
+<span class="sd">    ├── records/</span>
+<span class="sd">    │   ├── &lt;record_name_0&gt;/</span>
+<span class="sd">    │   │   ├── IMs                  : (n_levels,) float64</span>
+<span class="sd">    │   │   ├── scale_factors        : (n_levels,) float64</span>
+<span class="sd">    │   │   ├── converged            : (n_levels,) bool</span>
+<span class="sd">    │   │   ├── n_steps_completed    : (n_levels,) int64</span>
+<span class="sd">    │   │   └── edps/&lt;edp_name&gt;      : (n_levels,) float64</span>
+<span class="sd">    │   └── &lt;record_name_1&gt;/ ...</span>
+<span class="sd">    └── collapse/                    [only present when saving an IDASummary]</span>
+<span class="sd">        ├── collapse_IMs    : (n_records,) float64</span>
+<span class="sd">        ├── causes          : (n_records,) variable-length string</span>
+<span class="sd">        └── point_indices   : (n_records,) int64  (-1 sentinel for None)</span>
+
+<span class="sd">``h5py`` is imported lazily. Calling these helpers without h5py</span>
+<span class="sd">installed raises a clear ImportError.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">datetime</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.analysis.ida</span><span class="w"> </span><span class="kn">import</span> <span class="n">IDAPoint</span><span class="p">,</span> <span class="n">IDARecord</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.analysis.ida_collapse</span><span class="w"> </span><span class="kn">import</span> <span class="n">CollapseResult</span><span class="p">,</span> <span class="n">IDASummary</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_h5</span><span class="p">():</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">h5py</span>
+    <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>                                  <span class="c1"># pragma: no cover</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+            <span class="s2">&quot;h5py is required for femsolver.io.ida_hdf5 (install with &quot;</span>
+            <span class="s2">&quot;`pip install h5py`).&quot;</span>
+        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+    <span class="k">return</span> <span class="n">h5py</span>
+
+
+<span class="c1"># ============================================================ save</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_collect_edp_names</span><span class="p">(</span><span class="n">record</span><span class="p">:</span> <span class="n">IDARecord</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+    <span class="n">names</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">record</span><span class="o">.</span><span class="n">points</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">p</span><span class="o">.</span><span class="n">EDPs</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+                <span class="n">names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">names</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_write_record_group</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">record</span><span class="p">:</span> <span class="n">IDARecord</span><span class="p">,</span> <span class="n">edp_names</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">pts</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">points</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">pts</span><span class="p">)</span>
+    <span class="n">IMs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">IM</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">sf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">scale_factor</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">conv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">converged</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="n">nstep</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">n_steps_completed</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+    <span class="n">g</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s2">&quot;IMs&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">IMs</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="s2">&quot;gzip&quot;</span><span class="p">)</span>
+    <span class="n">g</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s2">&quot;scale_factors&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">sf</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="s2">&quot;gzip&quot;</span><span class="p">)</span>
+    <span class="n">g</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s2">&quot;converged&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">conv</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="s2">&quot;gzip&quot;</span><span class="p">)</span>
+    <span class="n">g</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s2">&quot;n_steps_completed&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">nstep</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="s2">&quot;gzip&quot;</span><span class="p">)</span>
+    <span class="n">edps_g</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="s2">&quot;edps&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">edp_names</span><span class="p">:</span>
+        <span class="n">col</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">EDPs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">math</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="p">],</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">edps_g</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">col</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="s2">&quot;gzip&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="save_ida_record">
+<a class="viewcode-back" href="../../../api/io.html#femsolver.io.save_ida_record">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">save_ida_record</span><span class="p">(</span><span class="n">record</span><span class="p">:</span> <span class="n">IDARecord</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Save one :class:`IDARecord` to ``path`` (HDF5).&quot;&quot;&quot;</span>
+    <span class="n">h5py</span> <span class="o">=</span> <span class="n">_h5</span><span class="p">()</span>
+    <span class="n">edp_names</span> <span class="o">=</span> <span class="n">_collect_edp_names</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="s2">&quot;meta&quot;</span><span class="p">)</span>
+        <span class="n">meta</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;n_records&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">meta</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;created&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
+        <span class="n">dt</span> <span class="o">=</span> <span class="n">h5py</span><span class="o">.</span><span class="n">string_dtype</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+        <span class="n">meta</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span>
+            <span class="s2">&quot;edp_names&quot;</span><span class="p">,</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">edp_names</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">object</span><span class="p">),</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">recs_g</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="s2">&quot;records&quot;</span><span class="p">)</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="n">recs_g</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">record_name</span><span class="p">)</span>
+        <span class="n">_write_record_group</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">record</span><span class="p">,</span> <span class="n">edp_names</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="save_ida_summary">
+<a class="viewcode-back" href="../../../api/io.html#femsolver.io.save_ida_summary">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">save_ida_summary</span><span class="p">(</span><span class="n">summary</span><span class="p">:</span> <span class="n">IDASummary</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Save a full :class:`IDASummary` (multi-record + collapse) to HDF5.&quot;&quot;&quot;</span>
+    <span class="n">h5py</span> <span class="o">=</span> <span class="n">_h5</span><span class="p">()</span>
+    <span class="n">edp_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">rec</span> <span class="ow">in</span> <span class="n">summary</span><span class="o">.</span><span class="n">records</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">_collect_edp_names</span><span class="p">(</span><span class="n">rec</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">edp_names</span><span class="p">:</span>
+                <span class="n">edp_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="s2">&quot;meta&quot;</span><span class="p">)</span>
+        <span class="n">meta</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;n_records&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">summary</span><span class="o">.</span><span class="n">records</span><span class="p">)</span>
+        <span class="n">meta</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;created&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
+        <span class="n">dt</span> <span class="o">=</span> <span class="n">h5py</span><span class="o">.</span><span class="n">string_dtype</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+        <span class="n">meta</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span>
+            <span class="s2">&quot;edp_names&quot;</span><span class="p">,</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">edp_names</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">object</span><span class="p">),</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">recs_g</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="s2">&quot;records&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">rec</span> <span class="ow">in</span> <span class="n">summary</span><span class="o">.</span><span class="n">records</span><span class="p">:</span>
+            <span class="n">g</span> <span class="o">=</span> <span class="n">recs_g</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="n">rec</span><span class="o">.</span><span class="n">record_name</span><span class="p">)</span>
+            <span class="n">_write_record_group</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">rec</span><span class="p">,</span> <span class="n">edp_names</span><span class="p">)</span>
+        <span class="c1"># Collapse block</span>
+        <span class="n">coll</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="s2">&quot;collapse&quot;</span><span class="p">)</span>
+        <span class="n">coll</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s2">&quot;collapse_IMs&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">summary</span><span class="o">.</span><span class="n">collapse_IMs</span><span class="p">)</span>
+        <span class="n">coll</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;n_collapsed&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">summary</span><span class="o">.</span><span class="n">n_collapsed</span><span class="p">)</span>
+        <span class="n">coll</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;median_collapse_IM&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">summary</span><span class="o">.</span><span class="n">median_collapse_IM</span><span class="p">)</span> \
+            <span class="k">if</span> <span class="n">math</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">summary</span><span class="o">.</span><span class="n">median_collapse_IM</span><span class="p">)</span> <span class="k">else</span> <span class="n">math</span><span class="o">.</span><span class="n">nan</span>
+        <span class="n">causes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">cause</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">summary</span><span class="o">.</span><span class="n">collapse_results</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">object</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">coll</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s2">&quot;causes&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">causes</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dt</span><span class="p">)</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+            <span class="p">[</span><span class="o">-</span><span class="mi">1</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">collapse_point_index</span> <span class="ow">is</span> <span class="kc">None</span>
+                <span class="k">else</span> <span class="nb">int</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">collapse_point_index</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">summary</span><span class="o">.</span><span class="n">collapse_results</span><span class="p">],</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">coll</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s2">&quot;point_indices&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">idx</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># ============================================================ load</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_read_record_group</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">edp_names</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">IDARecord</span><span class="p">:</span>
+    <span class="n">IMs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="s2">&quot;IMs&quot;</span><span class="p">])</span>
+    <span class="n">sf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="s2">&quot;scale_factors&quot;</span><span class="p">])</span>
+    <span class="n">conv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="s2">&quot;converged&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="n">nstep</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="s2">&quot;n_steps_completed&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">edps_g</span> <span class="o">=</span> <span class="n">g</span><span class="p">[</span><span class="s2">&quot;edps&quot;</span><span class="p">]</span>
+    <span class="n">edp_cols</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">name</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">edps_g</span><span class="p">[</span><span class="n">name</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">edp_names</span> <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">edps_g</span>
+    <span class="p">}</span>
+    <span class="n">pts</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">IMs</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+        <span class="n">EDPs</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">col</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">edp_cols</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="n">pts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">IDAPoint</span><span class="p">(</span>
+            <span class="n">IM</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">IMs</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span>
+            <span class="n">scale_factor</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">sf</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span>
+            <span class="n">EDPs</span><span class="o">=</span><span class="n">EDPs</span><span class="p">,</span>
+            <span class="n">converged</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">conv</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span>
+            <span class="n">n_steps_completed</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">nstep</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span>
+        <span class="p">))</span>
+    <span class="k">return</span> <span class="n">IDARecord</span><span class="p">(</span><span class="n">record_name</span><span class="o">=</span><span class="n">g</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">points</span><span class="o">=</span><span class="n">pts</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="load_ida_record">
+<a class="viewcode-back" href="../../../api/io.html#femsolver.io.load_ida_record">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_ida_record</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">record_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">IDARecord</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load a single :class:`IDARecord` from ``path``.</span>
+
+<span class="sd">    If ``record_name`` is None and the file contains exactly one</span>
+<span class="sd">    record, that record is returned. Otherwise the name must be given.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">h5py</span> <span class="o">=</span> <span class="n">_h5</span><span class="p">()</span>
+    <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">edp_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">)</span> <span class="k">else</span> <span class="n">s</span>
+                     <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">f</span><span class="p">[</span><span class="s2">&quot;meta/edp_names&quot;</span><span class="p">][</span><span class="o">...</span><span class="p">]]</span>
+        <span class="n">recs_g</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s2">&quot;records&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">record_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">keys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">recs_g</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2"> has </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span><span class="si">}</span><span class="s2"> records; record_name required.&quot;</span>
+                <span class="p">)</span>
+            <span class="n">record_name</span> <span class="o">=</span> <span class="n">keys</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">record_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">recs_g</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;record &#39;</span><span class="si">{</span><span class="n">record_name</span><span class="si">}</span><span class="s2">&#39; not found in </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">_read_record_group</span><span class="p">(</span><span class="n">recs_g</span><span class="p">[</span><span class="n">record_name</span><span class="p">],</span> <span class="n">edp_names</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="load_ida_summary">
+<a class="viewcode-back" href="../../../api/io.html#femsolver.io.load_ida_summary">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_ida_summary</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">IDASummary</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load an :class:`IDASummary` written by :func:`save_ida_summary`.&quot;&quot;&quot;</span>
+    <span class="n">h5py</span> <span class="o">=</span> <span class="n">_h5</span><span class="p">()</span>
+    <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">edp_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">)</span> <span class="k">else</span> <span class="n">s</span>
+                     <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">f</span><span class="p">[</span><span class="s2">&quot;meta/edp_names&quot;</span><span class="p">][</span><span class="o">...</span><span class="p">]]</span>
+        <span class="n">recs_g</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s2">&quot;records&quot;</span><span class="p">]</span>
+        <span class="n">records</span> <span class="o">=</span> <span class="p">[</span><span class="n">_read_record_group</span><span class="p">(</span><span class="n">recs_g</span><span class="p">[</span><span class="n">name</span><span class="p">],</span> <span class="n">edp_names</span><span class="p">)</span>
+                   <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">recs_g</span><span class="o">.</span><span class="n">keys</span><span class="p">()]</span>
+        <span class="k">if</span> <span class="s2">&quot;collapse&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
+            <span class="c1"># Summary without collapse info; reconstruct trivially</span>
+            <span class="k">return</span> <span class="n">IDASummary</span><span class="p">(</span>
+                <span class="n">records</span><span class="o">=</span><span class="n">records</span><span class="p">,</span>
+                <span class="n">collapse_results</span><span class="o">=</span><span class="p">[],</span>
+                <span class="n">collapse_IMs</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
+                <span class="n">n_collapsed</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="n">median_collapse_IM</span><span class="o">=</span><span class="n">math</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="n">coll</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s2">&quot;collapse&quot;</span><span class="p">]</span>
+        <span class="n">collapse_IMs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">coll</span><span class="p">[</span><span class="s2">&quot;collapse_IMs&quot;</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">causes</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">)</span> <span class="k">else</span> <span class="n">s</span>
+                  <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">coll</span><span class="p">[</span><span class="s2">&quot;causes&quot;</span><span class="p">][</span><span class="o">...</span><span class="p">]]</span>
+        <span class="n">idxs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">coll</span><span class="p">[</span><span class="s2">&quot;point_indices&quot;</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+        <span class="n">collapse_results</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">CollapseResult</span><span class="p">(</span>
+                <span class="n">collapse_IM</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">collapse_IMs</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span>
+                <span class="n">cause</span><span class="o">=</span><span class="n">causes</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                <span class="n">collapse_point_index</span><span class="o">=</span><span class="p">(</span><span class="kc">None</span> <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">idxs</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">&lt;</span> <span class="mi">0</span>
+                                        <span class="k">else</span> <span class="nb">int</span><span class="p">(</span><span class="n">idxs</span><span class="p">[</span><span class="n">i</span><span class="p">])),</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">causes</span><span class="p">))</span>
+        <span class="p">]</span>
+        <span class="n">n_coll</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">coll</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;n_collapsed&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="n">med</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">coll</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;median_collapse_IM&quot;</span><span class="p">,</span> <span class="n">math</span><span class="o">.</span><span class="n">nan</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">IDASummary</span><span class="p">(</span>
+            <span class="n">records</span><span class="o">=</span><span class="n">records</span><span class="p">,</span>
+            <span class="n">collapse_results</span><span class="o">=</span><span class="n">collapse_results</span><span class="p">,</span>
+            <span class="n">collapse_IMs</span><span class="o">=</span><span class="n">collapse_IMs</span><span class="p">,</span>
+            <span class="n">n_collapsed</span><span class="o">=</span><span class="n">n_coll</span><span class="p">,</span>
+            <span class="n">median_collapse_IM</span><span class="o">=</span><span class="n">med</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

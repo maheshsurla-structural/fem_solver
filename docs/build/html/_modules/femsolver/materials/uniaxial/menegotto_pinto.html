@@ -1,0 +1,407 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>femsolver.materials.uniaxial.menegotto_pinto &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../guide/vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">femsolver.materials.uniaxial.menegotto_pinto</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for femsolver.materials.uniaxial.menegotto_pinto</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Menegotto-Pinto cyclic steel model.</span>
+
+<span class="sd">The Menegotto-Pinto (1973) curve smoothly transitions between an</span>
+<span class="sd">elastic asymptote and a kinematic-hardening yield asymptote:</span>
+
+<span class="sd">    sigma_star = b * eps_star + (1 - b) * eps_star / (1 + eps_star^R)^(1/R)</span>
+
+<span class="sd">where</span>
+
+<span class="sd">    eps_star   = (eps - eps_r) / (eps_0 - eps_r)</span>
+<span class="sd">    sigma_star = (sigma - sigma_r) / (sigma_0 - sigma_r)</span>
+
+<span class="sd">``(eps_r, sigma_r)`` is the most recent load-reversal point and</span>
+<span class="sd">``(eps_0, sigma_0)`` is the *asymptotic yield point* -- the</span>
+<span class="sd">intersection of the elastic reload line through the reversal point</span>
+<span class="sd">and the next-direction hardening asymptote. The curvature parameter</span>
+<span class="sd">``R`` controls the Bauschinger effect: large ``R`` (~20) gives a</span>
+<span class="sd">sharp elastic-to-plastic transition, small ``R`` (~5) gives a soft,</span>
+<span class="sd">round one typical of well-aged carbon steel.</span>
+
+<span class="sd">Compared to ``UniaxialBilinear`` (kinematic hardening with a sharp</span>
+<span class="sd">yield kink), Menegotto-Pinto produces realistic *smooth* hysteresis</span>
+<span class="sd">loops -- the canonical input for seismic RC fiber-section analysis</span>
+<span class="sd">together with the concrete models from Phase 16.0.</span>
+
+<span class="sd">Notes</span>
+<span class="sd">-----</span>
+<span class="sd">This implementation uses a *fixed* curvature ``R``; the full</span>
+<span class="sd">Giuffré-Menegotto-Pinto model evolves ``R`` with the previous</span>
+<span class="sd">plastic excursion to model cyclic-hardening / softening, and is a</span>
+<span class="sd">straightforward refinement on top of this base.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">femsolver.materials.uniaxial.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">UniaxialMaterial</span>
+
+
+<div class="viewcode-block" id="UniaxialMenegottoPinto">
+<a class="viewcode-back" href="../../../../guide/materials_catalog.html#femsolver.materials.uniaxial.menegotto_pinto.UniaxialMenegottoPinto">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">UniaxialMenegottoPinto</span><span class="p">(</span><span class="n">UniaxialMaterial</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cyclic-steel Menegotto-Pinto material with optional</span>
+<span class="sd">    Giuffre-Menegotto-Pinto evolving R (Filippou et al. 1983).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    E : float</span>
+<span class="sd">        Initial elastic modulus.</span>
+<span class="sd">    sigma_y : float</span>
+<span class="sd">        Yield stress magnitude (positive).</span>
+<span class="sd">    b : float, default 0.01</span>
+<span class="sd">        Strain-hardening ratio in ``[0, 1)``. ``b = 0`` is EPP; values</span>
+<span class="sd">        near ``0.005-0.02`` are typical for reinforcing steel.</span>
+<span class="sd">    R0 : float, default 20.0</span>
+<span class="sd">        Initial Menegotto-Pinto curvature parameter (used before any</span>
+<span class="sd">        cyclic excursion). Backwards-compat: also accepted as ``R``.</span>
+<span class="sd">    a1 : float, default 0.0</span>
+<span class="sd">        First Giuffre curvature-evolution coefficient. ``a1 = 0``</span>
+<span class="sd">        keeps R constant at ``R0`` (pure Menegotto-Pinto, no cyclic</span>
+<span class="sd">        curvature evolution). Typical Filippou value: ``a1 = 18.5``.</span>
+<span class="sd">    a2 : float, default 0.15</span>
+<span class="sd">        Second Giuffre coefficient. Together with ``a1`` gives</span>
+
+<span class="sd">            R(xi) = R0 - a1 * xi / (a2 + xi)</span>
+
+<span class="sd">        where ``xi`` is a strain-excursion measure normalized by the</span>
+<span class="sd">        yield strain.</span>
+<span class="sd">    R : float, optional</span>
+<span class="sd">        Backwards-compat alias for ``R0``. If given, ``R0`` is set to</span>
+<span class="sd">        this value and the Giuffre evolution is disabled (``a1 = 0``).</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    With ``a1 = 0`` the model reduces to the classical Menegotto-Pinto</span>
+<span class="sd">    of Phase 16.3. With ``a1 &gt; 0``, each load reversal recomputes</span>
+<span class="sd">    ``R`` based on the strain swing since the previous extreme in</span>
+<span class="sd">    the opposite direction. Larger swings produce smaller R (rounder</span>
+<span class="sd">    Bauschinger transition), matching real steel behaviour under</span>
+<span class="sd">    accumulated cyclic loading.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">E</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">sigma_y</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span><span class="p">,</span>
+                 <span class="n">R0</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">20.0</span><span class="p">,</span> <span class="n">a1</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">a2</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.15</span><span class="p">,</span>
+                 <span class="n">R</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">E</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;E must be positive, got </span><span class="si">{</span><span class="n">E</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">sigma_y</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;sigma_y must be positive, got </span><span class="si">{</span><span class="n">sigma_y</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">b</span> <span class="o">&lt;</span> <span class="mf">1.0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;b must be in [0, 1), got </span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">a1</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;a1 must be &gt;= 0, got </span><span class="si">{</span><span class="n">a1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">a2</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;a2 must be positive, got </span><span class="si">{</span><span class="n">a2</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="c1"># Back-compat: if R is given, use it as R0 with no evolution.</span>
+        <span class="k">if</span> <span class="n">R</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">R0</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
+            <span class="n">a1</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="k">if</span> <span class="n">R0</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;R0 must be &gt; 1, got </span><span class="si">{</span><span class="n">R0</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">E</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">E</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_y</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">sigma_y</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_y</span> <span class="o">=</span> <span class="n">sigma_y</span> <span class="o">/</span> <span class="n">E</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">b</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">R0</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">R0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">a1</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">a1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">a2</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">a2</span><span class="p">)</span>
+        <span class="c1"># R is updated on each reversal when a1 &gt; 0; otherwise constant.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">R</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">R0</span>
+        <span class="c1"># ----- state: committed -----</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_committed</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_committed</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_r_committed</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_r_committed</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps0_committed</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_y</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma0_committed</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_y</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">direction_committed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="o">+</span><span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_pos_committed</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_min_neg_committed</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">R_committed</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">R0</span>
+        <span class="c1"># ----- state: trial -----</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_trial</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_trial</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_r_trial</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_r_trial</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps0_trial</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_y</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma0_trial</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_y</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">direction_trial</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="o">+</span><span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_pos_trial</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_min_neg_trial</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">R_trial</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">R0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Et_trial</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">E</span>
+
+    <span class="c1"># ------------------------------------------------------------ helpers</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_asymptote</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">eps_r</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">sigma_r</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+                            <span class="n">direction</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Intersect the elastic reload line through ``(eps_r, sigma_r)``</span>
+<span class="sd">        (slope E) with the hardening asymptote in the chosen direction:</span>
+
+<span class="sd">            sigma = b E eps + direction * (1 - b) sigma_y</span>
+
+<span class="sd">        Returns the asymptotic yield point ``(eps_0, sigma_0)``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">b</span>
+        <span class="n">E</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">E</span>
+        <span class="n">sigma_y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_y</span>
+        <span class="n">eps0</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">direction</span> <span class="o">*</span> <span class="n">sigma_y</span> <span class="o">/</span> <span class="n">E</span>
+            <span class="o">+</span> <span class="p">(</span><span class="n">E</span> <span class="o">*</span> <span class="n">eps_r</span> <span class="o">-</span> <span class="n">sigma_r</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">E</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">b</span><span class="p">))</span>
+        <span class="p">)</span>
+        <span class="n">sigma0</span> <span class="o">=</span> <span class="n">sigma_r</span> <span class="o">+</span> <span class="n">E</span> <span class="o">*</span> <span class="p">(</span><span class="n">eps0</span> <span class="o">-</span> <span class="n">eps_r</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">eps0</span><span class="p">,</span> <span class="n">sigma0</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_giuffre_R</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xi</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Giuffre-Menegotto-Pinto evolving curvature parameter.</span>
+
+<span class="sd">            R = R0 - a1 * xi / (a2 + xi)</span>
+
+<span class="sd">        With ``a1 = 0`` returns the constant ``R0``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">a1</span> <span class="o">==</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">xi</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">R0</span>
+        <span class="n">R</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">R0</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">a1</span> <span class="o">*</span> <span class="n">xi</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">a2</span> <span class="o">+</span> <span class="n">xi</span><span class="p">)</span>
+        <span class="c1"># Clamp to a reasonable minimum so the MP curve stays well-defined</span>
+        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">)</span>
+
+    <span class="c1"># ------------------------------------------------------------ response</span>
+<div class="viewcode-block" id="UniaxialMenegottoPinto.get_response">
+<a class="viewcode-back" href="../../../../guide/materials_catalog.html#femsolver.materials.uniaxial.menegotto_pinto.UniaxialMenegottoPinto.get_response">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">eps</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+        <span class="n">eps</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">eps</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_trial</span> <span class="o">=</span> <span class="n">eps</span>
+        <span class="n">delta</span> <span class="o">=</span> <span class="n">eps</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_committed</span>
+        <span class="k">if</span> <span class="n">delta</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="n">inc_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">direction_committed</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">inc_dir</span> <span class="o">=</span> <span class="o">+</span><span class="mi">1</span> <span class="k">if</span> <span class="n">delta</span> <span class="o">&gt;</span> <span class="mf">0.0</span> <span class="k">else</span> <span class="o">-</span><span class="mi">1</span>
+
+        <span class="c1"># Update peak strain trackers based on the committed history.</span>
+        <span class="n">eps_max_pos</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">eps_max_pos_committed</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_committed</span><span class="p">)</span>
+        <span class="n">eps_min_neg</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">eps_min_neg_committed</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_committed</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_pos_trial</span> <span class="o">=</span> <span class="n">eps_max_pos</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_min_neg_trial</span> <span class="o">=</span> <span class="n">eps_min_neg</span>
+
+        <span class="c1"># Detect reversal vs the committed branch</span>
+        <span class="k">if</span> <span class="n">inc_dir</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">direction_committed</span><span class="p">:</span>
+            <span class="n">eps_r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_committed</span>
+            <span class="n">sigma_r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_committed</span>
+            <span class="n">eps0</span><span class="p">,</span> <span class="n">sigma0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_asymptote</span><span class="p">(</span><span class="n">eps_r</span><span class="p">,</span> <span class="n">sigma_r</span><span class="p">,</span> <span class="n">inc_dir</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">eps_r_trial</span> <span class="o">=</span> <span class="n">eps_r</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sigma_r_trial</span> <span class="o">=</span> <span class="n">sigma_r</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">eps0_trial</span> <span class="o">=</span> <span class="n">eps0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sigma0_trial</span> <span class="o">=</span> <span class="n">sigma0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">direction_trial</span> <span class="o">=</span> <span class="n">inc_dir</span>
+            <span class="c1"># Giuffre R update: xi = magnitude of the just-completed</span>
+            <span class="c1"># half-cycle (swing from previous reversal to current).</span>
+            <span class="n">xi</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">eps_r</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_r_committed</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_y</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">R_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_giuffre_R</span><span class="p">(</span><span class="n">xi</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">eps_r_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_r_committed</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sigma_r_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_r_committed</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">eps0_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps0_committed</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sigma0_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma0_committed</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">direction_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">direction_committed</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">R_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">R_committed</span>
+
+        <span class="n">eps_r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_r_trial</span>
+        <span class="n">sigma_r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_r_trial</span>
+        <span class="n">eps0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps0_trial</span>
+        <span class="n">sigma0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma0_trial</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">b</span>
+        <span class="n">R</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">R_trial</span>
+
+        <span class="n">denom_eps</span> <span class="o">=</span> <span class="n">eps0</span> <span class="o">-</span> <span class="n">eps_r</span>
+        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">denom_eps</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1.0e-30</span><span class="p">:</span>
+            <span class="c1"># Degenerate branch -- treat as fully plastic</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sigma_trial</span> <span class="o">=</span> <span class="n">sigma_r</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">Et_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">E</span> <span class="o">*</span> <span class="n">b</span>
+            <span class="k">return</span> <span class="n">sigma_r</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">E</span> <span class="o">*</span> <span class="n">b</span>
+
+        <span class="n">eps_star</span> <span class="o">=</span> <span class="p">(</span><span class="n">eps</span> <span class="o">-</span> <span class="n">eps_r</span><span class="p">)</span> <span class="o">/</span> <span class="n">denom_eps</span>
+        <span class="k">if</span> <span class="n">eps_star</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="c1"># Tiny intra-iteration overshoot back across the reversal --</span>
+            <span class="c1"># clamp to keep the formulas well-defined.</span>
+            <span class="n">eps_star</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+        <span class="c1"># Menegotto-Pinto curve</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="n">eps_star</span> <span class="o">**</span> <span class="n">R</span>
+        <span class="n">denom_factor</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">u</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="n">R</span><span class="p">)</span>
+        <span class="n">sigma_star</span> <span class="o">=</span> <span class="n">b</span> <span class="o">*</span> <span class="n">eps_star</span> <span class="o">+</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">b</span><span class="p">)</span> <span class="o">*</span> <span class="n">eps_star</span> <span class="o">/</span> <span class="n">denom_factor</span>
+        <span class="n">sigma</span> <span class="o">=</span> <span class="n">sigma_r</span> <span class="o">+</span> <span class="n">sigma_star</span> <span class="o">*</span> <span class="p">(</span><span class="n">sigma0</span> <span class="o">-</span> <span class="n">sigma_r</span><span class="p">)</span>
+
+        <span class="c1"># Tangent: d sigma / d eps = (sigma0 - sigma_r)/(eps0 - eps_r) * d sigma_star / d eps_star</span>
+        <span class="c1"># d sigma_star / d eps_star = b + (1 - b) / (1 + eps_star^R)^(1 + 1/R)</span>
+        <span class="n">d_sigma_star</span> <span class="o">=</span> <span class="n">b</span> <span class="o">+</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">b</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">u</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">R</span><span class="p">)</span>
+        <span class="n">Et</span> <span class="o">=</span> <span class="p">(</span><span class="n">sigma0</span> <span class="o">-</span> <span class="n">sigma_r</span><span class="p">)</span> <span class="o">/</span> <span class="n">denom_eps</span> <span class="o">*</span> <span class="n">d_sigma_star</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_trial</span> <span class="o">=</span> <span class="n">sigma</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Et_trial</span> <span class="o">=</span> <span class="n">Et</span>
+        <span class="k">return</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">Et</span></div>
+
+
+    <span class="c1"># ------------------------------------------------------------ state</span>
+<div class="viewcode-block" id="UniaxialMenegottoPinto.commit_state">
+<a class="viewcode-back" href="../../../../guide/materials_catalog.html#femsolver.materials.uniaxial.menegotto_pinto.UniaxialMenegottoPinto.commit_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">commit_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_committed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_trial</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_committed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_trial</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_r_committed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_r_trial</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_r_committed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_r_trial</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps0_committed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps0_trial</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma0_committed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma0_trial</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">direction_committed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">direction_trial</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_pos_committed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_pos_trial</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_min_neg_committed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_min_neg_trial</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">R_committed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">R_trial</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">R</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">R_trial</span></div>
+
+
+<div class="viewcode-block" id="UniaxialMenegottoPinto.revert_state">
+<a class="viewcode-back" href="../../../../guide/materials_catalog.html#femsolver.materials.uniaxial.menegotto_pinto.UniaxialMenegottoPinto.revert_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">revert_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_committed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_committed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_r_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_r_committed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_r_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_r_committed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps0_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps0_committed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma0_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma0_committed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">direction_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">direction_committed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_pos_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_max_pos_committed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eps_min_neg_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps_min_neg_committed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">R_trial</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">R_committed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">R</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">R_committed</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;UniaxialMenegottoPinto(E=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">E</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">, sigma_y=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">sigma_y</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;b=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">b</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">, R0=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">R0</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">, a1=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">a1</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">, a2=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">a2</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">)&quot;</span>
+        <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

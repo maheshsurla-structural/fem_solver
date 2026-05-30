@@ -1,0 +1,225 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Getting started &mdash; femsolver</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Modelling primer" href="modeling_primer.html" />
+    <link rel="prev" title="femsolver — a Python finite-element solver for structural analysis" href="../index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            femsolver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Getting started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#install">Install</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#a-first-model-pin-roller-truss">A first model — pin-roller truss</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#whats-next">What’s next</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#where-to-look-in-the-source">Where to look in the source</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modeling_primer.html">Modelling primer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="analysis_types.html">Analysis types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="materials_catalog.html">Materials catalog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design_workflows.html">Design workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pbe_pipeline.html">Performance-Based Earthquake Engineering pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="connections.html">Connection models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vv_benchmarks.html">V&amp;V benchmark suite</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/core.html">Core model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/sections.html">Sections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/elements.html">Elements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/analysis.html">Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/design.html">Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/bridges.html">Bridges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/benchmarks.html">V&amp;V benchmark suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/io.html">I/O and post-processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorial examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Theory &amp; verification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../theory/overview.html">Theory manual overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../theory/vv_report.html">Latest V&amp;V report</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">femsolver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Getting started</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/guide/getting_started.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="getting-started">
+<h1>Getting started<a class="headerlink" href="#getting-started" title="Link to this heading"></a></h1>
+<p>This page walks you from a fresh Python install to running your first
+analysis with <strong>femsolver</strong>.</p>
+<section id="install">
+<h2>Install<a class="headerlink" href="#install" title="Link to this heading"></a></h2>
+<p>femsolver is pure Python with NumPy + SciPy as the only hard
+dependencies:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.<span class="o">[</span>dev,viz<span class="o">]</span>
+</pre></div>
+</div>
+<p>This will install the package in editable mode plus the optional
+visualisation and dev-tool extras.</p>
+<p>To verify the install:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pytest<span class="w"> </span>-q<span class="w"> </span>tests/test_truss.py
+</pre></div>
+</div>
+</section>
+<section id="a-first-model-pin-roller-truss">
+<h2>A first model — pin-roller truss<a class="headerlink" href="#a-first-model-pin-roller-truss" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">femsolver</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ElasticIsotropic</span><span class="p">,</span> <span class="n">LinearStaticAnalysis</span><span class="p">,</span> <span class="n">Model</span><span class="p">,</span> <span class="n">Truss2D</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># 3-bar truss, 1 m base, 1 m height</span>
+<span class="n">m</span> <span class="o">=</span> <span class="n">Model</span><span class="p">(</span><span class="n">ndm</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">ndf</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">m</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+<span class="n">m</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+<span class="n">m</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+
+<span class="n">mat</span> <span class="o">=</span> <span class="n">ElasticIsotropic</span><span class="p">(</span><span class="n">tag</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">E</span><span class="o">=</span><span class="mf">2.0e11</span><span class="p">,</span> <span class="n">nu</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">rho</span><span class="o">=</span><span class="mf">7850.0</span><span class="p">)</span>
+<span class="n">m</span><span class="o">.</span><span class="n">add_material</span><span class="p">(</span><span class="n">mat</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">([(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)],</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">add_element</span><span class="p">(</span><span class="n">Truss2D</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">),</span> <span class="n">mat</span><span class="p">,</span> <span class="n">area</span><span class="o">=</span><span class="mf">1.0e-4</span><span class="p">))</span>
+
+<span class="n">m</span><span class="o">.</span><span class="n">fix</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>          <span class="c1"># pin at node 1</span>
+<span class="n">m</span><span class="o">.</span><span class="n">fix</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>          <span class="c1"># roller at node 2 (uy = 0)</span>
+<span class="n">m</span><span class="o">.</span><span class="n">add_nodal_load</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="p">[</span><span class="mf">1.0e4</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>
+
+<span class="n">LinearStaticAnalysis</span><span class="p">(</span><span class="n">m</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Node 3 displacement:&quot;</span><span class="p">,</span> <span class="n">m</span><span class="o">.</span><span class="n">node</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">disp</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Run it with <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">first_truss.py</span></code> and you should see a 2-vector of
+displacements at node 3.</p>
+</section>
+<section id="whats-next">
+<h2>What’s next<a class="headerlink" href="#whats-next" title="Link to this heading"></a></h2>
+<p>Once this works, try:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="modeling_primer.html"><span class="doc">Modelling primer</span></a> — the modelling vocabulary (nodes, materials,
+sections, elements, constraints).</p></li>
+<li><p><a class="reference internal" href="analysis_types.html"><span class="doc">Analysis types</span></a> — linear/nonlinear static, transient, eigen,
+buckling.</p></li>
+<li><p>The <a class="reference internal" href="../tutorials/index.html"><span class="doc">Tutorial examples</span></a> — fifty worked examples, from a 2D truss
+through full PBE workflows on bridges.</p></li>
+</ul>
+</section>
+<section id="where-to-look-in-the-source">
+<h2>Where to look in the source<a class="headerlink" href="#where-to-look-in-the-source" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>You want to …</p></th>
+<th class="head"><p>Open …</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>add a new element type</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">src/femsolver/elements/</span></code> (mirror an existing class)</p></td>
+</tr>
+<tr class="row-odd"><td><p>add a uniaxial constitutive law</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">src/femsolver/materials/uniaxial/</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>add a new analysis driver</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">src/femsolver/analysis/</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>add a design-code check</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">src/femsolver/design/</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>see worked examples</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">examples/</span></code> (50+ scripts)</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../index.html" class="btn btn-neutral float-left" title="femsolver — a Python finite-element solver for structural analysis" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="modeling_primer.html" class="btn btn-neutral float-right" title="Modelling primer" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, femsolver contributors.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
