@@ -21,7 +21,20 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 import scipy.sparse as sp
-from scipy.sparse.linalg import cg, factorized, gmres, spilu, spsolve
+from scipy.sparse.linalg import cg, factorized, gmres, spilu, splu, spsolve
+
+
+# Optional PARDISO via pypardiso — graceful fallback if not installed.
+try:
+    import pypardiso              # type: ignore
+    _PARDISO_AVAILABLE = True
+except ImportError:
+    _PARDISO_AVAILABLE = False
+
+
+def pardiso_available() -> bool:
+    """Return True if pypardiso is installed in the current environment."""
+    return _PARDISO_AVAILABLE
 
 
 class LinearSolver(ABC):
@@ -162,5 +175,96 @@ class IterativeSolver(LinearSolver):
             raise RuntimeError(
                 f"iterative solver ({self.method}) reported "
                 f"illegal-input error code {info}."
+            )
+        return np.asarray(x).ravel()
+
+
+# ============================================================ PARDISO
+
+class PardisoSolver(LinearSolver):
+    """Intel MKL PARDISO via pypardiso.
+
+    Faster than scipy's SuperLU for many engineering-FE stiffness
+    matrices, especially in the 10k--500k DOF range, thanks to MKL's
+    parallel sparse-direct factorisation.
+
+    Raises ``ImportError`` on instantiation if ``pypardiso`` is not
+    installed; check :func:`pardiso_available` first if you want to
+    fall back gracefully.
+    """
+
+    def __init__(self):
+        if not _PARDISO_AVAILABLE:
+            raise ImportError(
+                "PardisoSolver requires the optional 'pypardiso' "
+                "package: pip install pypardiso"
+            )
+
+    def solve(self, A: sp.spmatrix, b: np.ndarray) -> np.ndarray:
+        # pypardiso accepts CSR or CSC; CSR is its native format
+        b = np.asarray(b).ravel()
+        try:
+            x = pypardiso.spsolve(A.tocsr(), b)
+        except Exception as exc:
+            raise RuntimeError(
+                f"PARDISO solve failed: {exc}. Likely cause: singular "
+                "matrix or unsupported dtype."
+            ) from exc
+        x = np.asarray(x).ravel()
+        if not np.all(np.isfinite(x)):
+            raise RuntimeError(
+                "PARDISO solve produced non-finite values."
+            )
+        return x
+
+
+# ============================================================ cached / re-used factor
+
+class CachedFactorSolver(LinearSolver):
+    """SuperLU sparse-direct solver that caches its factorisation
+    across multiple :meth:`solve` calls.
+
+    Use when the same ``A`` is solved against several different
+    right-hand sides (e.g., response-spectrum modal decomposition,
+    multi-load-case linear analysis, or the inner solves of a
+    transient time-step that keeps the same effective matrix).
+    The factorisation is computed lazily on the first ``solve``.
+
+    Call :meth:`reset` to discard the cached factor and force
+    re-factorisation on the next ``solve`` (e.g., after the model
+    geometry / material changes).
+
+    The cache is keyed on ``id(A)``: if the same matrix object is
+    passed again, the cached factor is reused; otherwise it is
+    discarded and rebuilt.
+    """
+
+    def __init__(self):
+        self._cached_id: int | None = None
+        self._factor = None
+        self.cache_hits = 0
+        self.cache_misses = 0
+
+    def reset(self) -> None:
+        self._cached_id = None
+        self._factor = None
+
+    def solve(self, A: sp.spmatrix, b: np.ndarray) -> np.ndarray:
+        A_id = id(A)
+        if self._cached_id == A_id and self._factor is not None:
+            self.cache_hits += 1
+        else:
+            try:
+                self._factor = splu(A.tocsc())
+            except Exception as exc:
+                raise RuntimeError(
+                    f"sparse LU factorisation failed: {exc}"
+                ) from exc
+            self._cached_id = A_id
+            self.cache_misses += 1
+        x = self._factor.solve(np.asarray(b).ravel())
+        if not np.all(np.isfinite(x)):
+            raise RuntimeError(
+                "cached-factor solve produced non-finite values."
             )
         return np.asarray(x).ravel()

@@ -29,6 +29,28 @@ from femsolver.design.concrete.flexure import (
     FlexuralCheck,
     beam_flexural_strength,
 )
+from femsolver.design.concrete.shear import (
+    PHI_SHEAR,
+    ShearCheck,
+    ShearDesign,
+    beam_shear_strength,
+    design_stirrup_spacing,
+)
+from femsolver.design.concrete.column import (
+    InteractionPoint,
+    InteractionSurface,
+    column_interaction_point,
+    column_interaction_surface,
+)
+from femsolver.design.concrete.designer import (
+    BeamDesignDemand,
+    BeamDesignResult,
+    ColumnDesignDemand,
+    ColumnDesignResult,
+    RcMemberDesigner,
+    design_beam,
+    design_column,
+)
 
 __all__ = [
     "ConcreteMaterial",
@@ -44,4 +66,20 @@ __all__ = [
     "standard_rebar_designations",
     "FlexuralCheck",
     "beam_flexural_strength",
+    "PHI_SHEAR",
+    "ShearCheck",
+    "ShearDesign",
+    "beam_shear_strength",
+    "design_stirrup_spacing",
+    "InteractionPoint",
+    "InteractionSurface",
+    "column_interaction_point",
+    "column_interaction_surface",
+    "BeamDesignDemand",
+    "BeamDesignResult",
+    "ColumnDesignDemand",
+    "ColumnDesignResult",
+    "RcMemberDesigner",
+    "design_beam",
+    "design_column",
 ]

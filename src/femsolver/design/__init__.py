@@ -9,6 +9,39 @@ Submodules
 * future: ``combos`` -- ASCE 7-22 load combinations + drift (Phase 31)
 * future: ``reports`` -- HTML / CSV design reports (Phase 33)
 """
-from femsolver.design import concrete
+from femsolver.design import concrete, seismic, steel
+from femsolver.design import is456, is800, is1893, is13920   # Phase 36 (G2)
+from femsolver.design import connections                        # Phase 37 (I)
+from femsolver.design import ec2, ec3, ec8                       # Phase 46 (G1)
+from femsolver.design.reports import (
+    MemberReportEntry,
+    from_beam_design_result,
+    from_column_design_result,
+    from_steel_member_check,
+    make_csv_summary,
+    make_html_report,
+    write_csv_summary,
+    write_html_report,
+)
 
-__all__ = ["concrete"]
+__all__ = [
+    "concrete",
+    "seismic",
+    "steel",
+    "is456",
+    "is800",
+    "is1893",
+    "is13920",
+    "connections",
+    "ec2",
+    "ec3",
+    "ec8",
+    "MemberReportEntry",
+    "from_beam_design_result",
+    "from_column_design_result",
+    "from_steel_member_check",
+    "make_html_report",
+    "make_csv_summary",
+    "write_html_report",
+    "write_csv_summary",
+]

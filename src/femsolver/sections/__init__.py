@@ -26,6 +26,22 @@ from femsolver.sections.ply_failure import (
     tsai_wu_index,
     tsai_wu_strength_ratio,
 )
+from femsolver.sections.wall import (
+    WallRegion,
+    i_wall_section_3d,
+    l_wall_section_3d,
+    t_wall_section_3d,
+    u_wall_section_3d,
+    wall_section_2d,
+)
+from femsolver.sections.wall_shear import (
+    CrackedSectionFactors,
+    aci318_cracked_factors,
+    asce41_wall_factors,
+    wall_base_shear_spring_stiffness,
+    wall_lateral_stiffness,
+    wall_shear_area,
+)
 
 __all__ = [
     "SectionBase",
@@ -45,4 +61,16 @@ __all__ = [
     "tsai_wu_index",
     "tsai_wu_strength_ratio",
     "evaluate_laminate",
+    "WallRegion",
+    "wall_section_2d",
+    "t_wall_section_3d",
+    "l_wall_section_3d",
+    "u_wall_section_3d",
+    "i_wall_section_3d",
+    "CrackedSectionFactors",
+    "aci318_cracked_factors",
+    "asce41_wall_factors",
+    "wall_base_shear_spring_stiffness",
+    "wall_lateral_stiffness",
+    "wall_shear_area",
 ]

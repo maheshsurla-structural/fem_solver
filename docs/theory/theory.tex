@@ -1,0 +1,397 @@
+\documentclass[11pt,a4paper]{report}
+
+%% ----------------------------- packages
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath, amssymb, amsthm, mathtools}
+\usepackage{bm}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{listings}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!50!black,
+  urlcolor=blue!60!black,
+  citecolor=teal!60!black,
+}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  frame=single,
+  language=Python,
+  keywordstyle=\color{blue!60!black},
+  commentstyle=\color{green!40!black}\itshape,
+  showstringspaces=false,
+}
+
+\newcommand{\bs}[1]{\boldsymbol{#1}}
+\newcommand{\Tr}{\operatorname{Tr}}
+\newcommand{\dev}{\operatorname{dev}}
+
+\title{femsolver --- Theory Manual}
+\author{femsolver contributors}
+\date{\today}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\clearpage
+
+%% ============================================================
+\chapter{Introduction}
+\label{ch:introduction}
+
+\texttt{femsolver} implements the standard structural-engineering
+finite-element formulation: displacement-based interpolation,
+isoparametric mapping, Gauss quadrature, and assembly into a global
+system $\bs K \bs u = \bs f$ that is solved by a direct sparse
+factorisation (or iteratively).  The library is organised in layers
+(see the Sphinx site for a graphical view): nodes, materials,
+sections, elements, constraints, assembly, and analysis.
+
+This manual is the \emph{theory companion} to the docstrings, which
+contain code-level detail.  Numbered references below match the
+\texttt{src/femsolver/} module layout.
+
+%% ============================================================
+\chapter{Linear analysis}
+\label{ch:linear}
+
+\section{Equilibrium}
+
+A linear elastic structure satisfies
+\begin{equation}
+  \bs K \bs u \;=\; \bs f,
+  \label{eq:linear-static}
+\end{equation}
+with $\bs K = \mathop{\mathrm{A}}_e \bs k_e$ the global stiffness
+matrix assembled element-wise, $\bs u$ the nodal-displacement
+vector, and $\bs f$ the external nodal load.
+
+\section{Element stiffness}
+
+For an element with shape functions $\bs N(\bs \xi)$ over its
+natural domain and constitutive matrix $\bs D$,
+\begin{equation}
+  \bs k_e \;=\; \int_{\Omega_e} \bs B^{\mathsf T} \bs D \bs B \, \mathrm{d}\Omega,
+  \qquad
+  \bs B \;=\; \frac{\partial \bs N}{\partial \bs x}.
+  \label{eq:k-element}
+\end{equation}
+
+\section{Mass matrix}
+
+Consistent mass: $\bs m_e = \int_{\Omega_e} \rho \bs N^{\mathsf T}
+\bs N \, \mathrm{d}\Omega$.  Lumped: row-sum of the consistent
+matrix.
+
+\section{Assembly}
+
+Element-local DOFs are scattered into the global DOF numbering via
+the connectivity matrix.  Multi-point constraints (rigid diaphragms,
+equal-DOF, rigid links) are imposed by the transformation-handler
+method: a sparse $\bs T$ matrix maps the constrained system to the
+master DOFs, and the global system becomes $(\bs T^{\mathsf T} \bs K
+\bs T) \bs u_m = \bs T^{\mathsf T} \bs f$.
+
+%% ============================================================
+\chapter{Nonlinear static analysis}
+\label{ch:nonlinear}
+
+\section{Equilibrium iteration}
+
+For a nonlinear structure
+\begin{equation}
+  \bs R(\bs u) \;=\; \bs f_{\mathrm{int}}(\bs u) - \bs f_{\mathrm{ext}}(\lambda) \;=\; \bs 0,
+\end{equation}
+solved by Newton-Raphson:
+\begin{equation}
+  \bs K_T^{(k)} \Delta \bs u^{(k+1)} \;=\; - \bs R^{(k)}, \qquad
+  \bs u^{(k+1)} = \bs u^{(k)} + \Delta \bs u^{(k+1)}.
+\end{equation}
+
+\section{Integrators}
+
+\paragraph{Load control.}  $\lambda_{n+1} = \lambda_n + \Delta\lambda$.
+
+\paragraph{Displacement control.}  A target DOF is incremented by a
+fixed $\mathrm{d} u$ and $\lambda$ becomes an unknown; see Crisfield
+1991.
+
+\paragraph{Arc-length.}  Crisfield's spherical arc-length: an extra
+constraint $\Delta \bs u^{\mathsf T} \Delta \bs u + \psi^2
+(\Delta\lambda)^2 (\bs f^{\mathsf T} \bs f) = \ell^2$ permits
+snap-through past limit points.
+
+\section{Convergence tests}
+
+\begin{itemize}
+  \item \texttt{NormDispIncr}: $\| \Delta \bs u \| / \| \bs u \| < \mathrm{tol}$.
+  \item \texttt{NormUnbalance}: $\| \bs R \| < \mathrm{tol}$.
+  \item \texttt{EnergyIncr}: $\frac{1}{2} \Delta \bs u^{\mathsf T} \bs R < \mathrm{tol}$.
+\end{itemize}
+
+%% ============================================================
+\chapter{Constitutive models}
+\label{ch:constitutive}
+
+\section{$J_2$ plasticity}
+
+Yield surface $f = \sqrt{3 J_2} - \sigma_y(\alpha)$ with $J_2 =
+\tfrac{1}{2} \dev(\bs\sigma) : \dev(\bs\sigma)$.  Return-mapping
+follows Simo \& Hughes 1998 (radial return).  Hardening can be
+isotropic ($\sigma_y = \sigma_{y0} + H \alpha$), kinematic (back-stress
+$\bs q$), or mixed.
+
+\section{Drucker-Prager}
+
+$f = \alpha I_1 + \sqrt{J_2} - k$ with $I_1 = \Tr(\bs\sigma)$ and
+material constants $\alpha, k$ tied to a Mohr-Coulomb fit (friction
+angle $\phi$, cohesion $c$).  Non-associated flow with dilation angle
+$\psi$.
+
+\section{Uniaxial library}
+
+Each uniaxial material implements
+\begin{equation}
+  \sigma_{n+1}, \; E_{t,n+1} \;=\; \mathtt{get\_response}(\varepsilon_{n+1}),
+\end{equation}
+plus \texttt{commit\_state} / \texttt{revert\_state} for path-dependent
+models.  The catalogue includes:
+
+\begin{itemize}
+  \item \textbf{Bilinear} kinematic / isotropic, with back-stress.
+  \item \textbf{Menegotto-Pinto} (evolving R) for steel rebar.
+  \item \textbf{Kent-Park}, \textbf{Mander} concrete with confinement
+        and Chang-Mander cyclic damage.
+  \item \textbf{Hysteretic} with pinching + degradation.
+  \item \textbf{IMK} (Ibarra-Medina-Krawinkler) with post-cap softening
+        for collapse-capacity work.
+  \item \textbf{BRB} asymmetric hardening for buckling-restrained braces.
+  \item \textbf{Takeda}, \textbf{Pivot} for RC plastic hinges.
+  \item \textbf{Gap}, \textbf{Elastic} as utility models.
+\end{itemize}
+
+%% ============================================================
+\chapter{Sections and elements}
+\label{ch:elements}
+
+\section{Beam-column kinematics}
+
+\paragraph{Bernoulli (displacement-based).}  Linear axial $+$ Hermite
+cubic transverse shape functions; integrate over the element axis
+with 2-point Gauss-Legendre quadrature.
+
+\paragraph{Corotational.}  Rigid-body motion is extracted to a local
+chord frame; basic deformations are axial extension and end
+rotations.  The element-internal force in the global frame is
+$\bs f = \bs T^{\mathsf T} \bs f_b$ with $\bs T(\bs u_n)$
+nonlinear in nodal positions.
+
+\paragraph{Force-based.}  Neuenhofer-Filippou 1997 state determination
+in flexibility form; iteratively enforces section equilibrium at the
+integration points.
+
+\section{Plate / shell}
+
+MITC4 (Bathe-Dvorkin assumed strains for transverse shear), MITC9,
+DKMQ4, ShellTri3, and the discrete-Kirchhoff DKT3 triangle.  All ship
+with full geometric-stiffness terms for buckling.
+
+\section{Fiber sections}
+
+The cross-section is discretised into uniaxial fibers $f_i$ with
+position $(y_i, z_i)$, area $A_i$, and material law $\sigma_i =
+\mathtt{material}_i(\varepsilon_i)$.  Plane sections give
+\begin{equation}
+  \varepsilon_i \;=\; \varepsilon_a - y_i \kappa_z + z_i \kappa_y,
+\end{equation}
+and section forces aggregate as
+\begin{equation}
+  \bs s = (N, M_z, M_y, T)^{\mathsf T}, \qquad
+  N = \sum \sigma_i A_i, \quad M_z = - \sum y_i \sigma_i A_i, \;\text{etc.}
+\end{equation}
+
+%% ============================================================
+\chapter{Dynamics}
+\label{ch:dynamics}
+
+\section{Equation of motion}
+
+\begin{equation}
+  \bs M \ddot{\bs u} + \bs C \dot{\bs u} + \bs f_{\mathrm{int}}(\bs u)
+  \;=\; \bs f_{\mathrm{ext}}(t).
+\end{equation}
+
+Linear Rayleigh damping: $\bs C = \alpha_M \bs M + \alpha_K \bs K$
+with $\alpha_M, \alpha_K$ tuned to give a specified $\zeta_i, \zeta_j$
+at two target frequencies.
+
+\section{Newmark family}
+
+Average-acceleration ($\beta = 1/4, \gamma = 1/2$) is
+unconditionally stable.  HHT-$\alpha$ and Generalised-$\alpha$ add
+controlled numerical dissipation at high frequencies (Chung-Hulbert
+1993).  Central difference is explicit, conditionally stable.
+
+\section{Modal analysis}
+
+Generalised eigenproblem $\bs K \bs\phi_i = \omega_i^2 \bs M \bs\phi_i$
+solved by \texttt{scipy.sparse.linalg.eigsh} (shift-invert).  Mass-
+orthonormalised modes feed response-spectrum, MPA, and modal
+participation factors.
+
+\section{Response spectrum}
+
+Peak modal response is $u_i = \Gamma_i S_a(T_i, \zeta) /
+\omega_i^2 \bs\phi_i$, combined by SRSS or CQC.  Implementation
+matches Chopra 2017 Eqs. 13.7.\,4 -- 13.7.\,11.
+
+%% ============================================================
+\chapter{Performance-based earthquake engineering}
+\label{ch:pbe}
+
+\section{Pipeline}
+
+Hazard $\to$ records $\to$ IDA $\to$ collapse $\to$ fragility $\to$
+component damage (FEMA P-58) $\to$ loss curve.  Implementation is
+in \texttt{femsolver.analysis.ida}, \texttt{ida\_collapse},
+\texttt{fragility}, \texttt{record\_scaling}, \texttt{cms},
+\texttt{p58}.
+
+\section{IDA}
+
+Per Vamvatsikos-Cornell 2002: each record is scaled to a sequence of
+intensity-measure (IM) levels; a full nonlinear time-history analysis
+runs at each (record, IM) cell.  Collapse is flagged by the union of
+three criteria: hard EDP limit (drift $> 10\%$), NLTHA non-convergence,
+or slope-flatlining of the IDA curve.
+
+\section{Fragility}
+
+Lognormal CDF $P(\mathrm{collapse} \mid \mathrm{IM}) = \Phi\!\left(
+\frac{\ln(\mathrm{IM} / \theta)}{\beta} \right)$.  Fitting is by
+method-of-moments (all records collapsed) or by censored MLE
+(some records did not collapse within the swept range; FEMA P-695
+Appendix F).
+
+\section{Conditional Mean Spectrum}
+
+Baker 2011: the spectral shape of records conditioned on $\mathrm{Sa}(T^*)
+= \mathrm{Sa}_{\mathrm{target}}$ is
+\begin{equation}
+  \ln \mathrm{CMS}(T_i) \;=\; \mu_{\ln \mathrm{Sa}}(T_i)
+  \;+\; \rho(T_i, T^*) \, \epsilon^* \, \sigma_{\ln \mathrm{Sa}}(T_i),
+\end{equation}
+where $\rho$ is the Baker-Jayaram 2008 empirical inter-period
+correlation.  CMS replaces the conservative uniform-hazard spectrum
+in modern PBSE record selection.
+
+\section{FEMA P-58 component damage}
+
+Each component has a set of damage states with fragility
+$P(\mathrm{DS} \geq \mathrm{DS}_i \mid \mathrm{EDP}) = \Phi(\ln(
+\mathrm{EDP} / \theta_i) / \beta_i)$ and repair-cost lognormal
+$(\mathrm{cost\_median}, \mathrm{cost\_beta})$.  Expected loss:
+\begin{equation}
+  E[L] \;=\; Q \sum_i P(\mathrm{DS} = \mathrm{DS}_i \mid \mathrm{EDP}) \,
+  E[\mathrm{cost}_i],
+\end{equation}
+with $E[\mathrm{cost}_i] = c_i \exp(\beta_i^2 / 2)$ (lognormal mean).
+Monte-Carlo realisations sample the damage state and consequence per
+component group.
+
+%% ============================================================
+\chapter{Design and detailing}
+\label{ch:design}
+
+\section{Concrete (ACI 318, IS 456)}
+
+Limit-state flexure with rectangular stress block: ACI uses Whitney
+$0.85 f_c'$ over depth $a = \beta_1 c$; IS 456 uses $0.36 f_{ck}$ over
+$x_u$ with steel at $0.87 f_y$.  Both reduce to a quadratic in the
+neutral-axis depth and yield closed-form $A_{st}$ requirements.
+
+\section{Steel (AISC 360, IS 800)}
+
+LRFD member capacities under axial, flexure, shear, and combined
+loads.  Perry-Robertson buckling curves (a/b/c/d) and LTB reductions
+follow EC3 / IS 800 form; AISC uses $\phi$-factors.
+
+\section{Seismic detailing}
+
+Strong-column / weak-beam (ACI 18.7.3 / AISC 341 E3.4a / IS 13920
+Cl. 7.2.1).  Beam capacity shear (ACI 18.6.5 / AISC 341 E3.4b /
+IS 13920 Cl. 6.3.3).  Confinement (ACI 18.7.5 / IS 13920 Cl. 7.6).
+
+\section{Connections}
+
+Krawinkler panel-zone bilinear shear backbone with the AISC J10 form;
+AISC 358 RBS reduced-section design with the $C_{pr}$ probable
+strength factor; Richard-Abbott four-parameter PR connections.
+
+%% ============================================================
+\chapter{Bridges}
+\label{ch:bridges}
+
+\section{Influence lines}
+
+Closed-form for SS spans; numerical Müller-Breslau for continuous
+beams.  Moving-load envelopes for AASHTO HL-93 (truck $+$ tandem $+$
+lane) and IRC Class A / 70R.
+
+\section{PT tendons}
+
+Friction loss $P(x) / P_0 = \exp\!\left(-(\mu \alpha + k x)\right)$
+along a parabolic-drape profile, plus anchorage-slip redistribution
+$l_a = \sqrt{\Delta_a E_s A_{ps} / p_{slope}}$.
+
+\section{Creep, shrinkage, relaxation}
+
+CEB-FIP MC 2010 creep $\phi(t, t_0)$ and shrinkage $\varepsilon_{cs}(t)$,
+plus low-relaxation strand loss
+$\Delta f_p / f_{pi} = (\log_{10}(t/t_i) / 45)(f_{pi}/f_{py} - 0.55)$
+for strand.  Aggregated by \texttt{prestress\_long\_term\_loss}.
+
+%% ============================================================
+\chapter{Verification and validation}
+\label{ch:vv}
+
+The shipped V\&V suite (Phase~35) checks closed-form references for
+beams, plates, shells, solids, eigen, buckling, and plasticity.  See
+\texttt{src/femsolver/benchmarks/} and the
+\texttt{examples/46\_vnv\_report.py} capstone.
+
+A summary of the current pass status is rendered to CSV via
+\texttt{export\_csv(results, \dots)} and committed as a regression
+artefact.
+
+%% ============================================================
+\chapter*{References}
+\addcontentsline{toc}{chapter}{References}
+
+\begin{itemize}
+  \item Crisfield, M.A. (1991/1997). \emph{Non-linear Finite Element
+        Analysis of Solids and Structures}. Wiley.
+  \item Simo, J.C. \& Hughes, T.J.R. (1998). \emph{Computational
+        Inelasticity}. Springer.
+  \item Chopra, A.K. (2017). \emph{Dynamics of Structures}, 5e.
+        Pearson.
+  \item Vamvatsikos, D. \& Cornell, C.A. (2002). ``Incremental dynamic
+        analysis.'' \emph{Earthquake Eng.\ \& Struct.\ Dyn.}, 31(3).
+  \item Baker, J.W. (2011). ``Conditional Mean Spectrum.''
+        \emph{J.\ Struct.\ Eng.}, 137(3).
+  \item Baker, J.W.\ \& Jayaram, N. (2008). ``Correlation of spectral
+        acceleration values from NGA ground-motion models.''
+        \emph{Earthquake Spectra}, 24(1).
+  \item FEMA P-58 (2018). ``Seismic Performance Assessment of
+        Buildings.''
+  \item ACI 318-19, AISC 360-22, ASCE 7-22.
+  \item IS 456:2000, IS 800:2007, IS 1893 (Part 1):2016, IS 13920:2016.
+  \item AASHTO LRFD Bridge Design Specifications, 9e (2020).
+  \item CEB-FIP Model Code (2010).
+\end{itemize}
+
+\end{document}
