@@ -40,7 +40,7 @@ class TestStressDependentBulkModulus:
         mat.commit_state()
         # Committed state now has nonzero pressure -> K_bulk reflects it
         # (could be smaller or larger depending on if pressure rose)
-        from femsolver.materials.cam_clay import _deviator
+        from femsolver.materials.multiaxial.cam_clay import _deviator
         s, p_v = _deviator(mat.sigma_committed)
         p_eff_committed = -p_v
         expected = (1.0 + mat.e_committed) * max(p_eff_committed, mat.p_min) \

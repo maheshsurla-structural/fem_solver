@@ -44,7 +44,7 @@ class TestMohrCoulomb:
         eps = np.array([0.005, 0.005, 0.005, 0, 0, 0])
         sigma, _ = mat.get_response(eps)
         # All principal stresses should equal the apex
-        from femsolver.materials.mohr_coulomb import _principal_decomposition
+        from femsolver.materials.multiaxial.mohr_coulomb import _principal_decomposition
         s, _ = _principal_decomposition(sigma)
         for si in s:
             assert si == pytest.approx(mat._apex, rel=1e-6)

@@ -43,7 +43,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from femsolver.materials.hyperelastic import _sym_to_voigt
+from femsolver.materials.multiaxial.hyperelastic import _sym_to_voigt
 
 
 @dataclass

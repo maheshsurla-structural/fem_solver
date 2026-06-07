@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 
 from femsolver import MohrCoulomb3D
-from femsolver.materials.mohr_coulomb import _principal_decomposition
+from femsolver.materials.multiaxial.mohr_coulomb import _principal_decomposition
 
 
 # ============================================================ helpers

@@ -4,13 +4,13 @@ from femsolver import mesh, results                  # Phase 47 (Theme L)
 from femsolver.core.model import Model
 from femsolver.core.node import Node
 from femsolver.materials.elastic import ElasticIsotropic
-from femsolver.materials.j2_plasticity import J2Plasticity3D
-from femsolver.materials.orthotropic import OrthotropicLamina
-from femsolver.materials.drucker_prager import DruckerPrager3D
-from femsolver.materials.mohr_coulomb import MohrCoulomb3D
-from femsolver.materials.cam_clay import ModifiedCamClay3D
-from femsolver.materials.concrete_damage import ConcreteDamage3D
-from femsolver.materials.concrete_damage_plasticity import (
+from femsolver.materials.multiaxial.j2_plasticity import J2Plasticity3D
+from femsolver.materials.multiaxial.orthotropic import OrthotropicLamina
+from femsolver.materials.multiaxial.drucker_prager import DruckerPrager3D
+from femsolver.materials.multiaxial.mohr_coulomb import MohrCoulomb3D
+from femsolver.materials.multiaxial.cam_clay import ModifiedCamClay3D
+from femsolver.materials.concrete.concrete_damage import ConcreteDamage3D
+from femsolver.materials.concrete.concrete_damage_plasticity import (
     ConcreteDamagePlasticity3D,
 )
 from femsolver.elements.truss import Truss2D, Truss3D
@@ -39,11 +39,11 @@ from femsolver.elements.thermal import (
     ThermalQuad4,
 )
 from femsolver.materials.thermal import ThermalMaterial
-from femsolver.materials.hyperelastic import (
+from femsolver.materials.multiaxial.hyperelastic import (
     MooneyRivlin3D,
     NeoHookean3D,
 )
-from femsolver.materials.finite_j2 import FiniteJ2Plasticity3D
+from femsolver.materials.multiaxial.finite_j2 import FiniteJ2Plasticity3D
 from femsolver.elements.hex8_TL import Hex8TL
 from femsolver.elements.contact import ContactNodeToPlane3D
 from femsolver.thermal.heat_conduction import (

@@ -10,13 +10,13 @@ Continuum materials
 .. automodule:: femsolver.materials.elastic
    :members:
 
-.. automodule:: femsolver.materials.j2_plasticity
+.. automodule:: femsolver.materials.multiaxial.j2_plasticity
    :members:
 
-.. automodule:: femsolver.materials.drucker_prager
+.. automodule:: femsolver.materials.multiaxial.drucker_prager
    :members:
 
-.. automodule:: femsolver.materials.orthotropic
+.. automodule:: femsolver.materials.multiaxial.orthotropic
    :members:
 
 Uniaxial library
