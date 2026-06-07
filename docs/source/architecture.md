@@ -18,7 +18,15 @@ carved into top-level **`geotech/`**, **`thermal/`**, and
 drivers + dynamics) plus a few load helpers. The three output packages
 (`io` + `postproc` + `deliverables`) were merged into one **`results/`**
 package, and **`seismic`** + **`wind`** were grouped under **`hazard/`**
-(disambiguating seismic *hazard* from `design/seismic`).
+(disambiguating seismic *hazard* from `design/seismic`). The flat
+`materials/` root was sub-grouped into **`multiaxial/`** (J2, finite-strain
+J2, Drucker-Prager, Mohr-Coulomb, Cam-Clay, hyperelastic, orthotropic) and
+**`concrete/`** (damage, plastic-damage, time-dependent). Finally several
+modules were **renamed** for clarity: `analysis/integrator.py`→
+`static_integrator.py`, `analysis/loads.py`→`load_combinations.py`,
+`finite_j2.py`→`j2_finite_strain.py`, and the `concrete/` models dropped
+their redundant `concrete_` prefix (`isotropic_damage`, `plastic_damage`,
+`time_dependent`).
 The public `import femsolver` API is byte-for-byte identical throughout
 (guarded by `tests/test_public_api_surface.py`); the full suite (2369
 passed) is green after every increment.
