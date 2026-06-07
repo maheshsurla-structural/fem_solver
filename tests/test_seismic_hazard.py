@@ -6,7 +6,7 @@ import math
 import numpy as np
 import pytest
 
-from femsolver.seismic import (
+from femsolver.hazard.seismic import (
     BooreAtkinsonLike,
     GutenbergRichterMFD,
     PointSource,

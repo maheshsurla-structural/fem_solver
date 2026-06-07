@@ -5,7 +5,7 @@ import math
 
 import pytest
 
-from femsolver.wind import (
+from femsolver.hazard.wind import (
     CCDesignPressure,
     CCPressureCoefficient,
     cc_design_pressure,
@@ -151,7 +151,7 @@ class TestEngineeringScenarios:
         """Small wall panel (1 m^2) near a building corner at V=50 m/s,
         exposure C, h=10 m. The peak suction on the cladding should
         be ~2.5 kPa."""
-        from femsolver.wind import asce7_velocity_pressure
+        from femsolver.hazard.wind import asce7_velocity_pressure
         q_h = asce7_velocity_pressure(
             z=10.0, V=50.0, exposure="C",
         ).q_z
@@ -163,7 +163,7 @@ class TestEngineeringScenarios:
     def test_roof_corner_fastener_design(self):
         """Small fastener (0.93 m^2 tributary) at a flat-roof corner.
         The uplift at V=50 m/s, h=10 m should approach -5 kPa."""
-        from femsolver.wind import asce7_velocity_pressure
+        from femsolver.hazard.wind import asce7_velocity_pressure
         q_h = asce7_velocity_pressure(
             z=10.0, V=50.0, exposure="C",
         ).q_z

@@ -11,7 +11,7 @@ import math
 import numpy as np
 import pytest
 
-from femsolver.seismic import (
+from femsolver.hazard.seismic import (
     Bssa14Coefficients,
     bssa14,
     bssa14_at_period,

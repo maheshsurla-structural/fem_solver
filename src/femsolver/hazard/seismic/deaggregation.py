@@ -24,8 +24,8 @@ from typing import Sequence
 
 import numpy as np
 
-from femsolver.seismic.gmpe import BooreAtkinsonLike
-from femsolver.seismic.psha import (
+from femsolver.hazard.seismic.gmpe import BooreAtkinsonLike
+from femsolver.hazard.seismic.psha import (
     AreaSource,
     GutenbergRichterMFD,
     PointSource,

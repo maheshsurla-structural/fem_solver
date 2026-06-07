@@ -8,7 +8,7 @@ import math
 import numpy as np
 import pytest
 
-from femsolver.seismic import (
+from femsolver.hazard.seismic import (
     NonlinearSoilCurves,
     SoilLayer,
     equivalent_linear_iterate,

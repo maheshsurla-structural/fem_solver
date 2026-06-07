@@ -29,7 +29,7 @@ from femsolver import (
     ModifiedCamClay3D,
     MohrCoulomb3D,
 )
-from femsolver.seismic import (
+from femsolver.hazard.seismic import (
     GutenbergRichterMFD,
     PointSource,
     SoilLayer,
@@ -39,7 +39,7 @@ from femsolver.seismic import (
     equivalent_linear_iterate,
     vucetic_dobry_curves,
 )
-from femsolver.wind import (
+from femsolver.hazard.wind import (
     cc_design_pressure,
     cc_roof_GCp,
     cc_wall_GCp,
@@ -224,7 +224,7 @@ def hh5_eq_linear() -> dict:
 
 def hh6_cc() -> dict:
     """Roof corner uplift for cladding design."""
-    from femsolver.wind import asce7_velocity_pressure
+    from femsolver.hazard.wind import asce7_velocity_pressure
     q_h = asce7_velocity_pressure(z=10.0, V=50.0, exposure="C").q_z
     c_corner = cc_roof_GCp(A_e=0.93, zone="roof_3")
     p_corner = cc_design_pressure(coeff=c_corner, q_h=q_h)

@@ -30,7 +30,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from femsolver.seismic.bssa14 import bssa14_at_period
+from femsolver.hazard.seismic.bssa14 import bssa14_at_period
 
 
 @dataclass
@@ -46,7 +46,7 @@ def bssa14(T: float = 0.01, V_ref: float = 760.0) -> "BooreAtkinsonLike":
     """Construct a :class:`BooreAtkinsonLike` GMPE pre-populated with
     BSSA14 (Boore-Stewart-Seyhan-Atkinson 2014) period-by-period
     coefficients. The BSSA14 coefficient table for the listed period
-    is looked up from :mod:`femsolver.seismic.bssa14`.
+    is looked up from :mod:`femsolver.hazard.seismic.bssa14`.
 
     Parameters
     ----------

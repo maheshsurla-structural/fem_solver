@@ -21,7 +21,7 @@ from dataclasses import dataclass
 import numpy as np
 from scipy.optimize import brentq
 
-from femsolver.seismic.psha import HazardCurve
+from femsolver.hazard.seismic.psha import HazardCurve
 
 
 def _normal_cdf(z: float) -> float:

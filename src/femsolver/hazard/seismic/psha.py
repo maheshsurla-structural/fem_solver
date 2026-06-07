@@ -29,7 +29,7 @@ from typing import Sequence
 
 import numpy as np
 
-from femsolver.seismic.gmpe import BooreAtkinsonLike
+from femsolver.hazard.seismic.gmpe import BooreAtkinsonLike
 
 
 # ============================================================ magnitude

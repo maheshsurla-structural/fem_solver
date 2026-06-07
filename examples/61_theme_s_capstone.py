@@ -25,7 +25,7 @@ import sys
 
 import numpy as np
 
-from femsolver.wind import (
+from femsolver.hazard.wind import (
     asce7_mwfrs_design_pressures,
     asce7_velocity_pressure,
     asce7_wall_Cp,

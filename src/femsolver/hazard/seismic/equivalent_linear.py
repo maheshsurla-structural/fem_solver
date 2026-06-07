@@ -32,7 +32,7 @@ from typing import Callable
 
 import numpy as np
 
-from femsolver.seismic.site_response import SoilLayer, SoilProfile
+from femsolver.hazard.seismic.site_response import SoilLayer, SoilProfile
 
 
 @dataclass
@@ -211,7 +211,7 @@ def equivalent_linear_iterate(
         prof = SoilProfile(
             layers=eff_layers, rock_Vs=rock_Vs, rock_rho=rock_rho,
         )
-        from femsolver.seismic.site_response import (
+        from femsolver.hazard.seismic.site_response import (
             site_amplification_spectrum,
         )
         amp = site_amplification_spectrum(prof, freqs)

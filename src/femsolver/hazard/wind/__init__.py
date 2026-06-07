@@ -10,7 +10,7 @@ Subpackages and modules:
   peak-velocity-pressure path.
 * :mod:`vortex`        -- Vortex shedding (Strouhal, Scruton, lock-in).
 """
-from femsolver.wind.asce7 import (
+from femsolver.hazard.wind.asce7 import (
     Asce7VelocityPressure,
     asce7_velocity_pressure,
     asce7_exposure_constants,
@@ -23,7 +23,7 @@ from femsolver.wind.asce7 import (
     asce7_gust_factor_rigid,
     asce7_gust_factor_flexible,
 )
-from femsolver.wind.asce7_cc import (
+from femsolver.hazard.wind.asce7_cc import (
     CCDesignPressure,
     CCPressureCoefficient,
     cc_design_pressure,
@@ -32,12 +32,12 @@ from femsolver.wind.asce7_cc import (
     cc_wall_GCp,
     gcpi_for_enclosure,
 )
-from femsolver.wind.is875 import (
+from femsolver.hazard.wind.is875 import (
     Is875DesignWindPressure,
     is875_design_wind_pressure,
     is875_terrain_category_factor,
 )
-from femsolver.wind.is875_dynamic import (
+from femsolver.hazard.wind.is875_dynamic import (
     Is875DynamicFactor,
     background_factor,
     gust_energy_factor,
@@ -46,12 +46,12 @@ from femsolver.wind.is875_dynamic import (
     size_reduction_factor,
     turbulence_intensity,
 )
-from femsolver.wind.eurocode import (
+from femsolver.hazard.wind.eurocode import (
     Ec1PeakVelocityPressure,
     ec1_peak_velocity_pressure,
     ec1_roughness_factor,
 )
-from femsolver.wind.vortex import (
+from femsolver.hazard.wind.vortex import (
     StrouhalResult,
     vortex_shedding_frequency,
     scruton_number,

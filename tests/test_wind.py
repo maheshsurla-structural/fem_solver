@@ -14,7 +14,7 @@ import math
 import numpy as np
 import pytest
 
-from femsolver.wind import (
+from femsolver.hazard.wind import (
     asce7_Kz,
     asce7_exposure_constants,
     asce7_gust_factor_flexible,

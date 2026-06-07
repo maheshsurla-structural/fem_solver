@@ -22,7 +22,7 @@ import sys
 
 import numpy as np
 
-from femsolver.seismic import (
+from femsolver.hazard.seismic import (
     BooreAtkinsonLike,
     GutenbergRichterMFD,
     PointSource,
@@ -56,7 +56,7 @@ def main():
           f"({1/nu_min:.0f} yr return)")
 
     # ============================ PGA hazard curve =========================
-    from femsolver.seismic import bssa14
+    from femsolver.hazard.seismic import bssa14
     gmpe_pga = bssa14(0.01)   # BSSA14 PGA period
     ims = np.geomspace(0.001, 5.0, 60)
     curve_pga_rock = compute_hazard_curve(
@@ -82,7 +82,7 @@ def main():
 
     # ============================ UHS =========================
     # Use BSSA14 period-by-period coefficients for a properly-shaped UHS
-    from femsolver.seismic import bssa14
+    from femsolver.hazard.seismic import bssa14
     periods = [0.01, 0.1, 0.2, 0.3, 0.5, 1.0, 2.0, 3.0]
     gmpes = {T: bssa14(T) for T in periods}
     uhs_rock = compute_uhs(

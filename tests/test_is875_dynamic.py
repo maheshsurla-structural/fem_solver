@@ -5,7 +5,7 @@ import math
 
 import pytest
 
-from femsolver.wind import (
+from femsolver.hazard.wind import (
     Is875DynamicFactor,
     background_factor,
     gust_energy_factor,
