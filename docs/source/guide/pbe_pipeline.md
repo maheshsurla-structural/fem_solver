@@ -74,8 +74,8 @@ from femsolver import (
 )
 ```
 
-See {mod}`femsolver.analysis.ssi` and
-{mod}`femsolver.analysis.soil_springs`.
+See {mod}`femsolver.geotech.ssi` and
+{mod}`femsolver.geotech.soil_springs`.
 
 ## 5. P-58 component damage (Phase 28)
 

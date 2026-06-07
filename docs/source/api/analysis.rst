@@ -88,10 +88,10 @@ PBE pipeline
 .. automodule:: femsolver.analysis.cms
    :members:
 
-.. automodule:: femsolver.analysis.ssi
+.. automodule:: femsolver.geotech.ssi
    :members:
 
-.. automodule:: femsolver.analysis.soil_springs
+.. automodule:: femsolver.geotech.soil_springs
    :members:
 
 .. automodule:: femsolver.analysis.p58

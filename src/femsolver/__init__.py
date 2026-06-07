@@ -67,21 +67,21 @@ from femsolver.analysis.fire import (
     steel_modulus_reduction_ec3,
     steel_strength_reduction_ec3,
 )
-from femsolver.analysis.winkler import (
+from femsolver.geotech.winkler import (
     BeamOnWinklerFoundation2D,
     HetenyiInfiniteBeamResult,
     hetenyi_characteristic_length,
     hetenyi_infinite_beam_point_load,
     subgrade_modulus_table,
 )
-from femsolver.analysis.pile_group import (
+from femsolver.geotech.pile_group import (
     GroupSettlementResult,
     group_efficiency_converse_labarre,
     group_p_multipliers,
     group_settlement_elastic,
     p_multiplier,
 )
-from femsolver.analysis.liquefaction import (
+from femsolver.geotech.liquefaction import (
     LiquefactionTriggeringResult,
     CRR_from_N1_60cs,
     cyclic_stress_ratio,
@@ -91,7 +91,7 @@ from femsolver.analysis.liquefaction import (
     magnitude_scaling_factor,
     stress_reduction_coefficient,
 )
-from femsolver.analysis.dynamic_gazetas import (
+from femsolver.geotech.dynamic_gazetas import (
     DynamicFootingImpedance,
     DynamicImpedanceCoefficients,
     dimensionless_frequency,
@@ -227,13 +227,13 @@ from femsolver.analysis.cms import (
     conditional_mean_spectrum,
     conditional_spectrum_variance,
 )
-from femsolver.analysis.ssi import (
+from femsolver.geotech.ssi import (
     FootingImpedance,
     HalfspaceSoil,
     embedment_correction,
     gazetas_surface_footing,
 )
-from femsolver.analysis.soil_springs import (
+from femsolver.geotech.soil_springs import (
     SoilSpringBackbone,
     py_curve_sand,
     py_curve_soft_clay,
