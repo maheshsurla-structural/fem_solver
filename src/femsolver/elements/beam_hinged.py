@@ -45,8 +45,10 @@ import numpy as np
 
 from femsolver.elements.base import Element
 from femsolver.elements.beam import BeamColumn2D
-from femsolver.sections.elastic import ElasticSection2D
-from femsolver.sections.hinges.spring import BilinearMomentRotationSpring
+from femsolver.sections.response.elastic import ElasticSection2D
+from femsolver.sections.response.hinges.spring import (
+    BilinearMomentRotationSpring,
+)
 
 
 class HingedBeamColumn2D(Element):

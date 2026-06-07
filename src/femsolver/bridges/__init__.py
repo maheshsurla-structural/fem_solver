@@ -50,18 +50,44 @@ from femsolver.bridges.pt_tendon import (
     friction_loss,
     parabolic_drape_profile,
 )
+from femsolver.bridges.tendon import (
+    Tendon,
+    tendon_secondary_forces,
+    tendon_secondary_moment,
+    tendon_secondary_shear,
+)
 from femsolver.bridges.cable import (
     CableElement2D,
+    CableElement3D,
     CatenaryResult,
     catenary_max_tension,
     catenary_sag,
     ernst_equivalent_modulus,
 )
+from femsolver.bridges.form_finding import (
+    FormFindingResult,
+    force_density_form_find,
+)
 from femsolver.bridges.staged_construction import (
     ConstructionStage,
+    ErectionStage,
+    IncrementalStagedAnalysis,
+    IncrementalStagedResult,
     StagedConstructionAnalysis,
     StagedConstructionResult,
     effective_modulus_EMM,
+)
+from femsolver.bridges.moving_load import (
+    BeamForce,
+    Displacement,
+    InfluenceLine,
+    InfluenceLineEngine,
+    Lane,
+    Reaction,
+    ResponseExtractor,
+    aashto_hl93_envelope,
+    lane_load_response,
+    moving_load_envelope,
 )
 
 
@@ -87,6 +113,11 @@ __all__ = [
     "AnchorageSlipResult",
     "anchorage_slip_loss",
     "equivalent_uniform_load_parabolic",
+    # high-level tendon + equivalent-load apply (Phase B.4)
+    "Tendon",
+    "tendon_secondary_moment",
+    "tendon_secondary_shear",
+    "tendon_secondary_forces",
     # creep_shrinkage
     "CebFipCreepResult",
     "cebfip_creep_coefficient",
@@ -106,9 +137,28 @@ __all__ = [
     "CatenaryResult",
     "catenary_sag",
     "catenary_max_tension",
+    # 3-D cable + form-finding (Phase B.2)
+    "CableElement3D",
+    "FormFindingResult",
+    "force_density_form_find",
     # staged construction (Phase 45.3-45.4)
     "ConstructionStage",
     "StagedConstructionAnalysis",
     "StagedConstructionResult",
     "effective_modulus_EMM",
+    # incremental staged erection w/ element birth + death (Phase B.3)
+    "ErectionStage",
+    "IncrementalStagedAnalysis",
+    "IncrementalStagedResult",
+    # general moving-load / influence-line engine (Phase B.1)
+    "InfluenceLine",
+    "InfluenceLineEngine",
+    "Lane",
+    "ResponseExtractor",
+    "Displacement",
+    "Reaction",
+    "BeamForce",
+    "moving_load_envelope",
+    "lane_load_response",
+    "aashto_hl93_envelope",
 ]

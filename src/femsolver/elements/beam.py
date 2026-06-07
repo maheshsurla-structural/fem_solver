@@ -15,8 +15,8 @@ import numpy as np
 
 from femsolver.elements.base import Element
 from femsolver.numerics.quadrature import gauss_lobatto_1d
-from femsolver.sections.base import SectionBase
-from femsolver.sections.elastic import ElasticSection2D, ElasticSection3D
+from femsolver.sections.response.base import SectionBase
+from femsolver.sections.response.elastic import ElasticSection2D, ElasticSection3D
 
 
 class BeamColumn2D(Element):

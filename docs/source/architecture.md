@@ -1,12 +1,22 @@
 # femsolver architecture & naming guide
 
-**Status:** planning document — *no files have been moved.* This is the
-agreed target organization and naming convention for femsolver, to be
-executed later in small, test-validated increments. The public
-`import femsolver` API will be preserved exactly throughout any
-migration.
+**Status:** in progress. Most of this is still the agreed *target* layout,
+executed in small, test-validated increments. **Done so far:** the
+`sections/` split into 1-D beam sections (with a `response/` sub-package for
+the solver-facing layer) and a new `shell_sections/` package for 2-D
+shell/plate sections — see §3. The transitional re-export shims have since
+been **removed**: all internal callers now import from the new paths
+(`femsolver.sections.response.*`, `femsolver.shell_sections.*`) and the old
+`sections/{base,elastic,fiber,wall,wall_shear,shell,ply_failure,clt}.py` and
+`sections/hinges/` shims are deleted. The raw reference-data package
+`catalogs/` has also been **renamed to `data/`** (removing the clash with
+`sections/catalogue/`, the Section-builder layer that consumes it); all
+`femsolver.catalogs.*` references were rewritten to `femsolver.data.*`.
+The public `import femsolver` API is byte-for-byte identical throughout
+(guarded by `tests/test_public_api_surface.py`); the full suite (2369
+passed) is green after every increment.
 
-**Last updated:** 2026-06-05
+**Last updated:** 2026-06-07
 
 ---
 
@@ -98,7 +108,14 @@ femsolver/
     concrete/      concrete_damage, concrete_damage_plasticity, concrete_time
     timber/        (as-is)
     elastic.py base.py thermal.py                      (stay at root)
-  sections/        (unchanged — already exemplary)
+  sections/        1-D beam/column sections (line elements) -- DONE
+    section.py library.py                  the Section you DEFINE
+    serialization.py visualization.py report.py   present
+    geometry/ parametric/ catalogue/       build the shape
+    response/      base, elastic, fiber, wall, wall_shear, hinges/
+                   -- what the SOLVER consumes (moved here; shims at root)
+  shell_sections/  2-D shell/plate sections (surface elements) -- DONE
+    base.py (ShellSectionBase) layered.py ply_failure.py clt.py
   elements/        line/ surface/ solid/ link/ thermal/   (optional sub-grouping)
 
   # ---- loads / hazard ----

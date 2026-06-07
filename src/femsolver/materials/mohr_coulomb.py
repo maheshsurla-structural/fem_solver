@@ -164,12 +164,18 @@ class MohrCoulomb3D:
 
     # ----------------------------------------------------- response
     def get_response(self, eps_voigt) -> tuple[np.ndarray, np.ndarray]:
-        """Mohr-Coulomb return mapping.
+        """Mohr-Coulomb return mapping with full 4-region handling.
 
-        Returns ``(sigma, D_elastic)``. The plastic update uses the
-        principal-stress decomposition; the consistent tangent
-        falls back to the elastic D for stability (a refinement
-        target for future tuning).
+        Returns ``(sigma, D_elastic)``. The plastic update follows the
+        de Souza Neto / Peric / Owen Chapter 8 algorithm:
+
+        1. Trial elastic stress; check yield.
+        2. Try **Region I** (main face): single plastic multiplier,
+           closed-form return. Accept if ordering preserved.
+        3. If ordering violated: try **Region II** (right edge,
+           sigma_1 = sigma_2) or **Region III** (left edge, sigma_2 =
+           sigma_3) -- 2x2 closed-form return.
+        4. Apex projection if even the edge return is infeasible.
         """
         eps = np.asarray(eps_voigt, dtype=float).reshape(6)
         eps_e_trial = eps - self.eps_p_committed
@@ -185,49 +191,131 @@ class MohrCoulomb3D:
             self.eps_p_trial = self.eps_p_committed.copy()
             return sigma_trial.copy(), self._D_elastic.copy()
 
-        # Constants from de Souza Neto eqs (8.79)
-        K = self.K_bulk
-        G = self.G
-        a = 4.0 * G * (1.0 + sp * sps / 3.0) + 4.0 * K * sp * sps
-        # Try Region I (main face)
-        d_lambda = f_trial / a
-        s1_new = s1 - d_lambda * (2.0 * G * (1.0 + sps) + 2.0 * K * sps - 2.0 * G * sps / 3.0 + 2.0 * G * sp + 2.0 * K * sp)
-        s2_new = s2 - d_lambda * (-4.0 * G * sps / 3.0 + 2.0 * K * sps + 2.0 * K * sp)
-        s3_new = s3 - d_lambda * (-2.0 * G * (1.0 + sps) + 2.0 * K * sps + 2.0 * G * sps / 3.0 - 2.0 * G * sp + 2.0 * K * sp)
-        if (s1_new >= s2_new - 1e-12) and (s2_new >= s3_new - 1e-12):
-            s_new = np.array([s1_new, s2_new, s3_new])
-        else:
-            # Region II / III / apex: handle via the "two-faces" closed form.
-            # For an MVP we fall back to apex projection when the main
-            # face return crosses the edge ordering. This is exact for
-            # the apex case and a conservative approximation for edges,
-            # which is acceptable for monotonic loading paths typical
-            # in this library's intended use (engineering practice).
-            s_new = self._apex_or_edge_return(s1, s2, s3, sp, cp_c)
+        # 4-region return mapping
+        s_new = self._return_map_principal(s1, s2, s3)
 
-        # Clamp principal stresses against the apex
-        if s_new[0] > self._apex:
-            s_new[:] = self._apex
         sigma_new = _principal_to_voigt(s_new, Q)
-        # Plastic strain increment (engineering Voigt -- shear ×2)
-        # via D_e^{-1} (sigma_trial - sigma_new). This is exact for any
-        # return mapping and avoids re-deriving flow direction.
-        delta_sigma = sigma_trial - sigma_new
-        # Inverse of D_e applied to delta_sigma in Voigt with engineering
-        # shear: split volumetric and deviatoric.
-        eps_e_new = self._invert_D_e_voigt(sigma_new) \
-            + self.eps_p_committed       # = eps - eps_p_new
+        # Plastic strain increment via D_e^{-1} (sigma_trial - sigma_new)
+        eps_e_new = self._invert_D_e_voigt(sigma_new)
         eps_p_inc = (eps - eps_e_new) - self.eps_p_committed
         self.eps_p_trial = self.eps_p_committed + eps_p_inc
         self.sigma_trial = sigma_new
         return sigma_new.copy(), self._D_elastic.copy()
 
-    def _apex_or_edge_return(self, s1, s2, s3, sp, cp_c):
-        """Project onto the apex when the main-face return overshoots
-        ordering. This is conservative for the engineering-practice
-        loading paths we target and is correct for the apex itself.
+    # ----------------------------------------------------- 4-region return
+    def _return_map_principal(self, s1, s2, s3) -> np.ndarray:
+        """Sequential 4-region return mapping in principal-stress space.
+
+        Mathematical derivation
+        -----------------------
+        For the yield function
+
+            f = (s1 - s3) + (s1 + s3) sin(phi) - 2 c cos(phi)
+
+        and non-associated flow potential
+
+            g = (s1 - s3) + (s1 + s3) sin(psi)
+
+        the elastic-plastic stress update in principal coordinates
+        with bulk modulus ``K`` and shear modulus ``G`` is:
+
+            s1 = s1_tr - dl * (2G + 2(K + G/3) sin psi)
+            s2 = s2_tr - dl * (2(K - 2G/3) sin psi)
+            s3 = s3_tr + dl * (2G - 2(K + G/3) sin psi)
+
+        Substituting into ``f = 0`` and solving for dl gives the
+        **Region I (main face)** scalar return:
+
+            dl = f_trial / A,   with A = 4G + 4(K + G/3) sin phi sin psi
+
+        If the returned stresses violate ordering, the edge cases are
+        handled by the 2x2 systems below (Region II for right edge,
+        Region III for left edge). The cross-coupling coefficient is
+
+            B = -2G(1 - sin psi) + [2G + (2G/3 - 4K) sin psi] sin phi
+
+        and the 2x2 linear system in (dl_a, dl_b) is
+
+            [ A  -B ] [dl_a]   [f_a_trial]
+            [ -B  A ] [dl_b] = [f_b_trial]
+
+        with solution via Cramer's rule. The apex projection sigma_1
+        = sigma_2 = sigma_3 = c cot(phi) closes the algorithm when
+        even an edge return is infeasible.
         """
-        return np.array([self._apex, self._apex, self._apex])
+        sp = self._sin_phi
+        sps = self._sin_psi
+        cp_c = self.cohesion * self._cos_phi
+        K = self.K_bulk
+        G = self.G
+        # Coefficients shared across regions
+        A = 4.0 * G + 4.0 * (K + G / 3.0) * sp * sps
+        B = -2.0 * G * (1.0 - sps) \
+            + (2.0 * G + (2.0 * G / 3.0 - 4.0 * K) * sps) * sp
+
+        # ============================================================ Region I
+        f_a_trial = (s1 - s3) + (s1 + s3) * sp - 2.0 * cp_c
+        dl = f_a_trial / A
+        # Stress increments per unit dl
+        c1 = 2.0 * G + 2.0 * (K + G / 3.0) * sps
+        c2 = 2.0 * (K - 2.0 * G / 3.0) * sps
+        c3 = 2.0 * G - 2.0 * (K + G / 3.0) * sps      # +ve sign as derived
+        s1_new = s1 - dl * c1
+        s2_new = s2 - dl * c2
+        s3_new = s3 + dl * c3
+        # NOTE: s3 has + dl * c3 because the d eps_p_3 = -dl (1 - sin psi)
+        # (negative), and the (K - 2G/3) volumetric contribution to s3 is
+        # the same as to s1, s2 (subtracts).
+        tol = 1.0e-12 * max(abs(s1), abs(s3), 1.0)
+        if s1_new + tol >= s2_new >= s3_new - tol and dl >= -tol:
+            return np.array([s1_new, s2_new, s3_new])
+
+        # ============================================================ Region II / III
+        # Determine which edge: if s1_new < s2_new -> right edge
+        # (sigma_1 = sigma_2 must be enforced); if s2_new < s3_new ->
+        # left edge (sigma_2 = sigma_3 must be enforced).
+        det = A * A - B * B
+        if abs(det) < 1.0e-30:
+            return self._apex_array()
+
+        if s1_new < s2_new:
+            # Right edge: sigma_1 = sigma_2
+            f_b_trial = (s2 - s3) + (s2 + s3) * sp - 2.0 * cp_c
+            dl_a = (A * f_a_trial + B * f_b_trial) / det
+            dl_b = (B * f_a_trial + A * f_b_trial) / det
+            if dl_a >= -tol and dl_b >= -tol:
+                # Updated stresses (right edge: dl_a active on face A,
+                # dl_b on the σ_2/σ_3 face). Using formulas derived above:
+                s1_n = s1 - 2.0 * G * dl_a * (1.0 + sps) \
+                       - (K - 2.0 * G / 3.0) * (dl_a + dl_b) * 2.0 * sps
+                s2_n = s2 - 2.0 * G * dl_b * (1.0 + sps) \
+                       - (K - 2.0 * G / 3.0) * (dl_a + dl_b) * 2.0 * sps
+                s3_n = s3 + 2.0 * G * (dl_a + dl_b) * (1.0 - sps) \
+                       - (K - 2.0 * G / 3.0) * (dl_a + dl_b) * 2.0 * sps
+                if s2_n >= s3_n - tol:
+                    return np.array([s1_n, s2_n, s3_n])
+        else:
+            # Left edge: sigma_2 = sigma_3. Use f_c on face (σ_1, σ_2).
+            f_c_trial = (s1 - s2) + (s1 + s2) * sp - 2.0 * cp_c
+            dl_a = (A * f_a_trial + B * f_c_trial) / det
+            dl_c = (B * f_a_trial + A * f_c_trial) / det
+            if dl_a >= -tol and dl_c >= -tol:
+                # Left-edge return: flow on σ_3 (a) and σ_2 (c).
+                s1_n = s1 - 2.0 * G * (dl_a + dl_c) * (1.0 + sps) \
+                       - (K - 2.0 * G / 3.0) * (dl_a + dl_c) * 2.0 * sps
+                s2_n = s2 + 2.0 * G * dl_c * (1.0 - sps) \
+                       - (K - 2.0 * G / 3.0) * (dl_a + dl_c) * 2.0 * sps
+                s3_n = s3 + 2.0 * G * dl_a * (1.0 - sps) \
+                       - (K - 2.0 * G / 3.0) * (dl_a + dl_c) * 2.0 * sps
+                if s1_n >= s2_n - tol:
+                    return np.array([s1_n, s2_n, s3_n])
+
+        # ============================================================ Apex
+        return self._apex_array()
+
+    def _apex_array(self) -> np.ndarray:
+        a = self._apex
+        return np.array([a, a, a])
 
     def _invert_D_e_voigt(self, sigma: np.ndarray) -> np.ndarray:
         """Return ``eps = D_e^{-1} sigma`` for a (6,) Voigt stress with

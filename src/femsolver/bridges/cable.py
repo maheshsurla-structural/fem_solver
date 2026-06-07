@@ -35,7 +35,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from femsolver.elements.truss import Truss2D
+from femsolver.elements.truss import Truss2D, Truss3D
 
 
 # ============================================================ Ernst modulus
@@ -142,6 +142,86 @@ class CableElement2D(Truss2D):
         K[2:4, 2:4] = block
         K[0:2, 2:4] = -block
         K[2:4, 0:2] = -block
+        return EAoL * K
+
+
+# ============================================================ 3D cable element
+
+class CableElement3D(Truss3D):
+    """3D truss with the Ernst equivalent modulus (cable-stayed /
+    suspension stays in space).
+
+    Identical idea to :class:`CableElement2D` but for a spatial cable:
+    3 translational DOF per node and a horizontal-projection chord
+    length taken in the plane perpendicular to the vertical axis.
+
+    Parameters
+    ----------
+    tag, nodes, material, area : as for :class:`Truss3D`.
+    gamma_eff : float
+        Cable weight per unit length (N/m), component perpendicular to
+        the chord. For a near-vertical stay this is small; for a
+        near-horizontal main cable it approaches the full self-weight.
+    T_operating : float, optional
+        Chord tension at the design / operating state (N). If supplied,
+        the Ernst sag correction is applied; otherwise the element is a
+        plain elastic :class:`Truss3D`.
+    vertical_axis : {0, 1, 2}, default 2
+        Index of the global vertical axis (2 = Z up, the usual bridge
+        convention). The horizontal chord projection ``L_h`` used by the
+        Ernst formula is measured in the other two axes.
+    """
+
+    def __init__(
+        self,
+        tag: int,
+        nodes,
+        material,
+        area: float,
+        *,
+        gamma_eff: float = 0.0,
+        T_operating: float | None = None,
+        vertical_axis: int = 2,
+    ):
+        super().__init__(tag, nodes, material, area)
+        if vertical_axis not in (0, 1, 2):
+            raise ValueError("vertical_axis must be 0, 1, or 2")
+        self.gamma_eff = float(gamma_eff)
+        self.T_operating = (None if T_operating is None
+                            else float(T_operating))
+        self.vertical_axis = int(vertical_axis)
+
+    def horizontal_projection(self) -> float:
+        """Chord length projected onto the horizontal plane (m)."""
+        coords = self.node_coords()
+        d = coords[1] - coords[0]
+        horiz = [d[i] for i in range(3) if i != self.vertical_axis]
+        return float(math.hypot(*horiz))
+
+    def effective_modulus(self) -> float:
+        """Return the (Ernst-corrected) axial modulus."""
+        if self.T_operating is None or self.gamma_eff == 0.0:
+            return self.material.E
+        L_h = self.horizontal_projection()
+        if L_h <= 0.0:
+            return self.material.E
+        return ernst_equivalent_modulus(
+            E=self.material.E, A=self.area,
+            L_h=L_h, gamma_eff=self.gamma_eff,
+            T=self.T_operating,
+        )
+
+    def K_global(self) -> np.ndarray:
+        """Stiffness with Ernst equivalent modulus (mirrors Truss3D)."""
+        L, n = self.length_and_dirs()
+        E_eq = self.effective_modulus()
+        EAoL = E_eq * self.area / L
+        block = np.outer(n, n)
+        K = np.zeros((6, 6))
+        K[0:3, 0:3] = block
+        K[3:6, 3:6] = block
+        K[0:3, 3:6] = -block
+        K[3:6, 0:3] = -block
         return EAoL * K
 
 

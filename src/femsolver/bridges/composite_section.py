@@ -16,7 +16,7 @@ secondary loads use the transformed section properties.
 
 This module is deliberately analytical (closed-form composite of two
 rectangles + strand point) for clarity. For arbitrary shapes, build
-a :class:`~femsolver.sections.fiber.FiberSection2D` with appropriate
+a :class:`~femsolver.sections.response.fiber.FiberSection2D` with appropriate
 fiber materials at each location.
 """
 from __future__ import annotations
@@ -142,6 +142,87 @@ def composite_girder_deck(
         girder_height=float(girder_height),
         deck_thickness=float(deck_thickness),
         total_height=float(girder_height + deck_thickness),
+    )
+
+
+# ============================================================ unified Section (II.7)
+
+def composite_girder_deck_section(
+    *,
+    girder_width: float,
+    girder_height: float,
+    deck_width: float,
+    deck_thickness: float,
+    girder_material,
+    deck_material,
+    name: str = "composite_girder_deck",
+):
+    """Build a unified :class:`~femsolver.sections.Section` for a
+    composite girder + deck cross-section.
+
+    Theme II.7 migration helper. The returned ``Section`` has two
+    :class:`~femsolver.sections.MaterialZone` entries -- one for the
+    girder, one for the deck -- and the geometry is the union of
+    the two rectangular polygons. The girder is positioned with its
+    centroid at y = 0 (the natural location for a Bernoulli beam
+    integration), and the deck sits on top.
+
+    For backward-compatibility with the existing closed-form
+    transformed-section workflow, see :func:`composite_girder_deck`,
+    which is unchanged. This function is purely additive.
+
+    Parameters
+    ----------
+    girder_width, girder_height : float
+        Girder rectangle dimensions (m). The girder is taken as a
+        simple rectangle; for I-shaped girders, build the geometry
+        via :func:`femsolver.sections.parametric.i_section` and
+        compose manually.
+    deck_width, deck_thickness : float
+        Deck slab dimensions (m).
+    girder_material, deck_material : material references
+        Materials assigned to each zone. Typically two different
+        concrete grades.
+    name : str
+        Section name.
+
+    Notes
+    -----
+    The unified Section's gross properties come from the polygon
+    union, NOT the transformed-section formulas. For prestressed
+    bridge engineering use the legacy :func:`composite_girder_deck`
+    which carries the modular ratio.
+    """
+    from femsolver.sections import (
+        MaterialZone,
+        PolygonGeometry,
+        Section,
+        union_polygons,
+    )
+
+    # Position: girder centroid at origin, deck on top
+    girder_geom = PolygonGeometry.rectangle(
+        width=girder_width, height=girder_height,
+    )
+    deck_geom = PolygonGeometry.rectangle(
+        width=deck_width, height=deck_thickness,
+        center=(0.0, (girder_height + deck_thickness) / 2.0),
+    )
+    composite_geom = union_polygons(girder_geom, deck_geom)
+    return Section(
+        geometry=composite_geom,
+        zones=[
+            MaterialZone(
+                material=girder_material, geometry=girder_geom,
+                name="girder",
+            ),
+            MaterialZone(
+                material=deck_material, geometry=deck_geom,
+                name="deck",
+            ),
+        ],
+        name=name,
+        family="composite_girder_deck",
     )
 
 

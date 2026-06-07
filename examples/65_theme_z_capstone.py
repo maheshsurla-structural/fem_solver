@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import sys
 
-from femsolver.catalogs import (
+from femsolver.data import (
     auto_select_ec_section,
     bolt_lookup,
     concrete_grade,

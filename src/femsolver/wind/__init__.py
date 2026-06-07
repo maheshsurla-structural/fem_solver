@@ -23,10 +23,28 @@ from femsolver.wind.asce7 import (
     asce7_gust_factor_rigid,
     asce7_gust_factor_flexible,
 )
+from femsolver.wind.asce7_cc import (
+    CCDesignPressure,
+    CCPressureCoefficient,
+    cc_design_pressure,
+    cc_edge_distance,
+    cc_roof_GCp,
+    cc_wall_GCp,
+    gcpi_for_enclosure,
+)
 from femsolver.wind.is875 import (
     Is875DesignWindPressure,
     is875_design_wind_pressure,
     is875_terrain_category_factor,
+)
+from femsolver.wind.is875_dynamic import (
+    Is875DynamicFactor,
+    background_factor,
+    gust_energy_factor,
+    integral_length_scale,
+    is875_dynamic_factor,
+    size_reduction_factor,
+    turbulence_intensity,
 )
 from femsolver.wind.eurocode import (
     Ec1PeakVelocityPressure,
@@ -53,10 +71,26 @@ __all__ = [
     "asce7_mwfrs_design_pressures",
     "asce7_gust_factor_rigid",
     "asce7_gust_factor_flexible",
+    # ASCE 7 C&C (Phase HH.6)
+    "CCDesignPressure",
+    "CCPressureCoefficient",
+    "cc_design_pressure",
+    "cc_edge_distance",
+    "cc_roof_GCp",
+    "cc_wall_GCp",
+    "gcpi_for_enclosure",
     # IS 875
     "Is875DesignWindPressure",
     "is875_design_wind_pressure",
     "is875_terrain_category_factor",
+    # IS 875 dynamic (Phase HH.7)
+    "Is875DynamicFactor",
+    "background_factor",
+    "gust_energy_factor",
+    "integral_length_scale",
+    "is875_dynamic_factor",
+    "size_reduction_factor",
+    "turbulence_intensity",
     # EC1
     "Ec1PeakVelocityPressure",
     "ec1_peak_velocity_pressure",

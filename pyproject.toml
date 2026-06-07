@@ -13,6 +13,7 @@ authors = [{ name = "MIDAS Soft" }]
 dependencies = [
     "numpy>=1.24",
     "scipy>=1.10",
+    "shapely>=2.0",     # polygon geometry for Section Designer (Theme II)
 ]
 
 [project.optional-dependencies]

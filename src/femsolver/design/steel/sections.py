@@ -5,6 +5,16 @@ A curated subset (~30 sections spanning W4 through W36) of the AISC
 W-shape carries the full set of geometric and section properties
 needed for AISC 360-22 checks (Phases 30.2-30.6):
 
+.. note::
+
+    **Theme II.7 migration:** the unified Section Designer accesses
+    this database through
+    :func:`femsolver.sections.aisc_section` and
+    :meth:`femsolver.sections.SectionLibrary.aisc`. New user code
+    should prefer the unified path. :meth:`SteelSection.to_unified`
+    converts a legacy :class:`SteelSection` to a unified
+    :class:`femsolver.sections.Section`.
+
 * **Geometry**: ``A``, ``d``, ``bf``, ``tf``, ``tw``, ``k_des``
 * **Inertia**: ``Ix``, ``Iy``
 * **Section moduli**: ``Sx``, ``Sy`` (elastic), ``Zx``, ``Zy``
@@ -81,6 +91,25 @@ class SteelSection:
             f"d={self.d * 1000:.0f} mm, "
             f"Ix={self.Ix * 1e8:.1f}e4 mm4)"
         )
+
+    # ---------------------------------------------------- migration (II.7)
+    def to_unified(self, *, material=None):
+        """Convert this legacy AISC :class:`SteelSection` to a unified
+        :class:`femsolver.sections.Section`.
+
+        Inverse of :meth:`femsolver.sections.Section.as_aisc_section`
+        (added in II.6). Together they let user code mix the two
+        worlds during the migration window.
+
+        Parameters
+        ----------
+        material : optional
+            Steel material reference attached as a
+            :class:`MaterialZone` so the result can drive
+            ``.elastic_section_3d()`` etc. out of the box.
+        """
+        from femsolver.sections import aisc_section
+        return aisc_section(self.designation, material=material)
 
 
 # ============================================================ database

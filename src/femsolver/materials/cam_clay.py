@@ -93,6 +93,10 @@ class ModifiedCamClay3D:
         lambda_cc: float,
         kappa_cc: float,
         p_c0: float,
+        *,
+        e_0: float = 0.5,
+        stress_dependent: bool = True,
+        p_min: float = 1.0e3,
     ):
         if E <= 0.0:
             raise ValueError(f"E must be positive, got {E}")
@@ -109,38 +113,84 @@ class ModifiedCamClay3D:
             )
         if p_c0 <= 0.0:
             raise ValueError(f"p_c0 must be positive, got {p_c0}")
+        if e_0 <= 0.0:
+            raise ValueError(f"e_0 must be positive, got {e_0}")
+        if p_min <= 0.0:
+            raise ValueError(f"p_min must be positive, got {p_min}")
         self.E = float(E)
         self.nu = float(nu)
         self.M = float(M)
         self.lambda_cc = float(lambda_cc)
         self.kappa_cc = float(kappa_cc)
         self._p_c0 = float(p_c0)
-        # Elastic constants
-        self.G = E / (2.0 * (1.0 + nu))
-        self.K_bulk = E / (3.0 * (1.0 - 2.0 * nu))
-        self._lambda_lame = E * nu / ((1.0 + nu) * (1.0 - 2.0 * nu))
-        self._D_elastic = self._build_D_elastic()
+        self.stress_dependent = bool(stress_dependent)
+        self.p_min = float(p_min)
+        # Initial elastic constants (used when stress_dependent=False,
+        # and as a starting reference for the K-update logic)
+        self._G_initial = E / (2.0 * (1.0 + nu))
+        self._K_initial = E / (3.0 * (1.0 - 2.0 * nu))
         # state: internal "p_c" stored as a positive number (consol.
         # pressure magnitude). Tension-positive sign means yield occurs
         # for sigma with negative p (compressive).
         self.p_c = float(p_c0)
         self.p_c_committed = float(p_c0)
+        # Void ratio: tracked across plastic volumetric strain
+        self.e_committed = float(e_0)
+        self.e_trial = float(e_0)
         self.eps_p_committed = np.zeros(6)
         self.eps_p_trial = np.zeros(6)
         self.sigma_committed = np.zeros(6)
         self.sigma_trial = np.zeros(6)
+        # Build initial D_e at p_eff = p_c0/2 (typical in-situ state)
+        self._D_elastic = self._build_D_elastic_at(
+            self._tangent_K(p_c0 / 2.0, e_0)
+        )
 
-    def _build_D_elastic(self) -> np.ndarray:
-        lam = self._lambda_lame
-        mu = self.G
+    def _tangent_K(self, p_eff: float, e: float) -> float:
+        """Tangent bulk modulus per critical-state theory::
+
+            K' = (1 + e) * p_eff / kappa
+
+        with a floor at ``p_eff = p_min`` so K stays finite near the
+        apex / tension cut-off. When ``stress_dependent`` is False,
+        return the initial K from the constructor.
+        """
+        if not self.stress_dependent:
+            return self._K_initial
+        p_safe = max(p_eff, self.p_min)
+        return (1.0 + e) * p_safe / self.kappa_cc
+
+    def _build_D_elastic_at(self, K: float) -> np.ndarray:
+        """Build the (6,6) elastic stiffness with the supplied K and
+        constant Poisson ratio. G follows from K via ``G = 3K(1 -
+        2nu) / (2(1 + nu))``."""
+        nu = self.nu
+        G = 3.0 * K * (1.0 - 2.0 * nu) / (2.0 * (1.0 + nu))
+        lam = K - 2.0 * G / 3.0
         D = np.zeros((6, 6))
-        D[0, 0] = D[1, 1] = D[2, 2] = lam + 2.0 * mu
+        D[0, 0] = D[1, 1] = D[2, 2] = lam + 2.0 * G
         D[0, 1] = D[0, 2] = D[1, 0] = D[1, 2] = D[2, 0] = D[2, 1] = lam
-        D[3, 3] = D[4, 4] = D[5, 5] = mu
+        D[3, 3] = D[4, 4] = D[5, 5] = G
         return D
 
+    @property
+    def K_bulk(self) -> float:
+        """Current tangent bulk modulus (stress-dependent if enabled)."""
+        if not self.stress_dependent:
+            return self._K_initial
+        # Use committed mean effective stress
+        if not np.any(self.sigma_committed):
+            return self._tangent_K(self._p_c0 / 2.0, self.e_committed)
+        s, p_v = _deviator(self.sigma_committed)
+        return self._tangent_K(-p_v, self.e_committed)
+
+    @property
+    def G(self) -> float:
+        K = self.K_bulk
+        return 3.0 * K * (1.0 - 2.0 * self.nu) / (2.0 * (1.0 + self.nu))
+
     def D_elastic(self) -> np.ndarray:
-        return self._D_elastic.copy()
+        return self._build_D_elastic_at(self.K_bulk)
 
     def yield_function(self, sigma: np.ndarray) -> float:
         """``f = q^2 + M^2 * p_eff * (p_eff + p_c)`` where ``p_eff =
@@ -161,7 +211,11 @@ class ModifiedCamClay3D:
         """
         eps = np.asarray(eps_voigt, dtype=float).reshape(6)
         eps_e_trial = eps - self.eps_p_committed
-        sigma_trial = self._D_elastic @ eps_e_trial
+        # Stress-dependent elastic stiffness: build D_e using the
+        # committed state's tangent K. This makes the elastic predictor
+        # follow the swelling line in (e, ln p').
+        D_e = self.D_elastic()
+        sigma_trial = D_e @ eps_e_trial
         s_trial, p_v_trial = _deviator(sigma_trial)
         p_eff_trial = -p_v_trial
         q_trial = _von_mises_q(s_trial)
@@ -173,7 +227,12 @@ class ModifiedCamClay3D:
             self.sigma_trial = sigma_trial
             self.eps_p_trial = self.eps_p_committed.copy()
             self.p_c = self.p_c_committed
-            return sigma_trial.copy(), self._D_elastic.copy()
+            # Track void-ratio change from elastic volumetric strain.
+            # In tension-positive convention: de = (1+e) * eps_v, so
+            # compression (eps_v < 0) decreases e.
+            eps_v_e = (eps_e_trial[0] + eps_e_trial[1] + eps_e_trial[2])
+            self.e_trial = self.e_committed + (1.0 + self.e_committed) * eps_v_e
+            return sigma_trial.copy(), D_e.copy()
 
         # Return mapping. Variables:
         #   q  = q_trial / (1 + 6G * delta_lambda)
@@ -226,17 +285,30 @@ class ModifiedCamClay3D:
         p_v_new = -p_n     # back to tension-positive
         sigma_new = s_new.copy()
         sigma_new[0:3] += p_v_new
-        # Update plastic strain via D_e^-1
-        eps_e_new = self._invert_D_e_voigt(sigma_new)
+        # Update plastic strain via D_e^-1 (using the current K, G)
+        eps_e_new = self._invert_D_e_voigt(sigma_new, K=K, G=G)
         eps_p_new = eps - eps_e_new
+        # Update void ratio from total volumetric strain
+        # (tension-positive: compression decreases e)
+        eps_v_total = eps[0] + eps[1] + eps[2]
+        self.e_trial = self.e_committed + (1.0 + self.e_committed) * eps_v_total
         self.sigma_trial = sigma_new
         self.eps_p_trial = eps_p_new
         self.p_c = p_c_n
-        return sigma_new.copy(), self._D_elastic.copy()
+        return sigma_new.copy(), D_e.copy()
 
-    def _invert_D_e_voigt(self, sigma: np.ndarray) -> np.ndarray:
-        E, nu = self.E, self.nu
-        G = self.G
+    def _invert_D_e_voigt(
+        self, sigma: np.ndarray,
+        K: float | None = None, G: float | None = None,
+    ) -> np.ndarray:
+        # Allow caller to pass the K, G that built the trial sigma so
+        # that the inverse is consistent (stress-dependent stiffness).
+        if K is None:
+            K = self.K_bulk
+        if G is None:
+            G = self.G
+        E = 9.0 * K * G / (3.0 * K + G)
+        nu = (3.0 * K - 2.0 * G) / (2.0 * (3.0 * K + G))
         eps = np.empty(6)
         eps[0] = (sigma[0] - nu * (sigma[1] + sigma[2])) / E
         eps[1] = (sigma[1] - nu * (sigma[0] + sigma[2])) / E
@@ -251,11 +323,13 @@ class ModifiedCamClay3D:
         self.eps_p_committed = self.eps_p_trial.copy()
         self.sigma_committed = self.sigma_trial.copy()
         self.p_c_committed = self.p_c
+        self.e_committed = self.e_trial
 
     def revert_state(self) -> None:
         self.eps_p_trial = self.eps_p_committed.copy()
         self.sigma_trial = self.sigma_committed.copy()
         self.p_c = self.p_c_committed
+        self.e_trial = self.e_committed
 
     def clone(self) -> "ModifiedCamClay3D":
         return copy.deepcopy(self)

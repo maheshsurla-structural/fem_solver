@@ -18,6 +18,12 @@ Submodules
 from femsolver.seismic.gmpe import (
     GmpeResult,
     BooreAtkinsonLike,
+    bssa14,
+)
+from femsolver.seismic.bssa14 import (
+    Bssa14Coefficients,
+    bssa14_at_period,
+    bssa14_available_periods,
 )
 from femsolver.seismic.psha import (
     PointSource,
@@ -39,13 +45,20 @@ from femsolver.seismic.site_response import (
     site_amplification_spectrum,
     transfer_function,
 )
+from femsolver.seismic.equivalent_linear import (
+    NonlinearSoilCurves,
+    EquivalentLinearResult,
+    equivalent_linear_iterate,
+    vucetic_dobry_curves,
+)
 from femsolver.seismic.risk_targeted import (
     risk_targeted_im,
     annual_collapse_rate,
 )
 
 __all__ = [
-    "GmpeResult", "BooreAtkinsonLike",
+    "GmpeResult", "BooreAtkinsonLike", "bssa14",
+    "Bssa14Coefficients", "bssa14_at_period", "bssa14_available_periods",
     "PointSource", "AreaSource",
     "GutenbergRichterMFD",
     "HazardCurve", "UniformHazardSpectrum",
@@ -53,5 +66,7 @@ __all__ = [
     "DeaggregationResult", "deaggregate",
     "SoilLayer", "SoilProfile",
     "site_amplification_spectrum", "transfer_function",
+    "NonlinearSoilCurves", "EquivalentLinearResult",
+    "equivalent_linear_iterate", "vucetic_dobry_curves",
     "risk_targeted_im", "annual_collapse_rate",
 ]

@@ -58,7 +58,7 @@ import numpy as np
 
 from femsolver.elements.beam import BeamColumn3D
 from femsolver.numerics.quadrature import gauss_lobatto_1d
-from femsolver.sections.base import SectionBase
+from femsolver.sections.response.base import SectionBase
 
 
 def _chord_rotation_pseudovector(

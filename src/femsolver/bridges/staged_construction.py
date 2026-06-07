@@ -43,6 +43,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 import numpy as np
+import scipy.sparse as sp
+from scipy.sparse.linalg import spsolve
 
 from femsolver.bridges.creep_shrinkage import cebfip_creep_coefficient
 
@@ -240,6 +242,277 @@ class StagedConstructionAnalysis:
             u_incremental=u_increments,
             u_cumulative=u_cum,
             creep_factors=creep_factors,
+        )
+
+
+# ============================================================ incremental staged (birth + death)
+
+@dataclass
+class ErectionStage:
+    """One stage of an *incremental* staged-erection analysis.
+
+    Unlike :class:`ConstructionStage` (which feeds the simplified
+    scalar-EMM driver), this stage description drives a true
+    active-set incremental analysis with element **birth** and
+    **death**.
+
+    Attributes
+    ----------
+    name : str
+        Label for reporting.
+    add_elements : list, optional
+        Element tags that become active ("born") at the START of this
+        stage. A born element is installed **stress-free in the current
+        deformed geometry** -- it accumulates force only from load
+        increments applied in this and later stages.
+    remove_elements : list, optional
+        Element tags removed ("die") at the start of this stage
+        (falsework, temporary props, erection equipment, demolished
+        segments). The locked-in internal force of each removed element
+        is **released** onto the remaining structure (the exact
+        equilibrium release load ``K_e u_e``).
+    loads : dict, optional
+        ``{node_tag: [Fx, Fy, ...]}`` nodal loads applied in this stage
+        (incremental -- added to the running total).
+    stiffness_factor : float, default 1.0
+        Optional uniform scale on the active stiffness for this stage's
+        solve (e.g. an EMM creep factor ``1/(1+chi*phi)`` for a
+        long-duration sustained-load stage). Default 1.0 = elastic.
+    """
+
+    name: str
+    add_elements: list = field(default_factory=list)
+    remove_elements: list = field(default_factory=list)
+    loads: dict = field(default_factory=dict)
+    stiffness_factor: float = 1.0
+
+
+@dataclass
+class IncrementalStagedResult:
+    """Outcome of an :class:`IncrementalStagedAnalysis`.
+
+    Attributes
+    ----------
+    stage_names : list[str]
+    u_increments : list[np.ndarray]
+        Per-stage free-DOF displacement increment (size neq).
+    u_cumulative : np.ndarray
+        Final cumulative displacement (size neq).
+    element_forces : dict[int, np.ndarray]
+        Final locked-in global end-force vector per element that is
+        active at the end (``K_e u_e^active``). Removed elements are
+        absent.
+    element_force_history : dict[int, list]
+        Per element, the end-force vector at the end of each stage
+        (``None`` for stages where the element was inactive).
+    active_history : list[set]
+        Set of active element tags at the end of each stage.
+    """
+
+    stage_names: list
+    u_increments: list
+    u_cumulative: np.ndarray
+    element_forces: dict
+    element_force_history: dict
+    active_history: list
+
+
+class IncrementalStagedAnalysis:
+    """True incremental staged-construction analysis with element
+    birth and death.
+
+    The model must contain **all** elements that appear in any stage;
+    the driver activates / deactivates them per the stage script. At
+    each stage it:
+
+    1. Updates the active element set (add births, remove deaths).
+    2. For each **dying** element, adds its current locked-in force
+       ``K_e u_e`` to the stage release load (so the remaining
+       structure picks up what the removed element was carrying).
+    3. Assembles the stiffness from the **active elements only**,
+       restricted to the DOFs those elements touch (so DOFs belonging
+       only to not-yet-born / removed elements stay out of the solve).
+    4. Solves for the displacement increment under (stage loads +
+       release loads), accumulates displacement, and accumulates each
+       active element's force by ``f_e += K_e du_e`` -- which makes a
+       newly-born element stress-free with respect to all deformation
+       that occurred before its birth.
+
+    Parameters
+    ----------
+    model : Model
+        Contains every element used across the stages, plus supports.
+    stages : list[ErectionStage]
+    initial_active : list, optional
+        Element tags active before stage 1 (default: empty -- every
+        element must be born by some stage's ``add_elements``).
+
+    Notes
+    -----
+    Linear, small-displacement. MP constraints (rigid links /
+    diaphragms) are not yet supported by this driver.
+    """
+
+    def __init__(self, model, stages, *, initial_active=None):
+        if not stages:
+            raise ValueError("at least one stage required")
+        if model.mp_constraints:
+            raise NotImplementedError(
+                "IncrementalStagedAnalysis does not yet support MP "
+                "constraints (rigid links / diaphragms)."
+            )
+        self.model = model
+        self.stages = list(stages)
+        self.initial_active = set(initial_active or [])
+
+    def _element_dofmaps(self):
+        m = self.model
+        return {e.tag: m.element_dof_map(e) for e in m.elements.values()}
+
+    def run(self) -> IncrementalStagedResult:
+        m = self.model
+        m.reset_results()
+        m.number_dofs()
+        neq = m.neq
+        if neq == 0:
+            raise RuntimeError("model has no free DOFs")
+
+        dofmaps = self._element_dofmaps()
+        active = set(self.initial_active)
+        # locked-in global end forces per active element
+        f_elem: dict[int, np.ndarray] = {
+            tag: np.zeros(dofmaps[tag].size) for tag in active
+        }
+
+        u_cum = np.zeros(neq)
+        u_increments = []
+        names = []
+        force_history = {e.tag: [] for e in m.elements.values()}
+        active_history = []
+
+        for stage in self.stages:
+            # ---- birth / death --------------------------------------
+            release = np.zeros(neq)
+            for tag in stage.remove_elements:
+                if tag not in active:
+                    raise ValueError(
+                        f"stage '{stage.name}': cannot remove element "
+                        f"{tag} -- it is not active"
+                    )
+                # release the dying element's locked-in force
+                fe = f_elem[tag]
+                dm = dofmaps[tag]
+                for i, eq in enumerate(dm):
+                    if eq >= 0:
+                        release[eq] += fe[i]
+                active.discard(tag)
+                f_elem.pop(tag, None)
+            for tag in stage.add_elements:
+                if tag not in m.elements:
+                    raise ValueError(
+                        f"stage '{stage.name}': unknown element {tag}"
+                    )
+                active.add(tag)
+                f_elem[tag] = np.zeros(dofmaps[tag].size)  # born stress-free
+
+            if not active:
+                raise RuntimeError(
+                    f"stage '{stage.name}': no active elements to solve"
+                )
+
+            # ---- assemble active stiffness + active free DOF set -----
+            active_tags = sorted(active)
+            Ke_cache = {tag: m.element(tag).K_global() for tag in active_tags}
+            free_eqs = set()
+            for tag in active_tags:
+                for eq in dofmaps[tag]:
+                    if eq >= 0:
+                        free_eqs.add(int(eq))
+            ix = np.array(sorted(free_eqs), dtype=int)
+            if ix.size == 0:
+                raise RuntimeError(
+                    f"stage '{stage.name}': active structure has no free DOFs"
+                )
+            g2l = {int(g): l for l, g in enumerate(ix)}
+
+            rows, cols, vals = [], [], []
+            for tag in active_tags:
+                dm = dofmaps[tag]
+                Ke = Ke_cache[tag] * stage.stiffness_factor
+                ndof = dm.size
+                for a in range(ndof):
+                    ga = dm[a]
+                    if ga < 0:
+                        continue
+                    la = g2l[int(ga)]
+                    for b in range(ndof):
+                        gb = dm[b]
+                        if gb < 0:
+                            continue
+                        rows.append(la)
+                        cols.append(g2l[int(gb)])
+                        vals.append(Ke[a, b])
+            n = ix.size
+            K_aa = sp.coo_matrix((vals, (rows, cols)), shape=(n, n)).tocsc()
+
+            # ---- stage load vector (external + release) --------------
+            f_full = release.copy()
+            for node_tag, load in stage.loads.items():
+                node = m.node(node_tag)
+                ld = np.asarray(load, dtype=float)
+                for d in range(min(node.ndf, ld.size)):
+                    eq = int(node.eqn[d])
+                    if eq >= 0:
+                        f_full[eq] += ld[d]
+            f_a = f_full[ix]
+
+            # ---- solve increment -------------------------------------
+            try:
+                du_a = np.asarray(spsolve(K_aa, f_a)).ravel()
+            except Exception as exc:
+                raise RuntimeError(
+                    f"stage '{stage.name}' solve failed: {exc} (the active "
+                    "sub-structure may be a mechanism -- check supports / "
+                    "connectivity of the elements active this stage)."
+                ) from exc
+            if not np.all(np.isfinite(du_a)):
+                raise RuntimeError(
+                    f"stage '{stage.name}': non-finite increment (active "
+                    "sub-structure is singular / a mechanism)."
+                )
+            du = np.zeros(neq)
+            du[ix] = du_a
+            u_cum = u_cum + du
+            u_increments.append(du)
+
+            # ---- accumulate element forces ---------------------------
+            for tag in active_tags:
+                dm = dofmaps[tag]
+                du_e = np.array([du[eq] if eq >= 0 else 0.0 for eq in dm])
+                f_elem[tag] = f_elem[tag] + Ke_cache[tag] @ du_e
+
+            # ---- record -------------------------------------------------
+            names.append(stage.name)
+            active_history.append(set(active))
+            for tag in force_history:
+                if tag in active:
+                    force_history[tag].append(f_elem[tag].copy())
+                else:
+                    force_history[tag].append(None)
+
+        # scatter final displacement to nodes
+        for node in m.nodes.values():
+            for d in range(node.ndf):
+                eq = int(node.eqn[d])
+                node.disp[d] = float(u_cum[eq]) if eq >= 0 else 0.0
+
+        return IncrementalStagedResult(
+            stage_names=names,
+            u_increments=u_increments,
+            u_cumulative=u_cum,
+            element_forces={t: f.copy() for t, f in f_elem.items()},
+            element_force_history=force_history,
+            active_history=active_history,
         )
 
 

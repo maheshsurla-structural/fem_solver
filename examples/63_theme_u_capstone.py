@@ -56,8 +56,9 @@ def main():
           f"({1/nu_min:.0f} yr return)")
 
     # ============================ PGA hazard curve =========================
-    gmpe_pga = BooreAtkinsonLike(T=0.0)
-    ims = np.geomspace(0.001, 3.0, 60)
+    from femsolver.seismic import bssa14
+    gmpe_pga = bssa14(0.01)   # BSSA14 PGA period
+    ims = np.geomspace(0.001, 5.0, 60)
     curve_pga_rock = compute_hazard_curve(
         gmpe=gmpe_pga, sources=[src], im_levels=ims, V_s30=760.0,
     )
@@ -80,8 +81,10 @@ def main():
           f"{d.mean_R:.1f} km, {d.mean_eps:+.2f})")
 
     # ============================ UHS =========================
-    periods = [0.0, 0.2, 0.5, 1.0, 2.0]
-    gmpes = {T: BooreAtkinsonLike(T=T) for T in periods}
+    # Use BSSA14 period-by-period coefficients for a properly-shaped UHS
+    from femsolver.seismic import bssa14
+    periods = [0.01, 0.1, 0.2, 0.3, 0.5, 1.0, 2.0, 3.0]
+    gmpes = {T: bssa14(T) for T in periods}
     uhs_rock = compute_uhs(
         gmpes_by_period=gmpes, sources=[src],
         return_period=475, im_levels=ims, V_s30=760.0,

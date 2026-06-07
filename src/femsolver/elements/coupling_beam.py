@@ -38,7 +38,7 @@ from dataclasses import dataclass
 from femsolver.constraints.rigid_link import RigidLink
 from femsolver.elements.beam import BeamColumn2D
 from femsolver.materials.elastic import ElasticIsotropic
-from femsolver.sections.base import SectionBase
+from femsolver.sections.response.base import SectionBase
 
 
 @dataclass

@@ -76,7 +76,7 @@ import numpy as np
 
 from femsolver.elements.beam_corot import BeamColumn2DCorotational
 from femsolver.numerics.quadrature import gauss_lobatto_1d
-from femsolver.sections.base import SectionBase
+from femsolver.sections.response.base import SectionBase
 
 
 class ForceBeamColumn2DCorotational(BeamColumn2DCorotational):

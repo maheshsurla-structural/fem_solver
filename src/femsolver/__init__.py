@@ -10,6 +10,9 @@ from femsolver.materials.drucker_prager import DruckerPrager3D
 from femsolver.materials.mohr_coulomb import MohrCoulomb3D
 from femsolver.materials.cam_clay import ModifiedCamClay3D
 from femsolver.materials.concrete_damage import ConcreteDamage3D
+from femsolver.materials.concrete_damage_plasticity import (
+    ConcreteDamagePlasticity3D,
+)
 from femsolver.elements.truss import Truss2D, Truss3D
 from femsolver.elements.truss_corot import Truss2DCorotational
 from femsolver.elements.beam import BeamColumn2D, BeamColumn3D
@@ -126,7 +129,7 @@ from femsolver.sections import (
     wall_section_2d,
     wall_shear_area,
 )
-from femsolver.sections.hinges import BilinearMomentRotationSpring
+from femsolver.sections.response.hinges import BilinearMomentRotationSpring
 from femsolver.materials.uniaxial import (
     ConcreteKentPark,
     ConcreteMander,

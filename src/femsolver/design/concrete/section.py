@@ -342,6 +342,52 @@ class ConcreteSection:
     def Ec(self) -> float:
         return self.material.Ec
 
+    # ---------------------------------------------------- migration (II.7)
+    def to_unified(self, *, steel_material=None):
+        """Convert this legacy :class:`ConcreteSection` to a unified
+        :class:`femsolver.sections.Section`.
+
+        The reverse direction --
+        :meth:`femsolver.sections.Section.as_aci_concrete_section` --
+        was added in II.6. Together they let user code mix the two
+        worlds freely during the migration window.
+
+        Parameters
+        ----------
+        steel_material : optional
+            ``UniaxialMaterial`` to attach to every rebar. Required
+            only if the resulting unified Section will drive a
+            nonlinear fiber analysis (then each bar needs a
+            UniaxialMaterial). For design-only use, omit it.
+        """
+        from femsolver.sections import (
+            ReinforcementLayout,
+            rc_rectangular_section,
+        )
+
+        bottom_bar_specs = [
+            (rebar_area(d), d) for d in self.rebar.bottom_bars
+        ]
+        top_bar_specs = [
+            (rebar_area(d), d) for d in self.rebar.top_bars
+        ]
+        rl = ReinforcementLayout.from_rectangular_layers(
+            b=self.b, h=self.h,
+            bottom_bars=bottom_bar_specs,
+            top_bars=top_bar_specs,
+            bottom_cover=self.rebar.bottom_cover,
+            top_cover=self.rebar.top_cover,
+            stirrup_designation=self.rebar.stirrup_designation,
+            stirrup_spacing=self.rebar.stirrup_spacing,
+            stirrup_legs=self.rebar.stirrup_legs,
+            steel_material=steel_material,
+        )
+        return rc_rectangular_section(
+            b=self.b, h=self.h,
+            concrete=self.material,
+            reinforcement=rl,
+        )
+
     def neutral_axis_balanced(self) -> float:
         """Depth of the neutral axis at *balanced* strain conditions
         per ACI 318-19 22.2.1: ε_c = 0.003 at extreme compression

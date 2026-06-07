@@ -30,6 +30,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+from femsolver.seismic.bssa14 import bssa14_at_period
+
 
 @dataclass
 class GmpeResult:
@@ -38,6 +40,38 @@ class GmpeResult:
     median_Sa: float     # in units of g
     median_lnSa: float   # ln(median_Sa)
     sigma_lnSa: float    # aleatory standard deviation of ln Sa
+
+
+def bssa14(T: float = 0.01, V_ref: float = 760.0) -> "BooreAtkinsonLike":
+    """Construct a :class:`BooreAtkinsonLike` GMPE pre-populated with
+    BSSA14 (Boore-Stewart-Seyhan-Atkinson 2014) period-by-period
+    coefficients. The BSSA14 coefficient table for the listed period
+    is looked up from :mod:`femsolver.seismic.bssa14`.
+
+    Parameters
+    ----------
+    T : float, default 0.01
+        Spectral period (s). ``0.01`` is PGA per BSSA14.
+    V_ref : float, default 760
+        Reference V_s30 (m/s).
+    """
+    c = bssa14_at_period(T)
+    return BooreAtkinsonLike(
+        T=T,
+        e1=c.e_ref,
+        e5=c.e5,
+        e6=c.e6,
+        M_h=c.M_h,
+        c1=c.c1,
+        c2=c.c2,
+        c3=c.c3,
+        M_ref=c.M_ref,
+        R_ref=1.0,
+        h=c.h,
+        b_lin=c.b_lin,
+        V_ref=V_ref,
+        sigma=c.sigma,
+    )
 
 
 class BooreAtkinsonLike:
