@@ -7,8 +7,8 @@ import os
 import numpy as np
 import pytest
 
-from femsolver.analysis.ida import IDAPoint, IDARecord
-from femsolver.analysis.ida_collapse import CollapseResult, IDASummary
+from femsolver.performance.ida import IDAPoint, IDARecord
+from femsolver.performance.ida_collapse import CollapseResult, IDASummary
 
 h5py = pytest.importorskip("h5py")
 from femsolver.io import (   # noqa: E402  (after importorskip)

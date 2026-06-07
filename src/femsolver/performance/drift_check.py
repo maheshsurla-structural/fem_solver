@@ -45,7 +45,7 @@ from typing import Iterable
 
 import numpy as np
 
-from femsolver.analysis.capacity_design import story_drifts
+from femsolver.performance.capacity_design import story_drifts
 
 
 # ============================================================ result types

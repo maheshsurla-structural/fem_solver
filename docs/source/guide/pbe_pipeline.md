@@ -28,8 +28,8 @@ from femsolver import (
 )
 ```
 
-See {mod}`femsolver.analysis.cms` and
-{mod}`femsolver.analysis.record_scaling`.
+See {mod}`femsolver.performance.cms` and
+{mod}`femsolver.performance.record_scaling`.
 
 ## 2. IDA + collapse (Phase 25)
 
@@ -45,8 +45,8 @@ summary = multi_record_ida(
 )
 ```
 
-See {mod}`femsolver.analysis.ida` and
-{mod}`femsolver.analysis.ida_collapse`.
+See {mod}`femsolver.performance.ida` and
+{mod}`femsolver.performance.ida_collapse`.
 
 ## 3. Fragility fit (Phase 25.3)
 
@@ -60,7 +60,7 @@ fit = fit_collapse_fragility(
 print(fit.theta, fit.beta)        # lognormal median + dispersion
 ```
 
-See {mod}`femsolver.analysis.fragility`.
+See {mod}`femsolver.performance.fragility`.
 
 ## 4. SSI (Phase 27)
 
@@ -100,7 +100,7 @@ result = assess.monte_carlo(n_realisations=5000, seed=42)
 print(result.mean_loss, result.p95_loss)
 ```
 
-See {mod}`femsolver.analysis.p58`.
+See {mod}`femsolver.performance.p58`.
 
 ## Capstone
 

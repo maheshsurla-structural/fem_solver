@@ -189,31 +189,31 @@ from femsolver.analysis.envelope import (
     EnvelopeResult,
     ForceEnvelope,
 )
-from femsolver.analysis.drift_check import (
+from femsolver.performance.drift_check import (
     DriftCheck,
     drift_check,
     drift_check_worst_combo,
 )
-from femsolver.analysis.ida import (
+from femsolver.performance.ida import (
     IDADriver,
     IDAPoint,
     IDARecord,
     max_drift_edp,
     pga_scale_factor,
 )
-from femsolver.analysis.ida_collapse import (
+from femsolver.performance.ida_collapse import (
     CollapseResult,
     IDASummary,
     detect_collapse,
     multi_record_ida,
 )
-from femsolver.analysis.fragility import (
+from femsolver.performance.fragility import (
     FragilityFit,
     fit_collapse_fragility,
     fit_lognormal_mle,
     fit_lognormal_method_of_moments,
 )
-from femsolver.analysis.record_scaling import (
+from femsolver.performance.record_scaling import (
     SuiteScalingResult,
     amplitude_scale_factor,
     compute_sdof_response_spectrum,
@@ -221,7 +221,7 @@ from femsolver.analysis.record_scaling import (
     record_response_spectrum,
     scale_record_suite,
 )
-from femsolver.analysis.cms import (
+from femsolver.performance.cms import (
     baker_jayaram_correlation,
     compute_epsilon,
     conditional_mean_spectrum,
@@ -241,7 +241,7 @@ from femsolver.geotech.soil_springs import (
     tz_curve_clay,
     tz_curve_sand,
 )
-from femsolver.analysis.p58 import (
+from femsolver.performance.p58 import (
     ComponentDamageAssessment,
     ComponentFragility,
     ComponentGroup,
@@ -274,7 +274,7 @@ from femsolver.analysis.response_spectrum import (
     ground_motion_force,
     multi_support_ground_motion_force,
 )
-from femsolver.analysis.capacity_design import (
+from femsolver.performance.capacity_design import (
     BilinearCurve,
     EquivalentSDOF,
     PushoverToTarget,

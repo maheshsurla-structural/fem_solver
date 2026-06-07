@@ -43,7 +43,7 @@ from typing import Callable, Sequence
 import numpy as np
 
 from femsolver.analysis.assembler import assemble_mass
-from femsolver.analysis.capacity_design import (
+from femsolver.performance.capacity_design import (
     BilinearCurve,
     EquivalentSDOF,
     bilinearize_capacity_curve,

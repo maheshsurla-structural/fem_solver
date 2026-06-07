@@ -38,7 +38,7 @@ from femsolver import (
     ground_motion_force,
 )
 from femsolver.analysis.assembler import assemble_mass
-from femsolver.analysis.capacity_design import (
+from femsolver.performance.capacity_design import (
     bilinearize_capacity_curve,
     equivalent_sdof,
     n2_target_displacement,

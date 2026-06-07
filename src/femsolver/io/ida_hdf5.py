@@ -41,8 +41,8 @@ from typing import Iterable
 
 import numpy as np
 
-from femsolver.analysis.ida import IDAPoint, IDARecord
-from femsolver.analysis.ida_collapse import CollapseResult, IDASummary
+from femsolver.performance.ida import IDAPoint, IDARecord
+from femsolver.performance.ida_collapse import CollapseResult, IDASummary
 
 
 def _h5():

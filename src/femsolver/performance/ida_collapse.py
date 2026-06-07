@@ -21,7 +21,7 @@ from typing import Callable
 
 import numpy as np
 
-from femsolver.analysis.ida import IDADriver, IDAPoint, IDARecord
+from femsolver.performance.ida import IDADriver, IDAPoint, IDARecord
 
 
 # ============================================================ collapse detection

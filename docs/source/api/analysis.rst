@@ -55,7 +55,7 @@ Seismic + response spectrum
 .. automodule:: femsolver.analysis.modal_pushover
    :members:
 
-.. automodule:: femsolver.analysis.capacity_design
+.. automodule:: femsolver.performance.capacity_design
    :members:
 
 Loads + envelopes
@@ -67,25 +67,25 @@ Loads + envelopes
 .. automodule:: femsolver.analysis.envelope
    :members:
 
-.. automodule:: femsolver.analysis.drift_check
+.. automodule:: femsolver.performance.drift_check
    :members:
 
 PBE pipeline
 ------------
 
-.. automodule:: femsolver.analysis.ida
+.. automodule:: femsolver.performance.ida
    :members:
 
-.. automodule:: femsolver.analysis.ida_collapse
+.. automodule:: femsolver.performance.ida_collapse
    :members:
 
-.. automodule:: femsolver.analysis.fragility
+.. automodule:: femsolver.performance.fragility
    :members:
 
-.. automodule:: femsolver.analysis.record_scaling
+.. automodule:: femsolver.performance.record_scaling
    :members:
 
-.. automodule:: femsolver.analysis.cms
+.. automodule:: femsolver.performance.cms
    :members:
 
 .. automodule:: femsolver.geotech.ssi
@@ -94,7 +94,7 @@ PBE pipeline
 .. automodule:: femsolver.geotech.soil_springs
    :members:
 
-.. automodule:: femsolver.analysis.p58
+.. automodule:: femsolver.performance.p58
    :members:
 
 Solvers

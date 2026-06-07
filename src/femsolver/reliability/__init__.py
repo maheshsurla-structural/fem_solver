@@ -11,7 +11,7 @@ Submodules
 * :mod:`monte_carlo`  -- Crude MC, Latin-hypercube, importance
                           sampling.
 
-The library composes cleanly with :mod:`femsolver.analysis.p58`:
+The library composes cleanly with :mod:`femsolver.performance.p58`:
 the FORM design point can drive importance-sampling around the
 collapse-fragility curve; FORM/SORM provide design-point estimates
 for component-level fragilities.

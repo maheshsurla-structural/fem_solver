@@ -202,7 +202,7 @@ def test_mpa_single_mode_matches_pushover_to_target_elastic():
 
     # Independent path: PushoverToTarget + manual N2
     from femsolver.analysis.eigen import EigenAnalysis
-    from femsolver.analysis.capacity_design import (
+    from femsolver.performance.capacity_design import (
         bilinearize_capacity_curve,
         equivalent_sdof,
         n2_target_displacement,

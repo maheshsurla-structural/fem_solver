@@ -61,7 +61,7 @@ module:
 | 4. Constitutive | `femsolver.materials.*`, `femsolver.materials.uniaxial.*` |
 | 5. Sections + elements | `femsolver.sections.*`, `femsolver.elements.*` |
 | 6. Dynamics | `femsolver.analysis.transient`, `.transient_integrator`, `.eigen`, `.response_spectrum` |
-| 7. PBE | `femsolver.analysis.ida`, `.ida_collapse`, `.fragility`, `.cms`, `.record_scaling`, `.p58` |
+| 7. PBE | `femsolver.performance.ida`, `.ida_collapse`, `.fragility`, `.cms`, `.record_scaling`, `.p58` |
 | 8. Design | `femsolver.design.*` |
 | 9. Bridges | `femsolver.bridges.*` |
 | 10. V&V | `femsolver.benchmarks.*` |
