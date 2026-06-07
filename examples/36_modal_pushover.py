@@ -153,7 +153,7 @@ def first_mode_pushover_target(spectrum: ResponseSpectrum,
     # We need to capture per-step disps too. Wrap the run.
     # Re-implement minimally: walk pushover steps, snapshot after each.
     from femsolver.analysis.algorithm import NotConvergedError
-    from femsolver.analysis.integrator import DisplacementControl
+    from femsolver.analysis.static_integrator import DisplacementControl
     from femsolver.analysis.nonlinear_static import NonlinearStaticAnalysis
     target_drift = 0.6 * n_story * 3.0 * 0.05
     n_steps = 80

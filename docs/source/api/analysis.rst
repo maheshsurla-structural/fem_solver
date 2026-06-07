@@ -13,7 +13,7 @@ Static
 .. automodule:: femsolver.analysis.nonlinear_static
    :members:
 
-.. automodule:: femsolver.analysis.integrator
+.. automodule:: femsolver.analysis.static_integrator
    :members:
 
 .. automodule:: femsolver.analysis.algorithm
@@ -61,7 +61,7 @@ Seismic + response spectrum
 Loads + envelopes
 -----------------
 
-.. automodule:: femsolver.analysis.loads
+.. automodule:: femsolver.analysis.load_combinations
    :members:
 
 .. automodule:: femsolver.analysis.envelope

@@ -8,7 +8,7 @@ Currently provides two Newmark variants:
   solve per step.
 
 * :class:`NewmarkNonlinear` — for *nonlinear* transient analysis. Looks
-  like a :class:`~femsolver.analysis.integrator.StaticIntegrator` from
+  like a :class:`~femsolver.analysis.static_integrator.StaticIntegrator` from
   the algorithm's perspective: it provides ``residual``, ``tangent``,
   and ``solve_iteration`` so the existing static ``_newton_loop`` can
   be reused unchanged. The residual is the dynamic equilibrium
@@ -67,8 +67,8 @@ from femsolver.analysis.assembler import (
     assemble_stiffness,
 )
 from femsolver.analysis.damping import RayleighDamping
-from femsolver.analysis.integrator import StaticIntegrator
-from femsolver.analysis.integrator import (
+from femsolver.analysis.static_integrator import StaticIntegrator
+from femsolver.analysis.static_integrator import (
     _assemble_internal_force,
     _assemble_tangent,
 )

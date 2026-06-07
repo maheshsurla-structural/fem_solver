@@ -10,7 +10,7 @@ the engine:
 2. lowers the tendon to a set of **equivalent nodal loads** on the host
    beam-column elements (the load-balancing / equivalent-load method),
 3. applies them to the model (and can hand back a reusable
-   :class:`~femsolver.analysis.loads.LoadPattern`).
+   :class:`~femsolver.analysis.load_combinations.LoadPattern`).
 
 Equivalent-load method
 ----------------------
@@ -351,9 +351,9 @@ class Tendon:
             model.add_nodal_load(nb, f_global[6:12].tolist())
 
     def load_pattern(self):
-        """Return a :class:`~femsolver.analysis.loads.LoadPattern` that
+        """Return a :class:`~femsolver.analysis.load_combinations.LoadPattern` that
         applies this tendon (so it composes with load combinations)."""
-        from femsolver.analysis.loads import LoadPattern
+        from femsolver.analysis.load_combinations import LoadPattern
         return LoadPattern(self.name, lambda m, f=1.0: self.apply_to(m, f))
 
 

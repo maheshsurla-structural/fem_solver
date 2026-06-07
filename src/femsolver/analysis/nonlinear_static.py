@@ -33,7 +33,7 @@ from femsolver.analysis.convergence import (
     NormDispIncr,
     NormUnbalance,
 )
-from femsolver.analysis.integrator import (
+from femsolver.analysis.static_integrator import (
     ArcLength,
     DisplacementControl,
     LoadControl,

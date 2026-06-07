@@ -76,7 +76,7 @@ type, material model, design code, and capstone workflow.
 | **AISC 360-22** | `femsolver.design.steel` | Tension / compression / flexure / shear / combined |
 | **IS 456:2000** | `femsolver.design.is456` | Beam flexure, shear (Table 19), column P-M |
 | **IS 800:2007** | `femsolver.design.is800` | Tension, Perry-Robertson compression, flexure + LTB, shear, combined |
-| **ASCE 7-22** | `femsolver.analysis.loads` | LRFD combinations, drift check |
+| **ASCE 7-22** | `femsolver.analysis.load_combinations` | LRFD combinations, drift check |
 | **ASCE 41-17** | `femsolver.performance.capacity_design`, `femsolver.sections.response.wall_shear` | Coefficient method, wall cracked-section factors |
 | **IS 1893:2016** | `femsolver.design.is1893` | Design spectrum, base shear, vertical distribution |
 | **AISC 341 / ACI 18** | `femsolver.design.seismic` | SCWB, capacity shear, confinement |

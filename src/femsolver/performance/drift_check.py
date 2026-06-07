@@ -203,7 +203,7 @@ def drift_check_worst_combo(
     names the combination responsible for each story's worst drift.
     """
     from femsolver.analysis.linear_static import LinearStaticAnalysis
-    from femsolver.analysis.loads import apply_combination
+    from femsolver.analysis.load_combinations import apply_combination
 
     story_tags = list(story_node_tags)
     n_stories = len(story_tags)

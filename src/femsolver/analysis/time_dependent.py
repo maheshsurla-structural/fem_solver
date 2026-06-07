@@ -25,7 +25,7 @@ deformations directly.
 
 The creep coefficient ``phi`` and shrinkage strain ``ε_cs`` come from
 :mod:`femsolver.bridges.creep_shrinkage`; the age-dependent moduli from
-:mod:`femsolver.materials.concrete.concrete_time`. Staged-construction creep
+:mod:`femsolver.materials.concrete.time_dependent`. Staged-construction creep
 redistribution is handled by
 :class:`femsolver.bridges.IncrementalStagedAnalysis` (per-stage EMM
 stiffness factor).

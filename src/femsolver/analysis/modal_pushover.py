@@ -52,7 +52,7 @@ from femsolver.performance.capacity_design import (
     n2_target_displacement,
 )
 from femsolver.analysis.eigen import EigenAnalysis
-from femsolver.analysis.integrator import DisplacementControl
+from femsolver.analysis.static_integrator import DisplacementControl
 from femsolver.analysis.nonlinear_static import NonlinearStaticAnalysis
 from femsolver.analysis.response_spectrum import cqc_correlation_coefficient
 

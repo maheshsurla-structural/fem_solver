@@ -72,7 +72,7 @@ m.fix(3, [1, 1, 1, 0, 0, 0]) # 3D pin (translations only)
 * **Element distributed** (beams): the element itself accepts a
   distributed-load attribute.
 * **Body forces / gravity**: see
-  {mod}`femsolver.analysis.loads`.
+  {mod}`femsolver.analysis.load_combinations`.
 
 ## Running an analysis
 

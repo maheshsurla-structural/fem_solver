@@ -7,7 +7,7 @@ elasticity. (1-D fiber materials live in :mod:`femsolver.materials.uniaxial`.)
 Submodules
 ----------
 * :mod:`j2_plasticity` -- von Mises (J2) plasticity (small strain).
-* :mod:`finite_j2`     -- finite-strain J2 plasticity.
+* :mod:`j2_finite_strain`     -- finite-strain J2 plasticity.
 * :mod:`drucker_prager`-- Drucker-Prager (soils, pressure-dependent).
 * :mod:`mohr_coulomb`  -- Mohr-Coulomb (full 4-region return mapping).
 * :mod:`cam_clay`      -- Modified Cam-Clay (critical-state soil).

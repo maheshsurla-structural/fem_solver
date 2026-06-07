@@ -7,7 +7,7 @@ import math
 import numpy as np
 import pytest
 
-from femsolver.materials.concrete.concrete_time import (
+from femsolver.materials.concrete.time_dependent import (
     aci209_strength_gain,
     en1992_E_cm,
     en1992_beta_cc,

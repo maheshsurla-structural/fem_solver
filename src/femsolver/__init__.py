@@ -9,8 +9,8 @@ from femsolver.materials.multiaxial.orthotropic import OrthotropicLamina
 from femsolver.materials.multiaxial.drucker_prager import DruckerPrager3D
 from femsolver.materials.multiaxial.mohr_coulomb import MohrCoulomb3D
 from femsolver.materials.multiaxial.cam_clay import ModifiedCamClay3D
-from femsolver.materials.concrete.concrete_damage import ConcreteDamage3D
-from femsolver.materials.concrete.concrete_damage_plasticity import (
+from femsolver.materials.concrete.isotropic_damage import ConcreteDamage3D
+from femsolver.materials.concrete.plastic_damage import (
     ConcreteDamagePlasticity3D,
 )
 from femsolver.elements.truss import Truss2D, Truss3D
@@ -43,7 +43,7 @@ from femsolver.materials.multiaxial.hyperelastic import (
     MooneyRivlin3D,
     NeoHookean3D,
 )
-from femsolver.materials.multiaxial.finite_j2 import FiniteJ2Plasticity3D
+from femsolver.materials.multiaxial.j2_finite_strain import FiniteJ2Plasticity3D
 from femsolver.elements.hex8_TL import Hex8TL
 from femsolver.elements.contact import ContactNodeToPlane3D
 from femsolver.thermal.heat_conduction import (
@@ -169,14 +169,14 @@ from femsolver.analysis.convergence import (
 from femsolver.analysis.buckling import LinearBucklingAnalysis
 from femsolver.analysis.damping import RayleighDamping
 from femsolver.analysis.eigen import EigenAnalysis
-from femsolver.analysis.integrator import (
+from femsolver.analysis.static_integrator import (
     ArcLength,
     DisplacementControl,
     LoadControl,
     StaticIntegrator,
 )
 from femsolver.analysis.linear_static import LinearStaticAnalysis
-from femsolver.analysis.loads import (
+from femsolver.analysis.load_combinations import (
     LoadCombination,
     LoadPattern,
     apply_combination,

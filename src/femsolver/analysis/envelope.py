@@ -35,7 +35,7 @@ from typing import Iterable
 import numpy as np
 
 from femsolver.analysis.linear_static import LinearStaticAnalysis
-from femsolver.analysis.loads import (
+from femsolver.analysis.load_combinations import (
     LoadCombination,
     LoadPattern,
     apply_combination,

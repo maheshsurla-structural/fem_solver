@@ -19,7 +19,7 @@ bi-unit cube and the same shape functions as the small-strain
 
 This element is suitable for moderate-to-large strain analyses of
 rubber components, packers, isolator pads, and finite-strain
-plasticity (combined with :mod:`femsolver.materials.multiaxial.finite_j2`).
+plasticity (combined with :mod:`femsolver.materials.multiaxial.j2_finite_strain`).
 """
 from __future__ import annotations
 

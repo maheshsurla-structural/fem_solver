@@ -61,7 +61,7 @@ from scipy.linalg import eigh
 from scipy.sparse.linalg import eigsh
 
 from femsolver.analysis.assembler import assemble_stiffness
-from femsolver.analysis.integrator import _assemble_tangent
+from femsolver.analysis.static_integrator import _assemble_tangent
 from femsolver.analysis.linear_static import LinearStaticAnalysis
 from femsolver.numerics.dof_numbering import rcm_renumber
 

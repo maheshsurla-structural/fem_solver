@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from femsolver.materials.concrete.concrete_time import (
+from femsolver.materials.concrete.time_dependent import (
     en1992_strength_gain, aci209_strength_gain, strength_gain_curve,
 )
 from femsolver.bridges.creep_shrinkage import (

@@ -512,7 +512,7 @@ class PushoverToTarget:
     def run(self) -> dict:
         # Deferred imports to avoid circular references
         from femsolver.analysis.nonlinear_static import NonlinearStaticAnalysis
-        from femsolver.analysis.integrator import DisplacementControl
+        from femsolver.analysis.static_integrator import DisplacementControl
         node_tag, dof = self.track
         d_target = self.target_drift
         dlambda = d_target / self.num_steps     # Δ (target disp per step)
