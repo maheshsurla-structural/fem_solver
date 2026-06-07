@@ -6,7 +6,7 @@ import os
 import numpy as np
 import pytest
 
-from femsolver.deliverables import (
+from femsolver.results import (
     BomLine, BomReport,
     CalcCheck, CalcInput, CalcOutput, CalcSection, CalcSheet,
     DxfDocument, QaReport, QaWarning,

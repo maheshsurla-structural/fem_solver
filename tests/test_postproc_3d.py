@@ -11,7 +11,7 @@ pv = pytest.importorskip("pyvista")
 pv.OFF_SCREEN = True
 
 from femsolver.mesh import solid_hex8                # noqa: E402
-from femsolver.postproc.plot_3d import (              # noqa: E402
+from femsolver.results.plot_3d import (              # noqa: E402
     _build_grid,
     _hex_connectivity_to_vtk_cells,
     plot_deformed_3d,

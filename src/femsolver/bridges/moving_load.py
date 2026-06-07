@@ -80,7 +80,7 @@ from scipy.sparse.linalg import splu
 from femsolver.analysis.assembler import assemble_reactions, assemble_stiffness
 from femsolver.analysis.linear_static import LinearStaticAnalysis
 from femsolver.bridges.influence import MovingLoad
-from femsolver.io.diagrams import beam_force_diagram
+from femsolver.results.diagrams import beam_force_diagram
 
 
 # ============================================================ InfluenceLine

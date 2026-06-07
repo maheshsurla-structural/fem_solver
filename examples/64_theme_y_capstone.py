@@ -24,7 +24,7 @@ from femsolver import (
     LinearStaticAnalysis,
     Model,
 )
-from femsolver.deliverables import (
+from femsolver.results import (
     BomReport,
     CalcCheck,
     CalcInput,

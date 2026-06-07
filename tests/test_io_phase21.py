@@ -26,7 +26,7 @@ from femsolver import (
     Tet4,
     Truss2D,
 )
-from femsolver.io import (
+from femsolver.results import (
     beam_force_diagram,
     capacity_curve,
     gather_node_history,

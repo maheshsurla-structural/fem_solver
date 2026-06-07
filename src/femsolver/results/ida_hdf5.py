@@ -50,7 +50,7 @@ def _h5():
         import h5py
     except ImportError as exc:                                  # pragma: no cover
         raise ImportError(
-            "h5py is required for femsolver.io.ida_hdf5 (install with "
+            "h5py is required for femsolver.results.ida_hdf5 (install with "
             "`pip install h5py`)."
         ) from exc
     return h5py

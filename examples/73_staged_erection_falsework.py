@@ -38,7 +38,7 @@ from femsolver.bridges.staged_construction import (
     ErectionStage,
     IncrementalStagedAnalysis,
 )
-from femsolver.io.diagrams import beam_force_diagram
+from femsolver.results.diagrams import beam_force_diagram
 
 
 def build(nps=6, span=15.0, *, with_prop):

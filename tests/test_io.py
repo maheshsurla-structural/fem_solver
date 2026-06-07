@@ -14,7 +14,7 @@ from femsolver import (
     RigidLink,
     Truss2D,
 )
-from femsolver.io import save_model_json, load_model_json, write_vtk_unstructured
+from femsolver.results import save_model_json, load_model_json, write_vtk_unstructured
 
 
 def test_json_roundtrip_truss(tmp_path):

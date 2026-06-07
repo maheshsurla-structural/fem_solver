@@ -2,7 +2,7 @@
 import numpy as np
 
 from femsolver import Model, ElasticIsotropic, Quad4, LinearStaticAnalysis
-from femsolver.io import write_vtk_unstructured
+from femsolver.results import write_vtk_unstructured
 
 
 def main() -> None:

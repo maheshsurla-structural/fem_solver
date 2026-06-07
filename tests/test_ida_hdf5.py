@@ -11,7 +11,7 @@ from femsolver.performance.ida import IDAPoint, IDARecord
 from femsolver.performance.ida_collapse import CollapseResult, IDASummary
 
 h5py = pytest.importorskip("h5py")
-from femsolver.io import (   # noqa: E402  (after importorskip)
+from femsolver.results import (   # noqa: E402  (after importorskip)
     load_ida_record,
     load_ida_summary,
     save_ida_record,

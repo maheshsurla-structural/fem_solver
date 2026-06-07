@@ -9,7 +9,7 @@
 Two columns, one beam, fixed at base, lateral load at top-left.
 """
 from femsolver import Model, ElasticIsotropic, BeamColumn2D, LinearStaticAnalysis
-from femsolver.io import write_vtk_unstructured
+from femsolver.results import write_vtk_unstructured
 
 
 def main() -> None:

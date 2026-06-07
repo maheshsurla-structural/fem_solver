@@ -209,7 +209,7 @@ class TestPlottingHelpers:
         try:
             import matplotlib                        # noqa: F401
             matplotlib.use("Agg", force=True)
-            from femsolver.postproc import plot_undeformed
+            from femsolver.results import plot_undeformed
         except ImportError:
             pytest.skip("matplotlib not installed")
         m = rectangle_quad4(W=2.0, H=1.0, nx=4, ny=2)
@@ -220,7 +220,7 @@ class TestPlottingHelpers:
         try:
             import matplotlib
             matplotlib.use("Agg", force=True)
-            from femsolver.postproc import plot_contour
+            from femsolver.results import plot_contour
         except ImportError:
             pytest.skip("matplotlib not installed")
         m = rectangle_quad4(W=2.0, H=1.0, nx=4, ny=2)
@@ -234,7 +234,7 @@ class TestPlottingHelpers:
         try:
             import matplotlib
             matplotlib.use("Agg", force=True)
-            from femsolver.postproc import plot_deformed
+            from femsolver.results import plot_deformed
         except ImportError:
             pytest.skip("matplotlib not installed")
         m = rectangle_quad4(W=2.0, H=1.0, nx=4, ny=2)
@@ -247,7 +247,7 @@ class TestPlottingHelpers:
         try:
             import matplotlib
             matplotlib.use("Agg", force=True)
-            from femsolver.postproc import plot_time_history
+            from femsolver.results import plot_time_history
         except ImportError:
             pytest.skip("matplotlib not installed")
         t = np.linspace(0, 5, 50)

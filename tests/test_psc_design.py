@@ -383,7 +383,7 @@ class TestEndToEndTendonToLimitState:
         from femsolver.elements.beam import BeamColumn2D
         from femsolver.materials.elastic import ElasticIsotropic
         from femsolver.analysis.linear_static import LinearStaticAnalysis
-        from femsolver.io.diagrams import beam_force_diagram
+        from femsolver.results.diagrams import beam_force_diagram
         from femsolver.bridges.tendon import Tendon, tendon_secondary_moment
 
         Lspan, nps, P, e0 = 20.0, 20, 2.0e6, -0.2

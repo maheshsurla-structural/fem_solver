@@ -1,6 +1,6 @@
 """PyVista-backed 3D post-processing helpers (Phase 48.2).
 
-The 2D :mod:`femsolver.postproc.plot` module already gives clean
+The 2D :mod:`femsolver.results.plot` module already gives clean
 matplotlib-based views for 2D meshes and shells projected onto a
 plane. For 3D solids (Hex8, Tet4) and curved shells, matplotlib is
 clumsy -- PyVista (a VTK wrapper) is the right tool.
@@ -27,7 +27,7 @@ def _ensure_pyvista():
         import pyvista as pv
     except ImportError as exc:                                  # pragma: no cover
         raise ImportError(
-            "pyvista is required for femsolver.postproc.plot_3d. "
+            "pyvista is required for femsolver.results.plot_3d. "
             "Install with `pip install pyvista`."
         ) from exc
     return pv

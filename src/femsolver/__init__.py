@@ -1,6 +1,6 @@
 """femsolver — a Python finite element solver for structural analysis."""
 
-from femsolver import mesh, postproc                 # Phase 47 (Theme L)
+from femsolver import mesh, results                  # Phase 47 (Theme L)
 from femsolver.core.model import Model
 from femsolver.core.node import Node
 from femsolver.materials.elastic import ElasticIsotropic

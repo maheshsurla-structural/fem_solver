@@ -171,7 +171,7 @@ try:
     import matplotlib
     matplotlib.use("Agg", force=True)
     import matplotlib.pyplot as plt
-    from femsolver.postproc import (
+    from femsolver.results import (
         plot_contour,
         plot_deformed,
         plot_undeformed,

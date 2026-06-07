@@ -39,7 +39,7 @@ from femsolver import (
     ResponseSpectrumAnalysis,
 )
 from femsolver.analysis.linear_static import LinearStaticAnalysis
-from femsolver.io import (
+from femsolver.results import (
     beam_force_diagram,
     capacity_curve,
     load_model_json,

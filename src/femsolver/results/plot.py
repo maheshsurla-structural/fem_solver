@@ -31,7 +31,7 @@ def _ensure_matplotlib():
         import matplotlib.pyplot as plt
     except ImportError as e:                                   # pragma: no cover
         raise ImportError(
-            "matplotlib is required for femsolver.postproc.plot. "
+            "matplotlib is required for femsolver.results.plot. "
             "Install with `pip install matplotlib`."
         ) from e
     return plt

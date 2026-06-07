@@ -19,7 +19,7 @@ from femsolver.core.model import Model
 from femsolver.elements.beam import BeamColumn2D, BeamColumn3D
 from femsolver.materials.elastic import ElasticIsotropic
 from femsolver.analysis.linear_static import LinearStaticAnalysis
-from femsolver.io.diagrams import beam_force_diagram
+from femsolver.results.diagrams import beam_force_diagram
 from femsolver.bridges.tendon import (
     Tendon,
     tendon_secondary_forces,
