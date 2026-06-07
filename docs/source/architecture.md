@@ -15,7 +15,10 @@ been **removed**: all internal callers now import from the new paths
 The former 40-file `analysis/` catch-all has had its specialty domains
 carved into top-level **`geotech/`**, **`thermal/`**, and
 **`performance/`** packages; what remains is the solver core (kernel +
-drivers + dynamics) plus a few load helpers.
+drivers + dynamics) plus a few load helpers. The three output packages
+(`io` + `postproc` + `deliverables`) were merged into one **`results/`**
+package, and **`seismic`** + **`wind`** were grouped under **`hazard/`**
+(disambiguating seismic *hazard* from `design/seismic`).
 The public `import femsolver` API is byte-for-byte identical throughout
 (guarded by `tests/test_public_api_surface.py`); the full suite (2369
 passed) is green after every increment.
