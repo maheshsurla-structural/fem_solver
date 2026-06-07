@@ -12,6 +12,10 @@ been **removed**: all internal callers now import from the new paths
 `catalogs/` has also been **renamed to `data/`** (removing the clash with
 `sections/catalogue/`, the Section-builder layer that consumes it); all
 `femsolver.catalogs.*` references were rewritten to `femsolver.data.*`.
+The former 40-file `analysis/` catch-all has had its specialty domains
+carved into top-level **`geotech/`**, **`thermal/`**, and
+**`performance/`** packages; what remains is the solver core (kernel +
+drivers + dynamics) plus a few load helpers.
 The public `import femsolver` API is byte-for-byte identical throughout
 (guarded by `tests/test_public_api_surface.py`); the full suite (2369
 passed) is green after every increment.
