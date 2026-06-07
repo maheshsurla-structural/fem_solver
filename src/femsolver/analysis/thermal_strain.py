@@ -8,7 +8,7 @@ change ``Delta T = T - T_ref`` produces an initial (eigen) strain::
 (in 2D / 3D, isotropic). In a constrained structure this drives
 stresses; in an unconstrained one it drives deformation. The
 coupling is one-way: the temperature field is solved by
-:mod:`femsolver.analysis.heat_conduction` first, then this module
+:mod:`femsolver.thermal.heat_conduction` first, then this module
 generates equivalent nodal loads ``f = integral B^T D eps_th dV``
 that are applied to the mechanical model.
 

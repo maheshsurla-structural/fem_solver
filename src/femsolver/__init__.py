@@ -46,7 +46,7 @@ from femsolver.materials.hyperelastic import (
 from femsolver.materials.finite_j2 import FiniteJ2Plasticity3D
 from femsolver.elements.hex8_TL import Hex8TL
 from femsolver.elements.contact import ContactNodeToPlane3D
-from femsolver.analysis.heat_conduction import (
+from femsolver.thermal.heat_conduction import (
     SteadyHeatAnalysis,
     SteadyHeatResult,
     TransientHeatAnalysis,
@@ -57,7 +57,7 @@ from femsolver.analysis.thermal_strain import (
     beam_thermal_axial_force,
     beam_thermal_gradient_moment,
 )
-from femsolver.analysis.fire import (
+from femsolver.thermal.fire import (
     astm_e119_temperature,
     concrete_strength_reduction_ec2,
     ec1_parametric_temperature,
