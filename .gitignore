@@ -26,3 +26,6 @@ docs/build/
 *~
 .DS_Store
 Thumbs.db
+
+# Section Designer GUI autosave (local session state)
+.section_autosave.json

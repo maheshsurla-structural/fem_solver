@@ -1,0 +1,65 @@
+section_id,section,code,quantity,units,femsolver,midas_gsd,diff_pct,tol_pct,passed,note
+S1,S1 Rect column 400x600 (8-25M),-,Gross area A_g,mm^2,240000,,,1.00,,
+S1,S1 Rect column 400x600 (8-25M),-,I_zz (about centroidal z),mm^4,7.2e+09,,,1.00,,
+S1,S1 Rect column 400x600 (8-25M),-,I_yy (about centroidal y),mm^4,3.2e+09,,,1.00,,
+S1,S1 Rect column 400x600 (8-25M),-,Centroid above bottom fibre,mm,300,,,1.00,,Reveals asymmetry (h/2 for symmetric).
+S1,S1 Rect column 400x600 (8-25M),AASHTO LRFD 2024,P_o squash (nominal),kN,7983.36,,,1.00,,
+S1,S1 Rect column 400x600 (8-25M),AASHTO LRFD 2024,"P_n,max (0.80*P_o)",kN,6386.69,,,1.00,,AASHTO 5.6.4.4 axial cap.
+S1,S1 Rect column 400x600 (8-25M),AASHTO LRFD 2024,M_n at P=0 (nominal),kN.m,498.541,,,2.00,,
+S1,S1 Rect column 400x600 (8-25M),AASHTO LRFD 2024,phi*M_n at P=0 (design),kN.m,448.687,,,2.00,,phi=0.900 at P=0.
+S1,S1 Rect column 400x600 (8-25M),AASHTO LRFD 2024,Balanced P_b (eps_t=eps_y),kN,2509.72,,,2.00,,
+S1,S1 Rect column 400x600 (8-25M),AASHTO LRFD 2024,Balanced M_b (nominal),kN.m,804.881,,,2.00,,
+S1,S1 Rect column 400x600 (8-25M),Eurocode 2,P_o squash (nominal),kN,5720.63,,,1.00,,
+S1,S1 Rect column 400x600 (8-25M),Eurocode 2,M_n at P=0 (nominal),kN.m,431.754,,,2.00,,
+S1,S1 Rect column 400x600 (8-25M),Eurocode 2,phi*M_n at P=0 (design),kN.m,431.754,,,2.00,,phi=1.000 at P=0.
+S1,S1 Rect column 400x600 (8-25M),Eurocode 2,Balanced P_b (eps_t=eps_y),kN,1900.15,,,2.00,,
+S1,S1 Rect column 400x600 (8-25M),Eurocode 2,Balanced M_b (nominal),kN.m,617.099,,,2.00,,
+S2,S2 Circular column D600 (8-25M spiral),-,Gross area A_g,mm^2,282743,,,1.50,,
+S2,S2 Circular column D600 (8-25M spiral),-,I_zz (about centroidal z),mm^4,6.36173e+09,,,1.50,,
+S2,S2 Circular column D600 (8-25M spiral),-,I_yy (about centroidal y),mm^4,6.36173e+09,,,1.50,,
+S2,S2 Circular column D600 (8-25M spiral),-,Centroid above bottom fibre,mm,300,,,1.50,,Reveals asymmetry (h/2 for symmetric).
+S2,S2 Circular column D600 (8-25M spiral),AASHTO LRFD 2024,P_o squash (nominal),kN,9073.31,,,1.00,,
+S2,S2 Circular column D600 (8-25M spiral),AASHTO LRFD 2024,"P_n,max (0.85*P_o)",kN,7712.32,,,1.00,,AASHTO 5.6.4.4 axial cap.
+S2,S2 Circular column D600 (8-25M spiral),AASHTO LRFD 2024,M_n at P=0 (nominal),kN.m,431.223,,,2.00,,
+S2,S2 Circular column D600 (8-25M spiral),AASHTO LRFD 2024,phi*M_n at P=0 (design),kN.m,388.101,,,2.00,,phi=0.900 at P=0.
+S2,S2 Circular column D600 (8-25M spiral),AASHTO LRFD 2024,Balanced P_b (eps_t=eps_y),kN,2800.29,,,2.00,,
+S2,S2 Circular column D600 (8-25M spiral),AASHTO LRFD 2024,Balanced M_b (nominal),kN.m,677.347,,,2.00,,
+S2,S2 Circular column D600 (8-25M spiral),Eurocode 2,P_o squash (nominal),kN,6447.27,,,1.00,,
+S2,S2 Circular column D600 (8-25M spiral),Eurocode 2,M_n at P=0 (nominal),kN.m,368.113,,,2.00,,
+S2,S2 Circular column D600 (8-25M spiral),Eurocode 2,phi*M_n at P=0 (design),kN.m,368.113,,,2.00,,phi=1.000 at P=0.
+S2,S2 Circular column D600 (8-25M spiral),Eurocode 2,Balanced P_b (eps_t=eps_y),kN,2313.92,,,2.00,,
+S2,S2 Circular column D600 (8-25M spiral),Eurocode 2,Balanced M_b (nominal),kN.m,527.986,,,2.00,,
+S3,S3 RC beam 300x600 (3-25M / 2-20M),-,Gross area A_g,mm^2,180000,,,1.00,,
+S3,S3 RC beam 300x600 (3-25M / 2-20M),-,I_zz (about centroidal z),mm^4,5.4e+09,,,1.00,,
+S3,S3 RC beam 300x600 (3-25M / 2-20M),-,I_yy (about centroidal y),mm^4,1.35e+09,,,1.00,,
+S3,S3 RC beam 300x600 (3-25M / 2-20M),-,Centroid above bottom fibre,mm,300,,,1.00,,Reveals asymmetry (h/2 for symmetric).
+S3,S3 RC beam 300x600 (3-25M / 2-20M),M-phi (Kent-Park + bilinear),Cracking moment M_cr,kN.m,61.1258,,,3.00,,f_r=3.40 MPa.
+S3,S3 RC beam 300x600 (3-25M / 2-20M),M-phi (Kent-Park + bilinear),Ultimate moment M_u,kN.m,404.408,,,3.00,,
+S3,S3 RC beam 300x600 (3-25M / 2-20M),M-phi (Kent-Park + bilinear),First-yield moment M_y,kN.m,373.723,,,3.00,,
+S3,S3 RC beam 300x600 (3-25M / 2-20M),M-phi (Kent-Park + bilinear),Yield curvature kappa_y,1/m,0.007,,,3.00,,
+S3,S3 RC beam 300x600 (3-25M / 2-20M),M-phi (Kent-Park + bilinear),Curvature ductility mu_phi,-,4.85714,,,3.00,,
+S4,S4 L-pier 800x800 t400 (12-25M),-,Gross area A_g,mm^2,480000,,,1.00,,
+S4,S4 L-pier 800x800 t400 (12-25M),-,I_zz (about centroidal z),mm^4,2.34667e+10,,,1.00,,
+S4,S4 L-pier 800x800 t400 (12-25M),-,I_yy (about centroidal y),mm^4,2.34667e+10,,,1.00,,
+S4,S4 L-pier 800x800 t400 (12-25M),-,Centroid above bottom fibre,mm,333.333,,,1.00,,Reveals asymmetry (h/2 for symmetric).
+S4,S4 L-pier 800x800 t400 (12-25M),AASHTO LRFD 2024,P_o squash (nominal),kN,15035,,,1.00,,
+S4,S4 L-pier 800x800 t400 (12-25M),AASHTO LRFD 2024,"P_n,max (0.80*P_o)",kN,12028,,,1.00,,AASHTO 5.6.4.4 axial cap.
+S4,S4 L-pier 800x800 t400 (12-25M),AASHTO LRFD 2024,M_n at P=0 (nominal),kN.m,1086.39,,,2.00,,
+S4,S4 L-pier 800x800 t400 (12-25M),AASHTO LRFD 2024,phi*M_n at P=0 (design),kN.m,977.755,,,2.00,,phi=0.900 at P=0.
+S4,S4 L-pier 800x800 t400 (12-25M),AASHTO LRFD 2024,Balanced P_b (eps_t=eps_y),kN,2955.85,,,2.00,,
+S4,S4 L-pier 800x800 t400 (12-25M),AASHTO LRFD 2024,Balanced M_b (nominal),kN.m,1556.13,,,2.00,,
+S4,S4 L-pier 800x800 t400 (12-25M),Eurocode 2,P_o squash (nominal),kN,10620.9,,,1.00,,
+S4,S4 L-pier 800x800 t400 (12-25M),Eurocode 2,M_n at P=0 (nominal),kN.m,911.707,,,2.00,,
+S4,S4 L-pier 800x800 t400 (12-25M),Eurocode 2,phi*M_n at P=0 (design),kN.m,911.707,,,2.00,,phi=1.000 at P=0.
+S4,S4 L-pier 800x800 t400 (12-25M),Eurocode 2,Balanced P_b (eps_t=eps_y),kN,2319.17,,,2.00,,
+S4,S4 L-pier 800x800 t400 (12-25M),Eurocode 2,Balanced M_b (nominal),kN.m,1194.79,,,2.00,,
+S5,S5 PSC girder 400x900 (6x0.6in strand),-,Gross area A_g,mm^2,360000,,,1.00,,
+S5,S5 PSC girder 400x900 (6x0.6in strand),-,I_zz (about centroidal z),mm^4,2.43e+10,,,1.00,,
+S5,S5 PSC girder 400x900 (6x0.6in strand),-,I_yy (about centroidal y),mm^4,4.8e+09,,,1.00,,
+S5,S5 PSC girder 400x900 (6x0.6in strand),-,Centroid above bottom fibre,mm,450,,,1.00,,Reveals asymmetry (h/2 for symmetric).
+S5,S5 PSC girder 400x900 (6x0.6in strand),AASHTO LRFD 2024,P_o squash (incl. tendon f_pu),kN,13815.2,,,1.00,,
+S5,S5 PSC girder 400x900 (6x0.6in strand),AASHTO LRFD 2024,P pure tension (rebar+tendon),kN,-1617.41,,,2.00,,
+S5,S5 PSC girder 400x900 (6x0.6in strand),Eurocode 2,P_o squash (incl. tendon f_pu),kN,9723.03,,,1.00,,
+S5,S5 PSC girder 400x900 (6x0.6in strand),Eurocode 2,P pure tension (rebar+tendon),kN,-1591.18,,,2.00,,
+S5,S5 PSC girder 400x900 (6x0.6in strand),M-phi (Kent-Park + bilinear),Cracking moment M_cr,kN.m,701.466,,,3.00,,f_r=3.92 MPa.
+S5,S5 PSC girder 400x900 (6x0.6in strand),M-phi (Kent-Park + bilinear),Ultimate moment M_u,kN.m,1110.96,,,3.00,,

@@ -54,7 +54,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Callable, Optional
 
 import numpy as np
 
@@ -99,6 +99,11 @@ class StressBlockParams:
     E_s: float
     apply_phi_table: bool   # ACI Table 21.2 phi interpolation
     spiral: bool = False
+    # Optional code-specific phi(eps_t, eps_ty) override. When set and
+    # apply_phi_table is True, this is used instead of the ACI
+    # phi_for_strain (e.g. AASHTO's 0.75/0.90 factors). Signature
+    # matches phi_for_strain's first two positional arguments.
+    phi_func: Optional[Callable[[float, float], float]] = None
 
 
 def aci_params(
@@ -169,6 +174,90 @@ def is456_params(
         f_yd=f_y / gamma_m_steel,
         E_s=E_s,
         apply_phi_table=False,
+    )
+
+
+def alpha_1_aashto(f_c_prime: float) -> float:
+    """AASHTO LRFD BDS Art. 5.6.2.2 stress-block intensity factor
+    ``alpha_1``.
+
+    * ``alpha_1 = 0.85`` for ``f_c' <= 10.0 ksi (69.0 MPa)``.
+    * For higher strength, ``alpha_1`` reduces 0.02 per 1.0 ksi above
+      10.0 ksi, but not below 0.75.
+
+    For normal-strength concrete (``f_c' <= 69 MPa``) this returns
+    0.85, so the AASHTO rectangular block is identical to the ACI 318
+    Whitney block; the two codes then differ only in the phi factors.
+    """
+    fc_ksi = f_c_prime / 6.894757e6
+    if fc_ksi <= 10.0:
+        return 0.85
+    return max(0.75, 0.85 - 0.02 * (fc_ksi - 10.0))
+
+
+def phi_for_strain_aashto(
+    epsilon_t: float, epsilon_cl: float = 0.002, *,
+    prestressed: bool = False,
+) -> float:
+    """Resistance factor ``phi`` per AASHTO LRFD BDS Art. 5.5.4.2.
+
+    Unlike ACI 318 (0.65 tied / 0.75 spiral in the compression-
+    controlled limit), AASHTO uses a single compression-controlled
+    factor of **0.75** for both tied and spiral non-seismic members.
+    The tension-controlled factor is **0.90** for reinforced concrete
+    and **1.00** for prestressed concrete.
+
+    * ``eps_t <= eps_cl`` (compression-controlled strain limit):
+      ``phi = 0.75``.
+    * ``eps_t >= 0.005`` (tension-controlled strain limit):
+      ``phi = 0.90`` (RC) or ``1.00`` (PC).
+    * In between: linear interpolation.
+
+    ``eps_cl`` is the compression-controlled strain limit; AASHTO
+    permits 0.002 for Grade 60 and lower, and ``eps_y = f_y / E_s`` in
+    general. Callers pass the section's yield strain.
+    """
+    phi_comp = 0.75
+    phi_tens = 1.00 if prestressed else 0.90
+    eps_tl = 0.005
+    if epsilon_t <= epsilon_cl:
+        return phi_comp
+    if epsilon_t >= eps_tl:
+        return phi_tens
+    t = (epsilon_t - epsilon_cl) / (eps_tl - epsilon_cl)
+    return phi_comp + t * (phi_tens - phi_comp)
+
+
+def aashto_params(
+    f_c_prime: float, f_y: float, *,
+    E_s: float = E_STEEL, spiral: bool = False,
+    prestressed: bool = False,
+) -> StressBlockParams:
+    """AASHTO LRFD BDS (10th ed., 2024) Section 5 stress block +
+    Art. 5.5.4.2 resistance factors.
+
+    For normal-strength concrete the stress block is identical to the
+    ACI 318 Whitney block (``alpha_1 = 0.85``, ``beta_1`` per 5.6.2.2
+    which equals the ACI value, ``eps_cu = 0.003``). The codes differ
+    in the phi resistance factors, applied here through
+    :func:`phi_for_strain_aashto` (0.75 compression-controlled for
+    both tied and spiral; 0.90 / 1.00 tension-controlled for RC / PC).
+    """
+    def _phi(eps_t: float, eps_ty: float) -> float:
+        return phi_for_strain_aashto(
+            eps_t, eps_ty, prestressed=prestressed,
+        )
+
+    return StressBlockParams(
+        code="AASHTO",
+        beta_1=beta_1_aci(f_c_prime),
+        sigma_block=alpha_1_aashto(f_c_prime) * f_c_prime,
+        eps_cu=0.003,
+        f_yd=f_y,
+        E_s=E_s,
+        apply_phi_table=True,
+        spiral=spiral,
+        phi_func=_phi,
     )
 
 
@@ -532,7 +621,10 @@ def _biaxial_pmm_engine(
     # have the partial safety factors baked into the stress block so
     # we report phi = 1.0 (caller can apply additional reductions).
     if params.apply_phi_table:
-        phi = phi_for_strain(eps_t, eps_ty, spiral=params.spiral)
+        if params.phi_func is not None:
+            phi = params.phi_func(eps_t, eps_ty)
+        else:
+            phi = phi_for_strain(eps_t, eps_ty, spiral=params.spiral)
     else:
         phi = 1.0
 
@@ -638,6 +730,37 @@ def biaxial_pmm_point_is456(
         raise ValueError("f_ck, f_y, E_s must be positive")
     params = is456_params(
         f_ck, f_y, E_s=E_s, gamma_m_steel=gamma_m_steel,
+    )
+    return _biaxial_pmm_engine(
+        section, theta_rad, c, params,
+        _cached_rebar=_cached_rebar, _cached_tendons=_cached_tendons,
+    )
+
+
+def biaxial_pmm_point_aashto(
+    section: Section,
+    theta_rad: float,
+    c: float,
+    *,
+    f_c_prime: float, f_y: float,
+    E_s: float = E_STEEL,
+    spiral: bool = False,
+    prestressed: bool = False,
+    _cached_rebar: Optional[list[tuple]] = None,
+    _cached_tendons: Optional[list[tuple]] = None,
+) -> BiaxialPMMPoint:
+    """AASHTO LRFD BDS (10th ed., 2024) Section 5 biaxial P-M-M point.
+
+    Uses the ACI-equivalent Whitney block (``alpha_1 = 0.85`` for
+    normal-strength concrete) with AASHTO Art. 5.5.4.2 resistance
+    factors: phi = 0.75 compression-controlled (tied or spiral), 0.90
+    tension-controlled RC, 1.00 tension-controlled PC. Pass
+    ``prestressed=True`` for the 1.00 cap on prestressed sections.
+    """
+    if f_c_prime <= 0 or f_y <= 0 or E_s <= 0:
+        raise ValueError("f_c_prime, f_y, E_s must be positive")
+    params = aashto_params(
+        f_c_prime, f_y, E_s=E_s, spiral=spiral, prestressed=prestressed,
     )
     return _biaxial_pmm_engine(
         section, theta_rad, c, params,
@@ -832,6 +955,33 @@ def biaxial_pmm_surface_is456(
         raise ValueError("f_ck, f_y, E_s must be positive")
     params = is456_params(
         f_ck, f_y, E_s=E_s, gamma_m_steel=gamma_m_steel,
+    )
+    return _biaxial_pmm_surface_engine(
+        section, params, n_angles=n_angles, n_depths=n_depths,
+    )
+
+
+def biaxial_pmm_surface_aashto(
+    section: Section, *,
+    f_c_prime: float, f_y: float,
+    E_s: float = E_STEEL,
+    n_angles: int = 24, n_depths: int = 24,
+    spiral: bool = False,
+    prestressed: bool = False,
+) -> BiaxialPMMSurface:
+    """AASHTO LRFD BDS (10th ed., 2024) biaxial P-M-M surface.
+
+    Whitney-equivalent block (``alpha_1 * f_c'`` over ``beta_1 * c``)
+    with AASHTO Art. 5.5.4.2 resistance factors. For normal-strength
+    concrete the **nominal** surface matches ACI 318 to round-off;
+    only the phi-reduced **design** surface differs, because AASHTO
+    uses phi = 0.75 (vs ACI 0.65) in the compression-controlled limit
+    for tied members.
+    """
+    if f_c_prime <= 0 or f_y <= 0 or E_s <= 0:
+        raise ValueError("f_c_prime, f_y, E_s must be positive")
+    params = aashto_params(
+        f_c_prime, f_y, E_s=E_s, spiral=spiral, prestressed=prestressed,
     )
     return _biaxial_pmm_surface_engine(
         section, params, n_angles=n_angles, n_depths=n_depths,

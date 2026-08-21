@@ -1,0 +1,10 @@
+[server]
+# Auto-rerun the app whenever a source file is saved, so edits show up without
+# clicking the "Source file changed. Rerun?" prompt each time.
+runOnSave = true
+
+[theme]
+# Professional engineering-software palette. Base stays adaptive so the app
+# follows the user's light/dark preference; the primary accent is fixed.
+primaryColor = "#2563eb"
+font = "sans serif"

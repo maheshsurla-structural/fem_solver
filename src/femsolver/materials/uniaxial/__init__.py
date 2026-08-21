@@ -19,9 +19,15 @@ from femsolver.materials.uniaxial.brb import UniaxialBRB
 from femsolver.materials.uniaxial.concrete import (
     ConcreteKentPark,
     ConcreteMander,
+    ConcreteParabolaRectangle,
+    ConcreteTensionStiffening,
+    ConcreteTrilinear,
 )
 from femsolver.materials.uniaxial.menegotto_pinto import (
     UniaxialMenegottoPinto,
+)
+from femsolver.materials.uniaxial.reinforcing import (
+    UniaxialReinforcingSteel,
 )
 from femsolver.materials.uniaxial.hysteretic import (
     UniaxialHysteretic,
@@ -40,7 +46,11 @@ __all__ = [
     "UniaxialBRB",
     "ConcreteKentPark",
     "ConcreteMander",
+    "ConcreteParabolaRectangle",
+    "ConcreteTensionStiffening",
+    "ConcreteTrilinear",
     "UniaxialMenegottoPinto",
+    "UniaxialReinforcingSteel",
     "UniaxialHysteretic",
     "UniaxialGap",
     "PrestressedUniaxial",

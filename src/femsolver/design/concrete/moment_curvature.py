@@ -142,6 +142,7 @@ def moment_curvature(
     steel_uniaxial: UniaxialMaterial,
     kappa_max: float = 0.10,
     n_steps: int = 60,
+    kappas: Optional[np.ndarray] = None,
     n_z: int = 16,
     n_y: int = 40,
     f_y: float = 420e6,
@@ -298,7 +299,10 @@ def moment_curvature(
     kappa_y = None
     failure_mode = ""
 
-    kappas = np.linspace(0.0, kappa_max, n_steps + 1)
+    if kappas is None:
+        kappas = np.linspace(0.0, kappa_max, n_steps + 1)
+    else:
+        kappas = np.asarray(kappas, dtype=float)
     points: list[MomentCurvaturePoint] = []
 
     for kappa in kappas:

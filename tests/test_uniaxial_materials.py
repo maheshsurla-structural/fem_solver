@@ -187,3 +187,207 @@ def test_clone_is_independent():
     # mutating the original after cloning must not change the clone
     mat.get_response(10.0 * mat.sigma_y / mat.E); mat.commit_state()
     assert mat2.eps_p_committed != mat.eps_p_committed
+
+
+# ============================================================ tension stiffening
+
+from femsolver.materials.uniaxial import (
+    ConcreteKentPark,
+    ConcreteParabolaRectangle,
+    ConcreteTensionStiffening,
+    ConcreteTrilinear,
+    UniaxialReinforcingSteel,
+)
+
+
+def _kp():
+    return ConcreteKentPark(fpc=30e6, eps_c0=0.002, fpcu=12e6, eps_cu=0.0035)
+
+
+class TestConcreteTensionStiffening:
+    """Compression delegates to the wrapped model; tension is linear
+    elastic to f_ct at eps_cr, then exponentially-decaying (continuous)."""
+
+    def test_compression_matches_base(self):
+        mat = ConcreteTensionStiffening(_kp(), f_ct=3.4e6, E_ct=_kp().E0)
+        base = _kp()
+        for eps in (-0.0005, -0.001, -0.002):
+            assert mat.get_response(eps) == pytest.approx(base.get_response(eps))
+
+    def test_tension_elastic_below_cracking(self):
+        base = _kp()
+        mat = ConcreteTensionStiffening(base, f_ct=3.4e6, E_ct=base.E0)
+        s, Et = mat.get_response(0.5 * mat.eps_cr)
+        assert s == pytest.approx(base.E0 * 0.5 * mat.eps_cr)
+        assert Et == pytest.approx(base.E0)
+
+    def test_peak_at_f_ct_and_continuous(self):
+        mat = ConcreteTensionStiffening(_kp(), f_ct=3.4e6, E_ct=_kp().E0)
+        assert mat.get_response(mat.eps_cr)[0] == pytest.approx(3.4e6, rel=1e-9)
+        # continuous across cracking
+        s_after = mat.get_response(mat.eps_cr * 1.0001)[0]
+        assert s_after == pytest.approx(3.4e6, rel=1e-2)
+
+    def test_tension_decays_and_stays_positive(self):
+        mat = ConcreteTensionStiffening(_kp(), f_ct=3.4e6, E_ct=_kp().E0,
+                                        eps_decay=1e-3)
+        s1 = mat.get_response(0.001)[0]
+        s2 = mat.get_response(0.003)[0]
+        assert 0.0 < s2 < s1 < 3.4e6
+
+    def test_origin_returns_compression_modulus(self):
+        base = _kp()
+        mat = ConcreteTensionStiffening(base, f_ct=3.4e6, E_ct=base.E0)
+        s, Et = mat.get_response(0.0)
+        assert s == 0.0
+        assert Et == pytest.approx(base.E0)
+
+    def test_rejects_bad_params(self):
+        with pytest.raises(ValueError):
+            ConcreteTensionStiffening(_kp(), f_ct=3.4e6, E_ct=-1.0)
+        with pytest.raises(ValueError):
+            ConcreteTensionStiffening(_kp(), f_ct=3.4e6, E_ct=_kp().E0,
+                                      eps_decay=0.0)
+
+
+class TestConcreteParabolaRectangle:
+    """EC2 parabola-rectangle: parabola to the peak at eps_c2, constant
+    plateau to eps_cu2, zero beyond; tension zero."""
+
+    def _pr(self):
+        return ConcreteParabolaRectangle(fpc=30e6, eps_c2=0.002,
+                                         eps_cu2=0.0035, n=2.0)
+
+    def test_initial_modulus(self):
+        m = self._pr()
+        assert m.E0 == pytest.approx(2.0 * 30e6 / 0.002)
+        s, Et = m.get_response(0.0)
+        assert s == 0.0
+        assert Et == pytest.approx(m.E0)
+
+    def test_peak_at_eps_c2(self):
+        m = self._pr()
+        s, Et = m.get_response(-0.002)
+        assert s == pytest.approx(-30e6, rel=1e-9)   # full fpc (compression -)
+        assert Et == pytest.approx(0.0, abs=1.0)
+
+    def test_parabola_midpoint(self):
+        # r = 0.5 -> sigma = fpc * (1 - (1-0.5)^2) = 0.75 fpc
+        s, _ = self._pr().get_response(-0.001)
+        assert s == pytest.approx(-0.75 * 30e6, rel=1e-9)
+
+    def test_plateau_is_constant(self):
+        m = self._pr()
+        for eps in (-0.0025, -0.003, -0.0035):
+            assert m.get_response(eps)[0] == pytest.approx(-30e6, rel=1e-9)
+
+    def test_zero_past_ultimate(self):
+        assert self._pr().get_response(-0.004)[0] == 0.0
+
+    def test_tension_is_zero(self):
+        s, Et = self._pr().get_response(0.001)
+        assert s == 0.0 and Et == 0.0
+
+    def test_rejects_bad_params(self):
+        with pytest.raises(ValueError):
+            ConcreteParabolaRectangle(fpc=-1.0)
+        with pytest.raises(ValueError):
+            ConcreteParabolaRectangle(fpc=30e6, eps_c2=0.004, eps_cu2=0.0035)
+        with pytest.raises(ValueError):
+            ConcreteParabolaRectangle(fpc=30e6, n=0.0)
+
+
+class TestUniaxialReinforcingSteel:
+    """Park strain-hardening: elastic to yield, plateau to eps_sh, then a
+    curved rise to (eps_su, f_su); odd-symmetric, monotonic."""
+
+    def _s(self):
+        return UniaxialReinforcingSteel(E=200e9, f_y=414e6, f_su=621e6,
+                                        eps_sh=0.008, eps_su=0.10)
+
+    def test_elastic_and_E0(self):
+        m = self._s()
+        assert m.E0 == pytest.approx(200e9)
+        s, Et = m.get_response(0.001)          # below yield
+        assert s == pytest.approx(200e9 * 0.001)
+        assert Et == pytest.approx(200e9)
+
+    def test_yield_plateau(self):
+        m = self._s()
+        for eps in (414e6 / 200e9, 0.004, 0.008):   # eps_y .. eps_sh
+            assert m.get_response(eps)[0] == pytest.approx(414e6, rel=1e-6)
+
+    def test_passes_through_ultimate(self):
+        # curve is calibrated to hit (eps_su, f_su) and (eps_sh, f_y)
+        assert self._s().get_response(0.10)[0] == pytest.approx(621e6, rel=1e-6)
+
+    def test_hardening_monotonic(self):
+        m = self._s()
+        xs = np.linspace(0.008, 0.10, 25)
+        ss = [m.get_response(x)[0] for x in xs]
+        assert all(ss[i + 1] >= ss[i] - 1.0 for i in range(len(ss) - 1))
+        assert 414e6 < ss[len(ss) // 2] < 621e6      # strictly hardening
+
+    def test_odd_symmetric(self):
+        m = self._s()
+        for eps in (0.001, 0.02, 0.09):
+            assert m.get_response(-eps)[0] == pytest.approx(-m.get_response(eps)[0])
+
+    def test_holds_past_ultimate(self):
+        assert self._s().get_response(0.15)[0] == pytest.approx(621e6, rel=1e-6)
+
+    def test_rejects_bad_params(self):
+        with pytest.raises(ValueError):
+            UniaxialReinforcingSteel(E=200e9, f_y=414e6, f_su=400e6,
+                                     eps_sh=0.008, eps_su=0.10)     # f_su<f_y
+        with pytest.raises(ValueError):
+            UniaxialReinforcingSteel(E=200e9, f_y=414e6, f_su=621e6,
+                                     eps_sh=0.008, eps_su=0.005)    # su<=sh
+        with pytest.raises(ValueError):
+            UniaxialReinforcingSteel(E=200e9, f_y=414e6, f_su=621e6,
+                                     eps_sh=0.001, eps_su=0.10)     # sh<eps_y
+
+
+class TestConcreteTrilinear:
+    """Three straight segments: elastic to the first knee, rise to the peak,
+    descent to the residual, then a plateau; tension zero; continuous."""
+
+    def _tl(self):
+        return ConcreteTrilinear(fpc=30e6, eps_c0=0.002, fpcu=6e6,
+                                 eps_cu=0.0035, f1_ratio=0.4)
+
+    def test_initial_modulus_and_origin(self):
+        m = self._tl()
+        assert m.E0 == pytest.approx(2.0 * 30e6 / 0.002)
+        s, Et = m.get_response(0.0)
+        assert s == 0.0 and Et == pytest.approx(m.E0)
+
+    def test_first_knee(self):
+        # eps1 = f1_ratio * eps_c0 / 2 = 0.0004, sigma1 = 0.4 fpc
+        s, Et = self._tl().get_response(-0.0004)
+        assert s == pytest.approx(-0.4 * 30e6, rel=1e-9)
+        assert Et == pytest.approx(2.0 * 30e6 / 0.002)   # still elastic slope
+
+    def test_peak_and_residual(self):
+        m = self._tl()
+        assert m.get_response(-0.002)[0] == pytest.approx(-30e6, rel=1e-9)
+        assert m.get_response(-0.0035)[0] == pytest.approx(-6e6, rel=1e-9)
+        assert m.get_response(-0.005)[0] == pytest.approx(-6e6, rel=1e-9)
+
+    def test_segments_are_linear(self):
+        m = self._tl()
+        # midpoint of the rise-to-peak segment equals the chord midpoint
+        s1 = m.get_response(-0.0004)[0]
+        s2 = m.get_response(-0.002)[0]
+        smid = m.get_response(-0.0012)[0]        # midway 0.0004..0.002
+        assert smid == pytest.approx(0.5 * (s1 + s2), rel=1e-6)
+
+    def test_tension_zero(self):
+        assert self._tl().get_response(0.001) == (0.0, 0.0)
+
+    def test_rejects_bad_params(self):
+        with pytest.raises(ValueError):
+            ConcreteTrilinear(fpc=30e6, eps_c0=0.002, fpcu=6e6, eps_cu=0.0035,
+                              f1_ratio=1.5)
+        with pytest.raises(ValueError):
+            ConcreteTrilinear(fpc=30e6, eps_c0=0.002, fpcu=40e6, eps_cu=0.0035)
