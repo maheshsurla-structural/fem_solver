@@ -175,3 +175,13 @@ def diagram_meshes(model, kind: str, scale: float):
     outline = (pv.PolyData(np.asarray(lpts), lines=np.asarray(lines))
                if lpts else None)
     return fill, outline
+
+
+def element_line(element):
+    """PolyData of a single 2-node element's line (for per-member colouring),
+    or None for non-line elements."""
+    c = element.node_coords()
+    if c.shape[0] != 2:
+        return None
+    pts = np.array([to_xyz(c[0]), to_xyz(c[1])], dtype=float)
+    return pv.PolyData(pts, lines=np.array([2, 0, 1], dtype=np.int64))

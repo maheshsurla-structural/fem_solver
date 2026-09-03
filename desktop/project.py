@@ -26,6 +26,8 @@ class Material:
     E: float
     nu: float = 0.3
     kind: str = "elastic_isotropic"
+    fy: float = 345.0e6           # yield (A992 = 345 MPa) — for design checks
+    fu: float = 448.0e6           # ultimate (A992 = 448 MPa)
 
 
 @dataclass
@@ -34,6 +36,7 @@ class Section:
     name: str
     A: float
     Iz: float
+    shape: str = ""               # AISC W-shape (e.g. "W12x65"); drives design
 
 
 @dataclass
@@ -126,9 +129,9 @@ class Project:
             coords = (nd.x, nd.y) if self.ndm == 2 else (nd.x, nd.y, nd.z)
             m.add_node(nd.id, *coords)
         for mb in self.members:
-            s = secs[mb.section]
+            A, Iz = _section_props(secs[mb.section])
             m.add_element(BeamColumn2D(mb.id, (mb.n1, mb.n2),
-                                       mats[mb.material], s.A, s.Iz))
+                                       mats[mb.material], A, Iz))
         for nd in self.nodes:
             if nd.supports and any(nd.supports):
                 m.fix(nd.id, list(nd.supports))
@@ -142,3 +145,16 @@ def _coerce_node(n: dict) -> dict:
     if n.get("supports") is not None:
         n["supports"] = tuple(n["supports"])
     return n
+
+
+def _section_props(section):
+    """(A, Iz) for analysis — from the AISC catalog when the section names a
+    W-shape (so the shape drives analysis too), else the section's own A / Iz."""
+    if section.shape:
+        try:
+            from femsolver.design.steel.sections import get_section
+            ss = get_section(section.shape.replace("X", "x"))
+            return ss.A, ss.Ix
+        except Exception:
+            pass
+    return section.A, section.Iz

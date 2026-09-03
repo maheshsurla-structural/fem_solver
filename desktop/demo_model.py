@@ -13,8 +13,9 @@ def demo_project(bays: int = 2, storeys: int = 2,
                  bay: float = 4.0, storey: float = 3.0) -> Project:
     """A 2-D moment frame (fixed base) with an inverted-triangle lateral load."""
     p = Project(name="Demo portal frame", ndm=2, ndf=3)
-    p.materials.append(Material(id=1, name="Steel", E=200e9, nu=0.3))
-    p.sections.append(Section(id=1, name="Default", A=6.0e-3, Iz=2.0e-4))
+    p.materials.append(Material(id=1, name="A992", E=200e9, nu=0.3))
+    p.sections.append(Section(id=1, name="W12x65", A=0.012323, Iz=2.2185e-4,
+                              shape="W12x65"))
 
     ids: dict[tuple[int, int], int] = {}
     tag = 1

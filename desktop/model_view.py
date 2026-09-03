@@ -106,9 +106,66 @@ class ModelView(QtInteractor):
         self._frame(model)
         return vmax
 
+    def show_design(self, model, dcrs) -> None:
+        """Colour each member by its AISC demand/capacity ratio and label it
+        with the value (grey / '—' = no steel shape assigned)."""
+        self.clear()
+        span = mg.model_span(model)
+        radius = max(span * 0.004, 1e-3)
+        lab_pts, lab_txt = [], []
+        for tag, e in model.elements.items():
+            line = mg.element_line(e)
+            if line is None:
+                continue
+            dcr = dcrs.get(tag)
+            self.add_mesh(line.tube(radius=radius), color=_dcr_color(dcr),
+                          name=f"member_{tag}")
+            c = e.node_coords()
+            lab_pts.append((np.asarray(mg.to_xyz(c[0]))
+                            + np.asarray(mg.to_xyz(c[1]))) / 2.0)
+            lab_txt.append(f"{dcr:.2f}" if dcr is not None else "—")
+        _tags, pts, _index = mg.node_points(model)
+        if len(pts):
+            self.add_points(pts, color=NODE_COLOR, render_points_as_spheres=True,
+                            point_size=10, name="nodes")
+        supports = mg.support_points(model)
+        if len(supports):
+            self.add_points(supports, color=SUPPORT_COLOR,
+                            render_points_as_spheres=True, point_size=20,
+                            name="supports")
+        if lab_pts:
+            try:
+                self.add_point_labels(np.array(lab_pts), lab_txt, font_size=12,
+                                      text_color="black", shape_opacity=0.15,
+                                      always_visible=True, name="dcr_labels")
+            except Exception:
+                pass
+        try:
+            self.add_legend(
+                [["DCR <= 0.50", "#2f9e44"], ["0.50 - 0.90", "#f59e0b"],
+                 ["0.90 - 1.00", "#ea580c"], ["> 1.00  fail", "#dc2626"],
+                 ["no section", "#9aa0a6"]],
+                bcolor="white", size=(0.24, 0.26), loc="upper right")
+        except Exception:
+            pass
+        self.show_grid()
+        self._frame(model)
+
     def _frame(self, model) -> None:
         self.view_xy() if getattr(model, "ndm", 3) == 2 else self.view_isometric()
         self.reset_camera()
 
     def fit(self) -> None:
         self.reset_camera()
+
+
+def _dcr_color(dcr) -> str:
+    if dcr is None:
+        return "#9aa0a6"          # grey — no design section
+    if dcr <= 0.5:
+        return "#2f9e44"          # green (distinct from the base member green)
+    if dcr <= 0.9:
+        return "#f59e0b"          # amber
+    if dcr <= 1.0:
+        return "#ea580c"          # orange
+    return "#dc2626"              # red — over capacity

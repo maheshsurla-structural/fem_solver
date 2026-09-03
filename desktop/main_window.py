@@ -74,6 +74,8 @@ class MainWindow(QMainWindow):
         self.act_diag_v.triggered.connect(lambda *_: self.show_diagram("V"))
         self.act_diag_m = QAction("Moment &M", self)
         self.act_diag_m.triggered.connect(lambda *_: self.show_diagram("M"))
+        self.act_design = QAction("&Design (DCR)", self)
+        self.act_design.triggered.connect(self.show_design)
 
         file_menu = self.menuBar().addMenu("&File")
         for a in (self.act_new, self.act_open, self.act_save, self.act_saveas):
@@ -86,7 +88,8 @@ class MainWindow(QMainWindow):
         analysis_menu.addAction(self.act_run)
         analysis_menu.addAction(self.act_undef)
         analysis_menu.addSeparator()
-        for a in (self.act_diag_n, self.act_diag_v, self.act_diag_m):
+        for a in (self.act_diag_n, self.act_diag_v, self.act_diag_m,
+                  self.act_design):
             analysis_menu.addAction(a)
         view_menu = self.menuBar().addMenu("&View")
         view_menu.addAction(self.act_fit)
@@ -95,7 +98,8 @@ class MainWindow(QMainWindow):
         for a in (self.act_open, self.act_save, None, self.act_add_node,
                   self.act_add_member, self.act_add_load, self.act_delete,
                   None, self.act_run, self.act_undef, self.act_diag_n,
-                  self.act_diag_v, self.act_diag_m, None, self.act_fit):
+                  self.act_diag_v, self.act_diag_m, self.act_design, None,
+                  self.act_fit):
             tb.addSeparator() if a is None else tb.addAction(a)
 
     # ---------------------------------------------------------------- analysis
@@ -131,6 +135,27 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(
             f"{names[kind]} · max |{kind}| {vmax:.3e} {units[kind]}")
 
+    def show_design(self) -> None:
+        if self._solve() is None:
+            return
+        import design
+        dcrs = design.design_all(self._model, self._project)
+        self.view.show_design(self._model, dcrs)
+        vals = {t: d for t, d in dcrs.items() if d is not None}
+        if not vals:
+            self.log.appendPlainText(
+                "Design: no members have a steel shape — set a section's shape "
+                "(e.g. 'W12x65') to run the AISC checks.")
+            self.statusBar().showMessage("Design: assign a W-shape first.")
+            return
+        worst = max(vals, key=vals.get)
+        mx = vals[worst]
+        verdict = "PASS" if mx <= 1.0 else "FAIL"
+        self.log.appendPlainText(
+            f"Design (AISC 360-22 §H1): {len(vals)} members checked, "
+            f"max DCR = {mx:.2f} at member {worst} — {verdict}")
+        self.statusBar().showMessage(f"Design · max DCR {mx:.2f} · {verdict}")
+
     def _show_undeformed(self) -> None:
         if self._model is not None:
             self.view.set_model(self._model)
@@ -147,8 +172,9 @@ class MainWindow(QMainWindow):
 
     def new_project(self) -> None:
         p = Project()
-        p.materials.append(Material(id=1, name="Steel", E=200e9, nu=0.3))
-        p.sections.append(Section(id=1, name="Default", A=6.0e-3, Iz=2.0e-4))
+        p.materials.append(Material(id=1, name="A992", E=200e9, nu=0.3))
+        p.sections.append(Section(id=1, name="W12x65", A=0.012323, Iz=2.2185e-4,
+                                  shape="W12x65"))
         self.load_project(p, None)
 
     def open_project(self) -> None:
