@@ -79,6 +79,7 @@ class MainWindow(QMainWindow):
         self.act_diag_m.triggered.connect(lambda *_: self.show_diagram("M"))
         self.act_design = QAction("&Design (DCR)", self)
         self.act_design.triggered.connect(self.show_design)
+        self.act_drawings = _action(self, "&Drawings…", None, self.open_drawings)
 
         file_menu = self.menuBar().addMenu("&File")
         for a in (self.act_new, self.act_open, self.act_save, self.act_saveas):
@@ -96,6 +97,7 @@ class MainWindow(QMainWindow):
             analysis_menu.addAction(a)
         view_menu = self.menuBar().addMenu("&View")
         view_menu.addAction(self.act_fit)
+        view_menu.addAction(self.act_drawings)
 
         tb = self.addToolBar("Main")
         for a in (self.act_open, self.act_save, None, self.act_add_node,
@@ -103,7 +105,7 @@ class MainWindow(QMainWindow):
                   self.act_delete, None, self.act_run, self.act_undef,
                   self.act_diag_n,
                   self.act_diag_v, self.act_diag_m, self.act_design, None,
-                  self.act_fit):
+                  self.act_fit, self.act_drawings):
             tb.addSeparator() if a is None else tb.addAction(a)
 
     # ---------------------------------------------------------------- analysis
@@ -159,6 +161,18 @@ class MainWindow(QMainWindow):
             f"Design (AISC 360-22 §H1): {len(vals)} members checked, "
             f"max DCR = {mx:.2f} at member {worst} — {verdict}")
         self.statusBar().showMessage(f"Design · max DCR {mx:.2f} · {verdict}")
+
+    def open_drawings(self) -> None:
+        if self._project is None:
+            return
+        try:
+            from drawing_window import DrawingWindow
+        except Exception as exc:                       # noqa: BLE001
+            QMessageBox.critical(self, "Drawings unavailable",
+                                 f"matplotlib Qt backend failed to load:\n{exc}")
+            return
+        self._drawing_win = DrawingWindow(self._project, self)
+        self._drawing_win.show()
 
     def _show_undeformed(self) -> None:
         if self._model is not None:
