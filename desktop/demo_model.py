@@ -1,45 +1,43 @@
-"""A real femsolver model to show on first launch (until file open exists).
+"""A real project to show on first launch (until you open one from disk).
 
-Built through the public API (``Model`` + ``BeamColumn2D`` + material) so the
-viewport is proven against genuine engine objects, not mock geometry.
+Returns a ``Project`` (the information-model document), not a raw solver
+model — so the app's open / save / compile path is exercised from the very
+first frame.
 """
 from __future__ import annotations
 
-from femsolver import BeamColumn2D, ElasticIsotropic, Model
+from project import Load, Material, Member, Node, Project, Section
 
 
-def portal_frame(bays: int = 2, storeys: int = 2,
-                 bay: float = 4.0, storey: float = 3.0) -> Model:
-    """A 2-D moment frame (fixed base), ``bays`` wide and ``storeys`` tall."""
-    E, A, Iz = 200e9, 6.0e-3, 2.0e-4
-    m = Model(ndm=2, ndf=3)
-    mat = ElasticIsotropic(1, E=E, nu=0.3)
-    m.add_material(mat)
+def demo_project(bays: int = 2, storeys: int = 2,
+                 bay: float = 4.0, storey: float = 3.0) -> Project:
+    """A 2-D moment frame (fixed base) with an inverted-triangle lateral load."""
+    p = Project(name="Demo portal frame", ndm=2, ndf=3)
+    p.materials.append(Material(id=1, name="Steel", E=200e9, nu=0.3))
+    p.sections.append(Section(id=1, name="Default", A=6.0e-3, Iz=2.0e-4))
 
     ids: dict[tuple[int, int], int] = {}
     tag = 1
-    for j in range(storeys + 1):                 # row 0 = base
+    for j in range(storeys + 1):
         for i in range(bays + 1):
-            m.add_node(tag, i * bay, j * storey)
+            supports = (1, 1, 1) if j == 0 else ()
+            p.nodes.append(Node(id=tag, x=i * bay, y=j * storey, supports=supports))
             ids[(i, j)] = tag
             tag += 1
 
     etag = 1
     for i in range(bays + 1):                    # columns
         for j in range(storeys):
-            m.add_element(BeamColumn2D(etag, (ids[(i, j)], ids[(i, j + 1)]),
-                                       mat, A, Iz))
+            p.members.append(Member(id=etag, n1=ids[(i, j)], n2=ids[(i, j + 1)],
+                                    section=1, material=1))
             etag += 1
     for j in range(1, storeys + 1):              # beams
         for i in range(bays):
-            m.add_element(BeamColumn2D(etag, (ids[(i, j)], ids[(i + 1, j)]),
-                                       mat, A, Iz))
+            p.members.append(Member(id=etag, n1=ids[(i, j)], n2=ids[(i + 1, j)],
+                                    section=1, material=1))
             etag += 1
 
-    for i in range(bays + 1):                    # fix the base row
-        m.fix(ids[(i, 0)], [1, 1, 1])
-
-    Fx = 100e3                                   # lateral (pushover) load pattern:
-    for j in range(1, storeys + 1):              # inverted triangle up the height
-        m.add_nodal_load(ids[(0, j)], [Fx * j / storeys, 0.0, 0.0])
-    return m
+    Fx = 100e3                                   # inverted-triangle lateral load
+    for j in range(1, storeys + 1):
+        p.loads.append(Load(node=ids[(0, j)], values=(Fx * j / storeys, 0.0, 0.0)))
+    return p

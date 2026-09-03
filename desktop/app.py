@@ -14,14 +14,14 @@ import sys
 
 from PySide6.QtWidgets import QApplication
 
-from demo_model import portal_frame
+from demo_model import demo_project
 from main_window import MainWindow
 
 
 def main() -> int:
     app = QApplication(sys.argv)
     win = MainWindow()
-    win.load_model(portal_frame())
+    win.load_project(demo_project())
     win.show()
     return app.exec()
 
