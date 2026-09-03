@@ -68,6 +68,10 @@ class NodeDialog(QDialog):
         self.y = _coord_spin(node.y if node else 0.0)
         form.addRow(f"x [{project.length_unit}]", self.x)
         form.addRow(f"y [{project.length_unit}]", self.y)
+        self.z = None
+        if project.ndm == 3:
+            self.z = _coord_spin(node.z if node else 0.0)
+            form.addRow(f"z [{project.length_unit}]", self.z)
 
         self.fix = []
         row = QWidget()
@@ -84,8 +88,9 @@ class NodeDialog(QDialog):
 
     def data(self) -> Node:
         supports = tuple(1 if cb.isChecked() else 0 for cb in self.fix)
+        z = self.z.value() if self.z is not None else 0.0
         return Node(id=self.id_spin.value(), x=self.x.value(), y=self.y.value(),
-                    supports=supports if any(supports) else ())
+                    z=z, supports=supports if any(supports) else ())
 
     @classmethod
     def edit(cls, parent, project, node=None):
@@ -179,11 +184,11 @@ def _designations() -> list[str]:
 
 
 def _shape_props(shape: str):
-    """(A, Ix) for an AISC designation, or None if it is not in the catalog."""
+    """(A, Ix, Iy, J) for an AISC designation, or None if not in the catalog."""
     try:
         from femsolver.design.steel.sections import get_section
         ss = get_section(shape.replace("X", "x"))
-        return ss.A, ss.Ix
+        return ss.A, ss.Ix, ss.Iy, ss.J
     except Exception:
         return None
 
@@ -223,6 +228,12 @@ class SectionDialog(QDialog):
         self.Iz = _prop_spin(section.Iz if section else 2.0e-4, 8, 1.0e-5)
         form.addRow("A [m²]", self.A)
         form.addRow("Iz [m⁴]", self.Iz)
+        self.Iy = self.J = None
+        if project.ndm == 3:
+            self.Iy = _prop_spin(section.Iy if section else 1.0e-4, 8, 1.0e-5)
+            self.J = _prop_spin(section.J if section else 1.0e-5, 9, 1.0e-6)
+            form.addRow("Iy [m⁴]", self.Iy)
+            form.addRow("J [m⁴]", self.J)
 
         self.shape.currentIndexChanged.connect(self._on_shape)
         self._on_shape()                     # set initial fill / enabled state
@@ -230,25 +241,33 @@ class SectionDialog(QDialog):
 
     def _on_shape(self) -> None:
         shape = self.shape.currentData()
-        if shape:                            # catalog W-shape drives A / Iz
+        if shape:                            # catalog W-shape drives A/Iz/Iy/J
             props = _shape_props(shape)
             if props:
                 self.A.setValue(props[0])
                 self.Iz.setValue(props[1])
-            self.A.setEnabled(False)
-            self.Iz.setEnabled(False)
+                if self.Iy is not None:
+                    self.Iy.setValue(props[2])
+                if self.J is not None:
+                    self.J.setValue(props[3])
+            for spin in (self.A, self.Iz, self.Iy, self.J):
+                if spin is not None:
+                    spin.setEnabled(False)
             if not self.name.text().strip():
                 self.name.setText(shape)
-        else:                                # custom section: type A / Iz
-            self.A.setEnabled(True)
-            self.Iz.setEnabled(True)
+        else:                                # custom section: type the values
+            for spin in (self.A, self.Iz, self.Iy, self.J):
+                if spin is not None:
+                    spin.setEnabled(True)
 
     def data(self) -> Section:
         shape = self.shape.currentData() or ""
         name = (self.name.text().strip() or shape
                 or f"Section {self.id_spin.value()}")
         return Section(id=self.id_spin.value(), name=name,
-                       A=self.A.value(), Iz=self.Iz.value(), shape=shape)
+                       A=self.A.value(), Iz=self.Iz.value(), shape=shape,
+                       Iy=self.Iy.value() if self.Iy is not None else 0.0,
+                       J=self.J.value() if self.J is not None else 0.0)
 
     @classmethod
     def edit(cls, parent, project, section=None):

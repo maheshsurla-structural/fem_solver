@@ -53,6 +53,7 @@ class MainWindow(QMainWindow):
     # --------------------------------------------------------------- menu / UI
     def _build_menu(self) -> None:
         self.act_new = _action(self, "&New", "Ctrl+N", self.new_project)
+        self.act_new3d = _action(self, "New &3-D frame", None, self.new_project_3d)
         self.act_open = _action(self, "&Open…", "Ctrl+O", self.open_project)
         self.act_save = _action(self, "&Save", "Ctrl+S", self.save_project)
         self.act_saveas = _action(self, "Save &As…", "Ctrl+Shift+S",
@@ -82,7 +83,8 @@ class MainWindow(QMainWindow):
         self.act_drawings = _action(self, "&Drawings…", None, self.open_drawings)
 
         file_menu = self.menuBar().addMenu("&File")
-        for a in (self.act_new, self.act_open, self.act_save, self.act_saveas):
+        for a in (self.act_new, self.act_new3d, self.act_open, self.act_save,
+                  self.act_saveas):
             file_menu.addAction(a)
         edit_menu = self.menuBar().addMenu("&Edit")
         for a in (self.act_add_node, self.act_add_member, self.act_add_section,
@@ -165,6 +167,12 @@ class MainWindow(QMainWindow):
     def open_drawings(self) -> None:
         if self._project is None:
             return
+        if self._project.ndm == 3:
+            QMessageBox.information(
+                self, "Drawings",
+                "The GA drawing is 2-D only for now — 3-D drawings are a "
+                "future step.")
+            return
         try:
             from drawing_window import DrawingWindow
         except Exception as exc:                       # noqa: BLE001
@@ -194,6 +202,10 @@ class MainWindow(QMainWindow):
         p.sections.append(Section(id=1, name="W12x65", A=0.012323, Iz=2.2185e-4,
                                   shape="W12x65"))
         self.load_project(p, None)
+
+    def new_project_3d(self) -> None:
+        from demo_model import demo_project_3d
+        self.load_project(demo_project_3d(), None)
 
     def open_project(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
@@ -369,7 +381,9 @@ class MainWindow(QMainWindow):
             sup = ([labels[k] for k in range(min(len(n.supports), len(labels)))
                     if n.supports[k]] if n.supports else [])
             tag = f"  [{','.join(sup)}]" if sup else ""
-            it = QTreeWidgetItem(nodes, [f"{n.id}:  ({n.x:g}, {n.y:g}){tag}"])
+            coord = (f"{n.x:g}, {n.y:g}" if p.ndm == 2
+                     else f"{n.x:g}, {n.y:g}, {n.z:g}")
+            it = QTreeWidgetItem(nodes, [f"{n.id}:  ({coord}){tag}"])
             it.setData(0, Qt.ItemDataRole.UserRole, ("node", n.id))
         members = QTreeWidgetItem(self.tree, [f"Members ({len(p.members)})"])
         for m in p.members:

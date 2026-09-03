@@ -37,6 +37,8 @@ class Section:
     A: float
     Iz: float
     shape: str = ""               # AISC W-shape (e.g. "W12x65"); drives design
+    Iy: float = 0.0               # 3-D weak-axis inertia (from shape if named)
+    J: float = 0.0                # 3-D torsion constant (from shape if named)
 
 
 @dataclass
@@ -116,7 +118,8 @@ class Project:
     # -------------------------------------------------------- compile to solver
     def build_model(self):
         """Compile this declarative project into a transient femsolver.Model."""
-        from femsolver import BeamColumn2D, ElasticIsotropic, Model
+        from femsolver import (BeamColumn2D, BeamColumn3D, ElasticIsotropic,
+                               Model)
 
         m = Model(ndm=self.ndm, ndf=self.ndf)
         mats = {}
@@ -129,9 +132,13 @@ class Project:
             coords = (nd.x, nd.y) if self.ndm == 2 else (nd.x, nd.y, nd.z)
             m.add_node(nd.id, *coords)
         for mb in self.members:
-            A, Iz = _section_props(secs[mb.section])
-            m.add_element(BeamColumn2D(mb.id, (mb.n1, mb.n2),
-                                       mats[mb.material], A, Iz))
+            A, Iz, Iy, J = _resolve_section(secs[mb.section])
+            if self.ndm == 3:
+                m.add_element(BeamColumn3D(mb.id, (mb.n1, mb.n2),
+                                           mats[mb.material], A, Iy, Iz, J))
+            else:
+                m.add_element(BeamColumn2D(mb.id, (mb.n1, mb.n2),
+                                           mats[mb.material], A, Iz))
         for nd in self.nodes:
             if nd.supports and any(nd.supports):
                 m.fix(nd.id, list(nd.supports))
@@ -147,14 +154,18 @@ def _coerce_node(n: dict) -> dict:
     return n
 
 
-def _section_props(section):
-    """(A, Iz) for analysis — from the AISC catalog when the section names a
-    W-shape (so the shape drives analysis too), else the section's own A / Iz."""
+def _resolve_section(section):
+    """(A, Iz, Iy, J) for analysis — from the AISC catalog when the section
+    names a W-shape (Iz = strong-axis Ix; so the shape drives analysis too),
+    else the section's own values with positive fallbacks for the 3-D-only
+    Iy / J."""
     if section.shape:
         try:
             from femsolver.design.steel.sections import get_section
             ss = get_section(section.shape.replace("X", "x"))
-            return ss.A, ss.Ix
+            return ss.A, ss.Ix, ss.Iy, ss.J
         except Exception:
             pass
-    return section.A, section.Iz
+    Iy = section.Iy or section.Iz
+    J = section.J or (0.1 * section.Iz)
+    return section.A, section.Iz, Iy, J

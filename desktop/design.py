@@ -37,17 +37,27 @@ def member_dcr(element, member, project):
     fu = float(getattr(mat, "fu", 0.0) or 448.0e6)
     E = float(getattr(mat, "E", 200.0e9))
     ef = getattr(element, "end_forces_local", None)
-    if ef is None or len(ef) < 6:
+    if ef is None:
         return None
-    P_r = -float(ef[3])                       # compression positive for §H1
-    M_rx = max(abs(float(ef[2])), abs(float(ef[5])))
+    n = len(ef)
+    if n == 6:                                # 2-D: [N, Vy, Mz]*2
+        P_r = -float(ef[3])                   # compression positive for §H1
+        M_rx = max(abs(float(ef[2])), abs(float(ef[5])))
+        M_ry = 0.0
+    elif n == 12:                             # 3-D: [N, Vy, Vz, T, My, Mz]*2
+        P_r = -float(ef[6])
+        M_rx = max(abs(float(ef[5])), abs(float(ef[11])))   # strong (Mz)
+        M_ry = max(abs(float(ef[4])), abs(float(ef[10])))   # weak (My)
+    else:
+        return None
     c = element.node_coords()
     L = float(np.linalg.norm(c[1] - c[0]))
     if L <= 0.0:
         return None
     try:
         sm = SteelMaterial(Fy=fy, Fu=max(fu, fy * 1.05), E=E)
-        return float(combined_force_check(ss, sm, P_r=P_r, M_rx=M_rx, L=L).DCR)
+        return float(combined_force_check(ss, sm, P_r=P_r, M_rx=M_rx,
+                                          M_ry=M_ry, L=L).DCR)
     except Exception:
         return None
 

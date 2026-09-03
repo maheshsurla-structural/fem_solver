@@ -119,18 +119,49 @@ def max_translation(model) -> float:
 # Exact for nodal-only loads (the current project scope).
 
 def member_end_values(element, kind: str):
-    """(value_i, value_j) for the N / V / M diagram of a 2-node beam element,
-    or None if the element has no recovered end forces."""
+    """(value_i, value_j) for the N / V / M diagram of a 2-node beam, or None.
+    2-D end forces are [N, Vy, Mz]*2 (signed, sagging +). 3-D are
+    [N, Vy, Vz, T, My, Mz]*2 and the diagram uses the *resultant* transverse
+    shear / bending magnitude, since either bending plane can be active."""
     ef = getattr(element, "end_forces_local", None)
-    if ef is None or len(ef) < 6 or len(element.node_tags) != 2:
+    if ef is None or len(element.node_tags) != 2:
         return None
-    if kind == "N":
-        return (float(ef[3]), float(ef[3]))
-    if kind == "V":
-        return (float(ef[1]), float(ef[1]))
-    if kind == "M":
-        return (float(-ef[2]), float(ef[5]))
+    n = len(ef)
+    if n == 6:
+        if kind == "N":
+            return (float(ef[3]), float(ef[3]))
+        if kind == "V":
+            return (float(ef[1]), float(ef[1]))
+        if kind == "M":
+            return (float(-ef[2]), float(ef[5]))
+    elif n == 12:
+        if kind == "N":
+            return (float(ef[6]), float(ef[6]))
+        if kind == "V":                       # resultant transverse shear
+            v = float(np.hypot(ef[1], ef[2]))
+            return (v, v)
+        if kind == "M":                       # resultant bending moment
+            return (float(np.hypot(ef[4], ef[5])),
+                    float(np.hypot(ef[10], ef[11])))
     return None
+
+
+def _diagram_perp(element, i, j):
+    """Unit direction to offset a diagram — the member's local +y from the
+    element (3-D), else the in-plane perpendicular (2-D)."""
+    if hasattr(element, "length_and_axes"):
+        try:
+            _L, _ex, ey, _ez = element.length_and_axes()
+            ey = np.asarray(ey, dtype=float)
+            nrm = np.linalg.norm(ey)
+            if nrm > 0:
+                return ey / nrm
+        except Exception:
+            pass
+    d = j - i
+    L = np.linalg.norm(d)
+    dhat = d / L if L else np.array([1.0, 0.0, 0.0])
+    return np.array([-dhat[1], dhat[0], 0.0])
 
 
 def diagram_extreme(model, kind: str) -> float:
@@ -161,8 +192,7 @@ def diagram_meshes(model, kind: str, scale: float):
         L = float(np.linalg.norm(d))
         if L == 0.0:
             continue
-        dhat = d / L
-        perp = np.array([-dhat[1], dhat[0], 0.0])       # local +y in the xy-plane
+        perp = _diagram_perp(e, i, j)
         ai = i + perp * (vals[0] * scale)
         aj = j + perp * (vals[1] * scale)
         b = len(fpts)
