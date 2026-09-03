@@ -14,7 +14,8 @@ from PySide6.QtWidgets import (QDockWidget, QFileDialog, QMainWindow,
                                QTreeWidgetItem)
 
 import model_geometry as mg
-from editing import LoadDialog, MemberDialog, NodeDialog, dof_labels
+from editing import (LoadDialog, MemberDialog, NodeDialog, SectionDialog,
+                     dof_labels)
 from model_view import ModelView
 from project import Material, Project, Section
 
@@ -62,6 +63,8 @@ class MainWindow(QMainWindow):
         self.act_add_member = _action(self, "Add &member…", "Ctrl+Shift+M",
                                       self.add_member)
         self.act_add_load = _action(self, "Add &load…", None, self.add_load)
+        self.act_add_section = _action(self, "Add &section…", None,
+                                       self.add_section)
         self.act_delete = _action(self, "&Delete", "Del", self.delete_selected)
 
         self.act_run = _action(self, "&Run (linear static)", "Ctrl+R",
@@ -81,8 +84,8 @@ class MainWindow(QMainWindow):
         for a in (self.act_new, self.act_open, self.act_save, self.act_saveas):
             file_menu.addAction(a)
         edit_menu = self.menuBar().addMenu("&Edit")
-        for a in (self.act_add_node, self.act_add_member, self.act_add_load,
-                  self.act_delete):
+        for a in (self.act_add_node, self.act_add_member, self.act_add_section,
+                  self.act_add_load, self.act_delete):
             edit_menu.addAction(a)
         analysis_menu = self.menuBar().addMenu("&Analysis")
         analysis_menu.addAction(self.act_run)
@@ -96,8 +99,9 @@ class MainWindow(QMainWindow):
 
         tb = self.addToolBar("Main")
         for a in (self.act_open, self.act_save, None, self.act_add_node,
-                  self.act_add_member, self.act_add_load, self.act_delete,
-                  None, self.act_run, self.act_undef, self.act_diag_n,
+                  self.act_add_member, self.act_add_section, self.act_add_load,
+                  self.act_delete, None, self.act_run, self.act_undef,
+                  self.act_diag_n,
                   self.act_diag_v, self.act_diag_m, self.act_design, None,
                   self.act_fit):
             tb.addSeparator() if a is None else tb.addAction(a)
@@ -246,13 +250,24 @@ class MainWindow(QMainWindow):
         self._project.loads.append(load)
         self._after_edit(("load", len(self._project.loads) - 1))
 
+    def add_section(self) -> None:
+        section = SectionDialog.edit(self, self._project)
+        if section is None:
+            return
+        if _find(self._project.sections, section.id) is not None:
+            QMessageBox.warning(self, "Duplicate",
+                                f"Section {section.id} already exists.")
+            return
+        self._project.sections.append(section)
+        self._after_edit(("section", section.id))
+
     def _on_double_click(self, item, _col) -> None:
         ref = item.data(0, Qt.ItemDataRole.UserRole)
         if not ref:
             return
         kind, key = ref
         {"node": self._edit_node, "member": self._edit_member,
-         "load": self._edit_load}[kind](key)
+         "section": self._edit_section, "load": self._edit_load}[kind](key)
 
     def _edit_node(self, nid) -> None:
         new = NodeDialog.edit(self, self._project, _find(self._project.nodes, nid))
@@ -266,6 +281,13 @@ class MainWindow(QMainWindow):
         if new is not None:
             _replace(self._project.members, mid, new)
             self._after_edit(("member", mid))
+
+    def _edit_section(self, sid) -> None:
+        new = SectionDialog.edit(self, self._project,
+                                 _find(self._project.sections, sid))
+        if new is not None:
+            _replace(self._project.sections, sid, new)
+            self._after_edit(("section", sid))
 
     def _edit_load(self, index) -> None:
         if not 0 <= index < len(self._project.loads):
@@ -282,12 +304,19 @@ class MainWindow(QMainWindow):
             return
         kind, key = ref
         p = self._project
+        if kind == "section" and any(m.section == key for m in p.members):
+            QMessageBox.information(
+                self, "Delete section",
+                "Section is used by a member — reassign it first.")
+            return
         if kind == "node":
             p.nodes = [n for n in p.nodes if n.id != key]
             p.members = [m for m in p.members if key not in (m.n1, m.n2)]
             p.loads = [ld for ld in p.loads if ld.node != key]
         elif kind == "member":
             p.members = [m for m in p.members if m.id != key]
+        elif kind == "section":
+            p.sections = [s for s in p.sections if s.id != key]
         elif kind == "load" and 0 <= key < len(p.loads):
             del p.loads[key]
         self._after_edit()
@@ -333,6 +362,11 @@ class MainWindow(QMainWindow):
             it = QTreeWidgetItem(members, [
                 f"{m.id}:  {m.n1} → {m.n2}  (sec {m.section}, mat {m.material})"])
             it.setData(0, Qt.ItemDataRole.UserRole, ("member", m.id))
+        sections = QTreeWidgetItem(self.tree, [f"Sections ({len(p.sections)})"])
+        for s in p.sections:
+            shape = f"  [{s.shape}]" if s.shape else ""
+            it = QTreeWidgetItem(sections, [f"{s.id}:  {s.name}{shape}"])
+            it.setData(0, Qt.ItemDataRole.UserRole, ("section", s.id))
         loads = QTreeWidgetItem(self.tree, [f"Loads ({len(p.loads)})"])
         for i, ld in enumerate(p.loads):
             vals = ", ".join(f"{v:g}" for v in ld.values)

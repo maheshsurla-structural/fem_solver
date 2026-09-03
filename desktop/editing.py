@@ -9,9 +9,9 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox,
                                QDoubleSpinBox, QFormLayout, QHBoxLayout,
-                               QMessageBox, QSpinBox, QWidget)
+                               QLineEdit, QMessageBox, QSpinBox, QWidget)
 
-from project import Load, Member, Node
+from project import Load, Member, Node, Section
 
 
 def dof_labels(ndm: int, ndf: int) -> list[str]:
@@ -167,6 +167,92 @@ class LoadDialog(QDialog):
     @classmethod
     def edit(cls, parent, project, load=None):
         dlg = cls(parent, project, load)
+        return dlg.data() if dlg.exec() else None
+
+
+def _designations() -> list[str]:
+    try:
+        from femsolver.design.steel.sections import all_designations
+        return list(all_designations())
+    except Exception:
+        return []
+
+
+def _shape_props(shape: str):
+    """(A, Ix) for an AISC designation, or None if it is not in the catalog."""
+    try:
+        from femsolver.design.steel.sections import get_section
+        ss = get_section(shape.replace("X", "x"))
+        return ss.A, ss.Ix
+    except Exception:
+        return None
+
+
+def _prop_spin(value: float, decimals: int, step: float) -> QDoubleSpinBox:
+    spin = QDoubleSpinBox()
+    spin.setRange(0.0, 1.0e3)
+    spin.setDecimals(decimals)
+    spin.setSingleStep(step)
+    spin.setValue(value)
+    return spin
+
+
+class SectionDialog(QDialog):
+    def __init__(self, parent, project, section=None):
+        super().__init__(parent)
+        self.setWindowTitle("Edit section" if section else "Add section")
+        form = QFormLayout(self)
+
+        self.id_spin = _id_spin(
+            section.id if section else _next_id([s.id for s in project.sections]),
+            editing=section is not None)
+        form.addRow("Section id", self.id_spin)
+
+        self.name = QLineEdit(section.name if section else "")
+        form.addRow("Name", self.name)
+
+        self.shape = QComboBox()
+        self.shape.addItem("(custom A, Iz)", "")
+        for d in _designations():
+            self.shape.addItem(d, d)
+        if section and section.shape:
+            _select(self.shape, section.shape.replace("X", "x"))
+        form.addRow("AISC shape", self.shape)
+
+        self.A = _prop_spin(section.A if section else 6.0e-3, 6, 1.0e-4)
+        self.Iz = _prop_spin(section.Iz if section else 2.0e-4, 8, 1.0e-5)
+        form.addRow("A [m²]", self.A)
+        form.addRow("Iz [m⁴]", self.Iz)
+
+        self.shape.currentIndexChanged.connect(self._on_shape)
+        self._on_shape()                     # set initial fill / enabled state
+        form.addRow(_buttons(self))
+
+    def _on_shape(self) -> None:
+        shape = self.shape.currentData()
+        if shape:                            # catalog W-shape drives A / Iz
+            props = _shape_props(shape)
+            if props:
+                self.A.setValue(props[0])
+                self.Iz.setValue(props[1])
+            self.A.setEnabled(False)
+            self.Iz.setEnabled(False)
+            if not self.name.text().strip():
+                self.name.setText(shape)
+        else:                                # custom section: type A / Iz
+            self.A.setEnabled(True)
+            self.Iz.setEnabled(True)
+
+    def data(self) -> Section:
+        shape = self.shape.currentData() or ""
+        name = (self.name.text().strip() or shape
+                or f"Section {self.id_spin.value()}")
+        return Section(id=self.id_spin.value(), name=name,
+                       A=self.A.value(), Iz=self.Iz.value(), shape=shape)
+
+    @classmethod
+    def edit(cls, parent, project, section=None):
+        dlg = cls(parent, project, section)
         return dlg.data() if dlg.exec() else None
 
 
