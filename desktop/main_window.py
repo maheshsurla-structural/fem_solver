@@ -21,6 +21,7 @@ from editing import (LoadDialog, MemberDialog, NodeDialog, SectionDialog,
                      dof_labels)
 from model_view import ModelView
 from project import Material, Project, Section
+from properties import PropertiesPanel
 
 
 class MainWindow(QMainWindow):
@@ -49,6 +50,14 @@ class MainWindow(QMainWindow):
         dock_log = QDockWidget("Output", self)
         dock_log.setWidget(self.log)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, dock_log)
+
+        self.props = PropertiesPanel(self._apply_from_inspector, self)
+        dock_props = QDockWidget("Properties", self)
+        dock_props.setWidget(self.props)
+        dock_props.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea
+                                   | Qt.DockWidgetArea.RightDockWidgetArea)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock_props)
+        self.tree.currentItemChanged.connect(self._on_tree_selection)
 
         self._build_menu()
         self.statusBar().showMessage("Ready")
@@ -368,6 +377,31 @@ class MainWindow(QMainWindow):
             elif kind == "load" and 0 <= key < len(p.loads):
                 del p.loads[key]
         self._apply_edit(f"Delete {kind}", mutate)
+
+    def _on_tree_selection(self, current, _previous) -> None:
+        ref = current.data(0, Qt.ItemDataRole.UserRole) if current else None
+        if ref:
+            self.props.show_item(self._project, ref[0], ref[1])
+        else:
+            self.props.clear_selection()
+
+    def _apply_from_inspector(self, kind, key, new) -> None:
+        p = self._project
+        if kind == "node":
+            self._apply_edit("Edit node",
+                             lambda: _replace(p.nodes, key, new), ("node", key))
+        elif kind == "member":
+            self._apply_edit("Edit member",
+                             lambda: _replace(p.members, key, new),
+                             ("member", key))
+        elif kind == "section":
+            self._apply_edit("Edit section",
+                             lambda: _replace(p.sections, key, new),
+                             ("section", key))
+        elif kind == "load" and 0 <= key < len(p.loads):
+            self._apply_edit("Edit load",
+                             lambda: p.loads.__setitem__(key, new),
+                             ("load", key))
 
     # --------------------------------------------------------------- internals
     def _apply_edit(self, text, mutate, select=None) -> None:
