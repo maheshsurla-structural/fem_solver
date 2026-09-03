@@ -68,6 +68,12 @@ class MainWindow(QMainWindow):
                                self.run_linear_static)
         self.act_undef = _action(self, "&Undeformed", None, self._show_undeformed)
         self.act_fit = _action(self, "&Fit", "F", self.view.fit)
+        self.act_diag_n = QAction("Axial &N", self)
+        self.act_diag_n.triggered.connect(lambda *_: self.show_diagram("N"))
+        self.act_diag_v = QAction("Shear &V", self)
+        self.act_diag_v.triggered.connect(lambda *_: self.show_diagram("V"))
+        self.act_diag_m = QAction("Moment &M", self)
+        self.act_diag_m.triggered.connect(lambda *_: self.show_diagram("M"))
 
         file_menu = self.menuBar().addMenu("&File")
         for a in (self.act_new, self.act_open, self.act_save, self.act_saveas):
@@ -79,22 +85,31 @@ class MainWindow(QMainWindow):
         analysis_menu = self.menuBar().addMenu("&Analysis")
         analysis_menu.addAction(self.act_run)
         analysis_menu.addAction(self.act_undef)
+        analysis_menu.addSeparator()
+        for a in (self.act_diag_n, self.act_diag_v, self.act_diag_m):
+            analysis_menu.addAction(a)
         view_menu = self.menuBar().addMenu("&View")
         view_menu.addAction(self.act_fit)
 
         tb = self.addToolBar("Main")
         for a in (self.act_open, self.act_save, None, self.act_add_node,
                   self.act_add_member, self.act_add_load, self.act_delete,
-                  None, self.act_run, self.act_undef, None, self.act_fit):
+                  None, self.act_run, self.act_undef, self.act_diag_n,
+                  self.act_diag_v, self.act_diag_m, None, self.act_fit):
             tb.addSeparator() if a is None else tb.addAction(a)
 
     # ---------------------------------------------------------------- analysis
-    def run_linear_static(self) -> None:
+    def _solve(self):
         if self._model is None or not self._model.elements:
             self.statusBar().showMessage("Nothing to solve — add members first.")
-            return
+            return None
         from femsolver import LinearStaticAnalysis
-        info = LinearStaticAnalysis(self._model).run()
+        return LinearStaticAnalysis(self._model).run()
+
+    def run_linear_static(self) -> None:
+        info = self._solve()
+        if info is None:
+            return
         dmax = mg.max_translation(self._model)
         span = mg.model_span(self._model)
         scale = (0.08 * span / dmax) if dmax > 0 else 1.0
@@ -104,6 +119,17 @@ class MainWindow(QMainWindow):
             f"max|u| = {dmax:.4e} m, deformation ×{scale:.0f}")
         self.statusBar().showMessage(
             f"Solved · max|u| {dmax:.3e} m · deformation ×{scale:.0f}")
+
+    def show_diagram(self, kind: str) -> None:
+        if self._solve() is None:
+            return
+        vmax = self.view.show_diagram(self._model, kind)
+        names = {"N": "Axial N", "V": "Shear V", "M": "Moment M"}
+        units = {"N": "N", "V": "N", "M": "N·m"}
+        self.log.appendPlainText(
+            f"{names[kind]} diagram — max |{kind}| = {vmax:.4e} {units[kind]}")
+        self.statusBar().showMessage(
+            f"{names[kind]} · max |{kind}| {vmax:.3e} {units[kind]}")
 
     def _show_undeformed(self) -> None:
         if self._model is not None:

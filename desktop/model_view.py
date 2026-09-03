@@ -17,6 +17,7 @@ SUPPORT_COLOR = "#a32d2d"     # red
 REFERENCE_COLOR = "#c9c9c9"   # grey (undeformed ghost)
 DEFORMED_COLOR = "#d85a30"    # coral
 DEFORMED_NODE = "#993c1d"     # dark coral
+DIAGRAM_COLOR = {"N": "#1d4ed8", "V": "#0f766e", "M": "#b45309"}
 
 
 class ModelView(QtInteractor):
@@ -79,6 +80,31 @@ class ModelView(QtInteractor):
                             name="supports")
         self.show_grid()
         self._frame(model)
+
+    def show_diagram(self, model, kind: str):
+        """Draw the N / V / M diagram over grey members; return max |value|."""
+        self.clear()
+        span = mg.model_span(model)
+        ref = mg.members_mesh(model)
+        if ref is not None:
+            self.add_mesh(ref.tube(radius=max(span * 0.003, 1e-3)),
+                          color="#8a8a8a", name="members")
+        vmax = mg.diagram_extreme(model, kind)
+        scale = (0.16 * span / vmax) if vmax > 0 else 0.0
+        fill, outline = mg.diagram_meshes(model, kind, scale)
+        color = DIAGRAM_COLOR.get(kind, "#1d4ed8")
+        if fill is not None:
+            self.add_mesh(fill, color=color, opacity=0.35, name="diagram_fill")
+        if outline is not None:
+            self.add_mesh(outline, color=color, line_width=2, name="diagram_outline")
+        supports = mg.support_points(model)
+        if len(supports):
+            self.add_points(supports, color=SUPPORT_COLOR,
+                            render_points_as_spheres=True, point_size=18,
+                            name="supports")
+        self.show_grid()
+        self._frame(model)
+        return vmax
 
     def _frame(self, model) -> None:
         self.view_xy() if getattr(model, "ndm", 3) == 2 else self.view_isometric()
