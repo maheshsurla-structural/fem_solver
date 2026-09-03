@@ -58,6 +58,7 @@ class MainWindow(QMainWindow):
                                    | Qt.DockWidgetArea.RightDockWidgetArea)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock_props)
         self.tree.currentItemChanged.connect(self._on_tree_selection)
+        self.view.set_pick_callback(self._on_pick)
 
         self._build_menu()
         self.statusBar().showMessage("Ready")
@@ -380,10 +381,18 @@ class MainWindow(QMainWindow):
 
     def _on_tree_selection(self, current, _previous) -> None:
         ref = current.data(0, Qt.ItemDataRole.UserRole) if current else None
-        if ref:
-            self.props.show_item(self._project, ref[0], ref[1])
-        else:
+        if not ref:
             self.props.clear_selection()
+            self.view.clear_highlight()
+            return
+        self.props.show_item(self._project, ref[0], ref[1])
+        if ref[0] in ("node", "member"):
+            self.view.highlight(ref[0], ref[1])
+        else:
+            self.view.clear_highlight()
+
+    def _on_pick(self, kind, ident) -> None:
+        self._select((kind, ident))
 
     def _apply_from_inspector(self, kind, key, new) -> None:
         p = self._project

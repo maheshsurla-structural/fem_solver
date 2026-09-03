@@ -18,6 +18,7 @@ REFERENCE_COLOR = "#c9c9c9"   # grey (undeformed ghost)
 DEFORMED_COLOR = "#d85a30"    # coral
 DEFORMED_NODE = "#993c1d"     # dark coral
 DIAGRAM_COLOR = {"N": "#1d4ed8", "V": "#0f766e", "M": "#b45309"}
+SELECTION_COLOR = "#f59e0b"   # amber — current selection highlight
 
 
 class ModelView(QtInteractor):
@@ -26,6 +27,57 @@ class ModelView(QtInteractor):
         self.set_background("white")
         self.enable_parallel_projection()   # orthographic — CAD-style elevations
         self._model = None
+        self._pick_cb = None
+        self._highlight = None
+        try:
+            self.enable_point_picking(callback=self._on_point_picked,
+                                      left_clicking=True, show_message=False,
+                                      show_point=False)
+        except Exception:                    # picking optional; never block init
+            pass
+
+    def set_pick_callback(self, fn) -> None:
+        self._pick_cb = fn
+
+    def _on_point_picked(self, *args) -> None:
+        if self._model is None or self._pick_cb is None or not args:
+            return
+        try:
+            p = np.asarray(args[0], dtype=float).ravel()
+        except Exception:
+            return
+        if p.size < 3:
+            return
+        tol = max(mg.model_span(self._model) * 0.05, 0.15)
+        sel = mg.nearest_item(self._model, p[:3], tol)
+        if sel is not None:
+            self._pick_cb(*sel)
+
+    def highlight(self, kind, ident) -> None:
+        self._highlight = (kind, ident)
+        self._draw_highlight()
+
+    def clear_highlight(self) -> None:
+        self._highlight = None
+        self.remove_actor("selection", render=True)
+
+    def _draw_highlight(self) -> None:
+        self.remove_actor("selection", render=False)
+        if self._highlight is None or self._model is None:
+            return
+        kind, ident = self._highlight
+        span = mg.model_span(self._model)
+        if kind == "node" and ident in self._model.nodes:
+            pt = np.asarray(mg.to_xyz(self._model.nodes[ident].coords))
+            self.add_points(pt.reshape(1, 3), color=SELECTION_COLOR,
+                            render_points_as_spheres=True, point_size=22,
+                            name="selection")
+        elif kind == "member" and ident in self._model.elements:
+            line = mg.element_line(self._model.element(ident))
+            if line is not None:
+                self.add_mesh(line.tube(radius=max(span * 0.006, 2e-3)),
+                              color=SELECTION_COLOR, name="selection")
+        self.render()
 
     def set_model(self, model) -> None:
         self._model = model
@@ -50,6 +102,7 @@ class ModelView(QtInteractor):
 
         self.show_grid()
         self._frame(model)
+        self._draw_highlight()
 
     def show_deformed(self, model, scale: float) -> None:
         """Draw the deformed shape (coral) over a grey ghost of the model."""

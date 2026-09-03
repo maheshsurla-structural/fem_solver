@@ -215,3 +215,40 @@ def element_line(element):
         return None
     pts = np.array([to_xyz(c[0]), to_xyz(c[1])], dtype=float)
     return pv.PolyData(pts, lines=np.array([2, 0, 1], dtype=np.int64))
+
+
+# ---------------------------------------------------------------- pick support
+
+def point_segment_distance(p, a, b) -> float:
+    """Shortest distance from point ``p`` to the segment ``a``-``b``."""
+    ab = b - a
+    L2 = float(ab @ ab)
+    if L2 == 0.0:
+        return float(np.linalg.norm(p - a))
+    t = max(0.0, min(1.0, float((p - a) @ ab) / L2))
+    return float(np.linalg.norm(p - (a + t * ab)))
+
+
+def nearest_item(model, point, tol):
+    """Nearest ('node', tag) then ('member', tag) to a 3-D ``point`` within
+    ``tol``, or None. Nodes win ties (they sit on member ends)."""
+    p = np.asarray(point, dtype=float).ravel()[:3]
+    best = (None, float("inf"))
+    for tag, n in model.nodes.items():
+        d = float(np.linalg.norm(p - np.asarray(to_xyz(n.coords))))
+        if d < best[1]:
+            best = (("node", tag), d)
+    if best[0] is not None and best[1] <= tol:
+        return best[0]
+    best = (None, float("inf"))
+    for tag, e in model.elements.items():
+        c = e.node_coords()
+        if c.shape[0] != 2:
+            continue
+        d = point_segment_distance(p, np.asarray(to_xyz(c[0])),
+                                   np.asarray(to_xyz(c[1])))
+        if d < best[1]:
+            best = (("member", tag), d)
+    if best[0] is not None and best[1] <= tol:
+        return best[0]
+    return None
