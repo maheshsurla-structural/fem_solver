@@ -7,13 +7,16 @@ truth); the solver ``Model`` is recompiled and re-rendered after each change.
 """
 from __future__ import annotations
 
+import copy
+
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction
+from PySide6.QtGui import QAction, QUndoStack
 from PySide6.QtWidgets import (QDockWidget, QFileDialog, QMainWindow,
                                QMessageBox, QPlainTextEdit, QTreeWidget,
                                QTreeWidgetItem)
 
 import model_geometry as mg
+from commands import EditCommand
 from editing import (LoadDialog, MemberDialog, NodeDialog, SectionDialog,
                      dof_labels)
 from model_view import ModelView
@@ -27,7 +30,7 @@ class MainWindow(QMainWindow):
         self._model = None
         self._project = None
         self._path = None
-        self._dirty = False
+        self._undo_stack = QUndoStack(self)
 
         self.view = ModelView(self)
         self.setCentralWidget(self.view)
@@ -52,6 +55,11 @@ class MainWindow(QMainWindow):
 
     # --------------------------------------------------------------- menu / UI
     def _build_menu(self) -> None:
+        self.act_undo = self._undo_stack.createUndoAction(self, "&Undo")
+        self.act_undo.setShortcut("Ctrl+Z")
+        self.act_redo = self._undo_stack.createRedoAction(self, "&Redo")
+        self.act_redo.setShortcut("Ctrl+Y")
+
         self.act_new = _action(self, "&New", "Ctrl+N", self.new_project)
         self.act_new3d = _action(self, "New &3-D frame", None, self.new_project_3d)
         self.act_open = _action(self, "&Open…", "Ctrl+O", self.open_project)
@@ -87,6 +95,9 @@ class MainWindow(QMainWindow):
                   self.act_saveas):
             file_menu.addAction(a)
         edit_menu = self.menuBar().addMenu("&Edit")
+        edit_menu.addAction(self.act_undo)
+        edit_menu.addAction(self.act_redo)
+        edit_menu.addSeparator()
         for a in (self.act_add_node, self.act_add_member, self.act_add_section,
                   self.act_add_load, self.act_delete):
             edit_menu.addAction(a)
@@ -102,10 +113,10 @@ class MainWindow(QMainWindow):
         view_menu.addAction(self.act_drawings)
 
         tb = self.addToolBar("Main")
-        for a in (self.act_open, self.act_save, None, self.act_add_node,
-                  self.act_add_member, self.act_add_section, self.act_add_load,
-                  self.act_delete, None, self.act_run, self.act_undef,
-                  self.act_diag_n,
+        for a in (self.act_open, self.act_save, None, self.act_undo,
+                  self.act_redo, None, self.act_add_node, self.act_add_member,
+                  self.act_add_section, self.act_add_load, self.act_delete,
+                  None, self.act_run, self.act_undef, self.act_diag_n,
                   self.act_diag_v, self.act_diag_m, self.act_design, None,
                   self.act_fit, self.act_drawings):
             tb.addSeparator() if a is None else tb.addAction(a)
@@ -190,7 +201,7 @@ class MainWindow(QMainWindow):
     def load_project(self, project, path=None) -> None:
         self._project = project
         self._path = path
-        self._dirty = False
+        self._undo_stack.clear()
         self._rebuild()
         self._update_title()
         self.log.appendPlainText(
@@ -231,7 +242,7 @@ class MainWindow(QMainWindow):
     def _write(self, path) -> None:
         try:
             self._project.save(path)
-            self._dirty = False
+            self._undo_stack.setClean()
             self._update_title()
             self.statusBar().showMessage(f"Saved {path}")
             self.log.appendPlainText(f"Saved project to {path}")
@@ -246,8 +257,9 @@ class MainWindow(QMainWindow):
         if _find(self._project.nodes, node.id) is not None:
             QMessageBox.warning(self, "Duplicate", f"Node {node.id} already exists.")
             return
-        self._project.nodes.append(node)
-        self._after_edit(("node", node.id))
+        self._apply_edit("Add node",
+                         lambda: self._project.nodes.append(node),
+                         ("node", node.id))
 
     def add_member(self) -> None:
         p = self._project
@@ -263,8 +275,9 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Duplicate",
                                 f"Member {member.id} already exists.")
             return
-        p.members.append(member)
-        self._after_edit(("member", member.id))
+        self._apply_edit("Add member",
+                         lambda: self._project.members.append(member),
+                         ("member", member.id))
 
     def add_load(self) -> None:
         if not self._project.nodes:
@@ -273,8 +286,10 @@ class MainWindow(QMainWindow):
         load = LoadDialog.edit(self, self._project)
         if load is None:
             return
-        self._project.loads.append(load)
-        self._after_edit(("load", len(self._project.loads) - 1))
+        idx = len(self._project.loads)
+        self._apply_edit("Add load",
+                         lambda: self._project.loads.append(load),
+                         ("load", idx))
 
     def add_section(self) -> None:
         section = SectionDialog.edit(self, self._project)
@@ -284,8 +299,9 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Duplicate",
                                 f"Section {section.id} already exists.")
             return
-        self._project.sections.append(section)
-        self._after_edit(("section", section.id))
+        self._apply_edit("Add section",
+                         lambda: self._project.sections.append(section),
+                         ("section", section.id))
 
     def _on_double_click(self, item, _col) -> None:
         ref = item.data(0, Qt.ItemDataRole.UserRole)
@@ -298,30 +314,35 @@ class MainWindow(QMainWindow):
     def _edit_node(self, nid) -> None:
         new = NodeDialog.edit(self, self._project, _find(self._project.nodes, nid))
         if new is not None:
-            _replace(self._project.nodes, nid, new)
-            self._after_edit(("node", nid))
+            self._apply_edit("Edit node",
+                             lambda: _replace(self._project.nodes, nid, new),
+                             ("node", nid))
 
     def _edit_member(self, mid) -> None:
         new = MemberDialog.edit(self, self._project,
                                 _find(self._project.members, mid))
         if new is not None:
-            _replace(self._project.members, mid, new)
-            self._after_edit(("member", mid))
+            self._apply_edit("Edit member",
+                             lambda: _replace(self._project.members, mid, new),
+                             ("member", mid))
 
     def _edit_section(self, sid) -> None:
         new = SectionDialog.edit(self, self._project,
                                  _find(self._project.sections, sid))
         if new is not None:
-            _replace(self._project.sections, sid, new)
-            self._after_edit(("section", sid))
+            self._apply_edit("Edit section",
+                             lambda: _replace(self._project.sections, sid, new),
+                             ("section", sid))
 
     def _edit_load(self, index) -> None:
         if not 0 <= index < len(self._project.loads):
             return
         new = LoadDialog.edit(self, self._project, self._project.loads[index])
         if new is not None:
-            self._project.loads[index] = new
-            self._after_edit(("load", index))
+            self._apply_edit(
+                "Edit load",
+                lambda: self._project.loads.__setitem__(index, new),
+                ("load", index))
 
     def delete_selected(self) -> None:
         item = self.tree.currentItem()
@@ -335,21 +356,28 @@ class MainWindow(QMainWindow):
                 self, "Delete section",
                 "Section is used by a member — reassign it first.")
             return
-        if kind == "node":
-            p.nodes = [n for n in p.nodes if n.id != key]
-            p.members = [m for m in p.members if key not in (m.n1, m.n2)]
-            p.loads = [ld for ld in p.loads if ld.node != key]
-        elif kind == "member":
-            p.members = [m for m in p.members if m.id != key]
-        elif kind == "section":
-            p.sections = [s for s in p.sections if s.id != key]
-        elif kind == "load" and 0 <= key < len(p.loads):
-            del p.loads[key]
-        self._after_edit()
+        def mutate():
+            if kind == "node":
+                p.nodes = [n for n in p.nodes if n.id != key]
+                p.members = [m for m in p.members if key not in (m.n1, m.n2)]
+                p.loads = [ld for ld in p.loads if ld.node != key]
+            elif kind == "member":
+                p.members = [m for m in p.members if m.id != key]
+            elif kind == "section":
+                p.sections = [s for s in p.sections if s.id != key]
+            elif kind == "load" and 0 <= key < len(p.loads):
+                del p.loads[key]
+        self._apply_edit(f"Delete {kind}", mutate)
 
     # --------------------------------------------------------------- internals
-    def _after_edit(self, select=None) -> None:
-        self._dirty = True
+    def _apply_edit(self, text, mutate, select=None) -> None:
+        before = copy.deepcopy(self._project)
+        mutate()
+        after = copy.deepcopy(self._project)
+        self._undo_stack.push(EditCommand(self, text, before, after, select))
+
+    def _restore(self, snapshot, select) -> None:
+        self._project = copy.deepcopy(snapshot)
         self._rebuild()
         self._update_title()
         if select:
@@ -368,7 +396,7 @@ class MainWindow(QMainWindow):
 
     def _update_title(self) -> None:
         name = self._project.name if self._project else "Untitled"
-        star = "*" if self._dirty else ""
+        star = "" if self._undo_stack.isClean() else "*"
         where = f" — {self._path}" if self._path else ""
         self.setWindowTitle(f"{star}{name}{where} — femsolver desktop (preview)")
 
@@ -400,7 +428,7 @@ class MainWindow(QMainWindow):
             vals = ", ".join(f"{v:g}" for v in ld.values)
             it = QTreeWidgetItem(loads, [f"node {ld.node}:  ({vals})"])
             it.setData(0, Qt.ItemDataRole.UserRole, ("load", i))
-        for grp in (nodes, members, loads):
+        for grp in (nodes, members, sections, loads):
             grp.setExpanded(True)
 
     def _select(self, ref) -> None:
