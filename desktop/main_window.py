@@ -141,6 +141,9 @@ class MainWindow(QMainWindow):
         self.act_design.triggered.connect(self.show_design)
         self.act_drawings = _action(self, "&Drawings…", None, self.open_drawings,
                                     "drawings")
+        self.act_sectiondesigner = _action(
+            self, "&Section Designer…", None, self.open_section_designer,
+            "sectiondesigner")
 
         self.act_select = QAction(icons.icon("single"), "&Single select", self)
         self.act_select.setCheckable(True)
@@ -239,6 +242,8 @@ class MainWindow(QMainWindow):
             view_menu.addAction(a)
         view_menu.addSeparator()
         view_menu.addAction(self.act_drawings)
+        tools_menu = self.menuBar().addMenu("&Tools")
+        tools_menu.addAction(self.act_sectiondesigner)
 
         self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
 
@@ -265,6 +270,7 @@ class MainWindow(QMainWindow):
                               self.act_design))
         _toolbar("View", (self.act_fit, self.act_v_iso, self.act_v_top,
                           self.act_v_front, None, self.act_drawings))
+        _toolbar("Tools", (self.act_sectiondesigner,))
 
     # ---------------------------------------------------------------- analysis
     def _solve(self):
@@ -319,6 +325,24 @@ class MainWindow(QMainWindow):
             f"Design (AISC 360-22 §H1): {len(vals)} members checked, "
             f"max DCR = {mx:.2f} at member {worst} — {verdict}")
         self.statusBar().showMessage(f"Design · max DCR {mx:.2f} · {verdict}")
+
+    def open_section_designer(self) -> None:
+        """Open the General Section Designer (concrete/PSC) over section_gui_core.
+
+        Standalone window; seeded with the project's design code when it maps
+        to a Section Designer code. Bridging the FEM model's steel sections to
+        this concrete designer is a follow-up (roadmap T2.08)."""
+        try:
+            from section_designer import SectionDesignerWindow
+        except Exception as exc:                       # noqa: BLE001
+            QMessageBox.critical(
+                self, "Section Designer unavailable",
+                f"Could not load the Section Designer:\n{exc}")
+            return
+        code = getattr(self._project, "design_code", None) if self._project \
+            else None
+        self._sd_win = SectionDesignerWindow(self, code=code)
+        self._sd_win.show()
 
     def open_drawings(self) -> None:
         if self._project is None:

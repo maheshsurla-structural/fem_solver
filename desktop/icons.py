@@ -70,6 +70,11 @@ _ICONS = {
     "front": '<rect x="5" y="5" width="14" height="14" rx="1"/><path d="M5 15h14"/>',
     "drawings": '<rect x="4" y="4" width="16" height="16" rx="1"/>'
                 '<path d="M4 15l4-4 3 3 5-6 4 4"/>',
+    "sectiondesigner": '<rect x="4" y="4" width="16" height="16" rx="1"/>'
+                       '<circle cx="9" cy="9" r="1.4" fill="{c}" stroke="none"/>'
+                       '<circle cx="15" cy="9" r="1.4" fill="{c}" stroke="none"/>'
+                       '<circle cx="9" cy="15" r="1.4" fill="{c}" stroke="none"/>'
+                       '<circle cx="15" cy="15" r="1.4" fill="{c}" stroke="none"/>',
 }
 _LETTERS = {"axial": "N", "shear": "V", "moment": "M"}
 
