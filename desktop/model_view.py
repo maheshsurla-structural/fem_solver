@@ -7,8 +7,9 @@ one entry point: clear, draw members / nodes / supports, frame the camera.
 from __future__ import annotations
 
 import numpy as np
-from PySide6.QtCore import QRect, QSize, Qt
-from PySide6.QtWidgets import QRubberBand
+from PySide6.QtCore import QPoint, QRect, QSize, Qt
+from PySide6.QtGui import QColor, QPainter, QPen, QPolygon
+from PySide6.QtWidgets import QApplication, QRubberBand, QWidget
 from pyvistaqt import QtInteractor
 
 import model_geometry as mg
@@ -21,6 +22,56 @@ DEFORMED_COLOR = "#d85a30"    # coral
 DEFORMED_NODE = "#993c1d"     # dark coral
 DIAGRAM_COLOR = {"N": "#1d4ed8", "V": "#0f766e", "M": "#b45309"}
 SELECTION_COLOR = "#f59e0b"   # amber — current selection highlight
+
+
+class _PolygonOverlay(QWidget):
+    """Transparent overlay for lasso (polygon) selection — click vertices,
+    double-click / right-click to close. Composites over the OpenGL viewport."""
+
+    def __init__(self, parent, on_polygon):
+        super().__init__(parent)
+        self._on_polygon = on_polygon
+        self._pts = []
+        self._cur = None
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, True)
+        self.setMouseTracking(True)
+
+    def reset(self) -> None:
+        self._pts, self._cur = [], None
+        self.update()
+
+    def mousePressEvent(self, ev):
+        if ev.button() == Qt.MouseButton.LeftButton:
+            self._pts.append(ev.position().toPoint())
+            self.update()
+        elif ev.button() == Qt.MouseButton.RightButton:
+            self._finish()
+
+    def mouseMoveEvent(self, ev):
+        if self._pts:
+            self._cur = ev.position().toPoint()
+            self.update()
+
+    def mouseDoubleClickEvent(self, ev):
+        self._finish()
+
+    def _finish(self) -> None:
+        pts = list(self._pts)
+        self.reset()
+        if len(pts) >= 3:
+            self._on_polygon(pts)
+
+    def paintEvent(self, ev):
+        if not self._pts:
+            return
+        p = QPainter(self)
+        p.setPen(QPen(QColor(SELECTION_COLOR), 1.5, Qt.PenStyle.DashLine))
+        p.setBrush(QColor(245, 158, 11, 40))
+        p.drawPolygon(QPolygon(self._pts + ([self._cur] if self._cur else [])))
+        p.setBrush(QColor(SELECTION_COLOR))
+        for pt in self._pts:
+            p.drawEllipse(pt, 2, 2)
 
 
 class ModelView(QtInteractor):
@@ -41,6 +92,8 @@ class ModelView(QtInteractor):
         self._band_origin = None
         self._band_additive = False
         self._highlight = []
+        self._poly_overlay = _PolygonOverlay(self, self._polygon_select)
+        self._poly_overlay.hide()
         try:
             self.enable_point_picking(callback=self._on_point_picked,
                                       left_clicking=True, show_message=False,
@@ -122,12 +175,43 @@ class ModelView(QtInteractor):
                 refs.append(("member", tag))
         self._region_cb(refs, additive)
 
+    def _polygon_select(self, pts) -> None:
+        if self._model is None or self._region_cb is None:
+            return
+        poly = QPolygon(pts)
+        additive = bool(QApplication.keyboardModifiers() & (
+            Qt.KeyboardModifier.ShiftModifier
+            | Qt.KeyboardModifier.ControlModifier))
+        inside = {}
+        for tag, n in self._model.nodes.items():
+            x, y = self._project(mg.to_xyz(n.coords))
+            inside[tag] = poly.containsPoint(QPoint(int(x), int(y)),
+                                             Qt.FillRule.OddEvenFill)
+        refs = [("node", t) for t, v in inside.items() if v]
+        for tag, e in self._model.elements.items():
+            nt = e.node_tags
+            if len(nt) == 2 and inside.get(nt[0]) and inside.get(nt[1]):
+                refs.append(("member", tag))
+        self._region_cb(refs, additive)
+
+    def resizeEvent(self, ev):
+        super().resizeEvent(ev)
+        if self._poly_overlay.isVisible():
+            self._poly_overlay.setGeometry(self.rect())
+
     def set_mode(self, mode: str) -> None:
         self._mode = mode
         self._member_start = None
         self.remove_actor("groundplane", render=False)
         if mode == "draw_node":
             self._add_ground_plane()
+        if mode == "polygon":
+            self._poly_overlay.setGeometry(self.rect())
+            self._poly_overlay.reset()
+            self._poly_overlay.raise_()
+            self._poly_overlay.show()
+        else:
+            self._poly_overlay.hide()
         self.render()
 
     def _add_ground_plane(self) -> None:

@@ -150,6 +150,10 @@ class MainWindow(QMainWindow):
                                       self)
         self.act_sel_window.setCheckable(True)
         self.act_sel_window.triggered.connect(lambda: self._set_mode("window"))
+        self.act_sel_poly = QAction(icons.icon("polygon"), "&Polygon select",
+                                    self)
+        self.act_sel_poly.setCheckable(True)
+        self.act_sel_poly.triggered.connect(lambda: self._set_mode("polygon"))
         self.act_draw_node = QAction(icons.icon("drawnode"), "Draw n&ode", self)
         self.act_draw_node.setCheckable(True)
         self.act_draw_node.triggered.connect(lambda: self._set_mode("draw_node"))
@@ -159,13 +163,20 @@ class MainWindow(QMainWindow):
         self.act_draw_member.triggered.connect(
             lambda: self._set_mode("draw_member"))
         self._mode_group = QActionGroup(self)
-        for a in (self.act_select, self.act_sel_window, self.act_draw_node,
-                  self.act_draw_member):
+        for a in (self.act_select, self.act_sel_window, self.act_sel_poly,
+                  self.act_draw_node, self.act_draw_member):
             self._mode_group.addAction(a)
         self.act_snap = QAction(icons.icon("snap"), "&Snap to grid", self)
         self.act_snap.setCheckable(True)
         self.act_snap.setChecked(True)
         self.act_snap.toggled.connect(self._update_snap)
+        self.act_sel_all_nodes = _action(self, "Select all &nodes", None,
+                                         self.select_all_nodes)
+        self.act_sel_all_members = _action(self, "Select all &members", None,
+                                           self.select_all_members)
+        self.act_sel_all = _action(self, "Select &all", "Ctrl+A", self.select_all)
+        self.act_sel_by_section = _action(self, "Select by &section…", None,
+                                          self.select_by_section)
         self.snap_spin = QDoubleSpinBox()
         self.snap_spin.setRange(0.05, 10.0)
         self.snap_spin.setSingleStep(0.05)
@@ -206,6 +217,12 @@ class MainWindow(QMainWindow):
         select_menu = self.menuBar().addMenu("&Select")
         select_menu.addAction(self.act_select)
         select_menu.addAction(self.act_sel_window)
+        select_menu.addAction(self.act_sel_poly)
+        select_menu.addSeparator()
+        select_menu.addAction(self.act_sel_all_nodes)
+        select_menu.addAction(self.act_sel_all_members)
+        select_menu.addAction(self.act_sel_all)
+        select_menu.addAction(self.act_sel_by_section)
         select_menu.addSeparator()
         select_menu.addAction(self.act_deselect)
         draw_menu = self.menuBar().addMenu("&Draw")
@@ -239,7 +256,7 @@ class MainWindow(QMainWindow):
                           self.act_rotate, self.act_extrude))
         _toolbar("Generate", (self.act_gen, self.act_genloads))
         _toolbar("Select", (self.act_select, self.act_sel_window,
-                            self.act_deselect))
+                            self.act_sel_poly, self.act_deselect))
         tb_draw = _toolbar("Draw", (self.act_draw_node, self.act_draw_member,
                                     self.act_snap))
         tb_draw.addWidget(self.snap_spin)
@@ -674,6 +691,8 @@ class MainWindow(QMainWindow):
             "select": "Single select — click a node or member.",
             "window": "Window select — drag a box; items fully inside are "
                       "selected.",
+            "polygon": "Polygon select — click vertices; double-click or "
+                       "right-click to close.",
             "draw_node": "Draw node — click the ground plane to place nodes "
                          "(snapped to 0.5 m).",
             "draw_member": "Draw member — click two nodes to connect them."}
@@ -699,6 +718,30 @@ class MainWindow(QMainWindow):
         self.tree.blockSignals(False)
         self._on_selection_changed()
         self.statusBar().showMessage(f"Selected {len(targets)} item(s)")
+
+    def select_all_nodes(self) -> None:
+        self._on_region_select([("node", n.id) for n in self._project.nodes])
+
+    def select_all_members(self) -> None:
+        self._on_region_select([("member", m.id) for m in self._project.members])
+
+    def select_all(self) -> None:
+        refs = ([("node", n.id) for n in self._project.nodes]
+                + [("member", m.id) for m in self._project.members])
+        self._on_region_select(refs)
+
+    def select_by_section(self) -> None:
+        if not self._project.sections:
+            return
+        from PySide6.QtWidgets import QInputDialog
+        items = [f"{s.id}: {s.name}" for s in self._project.sections]
+        choice, ok = QInputDialog.getItem(self, "Select by section",
+                                          "Section:", items, 0, False)
+        if not ok:
+            return
+        sid = int(choice.split(":")[0])
+        self._on_region_select([("member", m.id) for m in self._project.members
+                                if m.section == sid])
 
     def _draw_add_node(self, x, y, z) -> None:
         nid = max((n.id for n in self._project.nodes), default=0) + 1

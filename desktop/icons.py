@@ -47,6 +47,7 @@ _ICONS = {
               'stroke-dasharray="3 2.5"/>',
     "deselect": '<rect x="4" y="6" width="16" height="12" rx="1" '
                 'stroke-dasharray="3 2.5"/><path d="M5 19L19 5"/>',
+    "polygon": '<path d="M4 9l5-5 8 2 3 8-6 5-9-3z" stroke-dasharray="3 2.5"/>',
     "drawnode": '<circle cx="7" cy="17" r="2.5" fill="{c}" stroke="none"/>'
                 '<path d="M17 4v6M14 7h6"/>',
     "drawmember": '<path d="M4 20L14 10"/>'
