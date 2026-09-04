@@ -7,6 +7,8 @@ one entry point: clear, draw members / nodes / supports, frame the camera.
 from __future__ import annotations
 
 import numpy as np
+from PySide6.QtCore import QRect, QSize, Qt
+from PySide6.QtWidgets import QRubberBand
 from pyvistaqt import QtInteractor
 
 import model_geometry as mg
@@ -34,6 +36,9 @@ class ModelView(QtInteractor):
         self._member_start = None
         self._snap_on = True
         self._snap_grid = 0.5
+        self._region_cb = None
+        self._rubber = None
+        self._band_origin = None
         self._highlight = None
         try:
             self.enable_point_picking(callback=self._on_point_picked,
@@ -54,6 +59,64 @@ class ModelView(QtInteractor):
     def set_snap(self, on: bool, grid: float) -> None:
         self._snap_on = bool(on)
         self._snap_grid = max(float(grid), 1e-3)
+
+    def set_region_callback(self, fn) -> None:
+        self._region_cb = fn
+
+    # --- window (box) selection: intercept the drag in "window" mode so VTK
+    #     doesn't orbit; project nodes to screen and test against the box.
+    def mousePressEvent(self, ev):
+        if self._mode == "window" and ev.button() == Qt.MouseButton.LeftButton:
+            self._band_origin = ev.position().toPoint()
+            if self._rubber is None:
+                self._rubber = QRubberBand(QRubberBand.Shape.Rectangle, self)
+            self._rubber.setGeometry(QRect(self._band_origin, QSize()))
+            self._rubber.show()
+            return
+        super().mousePressEvent(ev)
+
+    def mouseMoveEvent(self, ev):
+        if self._mode == "window" and self._band_origin is not None:
+            self._rubber.setGeometry(
+                QRect(self._band_origin, ev.position().toPoint()).normalized())
+            return
+        super().mouseMoveEvent(ev)
+
+    def mouseReleaseEvent(self, ev):
+        if (self._mode == "window" and self._band_origin is not None
+                and ev.button() == Qt.MouseButton.LeftButton):
+            rect = QRect(self._band_origin,
+                         ev.position().toPoint()).normalized()
+            self._band_origin = None
+            if self._rubber is not None:
+                self._rubber.hide()
+            if rect.width() > 3 and rect.height() > 3:
+                self._window_select(rect)
+            return
+        super().mouseReleaseEvent(ev)
+
+    def _project(self, world):
+        """World coords -> widget (logical) pixels, y down."""
+        ren = self.renderer
+        ren.SetWorldPoint(float(world[0]), float(world[1]), float(world[2]), 1.0)
+        ren.WorldToDisplay()
+        dx, dy, _dz = ren.GetDisplayPoint()
+        dpr = self.devicePixelRatioF() or 1.0
+        return dx / dpr, self.height() - dy / dpr
+
+    def _window_select(self, rect) -> None:
+        if self._model is None or self._region_cb is None:
+            return
+        inside = {}
+        for tag, n in self._model.nodes.items():
+            x, y = self._project(mg.to_xyz(n.coords))
+            inside[tag] = rect.contains(int(x), int(y))
+        refs = [("node", t) for t, v in inside.items() if v]
+        for tag, e in self._model.elements.items():
+            nt = e.node_tags
+            if len(nt) == 2 and inside.get(nt[0]) and inside.get(nt[1]):
+                refs.append(("member", tag))
+        self._region_cb(refs)
 
     def set_mode(self, mode: str) -> None:
         self._mode = mode
@@ -274,6 +337,28 @@ class ModelView(QtInteractor):
 
     def fit(self) -> None:
         self.reset_camera()
+
+    def set_view(self, name: str) -> None:
+        """Standard named views (isometric / top / bottom / front / back /
+        left / right), then fit."""
+        views = {
+            "iso": self.view_isometric,
+            "top": self.view_xy,
+            "bottom": lambda: self.view_xy(negative=True),
+            "front": self.view_xz,
+            "back": lambda: self.view_xz(negative=True),
+            "left": lambda: self.view_yz(negative=True),
+            "right": self.view_yz,
+        }
+        fn = views.get(name)
+        if fn is None:
+            return
+        try:
+            fn()
+        except Exception:
+            self.view_isometric()
+        self.reset_camera()
+        self.render()
 
 
 def _snap(v, grid: float = 0.5) -> float:

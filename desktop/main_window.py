@@ -63,6 +63,7 @@ class MainWindow(QMainWindow):
         self.view.set_pick_callback(self._on_pick)
         self.view.set_add_node_callback(self._draw_add_node)
         self.view.set_add_member_callback(self._draw_add_member)
+        self.view.set_region_callback(self._on_region_select)
 
         self._build_menu()
         self.statusBar().showMessage("Ready")
@@ -100,6 +101,20 @@ class MainWindow(QMainWindow):
                                self.run_linear_static)
         self.act_undef = _action(self, "&Undeformed", None, self._show_undeformed)
         self.act_fit = _action(self, "&Fit", "F", self.view.fit)
+
+        def _v(text, name):
+            return _action(self, text, None,
+                           lambda *_a, n=name: self.view.set_view(n))
+        self.act_v_iso = _v("&Isometric", "iso")
+        self.act_v_top = _v("&Top", "top")
+        self.act_v_bottom = _v("&Bottom", "bottom")
+        self.act_v_front = _v("Fro&nt", "front")
+        self.act_v_back = _v("Bac&k", "back")
+        self.act_v_left = _v("&Left", "left")
+        self.act_v_right = _v("&Right", "right")
+        self.act_deselect = _action(self, "Deselect &all", "Escape",
+                                    self.deselect_all)
+
         self.act_diag_n = QAction("Axial &N", self)
         self.act_diag_n.triggered.connect(lambda *_: self.show_diagram("N"))
         self.act_diag_v = QAction("Shear &V", self)
@@ -110,16 +125,19 @@ class MainWindow(QMainWindow):
         self.act_design.triggered.connect(self.show_design)
         self.act_drawings = _action(self, "&Drawings…", None, self.open_drawings)
 
-        self.act_select = QAction("&Select", self, checkable=True)
+        self.act_select = QAction("&Single select", self, checkable=True)
         self.act_select.setChecked(True)
         self.act_select.triggered.connect(lambda: self._set_mode("select"))
+        self.act_sel_window = QAction("&Window select", self, checkable=True)
+        self.act_sel_window.triggered.connect(lambda: self._set_mode("window"))
         self.act_draw_node = QAction("Draw n&ode", self, checkable=True)
         self.act_draw_node.triggered.connect(lambda: self._set_mode("draw_node"))
         self.act_draw_member = QAction("Draw m&ember", self, checkable=True)
         self.act_draw_member.triggered.connect(
             lambda: self._set_mode("draw_member"))
         self._mode_group = QActionGroup(self)
-        for a in (self.act_select, self.act_draw_node, self.act_draw_member):
+        for a in (self.act_select, self.act_sel_window, self.act_draw_node,
+                  self.act_draw_member):
             self._mode_group.addAction(a)
         self.act_snap = QAction("&Snap to grid", self, checkable=True)
         self.act_snap.setChecked(True)
@@ -145,6 +163,7 @@ class MainWindow(QMainWindow):
                   self.act_add_load, self.act_delete):
             edit_menu.addAction(a)
         edit_menu.addSeparator()
+        edit_menu.addAction(self.act_deselect)
         edit_menu.addAction(self.act_move)
         edit_menu.addAction(self.act_copy)
         gen_menu = self.menuBar().addMenu("&Generate")
@@ -157,13 +176,24 @@ class MainWindow(QMainWindow):
         for a in (self.act_diag_n, self.act_diag_v, self.act_diag_m,
                   self.act_design):
             analysis_menu.addAction(a)
+        select_menu = self.menuBar().addMenu("&Select")
+        select_menu.addAction(self.act_select)
+        select_menu.addAction(self.act_sel_window)
+        select_menu.addSeparator()
+        select_menu.addAction(self.act_deselect)
         draw_menu = self.menuBar().addMenu("&Draw")
-        for a in (self.act_select, self.act_draw_node, self.act_draw_member):
+        for a in (self.act_draw_node, self.act_draw_member):
             draw_menu.addAction(a)
         draw_menu.addSeparator()
         draw_menu.addAction(self.act_snap)
         view_menu = self.menuBar().addMenu("&View")
         view_menu.addAction(self.act_fit)
+        view_menu.addSeparator()
+        for a in (self.act_v_iso, self.act_v_top, self.act_v_bottom,
+                  self.act_v_front, self.act_v_back, self.act_v_left,
+                  self.act_v_right):
+            view_menu.addAction(a)
+        view_menu.addSeparator()
         view_menu.addAction(self.act_drawings)
 
         tb = self.addToolBar("Main")
@@ -172,10 +202,12 @@ class MainWindow(QMainWindow):
                   self.act_add_node, self.act_add_member,
                   self.act_add_section, self.act_add_load, self.act_delete,
                   self.act_move, self.act_copy,
-                  None, self.act_select, self.act_draw_node,
-                  self.act_draw_member, None, self.act_run, self.act_undef,
+                  None, self.act_select, self.act_sel_window, self.act_draw_node,
+                  self.act_draw_member, self.act_deselect, None, self.act_run,
+                  self.act_undef,
                   self.act_diag_n, self.act_diag_v, self.act_diag_m,
-                  self.act_design, None, self.act_fit, self.act_drawings):
+                  self.act_design, None, self.act_fit, self.act_v_iso,
+                  self.act_v_top, self.act_v_front, self.act_drawings):
             tb.addSeparator() if a is None else tb.addAction(a)
         tb.addSeparator()
         tb.addAction(self.act_snap)
@@ -522,17 +554,40 @@ class MainWindow(QMainWindow):
         self._apply_edit(f"Copy x{count}", lambda: transforms.copy_selection(
             self._project, node_ids, member_ids, dx, dy, dz, count))
 
+    def deselect_all(self) -> None:
+        self.tree.clearSelection()
+        self.tree.setCurrentItem(None)
+        self.props.clear_selection()
+        self.view.clear_highlight()
+
     def _update_snap(self, *_) -> None:
         self.view.set_snap(self.act_snap.isChecked(), self.snap_spin.value())
 
     def _set_mode(self, mode: str) -> None:
         self.view.set_mode(mode)
         hints = {
-            "select": "Select — click a node or member to select it.",
+            "select": "Single select — click a node or member.",
+            "window": "Window select — drag a box; items fully inside are "
+                      "selected.",
             "draw_node": "Draw node — click the ground plane to place nodes "
                          "(snapped to 0.5 m).",
             "draw_member": "Draw member — click two nodes to connect them."}
         self.statusBar().showMessage(hints.get(mode, ""))
+
+    def _on_region_select(self, refs) -> None:
+        targets = {tuple(r) for r in refs}
+        self.tree.clearSelection()
+        first = None
+        for i in range(self.tree.topLevelItemCount()):
+            grp = self.tree.topLevelItem(i)
+            for j in range(grp.childCount()):
+                child = grp.child(j)
+                if child.data(0, Qt.ItemDataRole.UserRole) in targets:
+                    child.setSelected(True)
+                    first = first or child
+        if first:
+            self.tree.setCurrentItem(first)
+        self.statusBar().showMessage(f"Selected {len(targets)} item(s)")
 
     def _draw_add_node(self, x, y, z) -> None:
         nid = max((n.id for n in self._project.nodes), default=0) + 1
