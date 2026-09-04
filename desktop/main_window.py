@@ -11,9 +11,9 @@ import copy
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QActionGroup, QUndoStack
-from PySide6.QtWidgets import (QDockWidget, QDoubleSpinBox, QFileDialog,
-                               QMainWindow, QMessageBox, QPlainTextEdit,
-                               QTreeWidget, QTreeWidgetItem)
+from PySide6.QtWidgets import (QAbstractItemView, QDockWidget, QDoubleSpinBox,
+                               QFileDialog, QMainWindow, QMessageBox,
+                               QPlainTextEdit, QTreeWidget, QTreeWidgetItem)
 
 import model_geometry as mg
 from commands import EditCommand
@@ -38,6 +38,8 @@ class MainWindow(QMainWindow):
 
         self.tree = QTreeWidget()
         self.tree.setHeaderLabels(["Model"])
+        self.tree.setSelectionMode(
+            QAbstractItemView.SelectionMode.ExtendedSelection)
         self.tree.itemDoubleClicked.connect(self._on_double_click)
         dock_tree = QDockWidget("Model", self)
         dock_tree.setWidget(self.tree)
@@ -91,6 +93,8 @@ class MainWindow(QMainWindow):
         self.act_genloads = _action(self, "Generate &loads…", None,
                                     self.generate_loads)
         self.act_delete = _action(self, "&Delete", "Del", self.delete_selected)
+        self.act_move = _action(self, "&Move…", None, self.move_selected)
+        self.act_copy = _action(self, "Cop&y / array…", None, self.copy_selected)
 
         self.act_run = _action(self, "&Run (linear static)", "Ctrl+R",
                                self.run_linear_static)
@@ -140,6 +144,9 @@ class MainWindow(QMainWindow):
         for a in (self.act_add_node, self.act_add_member, self.act_add_section,
                   self.act_add_load, self.act_delete):
             edit_menu.addAction(a)
+        edit_menu.addSeparator()
+        edit_menu.addAction(self.act_move)
+        edit_menu.addAction(self.act_copy)
         gen_menu = self.menuBar().addMenu("&Generate")
         gen_menu.addAction(self.act_gen)
         gen_menu.addAction(self.act_genloads)
@@ -164,6 +171,7 @@ class MainWindow(QMainWindow):
                   self.act_redo, None, self.act_gen, self.act_genloads, None,
                   self.act_add_node, self.act_add_member,
                   self.act_add_section, self.act_add_load, self.act_delete,
+                  self.act_move, self.act_copy,
                   None, self.act_select, self.act_draw_node,
                   self.act_draw_member, None, self.act_run, self.act_undef,
                   self.act_diag_n, self.act_diag_v, self.act_diag_m,
@@ -466,6 +474,53 @@ class MainWindow(QMainWindow):
 
     def _on_pick(self, kind, ident) -> None:
         self._select((kind, ident))
+
+    def _selected_refs(self):
+        refs = []
+        for it in self.tree.selectedItems():
+            r = it.data(0, Qt.ItemDataRole.UserRole)
+            if r:
+                refs.append(tuple(r))
+        return refs
+
+    def move_selected(self) -> None:
+        refs = self._selected_refs()
+        node_ids = {rid for (k, rid) in refs if k == "node"}
+        mem = {m.id: m for m in self._project.members}
+        for k, rid in refs:
+            if k == "member" and rid in mem:
+                node_ids.update((mem[rid].n1, mem[rid].n2))
+        if not node_ids:
+            QMessageBox.information(self, "Move",
+                                   "Select nodes or members first "
+                                   "(Ctrl-click for several).")
+            return
+        from editing import MoveDialog
+        import transforms
+        vec = MoveDialog.get(self, self._project)
+        if vec is None:
+            return
+        dx, dy, dz = vec
+        self._apply_edit("Move", lambda: transforms.move_nodes(
+            self._project, node_ids, dx, dy, dz))
+
+    def copy_selected(self) -> None:
+        refs = self._selected_refs()
+        node_ids = {rid for (k, rid) in refs if k == "node"}
+        member_ids = {rid for (k, rid) in refs if k == "member"}
+        if not node_ids and not member_ids:
+            QMessageBox.information(self, "Copy",
+                                   "Select nodes or members first "
+                                   "(Ctrl-click for several).")
+            return
+        from editing import CopyDialog
+        import transforms
+        res = CopyDialog.get(self, self._project)
+        if res is None:
+            return
+        dx, dy, dz, count = res
+        self._apply_edit(f"Copy x{count}", lambda: transforms.copy_selection(
+            self._project, node_ids, member_ids, dx, dy, dz, count))
 
     def _update_snap(self, *_) -> None:
         self.view.set_snap(self.act_snap.isChecked(), self.snap_spin.value())

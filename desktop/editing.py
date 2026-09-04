@@ -395,3 +395,58 @@ class LoadGenDialog(QDialog):
     def get(cls, parent, project):
         dlg = cls(parent, project)
         return dlg.params() if dlg.exec() else None
+
+
+class MoveDialog(QDialog):
+    """Translation vector for moving the selection."""
+
+    def __init__(self, parent, project):
+        super().__init__(parent)
+        self.setWindowTitle("Move selection")
+        form = QFormLayout(self)
+        self.dx, self.dy = _coord_spin(0.0), _coord_spin(0.0)
+        form.addRow(f"dx [{project.length_unit}]", self.dx)
+        form.addRow(f"dy [{project.length_unit}]", self.dy)
+        self.dz = None
+        if project.ndm == 3:
+            self.dz = _coord_spin(0.0)
+            form.addRow(f"dz [{project.length_unit}]", self.dz)
+        form.addRow(_buttons(self))
+
+    def data(self):
+        return (self.dx.value(), self.dy.value(),
+                self.dz.value() if self.dz is not None else 0.0)
+
+    @classmethod
+    def get(cls, parent, project):
+        dlg = cls(parent, project)
+        return dlg.data() if dlg.exec() else None
+
+
+class CopyDialog(QDialog):
+    """Offset vector + copy count for arraying the selection."""
+
+    def __init__(self, parent, project):
+        super().__init__(parent)
+        self.setWindowTitle("Copy / array selection")
+        form = QFormLayout(self)
+        self.dx, self.dy = _coord_spin(0.0), _coord_spin(0.0)
+        form.addRow(f"dx [{project.length_unit}]", self.dx)
+        form.addRow(f"dy [{project.length_unit}]", self.dy)
+        self.dz = None
+        if project.ndm == 3:
+            self.dz = _coord_spin(0.0)
+            form.addRow(f"dz [{project.length_unit}]", self.dz)
+        self.count = _int_spin(1, 1, 500)
+        form.addRow("Copies", self.count)
+        form.addRow(_buttons(self))
+
+    def data(self):
+        return (self.dx.value(), self.dy.value(),
+                self.dz.value() if self.dz is not None else 0.0,
+                self.count.value())
+
+    @classmethod
+    def get(cls, parent, project):
+        dlg = cls(parent, project)
+        return dlg.data() if dlg.exec() else None
