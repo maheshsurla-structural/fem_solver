@@ -28,6 +28,12 @@ class ModelView(QtInteractor):
         self.enable_parallel_projection()   # orthographic — CAD-style elevations
         self._model = None
         self._pick_cb = None
+        self._add_node_cb = None
+        self._add_member_cb = None
+        self._mode = "select"
+        self._member_start = None
+        self._snap_on = True
+        self._snap_grid = 0.5
         self._highlight = None
         try:
             self.enable_point_picking(callback=self._on_point_picked,
@@ -39,8 +45,41 @@ class ModelView(QtInteractor):
     def set_pick_callback(self, fn) -> None:
         self._pick_cb = fn
 
+    def set_add_node_callback(self, fn) -> None:
+        self._add_node_cb = fn
+
+    def set_add_member_callback(self, fn) -> None:
+        self._add_member_cb = fn
+
+    def set_snap(self, on: bool, grid: float) -> None:
+        self._snap_on = bool(on)
+        self._snap_grid = max(float(grid), 1e-3)
+
+    def set_mode(self, mode: str) -> None:
+        self._mode = mode
+        self._member_start = None
+        self.remove_actor("groundplane", render=False)
+        if mode == "draw_node":
+            self._add_ground_plane()
+        self.render()
+
+    def _add_ground_plane(self) -> None:
+        import pyvista as pv
+        if self._model is not None and len(self._model.nodes):
+            _t, pts, _i = mg.node_points(self._model)
+            lo, hi = pts.min(axis=0), pts.max(axis=0)
+            cx, cy = (lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2
+            size = float(max(hi[0] - lo[0], hi[1] - lo[1])) * 2.0 + 10.0
+        else:
+            cx = cy = 0.0
+            size = 20.0
+        plane = pv.Plane(center=(cx, cy, 0.0), direction=(0.0, 0.0, 1.0),
+                         i_size=size, j_size=size)
+        self.add_mesh(plane, color="#9ec5ff", opacity=0.12, name="groundplane",
+                      pickable=True)
+
     def _on_point_picked(self, *args) -> None:
-        if self._model is None or self._pick_cb is None or not args:
+        if self._model is None or not args:
             return
         try:
             p = np.asarray(args[0], dtype=float).ravel()
@@ -48,9 +87,32 @@ class ModelView(QtInteractor):
             return
         if p.size < 3:
             return
+        p = p[:3]
+        if self._mode == "draw_node":
+            if self._add_node_cb is not None:
+                if self._snap_on:
+                    x = _snap(p[0], self._snap_grid)
+                    y = _snap(p[1], self._snap_grid)
+                else:
+                    x, y = round(float(p[0]), 3), round(float(p[1]), 3)
+                self._add_node_cb(x, y, 0.0)
+            return
         tol = max(mg.model_span(self._model) * 0.05, 0.15)
-        sel = mg.nearest_item(self._model, p[:3], tol)
-        if sel is not None:
+        sel = mg.nearest_item(self._model, p, tol)
+        if sel is None:
+            return
+        if self._mode == "draw_member":
+            if sel[0] != "node":
+                return
+            if self._member_start is None:
+                self._member_start = sel[1]
+                self.highlight("node", sel[1])
+            elif sel[1] != self._member_start:
+                if self._add_member_cb is not None:
+                    self._add_member_cb(self._member_start, sel[1])
+                self._member_start = None
+            return
+        if self._pick_cb is not None:
             self._pick_cb(*sel)
 
     def highlight(self, kind, ident) -> None:
@@ -103,6 +165,8 @@ class ModelView(QtInteractor):
         self.show_grid()
         self._frame(model)
         self._draw_highlight()
+        if self._mode == "draw_node":
+            self._add_ground_plane()
 
     def show_deformed(self, model, scale: float) -> None:
         """Draw the deformed shape (coral) over a grey ghost of the model."""
@@ -210,6 +274,10 @@ class ModelView(QtInteractor):
 
     def fit(self) -> None:
         self.reset_camera()
+
+
+def _snap(v, grid: float = 0.5) -> float:
+    return round(v / grid) * grid
 
 
 def _dcr_color(dcr) -> str:

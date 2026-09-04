@@ -10,17 +10,17 @@ from __future__ import annotations
 import copy
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction, QUndoStack
-from PySide6.QtWidgets import (QDockWidget, QFileDialog, QMainWindow,
-                               QMessageBox, QPlainTextEdit, QTreeWidget,
-                               QTreeWidgetItem)
+from PySide6.QtGui import QAction, QActionGroup, QUndoStack
+from PySide6.QtWidgets import (QDockWidget, QDoubleSpinBox, QFileDialog,
+                               QMainWindow, QMessageBox, QPlainTextEdit,
+                               QTreeWidget, QTreeWidgetItem)
 
 import model_geometry as mg
 from commands import EditCommand
 from editing import (LoadDialog, MemberDialog, NodeDialog, SectionDialog,
                      dof_labels)
 from model_view import ModelView
-from project import Material, Project, Section
+from project import Material, Member, Node, Project, Section
 from properties import PropertiesPanel
 
 
@@ -59,6 +59,8 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock_props)
         self.tree.currentItemChanged.connect(self._on_tree_selection)
         self.view.set_pick_callback(self._on_pick)
+        self.view.set_add_node_callback(self._draw_add_node)
+        self.view.set_add_member_callback(self._draw_add_member)
 
         self._build_menu()
         self.statusBar().showMessage("Ready")
@@ -72,6 +74,8 @@ class MainWindow(QMainWindow):
 
         self.act_new = _action(self, "&New", "Ctrl+N", self.new_project)
         self.act_new3d = _action(self, "New &3-D frame", None, self.new_project_3d)
+        self.act_gen = _action(self, "&Generate frame…", "Ctrl+G",
+                               self.generate_frame)
         self.act_open = _action(self, "&Open…", "Ctrl+O", self.open_project)
         self.act_save = _action(self, "&Save", "Ctrl+S", self.save_project)
         self.act_saveas = _action(self, "Save &As…", "Ctrl+Shift+S",
@@ -100,9 +104,32 @@ class MainWindow(QMainWindow):
         self.act_design.triggered.connect(self.show_design)
         self.act_drawings = _action(self, "&Drawings…", None, self.open_drawings)
 
+        self.act_select = QAction("&Select", self, checkable=True)
+        self.act_select.setChecked(True)
+        self.act_select.triggered.connect(lambda: self._set_mode("select"))
+        self.act_draw_node = QAction("Draw n&ode", self, checkable=True)
+        self.act_draw_node.triggered.connect(lambda: self._set_mode("draw_node"))
+        self.act_draw_member = QAction("Draw m&ember", self, checkable=True)
+        self.act_draw_member.triggered.connect(
+            lambda: self._set_mode("draw_member"))
+        self._mode_group = QActionGroup(self)
+        for a in (self.act_select, self.act_draw_node, self.act_draw_member):
+            self._mode_group.addAction(a)
+        self.act_snap = QAction("&Snap to grid", self, checkable=True)
+        self.act_snap.setChecked(True)
+        self.act_snap.toggled.connect(self._update_snap)
+        self.snap_spin = QDoubleSpinBox()
+        self.snap_spin.setRange(0.05, 10.0)
+        self.snap_spin.setSingleStep(0.05)
+        self.snap_spin.setDecimals(2)
+        self.snap_spin.setValue(0.5)
+        self.snap_spin.setPrefix("grid ")
+        self.snap_spin.setSuffix(" m")
+        self.snap_spin.valueChanged.connect(lambda _v: self._update_snap())
+
         file_menu = self.menuBar().addMenu("&File")
-        for a in (self.act_new, self.act_new3d, self.act_open, self.act_save,
-                  self.act_saveas):
+        for a in (self.act_new, self.act_new3d, self.act_gen, self.act_open,
+                  self.act_save, self.act_saveas):
             file_menu.addAction(a)
         edit_menu = self.menuBar().addMenu("&Edit")
         edit_menu.addAction(self.act_undo)
@@ -118,6 +145,11 @@ class MainWindow(QMainWindow):
         for a in (self.act_diag_n, self.act_diag_v, self.act_diag_m,
                   self.act_design):
             analysis_menu.addAction(a)
+        draw_menu = self.menuBar().addMenu("&Draw")
+        for a in (self.act_select, self.act_draw_node, self.act_draw_member):
+            draw_menu.addAction(a)
+        draw_menu.addSeparator()
+        draw_menu.addAction(self.act_snap)
         view_menu = self.menuBar().addMenu("&View")
         view_menu.addAction(self.act_fit)
         view_menu.addAction(self.act_drawings)
@@ -126,10 +158,14 @@ class MainWindow(QMainWindow):
         for a in (self.act_open, self.act_save, None, self.act_undo,
                   self.act_redo, None, self.act_add_node, self.act_add_member,
                   self.act_add_section, self.act_add_load, self.act_delete,
-                  None, self.act_run, self.act_undef, self.act_diag_n,
-                  self.act_diag_v, self.act_diag_m, self.act_design, None,
-                  self.act_fit, self.act_drawings):
+                  None, self.act_select, self.act_draw_node,
+                  self.act_draw_member, None, self.act_run, self.act_undef,
+                  self.act_diag_n, self.act_diag_v, self.act_diag_m,
+                  self.act_design, None, self.act_fit, self.act_drawings):
             tb.addSeparator() if a is None else tb.addAction(a)
+        tb.addSeparator()
+        tb.addAction(self.act_snap)
+        tb.addWidget(self.snap_spin)
 
     # ---------------------------------------------------------------- analysis
     def _solve(self):
@@ -227,6 +263,13 @@ class MainWindow(QMainWindow):
     def new_project_3d(self) -> None:
         from demo_model import demo_project_3d
         self.load_project(demo_project_3d(), None)
+
+    def generate_frame(self) -> None:
+        import generators
+        from editing import FrameDialog
+        params = FrameDialog.get(self)
+        if params is not None:
+            self.load_project(generators.frame(**params), None)
 
     def open_project(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
@@ -393,6 +436,37 @@ class MainWindow(QMainWindow):
 
     def _on_pick(self, kind, ident) -> None:
         self._select((kind, ident))
+
+    def _update_snap(self, *_) -> None:
+        self.view.set_snap(self.act_snap.isChecked(), self.snap_spin.value())
+
+    def _set_mode(self, mode: str) -> None:
+        self.view.set_mode(mode)
+        hints = {
+            "select": "Select — click a node or member to select it.",
+            "draw_node": "Draw node — click the ground plane to place nodes "
+                         "(snapped to 0.5 m).",
+            "draw_member": "Draw member — click two nodes to connect them."}
+        self.statusBar().showMessage(hints.get(mode, ""))
+
+    def _draw_add_node(self, x, y, z) -> None:
+        nid = max((n.id for n in self._project.nodes), default=0) + 1
+        node = Node(id=nid, x=float(x), y=float(y), z=float(z))
+        self._apply_edit("Draw node",
+                         lambda: self._project.nodes.append(node),
+                         ("node", nid))
+
+    def _draw_add_member(self, n1, n2) -> None:
+        p = self._project
+        if not p.sections or not p.materials:
+            QMessageBox.information(self, "Draw member",
+                                    "Add a section and material first.")
+            return
+        mid = max((m.id for m in p.members), default=0) + 1
+        member = Member(id=mid, n1=n1, n2=n2, section=p.sections[0].id,
+                        material=p.materials[0].id)
+        self._apply_edit("Draw member",
+                         lambda: p.members.append(member), ("member", mid))
 
     def _apply_from_inspector(self, kind, key, new) -> None:
         p = self._project

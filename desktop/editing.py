@@ -294,3 +294,71 @@ def _buttons(dialog: QDialog) -> QDialogButtonBox:
     bb.accepted.connect(dialog.accept)
     bb.rejected.connect(dialog.reject)
     return bb
+
+
+def _int_spin(value, lo, hi):
+    s = QSpinBox()
+    s.setRange(lo, hi)
+    s.setValue(value)
+    return s
+
+
+def _len_spin(value):
+    s = QDoubleSpinBox()
+    s.setRange(0.1, 1000.0)
+    s.setDecimals(2)
+    s.setSingleStep(0.5)
+    s.setValue(value)
+    return s
+
+
+class FrameDialog(QDialog):
+    """Parameters for a regular building frame (2-D or 3-D space frame)."""
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setWindowTitle("Generate frame")
+        form = QFormLayout(self)
+
+        from PySide6.QtWidgets import QCheckBox
+        self.threed = QCheckBox("3-D space frame")
+        self.threed.toggled.connect(self._toggle)
+        form.addRow(self.threed)
+
+        self.bays_x = _int_spin(3, 1, 500)
+        self.bay_x = _len_spin(6.0)
+        form.addRow("Bays (X)", self.bays_x)
+        form.addRow(f"Bay width X [m]", self.bay_x)
+        self.bays_y = _int_spin(2, 1, 500)
+        self.bay_y = _len_spin(6.0)
+        form.addRow("Bays (Y)", self.bays_y)
+        form.addRow("Bay width Y [m]", self.bay_y)
+        self.storeys = _int_spin(3, 1, 500)
+        self.storey_h = _len_spin(3.5)
+        form.addRow("Storeys", self.storeys)
+        form.addRow("Storey height [m]", self.storey_h)
+
+        self.shape = QComboBox()
+        for d in _designations():
+            self.shape.addItem(d, d)
+        _select(self.shape, "W12x65")
+        form.addRow("AISC shape", self.shape)
+
+        form.addRow(_buttons(self))
+        self._toggle(False)
+
+    def _toggle(self, on) -> None:
+        self.bays_y.setEnabled(on)
+        self.bay_y.setEnabled(on)
+
+    def params(self) -> dict:
+        td = self.threed.isChecked()
+        return dict(bays_x=self.bays_x.value(), bay_x=self.bay_x.value(),
+                    storeys=self.storeys.value(), storey_h=self.storey_h.value(),
+                    bays_y=self.bays_y.value() if td else 0,
+                    bay_y=self.bay_y.value(), shape=self.shape.currentData())
+
+    @classmethod
+    def get(cls, parent):
+        dlg = cls(parent)
+        return dlg.params() if dlg.exec() else None
