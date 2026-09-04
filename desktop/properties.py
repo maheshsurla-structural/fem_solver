@@ -15,9 +15,10 @@ from project import Load, Member, Node, Section
 
 
 class PropertiesPanel(QWidget):
-    def __init__(self, on_apply, parent=None):
+    def __init__(self, on_apply, on_bulk, parent=None):
         super().__init__(parent)
         self._on_apply = on_apply           # callback(kind, key, new_item)
+        self._on_bulk = on_bulk             # callback(kind, ids, payload)
         self._project = None
         self._outer = QVBoxLayout(self)
         self._outer.setContentsMargins(8, 8, 8, 8)
@@ -43,6 +44,53 @@ class PropertiesPanel(QWidget):
         builder = {"node": self._node_form, "member": self._member_form,
                    "section": self._section_form, "load": self._load_form}[kind]
         self._swap(builder(key, item))
+
+    def show_multi(self, project, refs) -> None:
+        """Summary + bulk-edit controls for a multi-selection."""
+        self._project = project
+        node_ids = [k for (t, k) in refs if t == "node"]
+        member_ids = [k for (t, k) in refs if t == "member"]
+        counts = [f"{len(ids)} {label}" for label, ids in (
+            ("nodes", node_ids), ("members", member_ids),
+            ("sections", [k for t, k in refs if t == "section"]),
+            ("loads", [k for t, k in refs if t == "load"])) if ids]
+
+        w = QWidget()
+        form = QFormLayout(w)
+        head = QLabel("Selected: " + ", ".join(counts))
+        head.setStyleSheet("font-weight:600;")
+        form.addRow(head)
+
+        if member_ids:
+            sec = _pair_combo([(s.id, f"{s.id}: {s.name}")
+                               for s in project.sections], None)
+            mat = _pair_combo([(m.id, f"{m.id}: {m.name}")
+                               for m in project.materials], None)
+            form.addRow(QLabel("Assign to members:"))
+            form.addRow("Section", sec)
+            form.addRow("Material", mat)
+            btn = QPushButton(f"Apply to {len(member_ids)} members")
+            btn.clicked.connect(lambda: self._on_bulk(
+                "member", list(member_ids),
+                {"section": sec.currentData(), "material": mat.currentData()}))
+            form.addRow(btn)
+
+        if node_ids:
+            boxes, row = [], QWidget()
+            hl = QHBoxLayout(row)
+            hl.setContentsMargins(0, 0, 0, 0)
+            for lbl in dof_labels(project.ndm, project.ndf):
+                cb = QCheckBox(lbl)
+                boxes.append(cb)
+                hl.addWidget(cb)
+            form.addRow(QLabel("Set node fixity:"))
+            form.addRow("Fixity", row)
+            btn = QPushButton(f"Apply to {len(node_ids)} nodes")
+            btn.clicked.connect(lambda: self._on_bulk(
+                "node", list(node_ids),
+                {"supports": tuple(1 if b.isChecked() else 0 for b in boxes)}))
+            form.addRow(btn)
+        self._swap(w)
 
     # -------------------------------------------------------------- internals
     def _swap(self, widget) -> None:

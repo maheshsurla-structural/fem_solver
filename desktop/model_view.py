@@ -39,7 +39,8 @@ class ModelView(QtInteractor):
         self._region_cb = None
         self._rubber = None
         self._band_origin = None
-        self._highlight = None
+        self._band_additive = False
+        self._highlight = []
         try:
             self.enable_point_picking(callback=self._on_point_picked,
                                       left_clicking=True, show_message=False,
@@ -68,6 +69,9 @@ class ModelView(QtInteractor):
     def mousePressEvent(self, ev):
         if self._mode == "window" and ev.button() == Qt.MouseButton.LeftButton:
             self._band_origin = ev.position().toPoint()
+            self._band_additive = bool(ev.modifiers() & (
+                Qt.KeyboardModifier.ShiftModifier
+                | Qt.KeyboardModifier.ControlModifier))
             if self._rubber is None:
                 self._rubber = QRubberBand(QRubberBand.Shape.Rectangle, self)
             self._rubber.setGeometry(QRect(self._band_origin, QSize()))
@@ -91,7 +95,7 @@ class ModelView(QtInteractor):
             if self._rubber is not None:
                 self._rubber.hide()
             if rect.width() > 3 and rect.height() > 3:
-                self._window_select(rect)
+                self._window_select(rect, self._band_additive)
             return
         super().mouseReleaseEvent(ev)
 
@@ -104,7 +108,7 @@ class ModelView(QtInteractor):
         dpr = self.devicePixelRatioF() or 1.0
         return dx / dpr, self.height() - dy / dpr
 
-    def _window_select(self, rect) -> None:
+    def _window_select(self, rect, additive=False) -> None:
         if self._model is None or self._region_cb is None:
             return
         inside = {}
@@ -116,7 +120,7 @@ class ModelView(QtInteractor):
             nt = e.node_tags
             if len(nt) == 2 and inside.get(nt[0]) and inside.get(nt[1]):
                 refs.append(("member", tag))
-        self._region_cb(refs)
+        self._region_cb(refs, additive)
 
     def set_mode(self, mode: str) -> None:
         self._mode = mode
@@ -169,7 +173,7 @@ class ModelView(QtInteractor):
                 return
             if self._member_start is None:
                 self._member_start = sel[1]
-                self.highlight("node", sel[1])
+                self.highlight([("node", sel[1])])
             elif sel[1] != self._member_start:
                 if self._add_member_cb is not None:
                     self._add_member_cb(self._member_start, sel[1])
@@ -178,30 +182,40 @@ class ModelView(QtInteractor):
         if self._pick_cb is not None:
             self._pick_cb(*sel)
 
-    def highlight(self, kind, ident) -> None:
-        self._highlight = (kind, ident)
+    def highlight(self, items) -> None:
+        """Highlight a set of [(kind, id), …] — all selected nodes + members."""
+        self._highlight = [tuple(it) for it in items]
         self._draw_highlight()
 
     def clear_highlight(self) -> None:
-        self._highlight = None
-        self.remove_actor("selection", render=True)
+        self._highlight = []
+        self.remove_actor("selection", render=False)
+        self.remove_actor("selection_nodes", render=True)
 
     def _draw_highlight(self) -> None:
         self.remove_actor("selection", render=False)
-        if self._highlight is None or self._model is None:
+        self.remove_actor("selection_nodes", render=False)
+        if not self._highlight or self._model is None:
+            self.render()
             return
-        kind, ident = self._highlight
+        import pyvista as pv
         span = mg.model_span(self._model)
-        if kind == "node" and ident in self._model.nodes:
-            pt = np.asarray(mg.to_xyz(self._model.nodes[ident].coords))
-            self.add_points(pt.reshape(1, 3), color=SELECTION_COLOR,
-                            render_points_as_spheres=True, point_size=22,
-                            name="selection")
-        elif kind == "member" and ident in self._model.elements:
-            line = mg.element_line(self._model.element(ident))
-            if line is not None:
-                self.add_mesh(line.tube(radius=max(span * 0.006, 2e-3)),
-                              color=SELECTION_COLOR, name="selection")
+        pts, lines = [], []
+        for kind, ident in self._highlight:
+            if kind == "node" and ident in self._model.nodes:
+                pts.append(mg.to_xyz(self._model.nodes[ident].coords))
+            elif kind == "member" and ident in self._model.elements:
+                line = mg.element_line(self._model.element(ident))
+                if line is not None:
+                    lines.append(line)
+        if lines:
+            merged = lines[0] if len(lines) == 1 else pv.merge(lines)
+            self.add_mesh(merged.tube(radius=max(span * 0.006, 2e-3)),
+                          color=SELECTION_COLOR, name="selection")
+        if pts:
+            self.add_points(np.asarray(pts, dtype=float), color=SELECTION_COLOR,
+                            render_points_as_spheres=True, point_size=20,
+                            name="selection_nodes")
         self.render()
 
     def set_model(self, model) -> None:

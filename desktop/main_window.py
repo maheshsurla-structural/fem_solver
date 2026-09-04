@@ -9,12 +9,14 @@ from __future__ import annotations
 
 import copy
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QItemSelectionModel, Qt
 from PySide6.QtGui import QAction, QActionGroup, QUndoStack
-from PySide6.QtWidgets import (QAbstractItemView, QDockWidget, QDoubleSpinBox,
-                               QFileDialog, QMainWindow, QMessageBox,
-                               QPlainTextEdit, QTreeWidget, QTreeWidgetItem)
+from PySide6.QtWidgets import (QAbstractItemView, QApplication, QDockWidget,
+                               QDoubleSpinBox, QFileDialog, QMainWindow,
+                               QMessageBox, QPlainTextEdit, QTreeWidget,
+                               QTreeWidgetItem)
 
+import icons
 import model_geometry as mg
 from commands import EditCommand
 from editing import (LoadDialog, MemberDialog, NodeDialog, SectionDialog,
@@ -53,13 +55,14 @@ class MainWindow(QMainWindow):
         dock_log.setWidget(self.log)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, dock_log)
 
-        self.props = PropertiesPanel(self._apply_from_inspector, self)
+        self.props = PropertiesPanel(self._apply_from_inspector,
+                                     self._apply_bulk, self)
         dock_props = QDockWidget("Properties", self)
         dock_props.setWidget(self.props)
         dock_props.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea
                                    | Qt.DockWidgetArea.RightDockWidgetArea)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock_props)
-        self.tree.currentItemChanged.connect(self._on_tree_selection)
+        self.tree.itemSelectionChanged.connect(self._on_selection_changed)
         self.view.set_pick_callback(self._on_pick)
         self.view.set_add_node_callback(self._draw_add_node)
         self.view.set_add_member_callback(self._draw_add_member)
@@ -75,71 +78,86 @@ class MainWindow(QMainWindow):
         self.act_redo = self._undo_stack.createRedoAction(self, "&Redo")
         self.act_redo.setShortcut("Ctrl+Y")
 
-        self.act_new = _action(self, "&New", "Ctrl+N", self.new_project)
-        self.act_new3d = _action(self, "New &3-D frame", None, self.new_project_3d)
+        self.act_new = _action(self, "&New", "Ctrl+N", self.new_project, "new")
+        self.act_new3d = _action(self, "New &3-D frame", None,
+                                 self.new_project_3d, "new3d")
         self.act_gen = _action(self, "&Generate frame…", "Ctrl+G",
-                               self.generate_frame)
-        self.act_open = _action(self, "&Open…", "Ctrl+O", self.open_project)
-        self.act_save = _action(self, "&Save", "Ctrl+S", self.save_project)
+                               self.generate_frame, "frame")
+        self.act_open = _action(self, "&Open…", "Ctrl+O", self.open_project,
+                                "open")
+        self.act_save = _action(self, "&Save", "Ctrl+S", self.save_project,
+                                "save")
         self.act_saveas = _action(self, "Save &As…", "Ctrl+Shift+S",
-                                  self.save_project_as)
+                                  self.save_project_as, "save")
 
         self.act_add_node = _action(self, "Add &node…", "Ctrl+Shift+N",
-                                    self.add_node)
+                                    self.add_node, "node")
         self.act_add_member = _action(self, "Add &member…", "Ctrl+Shift+M",
-                                      self.add_member)
-        self.act_add_load = _action(self, "Add &load…", None, self.add_load)
+                                      self.add_member, "member")
+        self.act_add_load = _action(self, "Add &load…", None, self.add_load,
+                                    "load")
         self.act_add_section = _action(self, "Add &section…", None,
-                                       self.add_section)
+                                       self.add_section, "section")
         self.act_genloads = _action(self, "Generate &loads…", None,
-                                    self.generate_loads)
-        self.act_delete = _action(self, "&Delete", "Del", self.delete_selected)
-        self.act_move = _action(self, "&Move…", None, self.move_selected)
-        self.act_copy = _action(self, "Cop&y / array…", None, self.copy_selected)
+                                    self.generate_loads, "loadsgen")
+        self.act_delete = _action(self, "&Delete", "Del", self.delete_selected,
+                                  "delete")
+        self.act_move = _action(self, "&Move…", None, self.move_selected, "move")
+        self.act_copy = _action(self, "Cop&y / array…", None, self.copy_selected,
+                                "copy")
 
         self.act_run = _action(self, "&Run (linear static)", "Ctrl+R",
-                               self.run_linear_static)
-        self.act_undef = _action(self, "&Undeformed", None, self._show_undeformed)
-        self.act_fit = _action(self, "&Fit", "F", self.view.fit)
+                               self.run_linear_static, "run")
+        self.act_undef = _action(self, "&Undeformed", None,
+                                 self._show_undeformed, "undeformed")
+        self.act_fit = _action(self, "&Fit", "F", self.view.fit, "fit")
 
-        def _v(text, name):
+        def _v(text, name, icon_name):
             return _action(self, text, None,
-                           lambda *_a, n=name: self.view.set_view(n))
-        self.act_v_iso = _v("&Isometric", "iso")
-        self.act_v_top = _v("&Top", "top")
-        self.act_v_bottom = _v("&Bottom", "bottom")
-        self.act_v_front = _v("Fro&nt", "front")
-        self.act_v_back = _v("Bac&k", "back")
-        self.act_v_left = _v("&Left", "left")
-        self.act_v_right = _v("&Right", "right")
+                           lambda *_a, n=name: self.view.set_view(n), icon_name)
+        self.act_v_iso = _v("&Isometric", "iso", "iso")
+        self.act_v_top = _v("&Top", "top", "top")
+        self.act_v_bottom = _v("&Bottom", "bottom", "top")
+        self.act_v_front = _v("Fro&nt", "front", "front")
+        self.act_v_back = _v("Bac&k", "back", "front")
+        self.act_v_left = _v("&Left", "left", "front")
+        self.act_v_right = _v("&Right", "right", "front")
         self.act_deselect = _action(self, "Deselect &all", "Escape",
-                                    self.deselect_all)
+                                    self.deselect_all, "deselect")
 
-        self.act_diag_n = QAction("Axial &N", self)
+        self.act_diag_n = QAction(icons.icon("axial"), "Axial &N", self)
         self.act_diag_n.triggered.connect(lambda *_: self.show_diagram("N"))
-        self.act_diag_v = QAction("Shear &V", self)
+        self.act_diag_v = QAction(icons.icon("shear"), "Shear &V", self)
         self.act_diag_v.triggered.connect(lambda *_: self.show_diagram("V"))
-        self.act_diag_m = QAction("Moment &M", self)
+        self.act_diag_m = QAction(icons.icon("moment"), "Moment &M", self)
         self.act_diag_m.triggered.connect(lambda *_: self.show_diagram("M"))
-        self.act_design = QAction("&Design (DCR)", self)
+        self.act_design = QAction(icons.icon("design"), "&Design (DCR)", self)
         self.act_design.triggered.connect(self.show_design)
-        self.act_drawings = _action(self, "&Drawings…", None, self.open_drawings)
+        self.act_drawings = _action(self, "&Drawings…", None, self.open_drawings,
+                                    "drawings")
 
-        self.act_select = QAction("&Single select", self, checkable=True)
+        self.act_select = QAction(icons.icon("single"), "&Single select", self)
+        self.act_select.setCheckable(True)
         self.act_select.setChecked(True)
         self.act_select.triggered.connect(lambda: self._set_mode("select"))
-        self.act_sel_window = QAction("&Window select", self, checkable=True)
+        self.act_sel_window = QAction(icons.icon("window"), "&Window select",
+                                      self)
+        self.act_sel_window.setCheckable(True)
         self.act_sel_window.triggered.connect(lambda: self._set_mode("window"))
-        self.act_draw_node = QAction("Draw n&ode", self, checkable=True)
+        self.act_draw_node = QAction(icons.icon("drawnode"), "Draw n&ode", self)
+        self.act_draw_node.setCheckable(True)
         self.act_draw_node.triggered.connect(lambda: self._set_mode("draw_node"))
-        self.act_draw_member = QAction("Draw m&ember", self, checkable=True)
+        self.act_draw_member = QAction(icons.icon("drawmember"), "Draw m&ember",
+                                       self)
+        self.act_draw_member.setCheckable(True)
         self.act_draw_member.triggered.connect(
             lambda: self._set_mode("draw_member"))
         self._mode_group = QActionGroup(self)
         for a in (self.act_select, self.act_sel_window, self.act_draw_node,
                   self.act_draw_member):
             self._mode_group.addAction(a)
-        self.act_snap = QAction("&Snap to grid", self, checkable=True)
+        self.act_snap = QAction(icons.icon("snap"), "&Snap to grid", self)
+        self.act_snap.setCheckable(True)
         self.act_snap.setChecked(True)
         self.act_snap.toggled.connect(self._update_snap)
         self.snap_spin = QDoubleSpinBox()
@@ -196,22 +214,30 @@ class MainWindow(QMainWindow):
         view_menu.addSeparator()
         view_menu.addAction(self.act_drawings)
 
-        tb = self.addToolBar("Main")
-        for a in (self.act_open, self.act_save, None, self.act_undo,
-                  self.act_redo, None, self.act_gen, self.act_genloads, None,
-                  self.act_add_node, self.act_add_member,
-                  self.act_add_section, self.act_add_load, self.act_delete,
-                  self.act_move, self.act_copy,
-                  None, self.act_select, self.act_sel_window, self.act_draw_node,
-                  self.act_draw_member, self.act_deselect, None, self.act_run,
-                  self.act_undef,
-                  self.act_diag_n, self.act_diag_v, self.act_diag_m,
-                  self.act_design, None, self.act_fit, self.act_v_iso,
-                  self.act_v_top, self.act_v_front, self.act_drawings):
-            tb.addSeparator() if a is None else tb.addAction(a)
-        tb.addSeparator()
-        tb.addAction(self.act_snap)
-        tb.addWidget(self.snap_spin)
+        self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+
+        def _toolbar(name, items):
+            tb = self.addToolBar(name)
+            for a in items:
+                tb.addSeparator() if a is None else tb.addAction(a)
+            return tb
+
+        _toolbar("File", (self.act_new, self.act_open, self.act_save))
+        _toolbar("Edit", (self.act_undo, self.act_redo, None, self.act_add_node,
+                          self.act_add_member, self.act_add_section,
+                          self.act_add_load, self.act_delete, None,
+                          self.act_move, self.act_copy))
+        _toolbar("Generate", (self.act_gen, self.act_genloads))
+        _toolbar("Select", (self.act_select, self.act_sel_window,
+                            self.act_deselect))
+        tb_draw = _toolbar("Draw", (self.act_draw_node, self.act_draw_member,
+                                    self.act_snap))
+        tb_draw.addWidget(self.snap_spin)
+        _toolbar("Analysis", (self.act_run, self.act_undef, None,
+                              self.act_diag_n, self.act_diag_v, self.act_diag_m,
+                              self.act_design))
+        _toolbar("View", (self.act_fit, self.act_v_iso, self.act_v_top,
+                          self.act_v_front, None, self.act_drawings))
 
     # ---------------------------------------------------------------- analysis
     def _solve(self):
@@ -492,20 +518,32 @@ class MainWindow(QMainWindow):
                 del p.loads[key]
         self._apply_edit(f"Delete {kind}", mutate)
 
-    def _on_tree_selection(self, current, _previous) -> None:
-        ref = current.data(0, Qt.ItemDataRole.UserRole) if current else None
-        if not ref:
-            self.props.clear_selection()
-            self.view.clear_highlight()
-            return
-        self.props.show_item(self._project, ref[0], ref[1])
-        if ref[0] in ("node", "member"):
-            self.view.highlight(ref[0], ref[1])
+    def _on_selection_changed(self) -> None:
+        refs = self._selected_refs()
+        geom = [r for r in refs if r[0] in ("node", "member")]
+        if geom:
+            self.view.highlight(geom)
         else:
             self.view.clear_highlight()
+        if not refs:
+            self.props.clear_selection()
+        elif len(refs) == 1:
+            self.props.show_item(self._project, refs[0][0], refs[0][1])
+        else:
+            self.props.show_multi(self._project, refs)
 
     def _on_pick(self, kind, ident) -> None:
-        self._select((kind, ident))
+        additive = bool(QApplication.keyboardModifiers() & (
+            Qt.KeyboardModifier.ShiftModifier
+            | Qt.KeyboardModifier.ControlModifier))
+        if not additive:
+            self._select((kind, ident))
+            return
+        item = self._find_item((kind, ident))
+        if item is not None:
+            item.setSelected(not item.isSelected())
+            self.tree.setCurrentItem(
+                item, 0, QItemSelectionModel.SelectionFlag.NoUpdate)
 
     def _selected_refs(self):
         refs = []
@@ -574,8 +612,11 @@ class MainWindow(QMainWindow):
             "draw_member": "Draw member — click two nodes to connect them."}
         self.statusBar().showMessage(hints.get(mode, ""))
 
-    def _on_region_select(self, refs) -> None:
+    def _on_region_select(self, refs, additive=False) -> None:
         targets = {tuple(r) for r in refs}
+        if additive:
+            targets |= set(self._selected_refs())
+        self.tree.blockSignals(True)
         self.tree.clearSelection()
         first = None
         for i in range(self.tree.topLevelItemCount()):
@@ -586,7 +627,10 @@ class MainWindow(QMainWindow):
                     child.setSelected(True)
                     first = first or child
         if first:
-            self.tree.setCurrentItem(first)
+            self.tree.setCurrentItem(
+                first, 0, QItemSelectionModel.SelectionFlag.NoUpdate)
+        self.tree.blockSignals(False)
+        self._on_selection_changed()
         self.statusBar().showMessage(f"Selected {len(targets)} item(s)")
 
     def _draw_add_node(self, x, y, z) -> None:
@@ -625,6 +669,29 @@ class MainWindow(QMainWindow):
             self._apply_edit("Edit load",
                              lambda: p.loads.__setitem__(key, new),
                              ("load", key))
+
+    def _apply_bulk(self, kind, ids, payload) -> None:
+        p = self._project
+        idset = set(ids)
+        if kind == "member":
+            sec, mat = payload["section"], payload["material"]
+
+            def mutate():
+                for m in p.members:
+                    if m.id in idset:
+                        m.section = sec
+                        m.material = mat
+            self._apply_edit(f"Set section/material ({len(ids)} members)",
+                             mutate)
+        elif kind == "node":
+            sup = payload["supports"]
+            sup = sup if any(sup) else ()
+
+            def mutate():
+                for n in p.nodes:
+                    if n.id in idset:
+                        n.supports = sup
+            self._apply_edit(f"Set fixity ({len(ids)} nodes)", mutate)
 
     # --------------------------------------------------------------- internals
     def _apply_edit(self, text, mutate, select=None) -> None:
@@ -688,22 +755,33 @@ class MainWindow(QMainWindow):
         for grp in (nodes, members, sections, loads):
             grp.setExpanded(True)
 
-    def _select(self, ref) -> None:
+    def _find_item(self, ref):
         target = tuple(ref)
         for i in range(self.tree.topLevelItemCount()):
             grp = self.tree.topLevelItem(i)
             for j in range(grp.childCount()):
                 child = grp.child(j)
                 if child.data(0, Qt.ItemDataRole.UserRole) == target:
-                    self.tree.setCurrentItem(child)
-                    return
+                    return child
+        return None
+
+    def _select(self, ref) -> None:
+        item = self._find_item(ref)
+        if item is not None:
+            self.tree.clearSelection()
+            item.setSelected(True)
+            self.tree.setCurrentItem(item)
 
 
-def _action(parent, text, shortcut, slot) -> QAction:
+def _action(parent, text, shortcut, slot, icon_name=None) -> QAction:
     act = QAction(text, parent)
+    if icon_name:
+        act.setIcon(icons.icon(icon_name))
     if shortcut:
         act.setShortcut(shortcut)
     act.triggered.connect(slot)
+    label = text.replace("&", "").rstrip("…")
+    act.setToolTip(f"{label}  ({shortcut})" if shortcut else label)
     return act
 
 
