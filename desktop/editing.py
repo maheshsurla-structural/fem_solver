@@ -424,11 +424,11 @@ class MoveDialog(QDialog):
 
 
 class CopyDialog(QDialog):
-    """Offset vector + copy count for arraying the selection."""
+    """Offset vector + copy count for arraying (or extruding) the selection."""
 
-    def __init__(self, parent, project):
+    def __init__(self, parent, project, title="Copy / array selection"):
         super().__init__(parent)
-        self.setWindowTitle("Copy / array selection")
+        self.setWindowTitle(title)
         form = QFormLayout(self)
         self.dx, self.dy = _coord_spin(0.0), _coord_spin(0.0)
         form.addRow(f"dx [{project.length_unit}]", self.dx)
@@ -445,6 +445,70 @@ class CopyDialog(QDialog):
         return (self.dx.value(), self.dy.value(),
                 self.dz.value() if self.dz is not None else 0.0,
                 self.count.value())
+
+    @classmethod
+    def get(cls, parent, project, title="Copy / array selection"):
+        dlg = cls(parent, project, title)
+        return dlg.data() if dlg.exec() else None
+
+
+class MirrorDialog(QDialog):
+    """Mirror plane (axis = coord) for reflecting the selection."""
+
+    def __init__(self, parent, project):
+        super().__init__(parent)
+        self.setWindowTitle("Mirror selection")
+        form = QFormLayout(self)
+        self.axis = QComboBox()
+        for a in (["X", "Y"] if project.ndm == 2 else ["X", "Y", "Z"]):
+            self.axis.addItem(f"{a} = constant plane", a)
+        form.addRow("Mirror plane", self.axis)
+        self.coord = _coord_spin(0.0)
+        form.addRow(f"Plane coordinate [{project.length_unit}]", self.coord)
+        form.addRow(_buttons(self))
+
+    def data(self):
+        return (self.axis.currentData(), self.coord.value())
+
+    @classmethod
+    def get(cls, parent, project):
+        dlg = cls(parent, project)
+        return dlg.data() if dlg.exec() else None
+
+
+class RotateDialog(QDialog):
+    """Axis, center and angle for rotating the selection in place."""
+
+    def __init__(self, parent, project):
+        super().__init__(parent)
+        self.setWindowTitle("Rotate selection")
+        self._three_d = project.ndm == 3
+        form = QFormLayout(self)
+        self.axis = QComboBox()
+        if self._three_d:
+            for a in ("Z", "X", "Y"):
+                self.axis.addItem(f"about {a} axis", a)
+            form.addRow("Axis", self.axis)
+        self.cx = _coord_spin(0.0)
+        self.cy = _coord_spin(0.0)
+        form.addRow(f"Center x [{project.length_unit}]", self.cx)
+        form.addRow(f"Center y [{project.length_unit}]", self.cy)
+        self.cz = None
+        if self._three_d:
+            self.cz = _coord_spin(0.0)
+            form.addRow(f"Center z [{project.length_unit}]", self.cz)
+        self.angle = QDoubleSpinBox()
+        self.angle.setRange(-360.0, 360.0)
+        self.angle.setDecimals(1)
+        self.angle.setSuffix(" °")
+        form.addRow("Angle", self.angle)
+        form.addRow(_buttons(self))
+
+    def data(self):
+        axis = self.axis.currentData() if self._three_d else "Z"
+        center = (self.cx.value(), self.cy.value(),
+                  self.cz.value() if self.cz is not None else 0.0)
+        return (axis, center, self.angle.value())
 
     @classmethod
     def get(cls, parent, project):

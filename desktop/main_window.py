@@ -105,6 +105,12 @@ class MainWindow(QMainWindow):
         self.act_move = _action(self, "&Move…", None, self.move_selected, "move")
         self.act_copy = _action(self, "Cop&y / array…", None, self.copy_selected,
                                 "copy")
+        self.act_mirror = _action(self, "Mirro&r…", None, self.mirror_selected,
+                                  "mirror")
+        self.act_rotate = _action(self, "Ro&tate…", None, self.rotate_selected,
+                                  "rotate")
+        self.act_extrude = _action(self, "E&xtrude…", None, self.extrude_selected,
+                                   "extrude")
 
         self.act_run = _action(self, "&Run (linear static)", "Ctrl+R",
                                self.run_linear_static, "run")
@@ -184,6 +190,9 @@ class MainWindow(QMainWindow):
         edit_menu.addAction(self.act_deselect)
         edit_menu.addAction(self.act_move)
         edit_menu.addAction(self.act_copy)
+        edit_menu.addAction(self.act_mirror)
+        edit_menu.addAction(self.act_rotate)
+        edit_menu.addAction(self.act_extrude)
         gen_menu = self.menuBar().addMenu("&Generate")
         gen_menu.addAction(self.act_gen)
         gen_menu.addAction(self.act_genloads)
@@ -226,7 +235,8 @@ class MainWindow(QMainWindow):
         _toolbar("Edit", (self.act_undo, self.act_redo, None, self.act_add_node,
                           self.act_add_member, self.act_add_section,
                           self.act_add_load, self.act_delete, None,
-                          self.act_move, self.act_copy))
+                          self.act_move, self.act_copy, self.act_mirror,
+                          self.act_rotate, self.act_extrude))
         _toolbar("Generate", (self.act_gen, self.act_genloads))
         _toolbar("Select", (self.act_select, self.act_sel_window,
                             self.act_deselect))
@@ -591,6 +601,63 @@ class MainWindow(QMainWindow):
         dx, dy, dz, count = res
         self._apply_edit(f"Copy x{count}", lambda: transforms.copy_selection(
             self._project, node_ids, member_ids, dx, dy, dz, count))
+
+    def _sel_nodes_members(self):
+        refs = self._selected_refs()
+        node_ids = {rid for (k, rid) in refs if k == "node"}
+        member_ids = {rid for (k, rid) in refs if k == "member"}
+        mem = {m.id: m for m in self._project.members}
+        for mid in member_ids:
+            if mid in mem:
+                node_ids.update((mem[mid].n1, mem[mid].n2))
+        return node_ids, member_ids
+
+    def mirror_selected(self) -> None:
+        node_ids, member_ids = self._sel_nodes_members()
+        if not node_ids and not member_ids:
+            QMessageBox.information(self, "Mirror", "Select nodes or members "
+                                   "first (Ctrl-click for several).")
+            return
+        from editing import MirrorDialog
+        import transforms
+        res = MirrorDialog.get(self, self._project)
+        if res is None:
+            return
+        axis, coord = res
+        self._apply_edit("Mirror", lambda: transforms.mirror_selection(
+            self._project, node_ids, member_ids, axis, coord))
+
+    def rotate_selected(self) -> None:
+        node_ids, _member_ids = self._sel_nodes_members()
+        if not node_ids:
+            QMessageBox.information(self, "Rotate", "Select nodes or members "
+                                   "first (Ctrl-click for several).")
+            return
+        from editing import RotateDialog
+        import transforms
+        res = RotateDialog.get(self, self._project)
+        if res is None:
+            return
+        axis, center, angle = res
+        self._apply_edit("Rotate", lambda: transforms.rotate_selection(
+            self._project, node_ids, axis, center, angle))
+
+    def extrude_selected(self) -> None:
+        node_ids, member_ids = self._sel_nodes_members()
+        if not node_ids and not member_ids:
+            QMessageBox.information(self, "Extrude", "Select nodes or members "
+                                   "first (Ctrl-click for several).")
+            return
+        from editing import CopyDialog
+        import transforms
+        res = CopyDialog.get(self, self._project, "Extrude selection")
+        if res is None:
+            return
+        dx, dy, dz, count = res
+        self._apply_edit(f"Extrude x{count}",
+                         lambda: transforms.extrude_selection(
+                             self._project, node_ids, member_ids,
+                             dx, dy, dz, count))
 
     def deselect_all(self) -> None:
         self.tree.clearSelection()

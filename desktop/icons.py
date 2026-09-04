@@ -35,6 +35,13 @@ _ICONS = {
             'M21 12l-2.5-2.5M21 12l-2.5 2.5"/>',
     "copy": '<rect x="4" y="4" width="12" height="12" rx="2"/>'
             '<rect x="9" y="9" width="12" height="12" rx="2"/>',
+    "mirror": '<path d="M12 3v18" stroke-dasharray="3 2.5"/>'
+              '<path d="M9 8l-4 4 4 4z" fill="{c}" stroke="none"/>'
+              '<path d="M15 8l4 4-4 4z" fill="{c}" stroke="none"/>',
+    "rotate": '<path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4v4h-4"/>',
+    "extrude": '<rect x="3" y="13" width="8" height="8"/>'
+               '<rect x="13" y="3" width="8" height="8"/>'
+               '<path d="M9 13l4-4" stroke-dasharray="2 2"/>',
     "single": '<path d="M6 4l6 16 2-6 6-2z" fill="{c}" stroke="none"/>',
     "window": '<rect x="4" y="6" width="16" height="12" rx="1" '
               'stroke-dasharray="3 2.5"/>',
