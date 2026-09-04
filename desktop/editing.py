@@ -8,7 +8,7 @@ cancelled. No solver / OpenGL here — pure Qt, so it is headless-constructible.
 from __future__ import annotations
 
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox,
-                               QDoubleSpinBox, QFormLayout, QHBoxLayout,
+                               QDoubleSpinBox, QFormLayout, QHBoxLayout, QLabel,
                                QLineEdit, QMessageBox, QSpinBox, QWidget)
 
 from project import Load, Member, Node, Section
@@ -361,4 +361,37 @@ class FrameDialog(QDialog):
     @classmethod
     def get(cls, parent):
         dlg = cls(parent)
+        return dlg.params() if dlg.exec() else None
+
+
+class LoadGenDialog(QDialog):
+    """Parameters for a parametric load pattern (gravity or lateral)."""
+
+    def __init__(self, parent, project):
+        super().__init__(parent)
+        self.setWindowTitle("Generate loads")
+        form = QFormLayout(self)
+        self.kind = QComboBox()
+        self.kind.addItem("Gravity (downward, per node)", "gravity")
+        self.kind.addItem("Lateral X (storey forces)", "lateral_x")
+        if project.ndm == 3:
+            self.kind.addItem("Lateral Y (storey forces)", "lateral_y")
+        self.kind.currentIndexChanged.connect(self._relabel)
+        form.addRow("Pattern", self.kind)
+        self.mag = _force_spin(50000.0)
+        self._label = QLabel()
+        form.addRow(self._label, self.mag)
+        form.addRow(_buttons(self))
+        self._relabel()
+
+    def _relabel(self) -> None:
+        gravity = self.kind.currentData() == "gravity"
+        self._label.setText("Load per node [N]" if gravity else "Base shear [N]")
+
+    def params(self):
+        return self.kind.currentData(), self.mag.value()
+
+    @classmethod
+    def get(cls, parent, project):
+        dlg = cls(parent, project)
         return dlg.params() if dlg.exec() else None

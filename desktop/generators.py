@@ -7,7 +7,7 @@ lines for bridges) plug in the same way.
 """
 from __future__ import annotations
 
-from project import Material, Member, Node, Project, Section
+from project import Load, Material, Member, Node, Project, Section
 
 
 def _section_from_shape(shape, sid=1):
@@ -75,3 +75,52 @@ def frame(bays_x=3, bay_x=6.0, storeys=3, storey_h=3.5,
                                             section=1, material=1))
                     etag += 1
     return p
+
+
+# ---------------------------------------------------------------- load patterns
+
+def _vertical_index(ndm: int) -> int:
+    return 1 if ndm == 2 else 2            # Fy in 2-D, Fz in 3-D
+
+
+def _elev(project, node) -> float:
+    return node.y if project.ndm == 2 else node.z
+
+
+def gravity_loads(project, p_node: float):
+    """A downward point load of magnitude ``p_node`` (N) at every node above
+    the base level."""
+    vidx = _vertical_index(project.ndm)
+    base = min((_elev(project, n) for n in project.nodes), default=0.0)
+    loads = []
+    for n in project.nodes:
+        if _elev(project, n) <= base + 1e-9:
+            continue
+        vals = [0.0] * project.ndf
+        vals[vidx] = -abs(p_node)
+        loads.append(Load(node=n.id, values=tuple(vals)))
+    return loads
+
+
+def lateral_loads(project, base_shear: float, direction: str = "X"):
+    """Storey lateral forces summing to ``base_shear`` (N), distributed
+    linearly with height (seismic-style) and split among each floor's nodes."""
+    hidx = 0 if direction == "X" else 1
+    base = min((_elev(project, n) for n in project.nodes), default=0.0)
+    levels: dict = {}
+    for n in project.nodes:
+        e = round(_elev(project, n), 6)
+        if e <= base + 1e-9:
+            continue
+        levels.setdefault(e, []).append(n.id)
+    total_h = sum(e - base for e in levels)
+    loads = []
+    for e, node_ids in levels.items():
+        f_floor = (base_shear * (e - base) / total_h if total_h > 0
+                   else base_shear / len(levels))
+        per_node = f_floor / len(node_ids)
+        for nid in node_ids:
+            vals = [0.0] * project.ndf
+            vals[hidx] = per_node
+            loads.append(Load(node=nid, values=tuple(vals)))
+    return loads

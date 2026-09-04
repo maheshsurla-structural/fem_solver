@@ -88,6 +88,8 @@ class MainWindow(QMainWindow):
         self.act_add_load = _action(self, "Add &load…", None, self.add_load)
         self.act_add_section = _action(self, "Add &section…", None,
                                        self.add_section)
+        self.act_genloads = _action(self, "Generate &loads…", None,
+                                    self.generate_loads)
         self.act_delete = _action(self, "&Delete", "Del", self.delete_selected)
 
         self.act_run = _action(self, "&Run (linear static)", "Ctrl+R",
@@ -128,8 +130,8 @@ class MainWindow(QMainWindow):
         self.snap_spin.valueChanged.connect(lambda _v: self._update_snap())
 
         file_menu = self.menuBar().addMenu("&File")
-        for a in (self.act_new, self.act_new3d, self.act_gen, self.act_open,
-                  self.act_save, self.act_saveas):
+        for a in (self.act_new, self.act_new3d, self.act_open, self.act_save,
+                  self.act_saveas):
             file_menu.addAction(a)
         edit_menu = self.menuBar().addMenu("&Edit")
         edit_menu.addAction(self.act_undo)
@@ -138,6 +140,9 @@ class MainWindow(QMainWindow):
         for a in (self.act_add_node, self.act_add_member, self.act_add_section,
                   self.act_add_load, self.act_delete):
             edit_menu.addAction(a)
+        gen_menu = self.menuBar().addMenu("&Generate")
+        gen_menu.addAction(self.act_gen)
+        gen_menu.addAction(self.act_genloads)
         analysis_menu = self.menuBar().addMenu("&Analysis")
         analysis_menu.addAction(self.act_run)
         analysis_menu.addAction(self.act_undef)
@@ -156,7 +161,8 @@ class MainWindow(QMainWindow):
 
         tb = self.addToolBar("Main")
         for a in (self.act_open, self.act_save, None, self.act_undo,
-                  self.act_redo, None, self.act_add_node, self.act_add_member,
+                  self.act_redo, None, self.act_gen, self.act_genloads, None,
+                  self.act_add_node, self.act_add_member,
                   self.act_add_section, self.act_add_load, self.act_delete,
                   None, self.act_select, self.act_draw_node,
                   self.act_draw_member, None, self.act_run, self.act_undef,
@@ -270,6 +276,30 @@ class MainWindow(QMainWindow):
         params = FrameDialog.get(self)
         if params is not None:
             self.load_project(generators.frame(**params), None)
+
+    def generate_loads(self) -> None:
+        if not self._project.nodes:
+            QMessageBox.information(self, "Generate loads",
+                                   "Add or generate a structure first.")
+            return
+        import generators
+        from editing import LoadGenDialog
+        res = LoadGenDialog.get(self, self._project)
+        if res is None:
+            return
+        kind, mag = res
+        if kind == "gravity":
+            loads = generators.gravity_loads(self._project, mag)
+        else:
+            direction = "Y" if kind == "lateral_y" else "X"
+            loads = generators.lateral_loads(self._project, mag, direction)
+        if not loads:
+            QMessageBox.information(self, "Generate loads",
+                                   "No loads generated (need nodes above the "
+                                   "base level).")
+            return
+        self._apply_edit(f"Generate loads ({kind})",
+                         lambda: self._project.loads.extend(loads))
 
     def open_project(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
