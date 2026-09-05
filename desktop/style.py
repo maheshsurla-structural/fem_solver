@@ -1,0 +1,217 @@
+"""Visual design system for the desktop GUI — a light, blue-accent theme.
+
+A single Qt stylesheet (``QSS``) plus matplotlib chart helpers, so the widgets,
+the section drawing and the plots read as one professional product rather than
+raw native controls. "Comfortable" density: generous spacing and clear
+grouping. Applied per-window with ``apply(widget)``; charts call
+``beautify_axes(ax)``.
+"""
+from __future__ import annotations
+
+# ---- palette ---------------------------------------------------------------
+BG = "#f4f6f9"          # window ground
+PANEL = "#ffffff"       # cards / inputs
+BORDER = "#d9dee6"      # hairlines
+BORDER_STRONG = "#c3cad4"
+TEXT = "#1e2430"        # primary text
+MUTED = "#6b7482"       # secondary text
+ACCENT = "#2563eb"      # primary blue
+ACCENT_HOVER = "#1d4ed8"
+ACCENT_SOFT = "#eaf1fe"  # tinted fills (selection, header)
+OK = "#1a7f37"
+BAD = "#cf222e"
+ZEBRA = "#f7f9fc"       # alternate table row
+
+# chart colors
+C_PRIMARY = ACCENT
+C_SECONDARY = "#d1462f"
+C_MILESTONE = "#d1462f"
+C_DEMAND = "#e3a008"
+GRID = "#e6eaf0"
+AX_SPINE = "#c3cad4"
+AX_TEXT = "#3a4150"
+
+FONT_STACK = "'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif"
+
+
+QSS = f"""
+* {{
+    font-family: {FONT_STACK};
+    font-size: 13px;
+    color: {TEXT};
+}}
+QMainWindow, QDialog, QScrollArea, QWidget#sd_inner {{
+    background: {BG};
+}}
+QScrollArea {{ border: none; }}
+
+/* ---- grouping cards ---- */
+QGroupBox {{
+    background: {PANEL};
+    border: 1px solid {BORDER};
+    border-radius: 8px;
+    margin-top: 16px;
+    padding: 12px 12px 10px 12px;
+    font-weight: 600;
+}}
+QGroupBox::title {{
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    left: 12px;
+    top: 2px;
+    padding: 0 4px;
+    color: {MUTED};
+    font-size: 12px;
+}}
+
+/* ---- inputs ---- */
+QComboBox, QDoubleSpinBox, QSpinBox, QLineEdit {{
+    background: {PANEL};
+    border: 1px solid {BORDER_STRONG};
+    border-radius: 6px;
+    padding: 4px 8px;
+    min-height: 22px;
+    selection-background-color: {ACCENT_SOFT};
+    selection-color: {TEXT};
+}}
+QComboBox:hover, QDoubleSpinBox:hover, QSpinBox:hover, QLineEdit:hover {{
+    border-color: {MUTED};
+}}
+QComboBox:focus, QDoubleSpinBox:focus, QSpinBox:focus, QLineEdit:focus {{
+    border-color: {ACCENT};
+}}
+QComboBox::drop-down {{ border: none; width: 20px; }}
+QComboBox QAbstractItemView {{
+    background: {PANEL};
+    border: 1px solid {BORDER_STRONG};
+    selection-background-color: {ACCENT_SOFT};
+    selection-color: {TEXT};
+    outline: none;
+}}
+QDoubleSpinBox::up-button, QSpinBox::up-button,
+QDoubleSpinBox::down-button, QSpinBox::down-button {{
+    width: 16px; border: none; background: transparent;
+}}
+
+/* ---- buttons ---- */
+QPushButton {{
+    background: {PANEL};
+    border: 1px solid {BORDER_STRONG};
+    border-radius: 6px;
+    padding: 5px 14px;
+    min-height: 22px;
+    color: {TEXT};
+}}
+QPushButton:hover {{ border-color: {ACCENT}; color: {ACCENT}; }}
+QPushButton:pressed {{ background: {ACCENT_SOFT}; }}
+QPushButton:disabled {{ color: {MUTED}; border-color: {BORDER}; }}
+
+/* ---- tabs ---- */
+QTabWidget::pane {{
+    border: 1px solid {BORDER};
+    border-radius: 8px;
+    top: -1px;
+    background: {PANEL};
+}}
+QTabBar::tab {{
+    background: transparent;
+    color: {MUTED};
+    padding: 7px 16px;
+    margin-right: 2px;
+    border: none;
+    border-bottom: 2px solid transparent;
+}}
+QTabBar::tab:hover {{ color: {TEXT}; }}
+QTabBar::tab:selected {{
+    color: {ACCENT};
+    border-bottom: 2px solid {ACCENT};
+    font-weight: 600;
+}}
+
+/* ---- tables ---- */
+QTableWidget {{
+    background: {PANEL};
+    border: 1px solid {BORDER};
+    border-radius: 8px;
+    gridline-color: {BORDER};
+    selection-background-color: {ACCENT_SOFT};
+    selection-color: {TEXT};
+    alternate-background-color: {ZEBRA};
+}}
+QHeaderView::section {{
+    background: {ACCENT_SOFT};
+    color: {MUTED};
+    padding: 6px 8px;
+    border: none;
+    border-right: 1px solid {BORDER};
+    border-bottom: 1px solid {BORDER};
+    font-weight: 600;
+}}
+QTableWidget::item {{ padding: 3px 6px; }}
+QListWidget {{
+    background: {PANEL};
+    border: 1px solid {BORDER};
+    border-radius: 6px;
+    outline: none;
+}}
+QListWidget::item {{ padding: 4px 6px; }}
+QListWidget::item:selected {{ background: {ACCENT_SOFT}; color: {TEXT}; }}
+
+/* ---- toolbar / menu / status ---- */
+QToolBar {{
+    background: {PANEL};
+    border-bottom: 1px solid {BORDER};
+    spacing: 6px;
+    padding: 4px 8px;
+}}
+QMenuBar {{ background: {PANEL}; border-bottom: 1px solid {BORDER}; }}
+QMenuBar::item:selected {{ background: {ACCENT_SOFT}; }}
+QStatusBar {{ background: {PANEL}; border-top: 1px solid {BORDER};
+             color: {MUTED}; }}
+QSplitter::handle {{ background: {BORDER}; }}
+QSplitter::handle:horizontal {{ width: 1px; }}
+
+/* ---- scrollbars ---- */
+QScrollBar:vertical {{ background: transparent; width: 10px; margin: 2px; }}
+QScrollBar::handle:vertical {{
+    background: {BORDER_STRONG}; border-radius: 5px; min-height: 30px;
+}}
+QScrollBar::handle:vertical:hover {{ background: {MUTED}; }}
+QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; }}
+QScrollBar:horizontal {{ background: transparent; height: 10px; margin: 2px; }}
+QScrollBar::handle:horizontal {{
+    background: {BORDER_STRONG}; border-radius: 5px; min-width: 30px;
+}}
+
+/* ---- helper label classes (set via setObjectName) ---- */
+QLabel#h1 {{ font-size: 17px; font-weight: 700; color: {TEXT}; }}
+QLabel#sub {{ color: {MUTED}; font-size: 12px; }}
+QLabel#caption {{ color: {MUTED}; font-size: 12px; }}
+"""
+
+
+def apply(widget) -> None:
+    """Apply the theme stylesheet to a top-level widget (cascades to children)."""
+    widget.setStyleSheet(QSS)
+
+
+def beautify_axes(ax, *, title_color=None) -> None:
+    """Style a matplotlib Axes to match the app: light grid, soft spines, the
+    app's text color, no top/right spines."""
+    ax.set_facecolor(PANEL)
+    if ax.figure is not None:
+        ax.figure.set_facecolor(PANEL)
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+    for side in ("left", "bottom"):
+        ax.spines[side].set_color(AX_SPINE)
+    ax.tick_params(colors=AX_TEXT, labelsize=9, length=3)
+    ax.grid(True, color=GRID, linewidth=0.8, alpha=1.0)
+    ax.set_axisbelow(True)
+    for lbl in (ax.xaxis.label, ax.yaxis.label):
+        lbl.set_color(AX_TEXT)
+        lbl.set_fontsize(10)
+    if ax.title is not None:
+        ax.title.set_color(title_color or TEXT)
+        ax.title.set_fontsize(11)
+        ax.title.set_fontweight("bold")

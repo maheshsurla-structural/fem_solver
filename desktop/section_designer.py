@@ -68,6 +68,7 @@ if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
 import section_gui_core as core
+import style
 
 # section kinds this desktop front-end exposes (the engine also knows "Custom"
 # and "Composite" — deferred; they need dedicated geometry editors).
@@ -179,7 +180,10 @@ class SectionDesignerWindow(QMainWindow):
         split.setStretchFactor(1, 2)
         split.setStretchFactor(2, 3)
         split.setSizes([340, 380, 520])
+        split.setContentsMargins(10, 10, 10, 10)
+        split.setHandleWidth(10)
         self.setCentralWidget(split)
+        style.apply(self)
 
         self._load_form_from_spec()
         self._refresh_geometry()
@@ -249,7 +253,10 @@ class SectionDesignerWindow(QMainWindow):
         host = QScrollArea()
         host.setWidgetResizable(True)
         inner = QWidget()
+        inner.setObjectName("sd_inner")
         v = QVBoxLayout(inner)
+        v.setContentsMargins(4, 4, 10, 4)
+        v.setSpacing(10)
 
         kbox = QGroupBox("Section")
         kf = QFormLayout(kbox)
@@ -608,17 +615,35 @@ class SectionDesignerWindow(QMainWindow):
     def _build_preview_panel(self) -> QWidget:
         w = QWidget()
         v = QVBoxLayout(w)
-        v.addWidget(QLabel("<b>Cross-section</b>"))
+        v.setContentsMargins(6, 6, 6, 6)
+        v.setSpacing(8)
+
+        self.head_name = QLabel("Section")
+        self.head_name.setObjectName("h1")
+        v.addWidget(self.head_name)
+        self.head_sub = QLabel("")
+        self.head_sub.setObjectName("sub")
+        v.addWidget(self.head_sub)
+
+        # cross-section drawing on a neutral canvas, aspect ratio preserved
+        canvas = QGroupBox("Cross-section")
+        cv = QVBoxLayout(canvas)
         self.svg = QSvgWidget()
-        self.svg.setMinimumHeight(320)
-        v.addWidget(self.svg, 3)
-        v.addWidget(QLabel("<b>Section properties</b>"))
+        self.svg.setMinimumHeight(300)
+        cv.addWidget(self.svg)
+        v.addWidget(canvas, 3)
+
+        props_box = QGroupBox("Section properties")
+        pv = QVBoxLayout(props_box)
         self.props = QTableWidget(0, 2)
         self.props.setHorizontalHeaderLabels(["Quantity", "Value"])
         self.props.horizontalHeader().setStretchLastSection(True)
         self.props.verticalHeader().setVisible(False)
+        self.props.setAlternatingRowColors(True)
+        self.props.setShowGrid(False)
         self.props.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        v.addWidget(self.props, 2)
+        pv.addWidget(self.props)
+        v.addWidget(props_box, 2)
         return w
 
     def _build_analysis_panel(self) -> QWidget:
@@ -679,6 +704,8 @@ class SectionDesignerWindow(QMainWindow):
         self.mphi_tbl.horizontalHeader().setStretchLastSection(True)
         self.mphi_tbl.verticalHeader().setVisible(False)
         self.mphi_tbl.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.mphi_tbl.setAlternatingRowColors(True)
+        self.mphi_tbl.setShowGrid(False)
         self.mphi_tbl.setMaximumHeight(150)
         mpv.addWidget(self.mphi_tbl)
         self.tabs.addTab(mp, "Moment-curvature")
@@ -692,6 +719,8 @@ class SectionDesignerWindow(QMainWindow):
         self.verify_tbl.horizontalHeader().setStretchLastSection(True)
         self.verify_tbl.verticalHeader().setVisible(False)
         self.verify_tbl.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.verify_tbl.setAlternatingRowColors(True)
+        self.verify_tbl.setShowGrid(False)
         vtv.addWidget(self.verify_tbl)
         self.tabs.addTab(vt, "Verification")
 
@@ -939,15 +968,41 @@ class SectionDesignerWindow(QMainWindow):
         try:
             case = _case(self._spec)
             self.svg.load(QByteArray(core.svg_of(case).encode("utf-8")))
+            # keep the section undistorted (letterbox to the widget)
+            r = self.svg.renderer()
+            if r is not None:
+                r.setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
+            self._update_header(case)
             props = core.props_of(case)
             self.props.setRowCount(len(props))
-            for r, (k, val) in enumerate(props.items()):
-                self.props.setItem(r, 0, QTableWidgetItem(str(k)))
+            for row, (k, val) in enumerate(props.items()):
+                self.props.setItem(row, 0, QTableWidgetItem(str(k)))
                 txt = f"{val:,.0f}" if isinstance(val, (int, float)) else str(val)
-                self.props.setItem(r, 1, QTableWidgetItem(txt))
+                it = QTableWidgetItem(txt)
+                it.setTextAlignment(Qt.AlignmentFlag.AlignRight
+                                    | Qt.AlignmentFlag.AlignVCenter)
+                self.props.setItem(row, 1, it)
             self.statusBar().clearMessage()
         except Exception as exc:                       # noqa: BLE001
             self.statusBar().showMessage(f"Geometry error: {exc}")
+
+    def _update_header(self, case) -> None:
+        """Preview header: section name + a one-line dimensional summary."""
+        s = self._spec
+        self.head_name.setText(self._active)
+        bits = [s.kind]
+        if s.kind in ("Rectangular", "T-shape", "Hollow box", "PSC girder"):
+            bits.append(f"{s.b * 1e3:.0f} × {s.h * 1e3:.0f} mm")
+        elif s.kind == "Circular":
+            bits.append(f"⌀ {s.D * 1e3:.0f} mm")
+        elif s.kind == "L-shape":
+            bits.append(f"leg {s.leg * 1e3:.0f} mm")
+        try:
+            A = case.section.area
+            bits.append(f"A = {A * 1e4:,.0f} cm²")
+        except Exception:                              # noqa: BLE001
+            pass
+        self.head_sub.setText("  ·  ".join(bits))
 
     def _recompute_analysis(self) -> None:
         code = self.code_combo.currentText()
@@ -1041,8 +1096,8 @@ class SectionDesignerWindow(QMainWindow):
         ax.set_xlabel(f"M  [{u.Ml}]")
         ax.set_ylabel(f"P  [{u.Fl}]  (+ compression)")
         ax.set_title(f"P-M interaction — {code}")
-        ax.grid(True, alpha=0.25)
-        ax.legend(fontsize=8, loc="best")
+        style.beautify_axes(ax)
+        ax.legend(fontsize=8, loc="best", frameon=False)
         self.pm_canvas.draw_idle()
 
     # ----------------------------------------------------------- M-φ tab
@@ -1083,7 +1138,7 @@ class SectionDesignerWindow(QMainWindow):
         ax.set_xlabel(f"curvature κ  [{u.Kl}]")
         ax.set_ylabel(f"moment M  [{u.Ml}]")
         ax.set_title(f"Moment-curvature at P = {P:.4g} {u.Fl}")
-        ax.grid(True, alpha=0.25)
+        style.beautify_axes(ax)
         self.mp_canvas.draw_idle()
 
         def _m(v):
@@ -1117,14 +1172,21 @@ class SectionDesignerWindow(QMainWindow):
             Y.append([u.M_disp(v) for v in row_my])
             Z.append([u.P_disp(Pl[i])] * len(row_mz))
         self.s3_fig.clear()
+        self.s3_fig.set_facecolor(style.PANEL)
         ax = self.s3_fig.add_subplot(111, projection="3d")
+        ax.set_facecolor(style.PANEL)
         ax.plot_surface(np.array(X), np.array(Y), np.array(Z),
-                        cmap="viridis", alpha=0.85, linewidth=0,
+                        cmap="viridis", alpha=0.9, linewidth=0,
                         rstride=1, cstride=1)
+        ax.tick_params(colors=style.AX_TEXT, labelsize=8)
+        for a in (ax.xaxis, ax.yaxis, ax.zaxis):
+            a.label.set_color(style.AX_TEXT)
+            a.label.set_fontsize(9)
         ax.set_xlabel(f"Mz [{u.Ml}]")
         ax.set_ylabel(f"My [{u.Ml}]")
         ax.set_zlabel(f"P [{u.Fl}]")
-        ax.set_title(f"P-Mz-My interaction surface — {code}")
+        ax.set_title(f"P-Mz-My interaction surface — {code}", color=style.TEXT,
+                     fontsize=11, fontweight="bold")
         self.s3_canvas.draw_idle()
 
     # ------------------------------------------------------ verify / report
