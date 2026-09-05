@@ -1,15 +1,21 @@
-"""AISC 360-22 §H1 member checks for the Design view.
+"""Member demand/capacity checks for the Design view.
 
 Maps each solved model element back to its project member / section /
-material, builds the catalog ``SteelSection`` + ``SteelMaterial``, and runs
-the engine's combined (axial + flexure) interaction to a demand/capacity
-ratio. Members whose section names no W-shape are skipped (DCR ``None`` ->
-drawn grey).
+material and returns a demand/capacity ratio. Two paths:
 
-Conservative defaults for this first cut: unbraced length = member length,
-K = 1, C_b = 1 (no bracing or moment-gradient credit).
+* **Concrete / PSC / composite** — a section carrying a General-Section-
+  Designer ``gsd_spec`` is checked against its own P-M-M interaction surface
+  via ``section_gui_core.demand_check`` (biaxial, using the section's design
+  code). This is the P-M-M member-design bridge.
+* **Steel** — a section naming an AISC W-shape runs the engine's combined
+  (axial + flexure) §H1 interaction. Conservative first cut: unbraced length =
+  member length, K = 1, C_b = 1.
+
+Members matching neither are skipped (DCR ``None`` -> drawn grey).
 """
 from __future__ import annotations
+
+from functools import lru_cache
 
 import numpy as np
 
@@ -26,30 +32,79 @@ def _catalog(shape: str):
         return None
 
 
+def _member_forces(element):
+    """(P_r [+compression], M_z, M_y) in SI base units from an element's local
+    end forces, or None. Uses the worst end for each moment. Shared by both
+    the steel and the P-M-M concrete checks."""
+    ef = getattr(element, "end_forces_local", None)
+    if ef is None:
+        return None
+    n = len(ef)
+    if n == 6:                                # 2-D: [N, Vy, Mz]*2
+        return -float(ef[3]), max(abs(float(ef[2])), abs(float(ef[5]))), 0.0
+    if n == 12:                               # 3-D: [N, Vy, Vz, T, My, Mz]*2
+        return (-float(ef[6]),
+                max(abs(float(ef[5])), abs(float(ef[11]))),    # strong (Mz)
+                max(abs(float(ef[4])), abs(float(ef[10]))))    # weak (My)
+    return None
+
+
+@lru_cache(maxsize=256)
+def _gsd_case(spec):
+    import section_gui_core as core
+    return core.build_case(spec)
+
+
+def gsd_member_dcr(element, section):
+    """P-M-M utilisation for a member whose section carries a ``gsd_spec``,
+    checking its axial + biaxial-moment demand against the section's own
+    interaction surface, or None. Design (φ-reduced) capacity, biaxial."""
+    gsd = getattr(section, "gsd_spec", None)
+    if not gsd:
+        return None
+    forces = _member_forces(element)
+    if forces is None:
+        return None
+    P_N, Mz_Nm, My_Nm = forces
+    try:
+        import os
+        import sys
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if root not in sys.path:
+            sys.path.insert(0, root)
+        import section_gui_core as core
+        flds = set(core.Spec.__dataclass_fields__)
+        spec = core.Spec(**{k: v for k, v in gsd.items() if k in flds})
+        case = _gsd_case(spec)
+        code = section.gsd_code or core.CODES[0]
+        demands = [{"name": "D", "P": P_N / 1e3,          # N  -> kN
+                    "Mz": Mz_Nm / 1e3, "My": My_Nm / 1e3}]  # N·m -> kN·m
+        res = core.demand_check(case, code, demands, design=True,
+                                spec=spec)[0]
+        return float(res["util"])
+    except Exception:
+        return None
+
+
 def member_dcr(element, member, project):
-    """AISC §H1 DCR for one member, or None (no steel shape / no forces)."""
+    """DCR for one member: the P-M-M concrete check when its section carries a
+    GSD spec, else the AISC §H1 steel check, else None (no capacity / forces)."""
     sec = next((s for s in project.sections if s.id == member.section), None)
-    ss = _catalog(sec.shape) if sec else None
+    if sec is None:
+        return None
+    if getattr(sec, "gsd_spec", None):
+        return gsd_member_dcr(element, sec)
+    ss = _catalog(sec.shape)
     if ss is None:
         return None
     mat = next((m for m in project.materials if m.id == member.material), None)
     fy = float(getattr(mat, "fy", 0.0) or 345.0e6)
     fu = float(getattr(mat, "fu", 0.0) or 448.0e6)
     E = float(getattr(mat, "E", 200.0e9))
-    ef = getattr(element, "end_forces_local", None)
-    if ef is None:
+    forces = _member_forces(element)
+    if forces is None:
         return None
-    n = len(ef)
-    if n == 6:                                # 2-D: [N, Vy, Mz]*2
-        P_r = -float(ef[3])                   # compression positive for §H1
-        M_rx = max(abs(float(ef[2])), abs(float(ef[5])))
-        M_ry = 0.0
-    elif n == 12:                             # 3-D: [N, Vy, Vz, T, My, Mz]*2
-        P_r = -float(ef[6])
-        M_rx = max(abs(float(ef[5])), abs(float(ef[11])))   # strong (Mz)
-        M_ry = max(abs(float(ef[4])), abs(float(ef[10])))   # weak (My)
-    else:
-        return None
+    P_r, M_rx, M_ry = forces
     c = element.node_coords()
     L = float(np.linalg.norm(c[1] - c[0]))
     if L <= 0.0:

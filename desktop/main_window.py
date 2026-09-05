@@ -314,16 +314,17 @@ class MainWindow(QMainWindow):
         vals = {t: d for t, d in dcrs.items() if d is not None}
         if not vals:
             self.log.appendPlainText(
-                "Design: no members have a steel shape — set a section's shape "
-                "(e.g. 'W12x65') to run the AISC checks.")
-            self.statusBar().showMessage("Design: assign a W-shape first.")
+                "Design: no members have a checkable section — set a W-shape "
+                "(AISC §H1) or apply a Section-Designer section (P-M-M) to run "
+                "the checks.")
+            self.statusBar().showMessage("Design: assign a section first.")
             return
         worst = max(vals, key=vals.get)
         mx = vals[worst]
         verdict = "PASS" if mx <= 1.0 else "FAIL"
         self.log.appendPlainText(
-            f"Design (AISC 360-22 §H1): {len(vals)} members checked, "
-            f"max DCR = {mx:.2f} at member {worst} — {verdict}")
+            f"Design (AISC §H1 steel + P-M-M concrete): {len(vals)} members "
+            f"checked, max DCR = {mx:.2f} at member {worst} — {verdict}")
         self.statusBar().showMessage(f"Design · max DCR {mx:.2f} · {verdict}")
 
     def open_section_designer(self) -> None:
