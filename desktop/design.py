@@ -34,19 +34,37 @@ def _catalog(shape: str):
 
 def _member_forces(element):
     """(P_r [+compression], M_z, M_y) in SI base units from an element's local
-    end forces, or None. Uses the worst end for each moment. Shared by both
-    the steel and the P-M-M concrete checks."""
+    end forces, using the worst end for each moment (a single conservative
+    triple). Kept for the steel §H1 path; the P-M-M path envelopes the two end
+    sections concurrently instead (see ``_member_sections``)."""
+    secs = _member_sections(element)
+    if not secs:
+        return None
+    P = secs[0][0]
+    return P, max(abs(s[1]) for s in secs), max(abs(s[2]) for s in secs)
+
+
+def _member_sections(element):
+    """The member's critical sections as concurrent ``(P_r [+compression], M_z,
+    M_y)`` triples in SI base units — one per member end, each carrying that
+    end's *concurrent* (simultaneous) moments and the (constant) axial force, so
+    a P-M-M check envelopes real load states rather than pairing the worst Mz
+    with the worst My from different ends. Only nodal loads exist here, so the
+    moment varies linearly and the two ends bracket the member; add mid-span
+    stations here once member (distributed) loads land. Returns [] if no forces.
+    """
     ef = getattr(element, "end_forces_local", None)
     if ef is None:
-        return None
+        return []
     n = len(ef)
     if n == 6:                                # 2-D: [N, Vy, Mz]*2
-        return -float(ef[3]), max(abs(float(ef[2])), abs(float(ef[5]))), 0.0
+        P = -float(ef[3])                     # axial ~ constant (nodal loads)
+        return [(P, float(ef[2]), 0.0), (P, float(ef[5]), 0.0)]
     if n == 12:                               # 3-D: [N, Vy, Vz, T, My, Mz]*2
-        return (-float(ef[6]),
-                max(abs(float(ef[5])), abs(float(ef[11]))),    # strong (Mz)
-                max(abs(float(ef[4])), abs(float(ef[10]))))    # weak (My)
-    return None
+        P = -float(ef[6])
+        return [(P, float(ef[5]), float(ef[4])),      # end i: (Mz, My)
+                (P, float(ef[11]), float(ef[10]))]     # end j: (Mz, My)
+    return []
 
 
 @lru_cache(maxsize=256)
@@ -56,16 +74,16 @@ def _gsd_case(spec):
 
 
 def gsd_member_dcr(element, section):
-    """P-M-M utilisation for a member whose section carries a ``gsd_spec``,
-    checking its axial + biaxial-moment demand against the section's own
-    interaction surface, or None. Design (φ-reduced) capacity, biaxial."""
+    """Worst P-M-M utilisation for a member whose section carries a ``gsd_spec``,
+    enveloping its critical sections (both ends) against the section's own
+    interaction surface — each end checked with its *concurrent* axial +
+    biaxial moments (design, φ-reduced). Returns the max utilisation, or None."""
     gsd = getattr(section, "gsd_spec", None)
     if not gsd:
         return None
-    forces = _member_forces(element)
-    if forces is None:
+    sections = _member_sections(element)
+    if not sections:
         return None
-    P_N, Mz_Nm, My_Nm = forces
     try:
         import os
         import sys
@@ -77,11 +95,12 @@ def gsd_member_dcr(element, section):
         spec = core.Spec(**{k: v for k, v in gsd.items() if k in flds})
         case = _gsd_case(spec)
         code = section.gsd_code or core.CODES[0]
-        demands = [{"name": "D", "P": P_N / 1e3,          # N  -> kN
-                    "Mz": Mz_Nm / 1e3, "My": My_Nm / 1e3}]  # N·m -> kN·m
-        res = core.demand_check(case, code, demands, design=True,
-                                spec=spec)[0]
-        return float(res["util"])
+        demands = [{"name": f"end{i + 1}", "P": P / 1e3,       # N  -> kN
+                    "Mz": Mz / 1e3, "My": My / 1e3}            # N·m -> kN·m
+                   for i, (P, Mz, My) in enumerate(sections)]
+        results = core.demand_check(case, code, demands, design=True,
+                                    spec=spec)
+        return max(float(r["util"]) for r in results)
     except Exception:
         return None
 
