@@ -137,8 +137,41 @@ def member_dcr(element, member, project):
 
 
 def design_all(model, project) -> dict:
-    """{element_tag: DCR or None} for every element in the model."""
+    """{element_tag: DCR or None} for every element in the model (under the
+    loads currently applied to ``model``)."""
     members = {m.id: m for m in project.members}
     return {tag: (member_dcr(e, members[tag], project) if tag in members
                   else None)
             for tag, e in model.elements.items()}
+
+
+def design_envelope(project):
+    """Envelope every member's DCR over all load combinations. Solves the model
+    under each combination and, per member, keeps the worst DCR and the combo
+    that governed. Returns ``(dcrs, governing)`` where ``dcrs[tag]`` is the
+    worst DCR (or None) and ``governing[tag]`` is the governing combo name;
+    returns ``(None, None)`` if the project has no combinations (caller falls
+    back to :func:`design_all`)."""
+    if not getattr(project, "combinations", None):
+        return None, None
+    from femsolver import LinearStaticAnalysis
+    members = {m.id: m for m in project.members}
+    dcrs: dict = {}
+    governing: dict = {}
+    for combo in project.combinations:
+        model = project.build_model(with_loads=False)
+        project.apply_loads(model, ("combination", combo.id))
+        try:
+            LinearStaticAnalysis(model).run()
+        except Exception:
+            continue
+        for tag, el in model.elements.items():
+            mb = members.get(tag)
+            d = member_dcr(el, mb, project) if mb is not None else None
+            dcrs.setdefault(tag, None)
+            if d is None:
+                continue
+            if dcrs[tag] is None or d > dcrs[tag]:
+                dcrs[tag] = d
+                governing[tag] = combo.name
+    return dcrs, governing

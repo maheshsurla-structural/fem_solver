@@ -9,9 +9,11 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox,
                                QDoubleSpinBox, QFormLayout, QHBoxLayout, QLabel,
-                               QLineEdit, QMessageBox, QSpinBox, QWidget)
+                               QLineEdit, QMessageBox, QPushButton, QSpinBox,
+                               QTableWidget, QTableWidgetItem, QVBoxLayout,
+                               QWidget)
 
-from project import Load, Member, Node, Section
+from project import (Load, LoadCase, Member, NATURE_LABELS, Node, Section)
 
 
 def dof_labels(ndm: int, ndf: int) -> list[str]:
@@ -157,6 +159,11 @@ class LoadDialog(QDialog):
             _select(self.node, load.node)
         form.addRow("Node", self.node)
 
+        self.case = _combo([(c.name, c.id) for c in project.load_cases])
+        if load is not None:
+            _select(self.case, getattr(load, "case", project.default_case_id()))
+        form.addRow("Load case", self.case)
+
         self.vals = []
         vec = tuple(load.values) if load else ()
         for k, lbl in enumerate(dof_labels(project.ndm, project.ndf)):
@@ -167,12 +174,94 @@ class LoadDialog(QDialog):
 
     def data(self) -> Load:
         return Load(node=self.node.currentData(),
-                    values=tuple(s.value() for s in self.vals))
+                    values=tuple(s.value() for s in self.vals),
+                    case=self.case.currentData())
 
     @classmethod
     def edit(cls, parent, project, load=None):
         dlg = cls(parent, project, load)
         return dlg.data() if dlg.exec() else None
+
+
+class LoadCaseDialog(QDialog):
+    """Manage the project's load cases (name + nature). Returns the edited list
+    of ``LoadCase`` via ``result_cases``; ids are preserved for existing cases
+    and assigned fresh for new rows so load ownership stays intact."""
+
+    def __init__(self, parent, project):
+        super().__init__(parent)
+        self.setWindowTitle("Load cases")
+        self.resize(380, 300)
+        self._project = project
+        self.result_cases = None
+        # working rows: [id, name, nature]; id 0 => new (assigned on accept)
+        self._rows = [[c.id, c.name, c.nature] for c in project.load_cases]
+
+        v = QVBoxLayout(self)
+        self.tbl = QTableWidget(0, 2)
+        self.tbl.setHorizontalHeaderLabels(["Name", "Nature"])
+        self.tbl.horizontalHeader().setStretchLastSection(True)
+        self.tbl.verticalHeader().setVisible(False)
+        v.addWidget(self.tbl)
+        row = QHBoxLayout()
+        add = QPushButton("+ Case")
+        add.clicked.connect(self._add)
+        rem = QPushButton("Remove")
+        rem.clicked.connect(self._remove)
+        row.addWidget(add)
+        row.addWidget(rem)
+        v.addLayout(row)
+        v.addWidget(_buttons(self))
+        self._reload()
+
+    def _reload(self) -> None:
+        self.tbl.setRowCount(len(self._rows))
+        for r, (_id, name, nature) in enumerate(self._rows):
+            self.tbl.setItem(r, 0, QTableWidgetItem(name))
+            combo = QComboBox()
+            for key, lbl in NATURE_LABELS.items():
+                combo.addItem(lbl, key)
+            i = combo.findData(nature)
+            combo.setCurrentIndex(i if i >= 0 else 0)
+            self.tbl.setCellWidget(r, 1, combo)
+
+    def _add(self) -> None:
+        self._sync_names()
+        self._rows.append([0, f"Case {len(self._rows) + 1}", "live"])
+        self._reload()
+
+    def _remove(self) -> None:
+        r = self.tbl.currentRow()
+        if 0 <= r < len(self._rows) and len(self._rows) > 1:
+            self._sync_names()
+            del self._rows[r]
+            self._reload()
+
+    def _sync_names(self) -> None:
+        for r in range(self.tbl.rowCount()):
+            it = self.tbl.item(r, 0)
+            if it and r < len(self._rows):
+                self._rows[r][1] = it.text().strip() or self._rows[r][1]
+            w = self.tbl.cellWidget(r, 1)
+            if w and r < len(self._rows):
+                self._rows[r][2] = w.currentData()
+
+    def accept(self) -> None:
+        self._sync_names()
+        used = {row[0] for row in self._rows if row[0]}
+        nxt = (max(used) if used else 0) + 1
+        out = []
+        for _id, name, nature in self._rows:
+            if not _id:
+                _id, nxt = nxt, nxt + 1
+            out.append(LoadCase(id=_id, name=name, nature=nature))
+        self.result_cases = out
+        super().accept()
+
+    @classmethod
+    def edit(cls, parent, project):
+        dlg = cls(parent, project)
+        return dlg.result_cases if dlg.exec() else None
 
 
 def _designations() -> list[str]:

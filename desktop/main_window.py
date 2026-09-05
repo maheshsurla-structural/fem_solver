@@ -139,6 +139,10 @@ class MainWindow(QMainWindow):
         self.act_diag_m.triggered.connect(lambda *_: self.show_diagram("M"))
         self.act_design = QAction(icons.icon("design"), "&Design (DCR)", self)
         self.act_design.triggered.connect(self.show_design)
+        self.act_loadcases = _action(self, "Load &cases…", None,
+                                     self.manage_load_cases, "load")
+        self.act_gencombos = _action(self, "Generate ASCE-7 &combinations", None,
+                                     self.generate_combinations, "loadsgen")
         self.act_drawings = _action(self, "&Drawings…", None, self.open_drawings,
                                     "drawings")
         self.act_sectiondesigner = _action(
@@ -211,6 +215,9 @@ class MainWindow(QMainWindow):
         gen_menu.addAction(self.act_gen)
         gen_menu.addAction(self.act_genloads)
         analysis_menu = self.menuBar().addMenu("&Analysis")
+        analysis_menu.addAction(self.act_loadcases)
+        analysis_menu.addAction(self.act_gencombos)
+        analysis_menu.addSeparator()
         analysis_menu.addAction(self.act_run)
         analysis_menu.addAction(self.act_undef)
         analysis_menu.addSeparator()
@@ -306,10 +313,19 @@ class MainWindow(QMainWindow):
             f"{names[kind]} · max |{kind}| {vmax:.3e} {units[kind]}")
 
     def show_design(self) -> None:
-        if self._solve() is None:
-            return
         import design
-        dcrs = design.design_all(self._model, self._project)
+        governing = None
+        if getattr(self._project, "combinations", None):
+            # envelope every member's DCR over all load combinations
+            self._model = self._project.build_model()   # for the view coloring
+            if not self._model.elements:
+                self.statusBar().showMessage("Nothing to design.")
+                return
+            dcrs, governing = design.design_envelope(self._project)
+        else:
+            if self._solve() is None:
+                return
+            dcrs = design.design_all(self._model, self._project)
         self.view.show_design(self._model, dcrs)
         vals = {t: d for t, d in dcrs.items() if d is not None}
         if not vals:
@@ -322,10 +338,69 @@ class MainWindow(QMainWindow):
         worst = max(vals, key=vals.get)
         mx = vals[worst]
         verdict = "PASS" if mx <= 1.0 else "FAIL"
+        scope = (f"envelope of {len(self._project.combinations)} combinations"
+                 if governing else "current loads")
+        gov = (f", governed by {governing.get(worst)}"
+               if governing and governing.get(worst) else "")
         self.log.appendPlainText(
-            f"Design (AISC §H1 steel + P-M-M concrete): {len(vals)} members "
-            f"checked, max DCR = {mx:.2f} at member {worst} — {verdict}")
+            f"Design (AISC §H1 steel + P-M-M concrete, {scope}): "
+            f"{len(vals)} members checked, max DCR = {mx:.2f} at member "
+            f"{worst}{gov} — {verdict}")
         self.statusBar().showMessage(f"Design · max DCR {mx:.2f} · {verdict}")
+
+    def manage_load_cases(self) -> None:
+        """Add / rename / remove load cases. Loads whose case is deleted fall
+        back to the first case, and combinations drop factors for removed
+        cases."""
+        if self._project is None:
+            return
+        from editing import LoadCaseDialog
+        cases = LoadCaseDialog.edit(self, self._project)
+        if cases is None:
+            return
+        valid = {c.id for c in cases}
+        default = cases[0].id
+
+        def _mut():
+            self._project.load_cases = cases
+            for ld in self._project.loads:
+                if ld.case not in valid:
+                    ld.case = default
+            for ml in self._project.member_loads:
+                if ml.case not in valid:
+                    ml.case = default
+            for combo in self._project.combinations:
+                combo.factors = {cid: f for cid, f in combo.factors.items()
+                                 if cid in valid}
+        self._apply_edit("Edit load cases", _mut)
+        self.log.appendPlainText(
+            f"Load cases: {', '.join(c.name for c in cases)}")
+
+    def generate_combinations(self) -> None:
+        """Replace the project's combinations with the ASCE 7-22 LRFD strength
+        set generated from the load cases' natures."""
+        if self._project is None:
+            return
+        combos = self._project.generate_asce7_combinations()
+        if not combos:
+            QMessageBox.information(
+                self, "Combinations",
+                "No combinations generated — add load cases with natures "
+                "(Dead / Live / Wind …) in Analysis ▸ Load cases first.")
+            return
+
+        def _mut():
+            self._project.combinations = combos
+        self._apply_edit("Generate combinations", _mut)
+        self.log.appendPlainText(
+            f"Generated {len(combos)} ASCE 7-22 LRFD combinations:")
+        for c in combos:
+            terms = " + ".join(f"{f:g}·{self._project.case(cid).name}"
+                               for cid, f in c.factors.items()
+                               if self._project.case(cid))
+            self.log.appendPlainText(f"  {c.name}:  {terms}")
+        self.statusBar().showMessage(
+            f"{len(combos)} load combinations · run Design to envelope them")
 
     def open_section_designer(self) -> None:
         """Open the General Section Designer (concrete/PSC/composite) over

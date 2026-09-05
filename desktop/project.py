@@ -68,10 +68,48 @@ class Member:
     kind: str = "beamcolumn2d"
 
 
+# Load "nature" -> ASCE 7 pattern key used by the code combinations. ``None``
+# means the case carries no code factor of its own (user combos only).
+NATURE_ASCE = {"dead": "D", "live": "L", "roof_live": "Lr", "snow": "S",
+               "rain": "R", "wind": "W", "seismic": "E", "other": None}
+NATURE_LABELS = {"dead": "Dead", "live": "Live", "roof_live": "Roof live",
+                 "snow": "Snow", "rain": "Rain", "wind": "Wind",
+                 "seismic": "Seismic", "other": "Other"}
+
+
+@dataclass
+class LoadCase:
+    """A named physical load case (Dead, Live, Wind, …). Loads belong to a
+    case; combinations factor cases together. ``nature`` maps the case to an
+    ASCE 7 pattern key so code combinations can be generated automatically."""
+    id: int
+    name: str
+    nature: str = "dead"          # key of NATURE_ASCE
+
+
 @dataclass
 class Load:
     node: int
     values: tuple                 # nodal load vector (len ndf)
+    case: int = 1                 # owning LoadCase id
+
+
+@dataclass
+class MemberLoad:
+    """A uniform transverse line load on a member, in the member's local axes
+    (N/m). ``wz`` is used in 3-D only."""
+    member: int
+    wy: float = 0.0               # local-y UDL (N/m)
+    wz: float = 0.0               # local-z UDL (N/m), 3-D only
+    case: int = 1                 # owning LoadCase id
+
+
+@dataclass
+class LoadCombination:
+    """A weighted sum of load cases. ``factors`` maps case id -> factor."""
+    id: int
+    name: str
+    factors: dict = field(default_factory=dict)   # {case_id: factor}
 
 
 @dataclass
@@ -86,7 +124,53 @@ class Project:
     sections: list = field(default_factory=list)
     nodes: list = field(default_factory=list)
     members: list = field(default_factory=list)
-    loads: list = field(default_factory=list)
+    load_cases: list = field(default_factory=list)    # LoadCase
+    loads: list = field(default_factory=list)          # nodal Load
+    member_loads: list = field(default_factory=list)   # MemberLoad (line loads)
+    combinations: list = field(default_factory=list)   # LoadCombination
+
+    def __post_init__(self):
+        if not self.load_cases:
+            self.load_cases.append(LoadCase(id=1, name="Dead", nature="dead"))
+
+    # ------------------------------------------------------------- load cases
+    def case(self, case_id):
+        return next((c for c in self.load_cases if c.id == case_id), None)
+
+    def combination(self, combo_id):
+        return next((c for c in self.combinations if c.id == combo_id), None)
+
+    def default_case_id(self) -> int:
+        return self.load_cases[0].id if self.load_cases else 1
+
+    def generate_asce7_combinations(self) -> list:
+        """ASCE 7-22 LRFD strength combinations as project ``LoadCombination``s,
+        mapping each case to its pattern key (D, L, W, …) via its nature. Combos
+        that reduce to the same factor set — e.g. a project with no Lr/S/R cases
+        — are de-duplicated. Returns the new combinations (caller adds them)."""
+        from femsolver.analysis.load_combinations import asce7_lrfd_combinations
+        key_to_cases: dict = {}
+        for c in self.load_cases:
+            key = NATURE_ASCE.get(c.nature)
+            if key:
+                key_to_cases.setdefault(key, []).append(c.id)
+        out, seen = [], set()
+        next_id = max((c.id for c in self.combinations), default=0) + 1
+        for ec in asce7_lrfd_combinations():
+            factors: dict = {}
+            for key, f in ec.factors.items():
+                for cid in key_to_cases.get(key, []):
+                    factors[cid] = factors.get(cid, 0.0) + f
+            if not factors:
+                continue
+            sig = frozenset(factors.items())
+            if sig in seen:
+                continue
+            seen.add(sig)
+            out.append(LoadCombination(id=next_id, name=ec.name,
+                                       factors=dict(factors)))
+            next_id += 1
+        return out
 
     # ----------------------------------------------------------- serialization
     def to_dict(self) -> dict:
@@ -97,6 +181,10 @@ class Project:
 
     @classmethod
     def from_dict(cls, d: dict) -> "Project":
+        cases = [LoadCase(**c) for c in d.get("load_cases", [])]
+        if not cases:                       # migrate pre-load-case projects
+            cases = [LoadCase(id=1, name="Dead", nature="dead")]
+        default_id = cases[0].id
         return cls(
             name=d.get("name", "Untitled"),
             ndm=int(d.get("ndm", 2)),
@@ -108,8 +196,18 @@ class Project:
             sections=[Section(**s) for s in d.get("sections", [])],
             nodes=[Node(**_coerce_node(n)) for n in d.get("nodes", [])],
             members=[Member(**m) for m in d.get("members", [])],
-            loads=[Load(node=x["node"], values=tuple(x["values"]))
+            load_cases=cases,
+            loads=[Load(node=x["node"], values=tuple(x["values"]),
+                        case=x.get("case", default_id))
                    for x in d.get("loads", [])],
+            member_loads=[MemberLoad(member=x["member"], wy=x.get("wy", 0.0),
+                                     wz=x.get("wz", 0.0),
+                                     case=x.get("case", default_id))
+                          for x in d.get("member_loads", [])],
+            combinations=[LoadCombination(
+                id=c["id"], name=c["name"],
+                factors={int(k): v for k, v in c.get("factors", {}).items()})
+                for c in d.get("combinations", [])],
         )
 
     @classmethod
@@ -124,8 +222,13 @@ class Project:
         return cls.from_json(Path(path).read_text(encoding="utf-8"))
 
     # -------------------------------------------------------- compile to solver
-    def build_model(self):
-        """Compile this declarative project into a transient femsolver.Model."""
+    def build_model(self, with_loads: bool = True):
+        """Compile this declarative project into a transient femsolver.Model.
+
+        With ``with_loads`` the unfactored sum of every load case is applied
+        (ready to solve as-is). Pass ``with_loads=False`` to build geometry +
+        supports only, then apply a specific case/combination via
+        :meth:`apply_loads` — what the combination/envelope design does."""
         from femsolver import (BeamColumn2D, BeamColumn3D, ElasticIsotropic,
                                Model)
 
@@ -169,9 +272,93 @@ class Project:
         for nd in self.nodes:
             if nd.supports and any(nd.supports):
                 m.fix(nd.id, list(nd.supports))
-        for ld in self.loads:
-            m.add_nodal_load(ld.node, list(ld.values))
+        if with_loads:
+            self.apply_loads(m, ("all", None))
         return m
+
+    # ------------------------------------------------- load application
+    def _selection_factors(self, selection) -> dict:
+        """{case_id: factor} for a load selection (solving or display)."""
+        kind = selection[0] if selection else "all"
+        if kind == "case":
+            return {selection[1]: 1.0}
+        if kind == "combination":
+            combo = self.combination(selection[1])
+            return dict(combo.factors) if combo else {}
+        return {c.id: 1.0 for c in self.load_cases}
+
+    def resolved_loads(self, selection=("all", None)):
+        """(nodal, member) factored applied-load maps for a selection —
+        nodal = {node_id: [components]}, member = {member_id: (wy, wz)}."""
+        factors = self._selection_factors(selection)
+        nodal: dict = {}
+        for ld in self.loads:
+            f = factors.get(ld.case, 0.0)
+            if not f:
+                continue
+            acc = nodal.setdefault(ld.node, [0.0] * self.ndf)
+            for k, v in enumerate(ld.values):
+                if k < len(acc):
+                    acc[k] += v * f
+        member: dict = {}
+        for ml in self.member_loads:
+            f = factors.get(ml.case, 0.0)
+            if not f:
+                continue
+            wv = member.setdefault(ml.member, [0.0, 0.0])
+            wv[0] += ml.wy * f
+            wv[1] += ml.wz * f
+        return nodal, member
+
+    def apply_loads(self, model, selection=("all", None)) -> None:
+        """Clear the model's loads and apply one selection: ``("all", None)``
+        (every case ×1), ``("case", id)``, or ``("combination", id)``."""
+        model.clear_loads()
+        kind = selection[0] if selection else "all"
+        if kind == "case":
+            self.apply_case(model, selection[1], 1.0)
+        elif kind == "combination":
+            combo = self.combination(selection[1])
+            if combo:
+                for cid, f in combo.factors.items():
+                    if f:
+                        self.apply_case(model, cid, f)
+        else:                                    # "all" (or unknown → all)
+            for c in self.load_cases:
+                self.apply_case(model, c.id, 1.0)
+
+    def _apply_member_load(self, model, ml, factor: float) -> None:
+        try:
+            el = model.element(ml.member)
+        except KeyError:
+            return
+        if not hasattr(el, "add_uniform_load"):
+            return
+        if self.ndm == 3:
+            el.add_uniform_load(ml.wy * factor, ml.wz * factor)
+        else:
+            el.add_uniform_load(ml.wy * factor)
+
+    def apply_case(self, model, case_id: int, factor: float = 1.0) -> None:
+        """Add one case's nodal + line loads to a built model, scaled by
+        ``factor`` (additive — pair with ``model.clear_loads()`` between
+        combos)."""
+        for ld in self.loads:
+            if ld.case == case_id:
+                model.add_nodal_load(ld.node, [v * factor for v in ld.values])
+        for ml in self.member_loads:
+            if ml.case == case_id:
+                self._apply_member_load(model, ml, factor)
+
+    def load_patterns(self) -> dict:
+        """{str(case_id): LoadPattern} for the engine's combination/envelope
+        drivers — one named, scalable pattern per load case."""
+        from femsolver.analysis.load_combinations import LoadPattern
+        return {str(c.id): LoadPattern(
+            str(c.id),
+            lambda model, factor=1.0, cid=c.id: self.apply_case(
+                model, cid, factor))
+            for c in self.load_cases}
 
 
 def _coerce_node(n: dict) -> dict:
