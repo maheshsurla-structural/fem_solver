@@ -177,19 +177,25 @@ class SectionDesignerWindow(QMainWindow):
         self._build_menu()
         self._build_toolbar(code)
 
+        # workspace tabs: [Section] then the analyses. _build_analysis_panel
+        # creates self.tabs (P-M … Report); the Section tab (inputs + drawing)
+        # is inserted in front so it's the first tab.
+        self._build_analysis_panel()
+        self.tabs.insertTab(0, self._build_section_tab(), "Section")
+        self.tabs.setCurrentIndex(0)
+
         split = QSplitter(Qt.Orientation.Horizontal)
-        split.addWidget(self._build_definition_panel())
-        split.addWidget(self._build_preview_panel())
-        split.addWidget(self._build_analysis_panel())
+        split.addWidget(self._build_section_nav())     # left: section navigator
+        split.addWidget(self.tabs)                      # right: workspace tabs
         split.setStretchFactor(0, 0)
-        split.setStretchFactor(1, 2)
-        split.setStretchFactor(2, 3)
-        split.setSizes([340, 380, 520])
+        split.setStretchFactor(1, 1)
+        split.setSizes([210, 1030])
         split.setContentsMargins(10, 10, 10, 10)
         split.setHandleWidth(10)
         self.setCentralWidget(split)
         style.apply(self)
 
+        self._reload_section_nav()
         self._load_form_from_spec()
         self._refresh_comp_mat_combo()
         # bring the seeded materials' laws onto the initial spec
@@ -223,14 +229,6 @@ class SectionDesignerWindow(QMainWindow):
     def _build_toolbar(self, code) -> None:
         tb = self.addToolBar("Section")
         tb.setMovable(False)
-        tb.addWidget(QLabel("  Section:  "))
-        self.section_combo = QComboBox()
-        self.section_combo.setMinimumWidth(130)
-        self.section_combo.addItems(list(self._sections))
-        self.section_combo.setCurrentText(self._active)
-        self.section_combo.currentTextChanged.connect(self._switch_section)
-        tb.addWidget(self.section_combo)
-        tb.addSeparator()
         tb.addWidget(QLabel("  Design code:  "))
         self.code_combo = QComboBox()
         self.code_combo.addItems(core.CODES)
@@ -256,6 +254,43 @@ class SectionDesignerWindow(QMainWindow):
         tb.addWidget(self.stress_combo)
         for cb in (self.force_combo, self.length_combo, self.stress_combo):
             cb.currentTextChanged.connect(lambda *_: self._on_units_changed())
+
+    # ------------------------------------------------------ navigator / tab
+    def _build_section_nav(self) -> QWidget:
+        """Left sidebar: navigate the sections in the model (not inputs)."""
+        w = QWidget()
+        w.setMinimumWidth(170)
+        w.setMaximumWidth(280)
+        v = QVBoxLayout(w)
+        v.setContentsMargins(6, 8, 6, 8)
+        v.setSpacing(6)
+        lbl = QLabel("SECTIONS")
+        lbl.setObjectName("sub")
+        v.addWidget(lbl)
+        self.nav_list = QListWidget()
+        self.nav_list.currentRowChanged.connect(self._on_nav_changed)
+        v.addWidget(self.nav_list, 1)
+        row = QHBoxLayout()
+        for txt, fn in (("＋ New", self._new_section),
+                        ("Dup", self._dup_section),
+                        ("Del", self._del_section)):
+            b = QPushButton(txt)
+            b.clicked.connect(lambda _=False, f=fn: f())
+            row.addWidget(b)
+        v.addLayout(row)
+        return w
+
+    def _build_section_tab(self) -> QWidget:
+        """The 'Section' workspace tab: inputs (left) + cross-section drawing
+        and properties (right)."""
+        inner = QSplitter(Qt.Orientation.Horizontal)
+        inner.addWidget(self._build_definition_panel())
+        inner.addWidget(self._build_preview_panel())
+        inner.setStretchFactor(0, 0)
+        inner.setStretchFactor(1, 1)
+        inner.setSizes([340, 480])
+        inner.setHandleWidth(8)
+        return inner
 
     # ---------------------------------------------------------- definition
     def _build_definition_panel(self) -> QWidget:
@@ -1059,22 +1094,27 @@ class SectionDesignerWindow(QMainWindow):
         except Exception as exc:                       # noqa: BLE001
             self.statusBar().showMessage(f"Build error: {exc}")
             return
+        # tab 0 is the Section (inputs + drawing) — geometry is already live,
+        # no analysis to run.
+        idx = self.tabs.currentIndex()
+        if idx == 0:
+            self.statusBar().clearMessage()
+            return
         if not self._has_reinforcement(case):
             self.statusBar().showMessage(
                 "This section has no reinforcement yet — add bars/strands to "
                 "compute interaction, moment-curvature and verification.")
             return
         try:
-            idx = self.tabs.currentIndex()
-            if idx == 0:
+            if idx == 1:
                 self._draw_pm(case, code)
-            elif idx == 1:
-                self._draw_mphi(case)
             elif idx == 2:
-                self._fill_verify(case, code)
+                self._draw_mphi(case)
             elif idx == 3:
-                self._draw_surface(case, code)
+                self._fill_verify(case, code)
             elif idx == 4:
+                self._draw_surface(case, code)
+            elif idx == 5:
                 self._fill_report(case, code)
             self.statusBar().clearMessage()
         except Exception as exc:                       # noqa: BLE001
@@ -1318,12 +1358,19 @@ class SectionDesignerWindow(QMainWindow):
         self._refresh_geometry()
         self._recompute_analysis()
 
-    def _reload_section_combo(self) -> None:
+    def _reload_section_nav(self) -> None:
         self._loading = True
-        self.section_combo.clear()
-        self.section_combo.addItems(list(self._sections))
-        self.section_combo.setCurrentText(self._active)
+        self.nav_list.clear()
+        self.nav_list.addItems(list(self._sections))
+        names = list(self._sections)
+        if self._active in names:
+            self.nav_list.setCurrentRow(names.index(self._active))
         self._loading = False
+
+    def _on_nav_changed(self, row: int) -> None:
+        if self._loading or not (0 <= row < self.nav_list.count()):
+            return
+        self._switch_section(self.nav_list.item(row).text())
 
     def _switch_section(self, name: str) -> None:
         if self._loading or name not in self._sections or name == self._active:
@@ -1344,7 +1391,7 @@ class SectionDesignerWindow(QMainWindow):
                                 "code": self.code_combo.currentText(),
                                 "conc_mat": None, "steel_mat": None}
         self._active = name
-        self._reload_section_combo()
+        self._reload_section_nav()
         self._load_active()
 
     def _dup_section(self) -> None:
@@ -1354,7 +1401,7 @@ class SectionDesignerWindow(QMainWindow):
                                 "conc_mat": rec.get("conc_mat"),
                                 "steel_mat": rec.get("steel_mat")}
         self._active = name
-        self._reload_section_combo()
+        self._reload_section_nav()
         self._load_active()
 
     def _rename_section(self) -> None:
@@ -1372,7 +1419,7 @@ class SectionDesignerWindow(QMainWindow):
         self._sections = {new if k == self._active else k: v
                           for k, v in self._sections.items()}
         self._active = new
-        self._reload_section_combo()
+        self._reload_section_nav()
 
     def _del_section(self) -> None:
         if len(self._sections) <= 1:
@@ -1381,7 +1428,7 @@ class SectionDesignerWindow(QMainWindow):
             return
         del self._sections[self._active]
         self._active = next(iter(self._sections))
-        self._reload_section_combo()
+        self._reload_section_nav()
         self._load_active()
 
     def _new_project(self) -> None:
@@ -1390,7 +1437,7 @@ class SectionDesignerWindow(QMainWindow):
                                         "conc_mat": None, "steel_mat": None}}
         self._active = "Section 1"
         self._materials = {}
-        self._reload_section_combo()
+        self._reload_section_nav()
         self._load_active()
 
     def _open_project(self) -> None:
@@ -1407,7 +1454,7 @@ class SectionDesignerWindow(QMainWindow):
         self._sections = sections
         self._active = active
         self._materials = materials
-        self._reload_section_combo()
+        self._reload_section_nav()
         self._load_active()
         self.statusBar().showMessage(f"Opened {path}")
 
