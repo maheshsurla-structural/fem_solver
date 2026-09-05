@@ -39,6 +39,13 @@ class Section:
     shape: str = ""               # AISC W-shape (e.g. "W12x65"); drives design
     Iy: float = 0.0               # 3-D weak-axis inertia (from shape if named)
     J: float = 0.0                # 3-D torsion constant (from shape if named)
+    # A concrete/PSC/composite section authored in the General Section Designer.
+    # When present, ``gsd_spec`` (a serialized ``section_gui_core.Spec``) is the
+    # source of truth for A / Iz / Iy / J (see ``_resolve_section``) and carries
+    # the reinforcement for future P-M-M member design. ``gsd_code`` is its
+    # Section-Designer design code.
+    gsd_spec: dict | None = None
+    gsd_code: str = ""
 
 
 @dataclass
@@ -155,10 +162,16 @@ def _coerce_node(n: dict) -> dict:
 
 
 def _resolve_section(section):
-    """(A, Iz, Iy, J) for analysis — from the AISC catalog when the section
-    names a W-shape (Iz = strong-axis Ix; so the shape drives analysis too),
-    else the section's own values with positive fallbacks for the 3-D-only
-    Iy / J."""
+    """(A, Iz, Iy, J) for analysis — from a General-Section-Designer section
+    when the section carries a ``gsd_spec`` (concrete/PSC/composite: gross A and
+    inertias from the built section), else from the AISC catalog when it names a
+    W-shape (Iz = strong-axis Ix), else the section's own values with positive
+    fallbacks for the 3-D-only Iy / J."""
+    if getattr(section, "gsd_spec", None):
+        try:
+            return _gsd_section_props(section.gsd_spec)
+        except Exception:
+            pass
     if section.shape:
         try:
             from femsolver.design.steel.sections import get_section
@@ -169,3 +182,21 @@ def _resolve_section(section):
     Iy = section.Iy or section.Iz
     J = section.J or (0.1 * section.Iz)
     return section.A, section.Iz, Iy, J
+
+
+def _gsd_section_props(gsd_spec: dict):
+    """(A, Iz, Iy, J) in SI for a General-Section-Designer section, built from
+    its serialized ``section_gui_core.Spec``. Imported lazily so the core FEM
+    model never hard-depends on the Section-Designer engine."""
+    import os
+    import sys
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    import section_gui_core as core
+    fields = set(core.Spec.__dataclass_fields__)
+    spec = core.Spec(**{k: v for k, v in gsd_spec.items() if k in fields})
+    sec = core.build_case(spec).section
+    Iz, Iy = sec.I_zz, sec.I_yy
+    J = sec.J or (Iz + Iy)          # St-Venant fallback ~ polar for solid shapes
+    return sec.area, Iz, Iy, J

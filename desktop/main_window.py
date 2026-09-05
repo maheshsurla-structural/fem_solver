@@ -327,11 +327,10 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(f"Design · max DCR {mx:.2f} · {verdict}")
 
     def open_section_designer(self) -> None:
-        """Open the General Section Designer (concrete/PSC) over section_gui_core.
-
-        Standalone window; seeded with the project's design code when it maps
-        to a Section Designer code. Bridging the FEM model's steel sections to
-        this concrete designer is a follow-up (roadmap T2.08)."""
+        """Open the General Section Designer (concrete/PSC/composite) over
+        section_gui_core, bridged to this FEM project. When a selected section
+        carries a GSD spec it is loaded for editing; the designer can push its
+        active section back into the model (``apply_gsd_section``)."""
         try:
             from section_designer import SectionDesignerWindow
         except Exception as exc:                       # noqa: BLE001
@@ -341,8 +340,58 @@ class MainWindow(QMainWindow):
             return
         code = getattr(self._project, "design_code", None) if self._project \
             else None
-        self._sd_win = SectionDesignerWindow(self, code=code)
+        # seed from a selected section that already carries a GSD spec
+        spec, name = None, None
+        for kind, sid in self._selected_refs():
+            if kind == "section":
+                sec = _find(self._project.sections, sid)
+                if sec is not None and getattr(sec, "gsd_spec", None):
+                    try:
+                        import section_gui_core as core
+                        flds = set(core.Spec.__dataclass_fields__)
+                        spec = core.Spec(**{k: v for k, v in sec.gsd_spec.items()
+                                            if k in flds})
+                        name = sec.name
+                        code = sec.gsd_code or code
+                    except Exception:                  # noqa: BLE001
+                        spec = None
+                break
+        self._sd_win = SectionDesignerWindow(self, code=code, spec=spec,
+                                             fem_window=self, section_name=name)
         self._sd_win.show()
+
+    def apply_gsd_section(self, name: str, spec_dict: dict, code: str) -> None:
+        """Create or update a FEM ``Section`` from a General-Section-Designer
+        section: its gross A / Iz / Iy / J drive the frame analysis and the
+        ``gsd_spec`` is stored for re-editing (and future P-M-M member design).
+        Called by the Section Designer's 'Apply to FEM model' action."""
+        if self._project is None:
+            return
+        import project as _pmod
+        try:
+            A, Iz, Iy, J = _pmod._gsd_section_props(spec_dict)
+        except Exception as exc:                       # noqa: BLE001
+            QMessageBox.critical(self, "Apply failed",
+                                 f"Could not build the section:\n{exc}")
+            return
+        existing = next((s for s in self._project.sections if s.name == name),
+                        None)
+        sid = existing.id if existing else (
+            max((s.id for s in self._project.sections), default=0) + 1)
+        new = Section(id=sid, name=name, A=A, Iz=Iz, Iy=Iy, J=J,
+                      gsd_spec=dict(spec_dict), gsd_code=code)
+
+        def _mut():
+            if existing is not None:
+                _replace(self._project.sections, sid, new)
+            else:
+                self._project.sections.append(new)
+        self._apply_edit(f"Apply GSD section '{name}'", _mut, ("section", sid))
+        verb = "Updated" if existing else "Added"
+        self.log.appendPlainText(
+            f"{verb} section '{name}' from Section Designer — "
+            f"A={A * 1e4:.1f} cm², Iz={Iz * 1e8:.0f} cm⁴")
+        self.statusBar().showMessage(f"{verb} FEM section '{name}'")
 
     def open_drawings(self) -> None:
         if self._project is None:

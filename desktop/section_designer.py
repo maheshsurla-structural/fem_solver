@@ -145,18 +145,21 @@ class SectionDesignerWindow(QMainWindow):
     """Standalone General Section Designer over ``section_gui_core``."""
 
     def __init__(self, parent=None, *, spec: core.Spec | None = None,
-                 code: str | None = None):
+                 code: str | None = None, fem_window=None,
+                 section_name: str | None = None):
         super().__init__(parent)
         self.setWindowTitle("General Section Designer")
         self.resize(1240, 860)
 
+        self._fem = fem_window           # FEM MainWindow for the model bridge
         self._spec = spec or core.Spec()
         self._code0 = code if (code and code in core.CODES) else core.CODES[0]
+        name0 = section_name or "Section 1"
         # multi-section project: {name: {"spec", "code", "conc_mat", "steel_mat"}}
-        self._sections: dict = {"Section 1": {
+        self._sections: dict = {name0: {
             "spec": self._spec, "code": self._code0,
             "conc_mat": None, "steel_mat": None}}
-        self._active = "Section 1"
+        self._active = name0
         self._materials: dict = {}       # shared library {name: matd}
         self._units = core.Units()
         self._loading = False
@@ -188,6 +191,10 @@ class SectionDesignerWindow(QMainWindow):
         fm.addAction("&New project", self._new_project)
         fm.addAction("&Open project…", self._open_project)
         fm.addAction("&Save project…", self._save_project)
+        if self._fem is not None:
+            fm.addSeparator()
+            fm.addAction("&Apply active section to FEM model",
+                         self._apply_to_fem)
         sm = self.menuBar().addMenu("&Sections")
         sm.addAction("&New section", self._new_section)
         sm.addAction("&Duplicate section", self._dup_section)
@@ -1318,6 +1325,20 @@ class SectionDesignerWindow(QMainWindow):
             self._materials = dlg.materials
             self._refresh_comp_mat_combo()
             self._queue()          # composite analysis may use library mats
+
+    def _apply_to_fem(self) -> None:
+        """Push the active section into the bridged FEM model as a Section whose
+        A / Iz / Iy / J come from this GSD section (and carry the gsd_spec)."""
+        if self._fem is None:
+            return
+        from dataclasses import asdict
+        try:
+            self._fem.apply_gsd_section(self._active, asdict(self._spec),
+                                        self.code_combo.currentText())
+            self.statusBar().showMessage(
+                f"Applied '{self._active}' to the FEM model.")
+        except Exception as exc:                       # noqa: BLE001
+            QMessageBox.critical(self, "Apply failed", str(exc))
 
     # -------------------------------------------------------------- export
     def _export_section_json(self) -> None:
