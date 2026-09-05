@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass, field
+from functools import lru_cache
 from pathlib import Path
 
 SCHEMA = "femsolver-project/1"
@@ -138,14 +139,33 @@ class Project:
         for nd in self.nodes:
             coords = (nd.x, nd.y) if self.ndm == 2 else (nd.x, nd.y, nd.z)
             m.add_node(nd.id, *coords)
+        gsd_mats: dict = {}          # section id -> concrete ElasticIsotropic
         for mb in self.members:
-            A, Iz, Iy, J = _resolve_section(secs[mb.section])
+            sec = secs[mb.section]
+            A, Iz, Iy, J = _resolve_section(sec)
+            material = mats[mb.material]
+            # a Section-Designer (concrete/PSC) section drives its own modulus,
+            # so the member's stiffness reflects concrete E_c, not whatever
+            # material was assigned in the model.
+            if getattr(sec, "gsd_spec", None):
+                cm = gsd_mats.get(sec.id)
+                if cm is None:
+                    try:
+                        Ec = _gsd_modulus(sec.gsd_spec)
+                    except Exception:
+                        Ec = None
+                    if Ec:
+                        cm = ElasticIsotropic(10_000 + sec.id, E=Ec, nu=0.2)
+                        m.add_material(cm)
+                        gsd_mats[sec.id] = cm
+                if cm is not None:
+                    material = cm
             if self.ndm == 3:
                 m.add_element(BeamColumn3D(mb.id, (mb.n1, mb.n2),
-                                           mats[mb.material], A, Iy, Iz, J))
+                                           material, A, Iy, Iz, J))
             else:
                 m.add_element(BeamColumn2D(mb.id, (mb.n1, mb.n2),
-                                           mats[mb.material], A, Iz))
+                                           material, A, Iz))
         for nd in self.nodes:
             if nd.supports and any(nd.supports):
                 m.fix(nd.id, list(nd.supports))
@@ -184,10 +204,11 @@ def _resolve_section(section):
     return section.A, section.Iz, Iy, J
 
 
-def _gsd_section_props(gsd_spec: dict):
-    """(A, Iz, Iy, J) in SI for a General-Section-Designer section, built from
-    its serialized ``section_gui_core.Spec``. Imported lazily so the core FEM
-    model never hard-depends on the Section-Designer engine."""
+def _spec_from_gsd(gsd_spec: dict):
+    """Deserialize a stored ``gsd_spec`` dict into a ``section_gui_core.Spec``.
+    Imported lazily so the core FEM model never hard-depends on the
+    Section-Designer engine; repo root is put on sys.path since the SD engine
+    lives one level above ``desktop/``."""
     import os
     import sys
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -195,8 +216,31 @@ def _gsd_section_props(gsd_spec: dict):
         sys.path.insert(0, root)
     import section_gui_core as core
     fields = set(core.Spec.__dataclass_fields__)
-    spec = core.Spec(**{k: v for k, v in gsd_spec.items() if k in fields})
-    sec = core.build_case(spec).section
+    return core.Spec(**{k: v for k, v in gsd_spec.items() if k in fields})
+
+
+@lru_cache(maxsize=128)
+def _gsd_built_section(spec):
+    """The built ``section_gui_core`` Section for a Spec (cached; Spec is a
+    frozen/hashable dataclass, so props + modulus share one build)."""
+    import section_gui_core as core
+    return core.build_case(spec).section
+
+
+def _gsd_section_props(gsd_spec: dict):
+    """(A, Iz, Iy, J) in SI for a General-Section-Designer section, built from
+    its serialized ``section_gui_core.Spec``."""
+    sec = _gsd_built_section(_spec_from_gsd(gsd_spec))
     Iz, Iy = sec.I_zz, sec.I_yy
     J = sec.J or (Iz + Iy)          # St-Venant fallback ~ polar for solid shapes
     return sec.area, Iz, Iy, J
+
+
+def _gsd_modulus(gsd_spec: dict):
+    """Concrete elastic modulus E_c [Pa] of a General-Section-Designer section
+    (its section's ``primary_material.Ec`` — e.g. ACI 4700·√f'c), so a concrete
+    frame member's stiffness reflects concrete, not a steel material assigned in
+    the model. Returns None when no concrete modulus is available."""
+    sec = _gsd_built_section(_spec_from_gsd(gsd_spec))
+    Ec = getattr(getattr(sec, "primary_material", None), "Ec", None)
+    return float(Ec) if Ec else None
