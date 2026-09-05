@@ -54,9 +54,10 @@ from PySide6.QtCore import Qt, QByteArray, QTimer
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox,
                                QDoubleSpinBox, QFileDialog, QFormLayout,
-                               QGroupBox, QHBoxLayout, QLabel, QListWidget,
-                               QMainWindow, QMessageBox, QPushButton,
-                               QScrollArea, QSpinBox, QSplitter, QTableWidget,
+                               QGroupBox, QHBoxLayout, QLabel, QLineEdit,
+                               QListWidget, QMainWindow, QMessageBox,
+                               QPushButton, QScrollArea, QSpinBox, QSplitter,
+                               QTableWidget,
                                QTableWidgetItem, QTabWidget, QTextBrowser,
                                QVBoxLayout, QWidget)
 
@@ -157,12 +158,15 @@ class SectionDesignerWindow(QMainWindow):
         self._spec = spec or core.Spec()
         self._code0 = code if (code and code in core.CODES) else core.CODES[0]
         name0 = section_name or "Section 1"
+        # shared material library {name: matd} — constitutive laws live here;
+        # sections reference materials by name (confinement stays on the spec).
+        self._materials: dict = {"C30": _conc_default(30.0),
+                                 "S500": _steel_default(500.0)}
         # multi-section project: {name: {"spec", "code", "conc_mat", "steel_mat"}}
         self._sections: dict = {name0: {
             "spec": self._spec, "code": self._code0,
-            "conc_mat": None, "steel_mat": None}}
+            "conc_mat": "C30", "steel_mat": "S500"}}
         self._active = name0
-        self._materials: dict = {}       # shared library {name: matd}
         self._units = core.Units()
         self._loading = False
         self._timer = QTimer(self)
@@ -187,6 +191,10 @@ class SectionDesignerWindow(QMainWindow):
         style.apply(self)
 
         self._load_form_from_spec()
+        self._refresh_comp_mat_combo()
+        # bring the seeded materials' laws onto the initial spec
+        self._spec = self._apply_material_params(self._spec)
+        self._sections[self._active]["spec"] = self._spec
         self._refresh_geometry()
         self._recompute_analysis()
 
@@ -295,17 +303,22 @@ class SectionDesignerWindow(QMainWindow):
         pf.addRow("Strand y", self.strand_y_spin)
         v.addWidget(self.psc_box)
 
+        # Materials: chosen from the shared library (their constitutive laws
+        # live there); the section keeps only confinement (below).
         mbox = CollapsibleGroup("Materials")
         self.mat_box = mbox
         mf = QFormLayout(mbox.body)
-        self.fc_spin = self._dspin(5, 120, 1, " MPa", 0)
-        self.fy_spin = self._dspin(200, 700, 10, " MPa", 0)
-        self.Es_spin = self._dspin(150, 230, 5, " GPa", 0)
-        for w in (self.fc_spin, self.fy_spin, self.Es_spin):
-            self._connect(w)
-        mf.addRow("Concrete f'c", self.fc_spin)
-        mf.addRow("Steel f_y", self.fy_spin)
-        mf.addRow("Steel E_s", self.Es_spin)
+        self.conc_mat_combo = QComboBox()
+        self.conc_mat_combo.currentTextChanged.connect(
+            lambda *_: self._on_material_choice())
+        self.steel_mat_combo = QComboBox()
+        self.steel_mat_combo.currentTextChanged.connect(
+            lambda *_: self._on_material_choice())
+        mf.addRow("Concrete", self.conc_mat_combo)
+        mf.addRow("Steel", self.steel_mat_combo)
+        manage = QPushButton("Manage library…")
+        manage.clicked.connect(self._open_materials)
+        mf.addRow("", manage)
         v.addWidget(mbox)
 
         rbox = CollapsibleGroup("Reinforcement")
@@ -336,33 +349,21 @@ class SectionDesignerWindow(QMainWindow):
             lambda: self._add_arrangement(tendon=True),
             lambda: self._remove_arrangement(tendon=True)))
 
-        # Constitutive models (feed moment-curvature + verification)
-        cmbox = CollapsibleGroup("Constitutive models (M-φ)", collapsed=True)
+        # Confinement — section-dependent (transverse reinforcement), so it
+        # stays here rather than on the material. Drives the confined concrete
+        # response in moment-curvature.
+        cmbox = CollapsibleGroup("Confinement & M-φ", collapsed=True)
         cmf = QFormLayout(cmbox.body)
-        self.conc_model_combo = QComboBox()
-        self.conc_model_combo.addItems(list(core.CONC_MODELS))
-        self.conc_model_combo.currentTextChanged.connect(
-            lambda *_: self._on_value_changed())
-        self.eps_c0_spin = self._dspin(0.001, 0.005, 0.0002, "", 4)
-        self.eps_cu_spin = self._dspin(0.002, 0.01, 0.0005, "", 4)
+        self.eps_c0_spin = self._dspin(0.001, 0.02, 0.0002, "", 4)
+        self.eps_cu_spin = self._dspin(0.002, 0.05, 0.0005, "", 4)
         self.fcu_ratio_spin = self._dspin(0.0, 1.0, 0.05, "", 2)
-        self.steel_model_combo = QComboBox()
-        self.steel_model_combo.addItems(list(core.STEEL_MODELS))
-        self.steel_model_combo.currentTextChanged.connect(
-            lambda *_: self._on_value_changed())
-        self.steel_b_spin = self._dspin(0.0, 0.1, 0.005, "", 3)
-        self.steel_fu_spin = self._dspin(1.0, 2.0, 0.05, "", 2)
         self.kappa_max_spin = self._dspin(0.005, 0.5, 0.01, " 1/m", 3)
         for w in (self.eps_c0_spin, self.eps_cu_spin, self.fcu_ratio_spin,
-                  self.steel_b_spin, self.steel_fu_spin, self.kappa_max_spin):
+                  self.kappa_max_spin):
             self._connect(w)
-        cmf.addRow("Concrete model", self.conc_model_combo)
-        cmf.addRow("ε_c0 (peak)", self.eps_c0_spin)
-        cmf.addRow("ε_cu (crush)", self.eps_cu_spin)
-        cmf.addRow("f_cu / f'c", self.fcu_ratio_spin)
-        cmf.addRow("Steel model", self.steel_model_combo)
-        cmf.addRow("Hardening b", self.steel_b_spin)
-        cmf.addRow("f_su / f_y", self.steel_fu_spin)
+        cmf.addRow("ε_c0 (peak, confined)", self.eps_c0_spin)
+        cmf.addRow("ε_cu (crush, confined)", self.eps_cu_spin)
+        cmf.addRow("f_cu / f'c (residual)", self.fcu_ratio_spin)
         cmf.addRow("κ_max sweep", self.kappa_max_spin)
         v.addWidget(cmbox)
 
@@ -887,9 +888,6 @@ class SectionDesignerWindow(QMainWindow):
         self._rebuild_dim_fields(self.kind_combo.currentText())
         self._rebuild_rebar_fields(self.kind_combo.currentText())
         self.psc_box.setVisible(self.kind_combo.currentText() == "PSC girder")
-        self.fc_spin.setValue(s.fc / 1e6)
-        self.fy_spin.setValue(s.fy / 1e6)
-        self.Es_spin.setValue(s.Es / 1e9)
         self.cover_spin.setValue(s.cover * 1000.0)
         want = f"{int(round(s.bar_dia * 1000))} mm"
         if want in core.BAR_SIZES:
@@ -898,14 +896,12 @@ class SectionDesignerWindow(QMainWindow):
         self.strand_area_spin.setValue(s.strand_area * 1e6)
         self.fpe_spin.setValue(s.f_pe / 1e6)
         self.strand_y_spin.setValue(s.strand_y * 1000.0)
-        self.conc_model_combo.setCurrentText(s.conc_model)
+        # confinement (section) + M-φ sweep
         self.eps_c0_spin.setValue(s.eps_c0)
         self.eps_cu_spin.setValue(s.eps_cu)
         self.fcu_ratio_spin.setValue(s.fcu_ratio)
-        self.steel_model_combo.setCurrentText(s.steel_model)
-        self.steel_b_spin.setValue(s.steel_b)
-        self.steel_fu_spin.setValue(s.steel_fu_ratio)
         self.kappa_max_spin.setValue(s.kappa_max)
+        self._refresh_material_combos()
         self._refresh_arr_lists()
         self._load_custom_tables()
         self._refresh_comp_list()
@@ -917,9 +913,6 @@ class SectionDesignerWindow(QMainWindow):
         ch: dict = {"kind": kind}
         for key, spin in self._dim_spins.items():
             ch[key] = spin.value() / 1000.0
-        ch["fc"] = self.fc_spin.value() * 1e6
-        ch["fy"] = self.fy_spin.value() * 1e6
-        ch["Es"] = self.Es_spin.value() * 1e9
         ch["cover"] = self.cover_spin.value() / 1000.0
         ch["bar_dia"] = core.BAR_SIZES[self.bardia_combo.currentText()]
         for key, w in self._rebar_widgets.items():
@@ -929,15 +922,65 @@ class SectionDesignerWindow(QMainWindow):
             ch["strand_area"] = self.strand_area_spin.value() * 1e-6
             ch["f_pe"] = self.fpe_spin.value() * 1e6
             ch["strand_y"] = self.strand_y_spin.value() / 1000.0
-        ch["conc_model"] = self.conc_model_combo.currentText()
+        # confinement (section-dependent) + the M-φ sweep limit stay here
         ch["eps_c0"] = self.eps_c0_spin.value()
         ch["eps_cu"] = self.eps_cu_spin.value()
         ch["fcu_ratio"] = self.fcu_ratio_spin.value()
-        ch["steel_model"] = self.steel_model_combo.currentText()
-        ch["steel_b"] = self.steel_b_spin.value()
-        ch["steel_fu_ratio"] = self.steel_fu_spin.value()
         ch["kappa_max"] = self.kappa_max_spin.value()
-        return replace(self._spec, **ch)
+        spec = replace(self._spec, **ch)
+        # material constitutive laws come from the chosen library materials
+        return self._apply_material_params(spec)
+
+    # ---- material library <-> section ---------------------------------
+    _CONC_KEYS = ("fc", "conc_model", "conc_f1_ratio", "fr_model", "fr_coeff",
+                  "eps_decay")
+    _STEEL_KEYS = ("fy", "Es", "steel_model", "steel_b", "steel_fu_ratio",
+                   "steel_eps_sh", "steel_eps_su")
+
+    def _apply_material_params(self, spec: core.Spec) -> core.Spec:
+        """Overlay the chosen concrete/steel materials' constitutive laws onto
+        ``spec`` (confinement fields left untouched)."""
+        ch: dict = {}
+        conc = self._materials.get(self.conc_mat_combo.currentText())
+        if conc:
+            ch.update({k: conc[k] for k in self._CONC_KEYS if k in conc})
+        steel = self._materials.get(self.steel_mat_combo.currentText())
+        if steel:
+            ch.update({k: steel[k] for k in self._STEEL_KEYS if k in steel})
+        return replace(spec, **ch) if ch else spec
+
+    def _concrete_names(self) -> list:
+        return [n for n, m in self._materials.items()
+                if m.get("kind") == "concrete"]
+
+    def _steel_names(self) -> list:
+        return [n for n, m in self._materials.items()
+                if m.get("kind") == "steel"]
+
+    def _refresh_material_combos(self) -> None:
+        """Repopulate the section's concrete/steel pickers from the library,
+        preserving the active section's stored choice."""
+        was = self._loading
+        self._loading = True
+        rec = self._sections.get(self._active, {})
+        for combo, names, key in (
+                (self.conc_mat_combo, self._concrete_names(), "conc_mat"),
+                (self.steel_mat_combo, self._steel_names(), "steel_mat")):
+            combo.clear()
+            combo.addItems(names)
+            want = rec.get(key)
+            i = combo.findText(want) if want else -1
+            combo.setCurrentIndex(i if i >= 0 else 0)
+        self._loading = was
+
+    def _on_material_choice(self) -> None:
+        if self._loading:
+            return
+        rec = self._sections.get(self._active)
+        if rec is not None:
+            rec["conc_mat"] = self.conc_mat_combo.currentText() or None
+            rec["steel_mat"] = self.steel_mat_combo.currentText() or None
+        self._on_value_changed()
 
     # ----------------------------------------------------------- recompute
     def _on_units_changed(self) -> None:
@@ -1390,8 +1433,9 @@ class SectionDesignerWindow(QMainWindow):
         dlg = MaterialsDialog(self, materials=self._materials)
         if dlg.exec() == QDialog.DialogCode.Accepted:
             self._materials = dlg.materials
-            self._refresh_comp_mat_combo()
-            self._queue()          # composite analysis may use library mats
+            self._refresh_material_combos()   # section pickers
+            self._refresh_comp_mat_combo()    # composite shape picker
+            self._on_value_changed()          # re-resolve laws onto the spec
 
     def _apply_to_fem(self) -> None:
         """Push the active section into the bridged FEM model as a Section whose
@@ -1593,53 +1637,96 @@ def _steel_default(fy_mpa=500.0) -> dict:
                 steel_eps_sh=0.008, steel_eps_su=0.10)
 
 
+# material parameter editors: (label, key, spec) where spec is
+# ("spin", lo, hi, step, decimals, store_scale) — display value ×scale = stored
+# SI value (f'c MPa→Pa, E_s GPa→Pa) — or ("combo", options).
+_CONC_FIELDS = [
+    ("f'c [MPa]", "fc", ("spin", 5, 150, 1, 0, 1e6)),
+    ("Concrete model", "conc_model", ("combo", list(core.CONC_MODELS))),
+    ("Trilinear knee f1/f'c", "conc_f1_ratio", ("spin", 0.1, 0.9, 0.05, 2, 1)),
+    ("Rupture model", "fr_model", ("combo", ["sqrt", "ec2"])),
+    ("Rupture coeff", "fr_coeff", ("spin", 0.1, 1.0, 0.01, 2, 1)),
+    ("Tension-stiff decay ε", "eps_decay", ("spin", 0.0, 0.01, 0.0005, 4, 1)),
+]
+_STEEL_FIELDS = [
+    ("f_y [MPa]", "fy", ("spin", 200, 700, 10, 0, 1e6)),
+    ("E_s [GPa]", "Es", ("spin", 150, 230, 5, 0, 1e9)),
+    ("Steel model", "steel_model", ("combo", list(core.STEEL_MODELS))),
+    ("Hardening b", "steel_b", ("spin", 0.0, 0.1, 0.005, 3, 1)),
+    ("f_su / f_y", "steel_fu_ratio", ("spin", 1.0, 2.0, 0.05, 2, 1)),
+    ("ε_sh onset", "steel_eps_sh", ("spin", 0.0, 0.05, 0.001, 3, 1)),
+    ("ε_su ultimate", "steel_eps_su", ("spin", 0.0, 0.3, 0.005, 3, 1)),
+]
+
+
 class MaterialsDialog(QDialog):
-    """Manage the project's shared named materials library ({name: matd}).
-    Concrete/steel grades reused by composite shapes and rebar/tendon
-    arrangements. Strength (f'c / f_y) and name are editable in place; other
-    constitutive parameters keep their defaults (edited per-section for now)."""
+    """Manage the shared materials library ({name: matd}) — each material's full
+    constitutive law (concrete model + rupture/tension-stiffening, or steel
+    model + hardening) is edited here and reused by every section that
+    references it. Confinement is NOT here — it lives on the section."""
 
     def __init__(self, parent=None, *, materials: dict | None = None):
         super().__init__(parent)
         self.setWindowTitle("Materials library")
-        self.resize(440, 360)
+        self.resize(560, 420)
         self.materials = dict(materials or {})
-        # working parallel lists so renames/edits are applied on OK
-        self._mats = [dict(m) for m in self.materials.values()]
         self._names = list(self.materials.keys())
+        self._mats = [dict(m) for m in self.materials.values()]
+        self._cur = -1
+        self._widgets: dict = {}
+        self._loading = False
 
-        v = QVBoxLayout(self)
-        self.tbl = QTableWidget(0, 3)
-        self.tbl.setHorizontalHeaderLabels(["Name", "Kind", "Strength [MPa]"])
-        self.tbl.horizontalHeader().setStretchLastSection(True)
-        self.tbl.verticalHeader().setVisible(False)
-        v.addWidget(self.tbl)
-        row = QHBoxLayout()
+        row = QHBoxLayout(self)
+        # left: material list + add/remove
+        left = QVBoxLayout()
+        self.listw = QListWidget()
+        self.listw.currentRowChanged.connect(self._select)
+        left.addWidget(self.listw)
+        brow = QHBoxLayout()
         for txt, fn in (("+ Concrete", lambda: self._add(_conc_default())),
                         ("+ Steel", lambda: self._add(_steel_default())),
                         ("Remove", self._remove)):
             b = QPushButton(txt)
             b.clicked.connect(fn)
-            row.addWidget(b)
-        v.addLayout(row)
+            brow.addWidget(b)
+        left.addLayout(brow)
+        row.addLayout(left, 1)
+
+        # right: the selected material's editable parameters
+        right = QVBoxLayout()
+        self.editor = QGroupBox("Material")
+        self.form = QFormLayout(self.editor)
+        self.name_edit = QLineEdit()
+        self.name_edit.editingFinished.connect(self._name_changed)
+        self.form.addRow("Name", self.name_edit)
+        right.addWidget(self.editor)
+        right.addStretch(1)
         bb = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok
                               | QDialogButtonBox.StandardButton.Cancel)
         bb.accepted.connect(self._accept)
         bb.rejected.connect(self.reject)
-        v.addWidget(bb)
-        self._reload()
+        right.addWidget(bb)
+        row.addLayout(right, 2)
 
-    def _reload(self) -> None:
-        self.tbl.setRowCount(len(self._mats))
-        for r, (nm, md) in enumerate(zip(self._names, self._mats)):
-            kind = md.get("kind", "concrete")
-            strg = (md.get("fc", 0) if kind == "concrete"
-                    else md.get("fy", 0)) / 1e6
-            self.tbl.setItem(r, 0, QTableWidgetItem(nm))
-            kind_it = QTableWidgetItem(kind)
-            kind_it.setFlags(kind_it.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            self.tbl.setItem(r, 1, kind_it)
-            self.tbl.setItem(r, 2, QTableWidgetItem(f"{strg:.0f}"))
+        self._reload_list()
+        if self._names:
+            self.listw.setCurrentRow(0)
+
+    # ---- list ----
+    @staticmethod
+    def _item_text(nm: str, md: dict) -> str:
+        kind = md.get("kind", "concrete")
+        strg = (md.get("fc", 0) if kind == "concrete"
+                else md.get("fy", 0)) / 1e6
+        return f"{nm}   ·  {kind} {strg:.0f} MPa"
+
+    def _reload_list(self) -> None:
+        was = self._loading
+        self._loading = True
+        self.listw.clear()
+        for nm, md in zip(self._names, self._mats):
+            self.listw.addItem(self._item_text(nm, md))
+        self._loading = was
 
     def _add(self, md: dict) -> None:
         kind = md["kind"]
@@ -1651,27 +1738,87 @@ class MaterialsDialog(QDialog):
             i += 1
         self._names.append(name)
         self._mats.append(md)
-        self._reload()
+        self._reload_list()
+        self.listw.setCurrentRow(len(self._names) - 1)
 
     def _remove(self) -> None:
-        r = self.tbl.currentRow()
+        r = self.listw.currentRow()
         if 0 <= r < len(self._mats):
             del self._mats[r]
             del self._names[r]
-            self._reload()
+            self._cur = -1
+            self._reload_list()
+            self.listw.setCurrentRow(min(r, len(self._names) - 1))
+
+    # ---- editor form ----
+    def _select(self, r: int) -> None:
+        if self._loading:
+            return
+        if not (0 <= r < len(self._mats)):
+            self._cur = -1
+            return
+        self._cur = r
+        self._build_form(self._mats[r])
+
+    def _clear_form_rows(self) -> None:
+        # keep row 0 (Name); drop the rest
+        while self.form.rowCount() > 1:
+            self.form.removeRow(1)
+        self._widgets.clear()
+
+    def _build_form(self, md: dict) -> None:
+        self._loading = True
+        self._clear_form_rows()
+        self.name_edit.setText(self._names[self._cur])
+        fields = _CONC_FIELDS if md.get("kind") == "concrete" else _STEEL_FIELDS
+        self.editor.setTitle(md.get("kind", "material").title())
+        for label, key, spec in fields:
+            if spec[0] == "spin":
+                _, lo, hi, step, dec, scale = spec
+                w = QDoubleSpinBox()
+                w.setRange(lo, hi)
+                w.setSingleStep(step)
+                w.setDecimals(dec)
+                w.setValue(md.get(key, 0.0) / scale)
+                w.valueChanged.connect(self._field_changed)
+            else:
+                w = QComboBox()
+                w.addItems(spec[1])
+                w.setCurrentText(str(md.get(key, spec[1][0])))
+                w.currentTextChanged.connect(self._field_changed)
+            self.form.addRow(label, w)
+            self._widgets[key] = (w, spec)
+        self._loading = False
+
+    def _field_changed(self, *_a) -> None:
+        if self._loading or not (0 <= self._cur < len(self._mats)):
+            return
+        md = self._mats[self._cur]
+        for key, (w, spec) in self._widgets.items():
+            if spec[0] == "spin":
+                md[key] = w.value() * spec[5]
+            else:
+                md[key] = w.currentText()
+        it = self.listw.item(self._cur)     # refresh just this row's label
+        if it:
+            it.setText(self._item_text(self._names[self._cur], md))
+
+    def _name_changed(self) -> None:
+        if self._loading or not (0 <= self._cur < len(self._names)):
+            return
+        nm = self.name_edit.text().strip()
+        if nm:
+            self._names[self._cur] = nm
+            it = self.listw.item(self._cur)
+            if it:
+                it.setText(self._item_text(nm, self._mats[self._cur]))
 
     def _accept(self) -> None:
         out: dict = {}
-        for r in range(self.tbl.rowCount()):
-            nm = (self.tbl.item(r, 0).text() or f"Material {r + 1}").strip()
+        for nm, md in zip(self._names, self._mats):
+            nm = (nm or "Material").strip()
             while nm in out:
                 nm += "*"
-            md = dict(self._mats[r])
-            try:
-                strg = float(self.tbl.item(r, 2).text()) * 1e6
-            except (ValueError, AttributeError):
-                strg = md.get("fc" if md["kind"] == "concrete" else "fy", 30e6)
-            md["fc" if md["kind"] == "concrete" else "fy"] = strg
-            out[nm] = md
+            out[nm] = dict(md)
         self.materials = out
         self.accept()
