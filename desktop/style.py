@@ -183,6 +183,51 @@ QScrollBar::handle:horizontal {{
     background: {BORDER_STRONG}; border-radius: 5px; min-width: 30px;
 }}
 
+/* ---- collapsible group (widgets.CollapsibleGroup) ---- */
+QWidget#collGroup {{
+    background: {PANEL};
+    border: 1px solid {BORDER};
+    border-radius: 8px;
+}}
+QToolButton#collHeader {{
+    background: transparent;
+    border: none;
+    color: {MUTED};
+    font-size: 12px;
+    font-weight: 600;
+    padding: 8px 10px;
+    text-align: left;
+}}
+QToolButton#collHeader:hover {{ color: {TEXT}; }}
+QWidget#collBody {{ background: transparent; }}
+
+/* ---- trees / logs / docks (FEM main window) ---- */
+QTreeWidget, QTreeView {{
+    background: {PANEL};
+    border: 1px solid {BORDER};
+    border-radius: 6px;
+    outline: none;
+    alternate-background-color: {ZEBRA};
+}}
+QTreeWidget::item, QTreeView::item {{ padding: 3px 4px; }}
+QTreeWidget::item:selected, QTreeView::item:selected {{
+    background: {ACCENT_SOFT}; color: {TEXT};
+}}
+QPlainTextEdit, QTextEdit {{
+    background: {PANEL};
+    border: 1px solid {BORDER};
+    border-radius: 6px;
+    selection-background-color: {ACCENT_SOFT};
+    selection-color: {TEXT};
+}}
+QDockWidget {{ titlebar-close-icon: none; color: {MUTED}; }}
+QDockWidget::title {{
+    background: {ACCENT_SOFT};
+    padding: 6px 10px;
+    border-bottom: 1px solid {BORDER};
+    text-align: left;
+}}
+
 /* ---- helper label classes (set via setObjectName) ---- */
 QLabel#h1 {{ font-size: 17px; font-weight: 700; color: {TEXT}; }}
 QLabel#sub {{ color: {MUTED}; font-size: 12px; }}

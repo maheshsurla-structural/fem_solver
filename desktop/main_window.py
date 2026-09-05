@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QDockWidget,
 
 import icons
 import model_geometry as mg
+import style
 from commands import EditCommand
 from editing import (LoadDialog, MemberDialog, NodeDialog, SectionDialog,
                      dof_labels)
@@ -69,6 +70,7 @@ class MainWindow(QMainWindow):
         self.view.set_region_callback(self._on_region_select)
 
         self._build_menu()
+        style.apply(self)                    # unified light/blue theme
         self.statusBar().showMessage("Ready")
 
     # --------------------------------------------------------------- menu / UI

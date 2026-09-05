@@ -69,6 +69,7 @@ if _REPO_ROOT not in sys.path:
 
 import section_gui_core as core
 import style
+from widgets import CollapsibleGroup
 
 # section kinds this desktop front-end exposes (the engine also knows "Custom"
 # and "Composite" — deferred; they need dedicated geometry editors).
@@ -252,6 +253,8 @@ class SectionDesignerWindow(QMainWindow):
     def _build_definition_panel(self) -> QWidget:
         host = QScrollArea()
         host.setWidgetResizable(True)
+        host.setMinimumWidth(320)
+        host.setMaximumWidth(460)
         inner = QWidget()
         inner.setObjectName("sd_inner")
         v = QVBoxLayout(inner)
@@ -266,8 +269,8 @@ class SectionDesignerWindow(QMainWindow):
         kf.addRow("Kind", self.kind_combo)
         v.addWidget(kbox)
 
-        self.dim_box = QGroupBox("Dimensions [mm]")
-        self.dim_form = QFormLayout(self.dim_box)
+        self.dim_box = CollapsibleGroup("Dimensions [mm]")
+        self.dim_form = QFormLayout(self.dim_box.body)
         self._dim_spins: dict[str, QDoubleSpinBox] = {}
         v.addWidget(self.dim_box)
 
@@ -277,8 +280,8 @@ class SectionDesignerWindow(QMainWindow):
         v.addWidget(self.composite_box)
 
         # PSC strands (shown only for PSC girder)
-        self.psc_box = QGroupBox("Prestressing strands")
-        pf = QFormLayout(self.psc_box)
+        self.psc_box = CollapsibleGroup("Prestressing strands")
+        pf = QFormLayout(self.psc_box.body)
         self.nstr_spin = self._ispin(1, 40)
         self.strand_area_spin = self._dspin(50, 400, 5, " mm²", 0)
         self.fpe_spin = self._dspin(500, 1600, 25, " MPa", 0)
@@ -292,9 +295,9 @@ class SectionDesignerWindow(QMainWindow):
         pf.addRow("Strand y", self.strand_y_spin)
         v.addWidget(self.psc_box)
 
-        mbox = QGroupBox("Materials")
+        mbox = CollapsibleGroup("Materials")
         self.mat_box = mbox
-        mf = QFormLayout(mbox)
+        mf = QFormLayout(mbox.body)
         self.fc_spin = self._dspin(5, 120, 1, " MPa", 0)
         self.fy_spin = self._dspin(200, 700, 10, " MPa", 0)
         self.Es_spin = self._dspin(150, 230, 5, " GPa", 0)
@@ -305,9 +308,9 @@ class SectionDesignerWindow(QMainWindow):
         mf.addRow("Steel E_s", self.Es_spin)
         v.addWidget(mbox)
 
-        rbox = QGroupBox("Reinforcement")
+        rbox = CollapsibleGroup("Reinforcement")
         self.rebar_box = rbox
-        self.rebar_form = QFormLayout(rbox)
+        self.rebar_form = QFormLayout(rbox.body)
         self.bardia_combo = QComboBox()
         self.bardia_combo.addItems(list(core.BAR_SIZES.keys()))
         self.bardia_combo.currentTextChanged.connect(
@@ -334,8 +337,8 @@ class SectionDesignerWindow(QMainWindow):
             lambda: self._remove_arrangement(tendon=True)))
 
         # Constitutive models (feed moment-curvature + verification)
-        cmbox = QGroupBox("Constitutive models (M-φ)")
-        cmf = QFormLayout(cmbox)
+        cmbox = CollapsibleGroup("Constitutive models (M-φ)", collapsed=True)
+        cmf = QFormLayout(cmbox.body)
         self.conc_model_combo = QComboBox()
         self.conc_model_combo.addItems(list(core.CONC_MODELS))
         self.conc_model_combo.currentTextChanged.connect(
@@ -369,8 +372,8 @@ class SectionDesignerWindow(QMainWindow):
 
     # ---- Custom (polygon) editor -------------------------------------
     def _build_custom_box(self) -> QGroupBox:
-        box = QGroupBox("Custom section — coordinates [mm]")
-        v = QVBoxLayout(box)
+        box = CollapsibleGroup("Custom section — coordinates [mm]")
+        v = QVBoxLayout(box.body)
         v.addWidget(QLabel("Vertices (ordered z, y)"))
         self.cust_verts = QTableWidget(0, 2)
         self.cust_verts.setHorizontalHeaderLabels(["z", "y"])
@@ -488,8 +491,8 @@ class SectionDesignerWindow(QMainWindow):
 
     # ---- Composite (material-shapes) editor --------------------------
     def _build_composite_box(self) -> QGroupBox:
-        box = QGroupBox("Composite — material shapes")
-        v = QVBoxLayout(box)
+        box = CollapsibleGroup("Composite — material shapes")
+        v = QVBoxLayout(box.body)
         self.comp_list = QListWidget()
         self.comp_list.setMaximumHeight(90)
         v.addWidget(self.comp_list)
@@ -614,6 +617,7 @@ class SectionDesignerWindow(QMainWindow):
 
     def _build_preview_panel(self) -> QWidget:
         w = QWidget()
+        w.setMinimumWidth(300)
         v = QVBoxLayout(w)
         v.setContentsMargins(6, 6, 6, 6)
         v.setSpacing(8)
@@ -648,6 +652,7 @@ class SectionDesignerWindow(QMainWindow):
 
     def _build_analysis_panel(self) -> QWidget:
         self.tabs = QTabWidget()
+        self.tabs.setMinimumWidth(420)
         self.tabs.currentChanged.connect(lambda *_: self._queue())
 
         # ---- P-M interaction + demand check ----
@@ -821,9 +826,9 @@ class SectionDesignerWindow(QMainWindow):
 
     # ----------------------------------------------------- arrangements
     @staticmethod
-    def _arr_group(title, listw, on_add, on_remove) -> QGroupBox:
-        box = QGroupBox(title)
-        gv = QVBoxLayout(box)
+    def _arr_group(title, listw, on_add, on_remove) -> CollapsibleGroup:
+        box = CollapsibleGroup(title, collapsed=True)
+        gv = QVBoxLayout(box.body)
         gv.addWidget(listw)
         row = QHBoxLayout()
         add = QPushButton("Add…")
