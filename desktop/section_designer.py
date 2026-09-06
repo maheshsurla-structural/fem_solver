@@ -157,12 +157,12 @@ class SectionDesignerWindow(QMainWindow):
         self.resize(1240, 860)
 
         self._fem = fem_window           # FEM MainWindow for the model bridge
-        # default section: reinforcement comes from the tables, so start with
-        # zeroed parametric counts + a couple of starter bar arrangements.
+        # default section: reinforcement comes from the AdSec GROUPS table, so
+        # start with zeroed parametric counts + a couple of starter groups.
         self._spec = spec or replace(
             core.Spec(), n_top=0, n_bot=0, n_side=0, n_perim=0,
-            rebar_arr=(_line_arr(3, -0.15, -0.25, 0.15, -0.25, 0.025),
-                       _line_arr(3, -0.15, 0.25, 0.15, 0.25, 0.025)))
+            rebar_groups=(("Top", "3B25", "", "S500"),
+                          ("Bottom", "3B25", "", "S500")))
         self._code0 = code if (code and code in core.CODES) else core.CODES[0]
         name0 = section_name or "Section 1"
         # shared material library {name: matd} — constitutive laws live here.
@@ -466,38 +466,9 @@ class SectionDesignerWindow(QMainWindow):
         mf.addRow("", manage)
         v.addWidget(mbox)
 
-        # Rebar / tendon arrangements — tables (each row a bar/tendon group
-        # with its own material) + an inline add-form (no modal), Streamlit-style.
-        self.rebar_arr_tbl = self._arr_table(["Type", "n", "⌀ mm", "Material"])
-        box, self.rebar_arr_form = self._arr_group(
-            "Rebar arrangements", self.rebar_arr_tbl, tendon=False)
-        v.addWidget(box)
-        self.tendon_arr_tbl = self._arr_table(["Type", "n", "Aₚ mm²",
-                                               "Material"])
-        box2, self.tendon_arr_form = self._arr_group(
-            "Tendon arrangements", self.tendon_arr_tbl, tendon=True)
-        v.addWidget(box2)
-
-        # Confinement — section-dependent (transverse reinforcement), so it
-        # stays here rather than on the material. Drives the confined concrete
-        # response in moment-curvature.
-        cmbox = CollapsibleGroup("Confinement & M-φ", collapsed=True)
-        cmf = QFormLayout(cmbox.body)
-        self.spiral_chk = QCheckBox("Spiral (φ cap 0.85)")
-        self._connect(self.spiral_chk)
-        self.eps_c0_spin = self._dspin(0.001, 0.02, 0.0002, "", 4)
-        self.eps_cu_spin = self._dspin(0.002, 0.05, 0.0005, "", 4)
-        self.fcu_ratio_spin = self._dspin(0.0, 1.0, 0.05, "", 2)
-        self.kappa_max_spin = self._dspin(0.005, 0.5, 0.01, " 1/m", 3)
-        for w in (self.eps_c0_spin, self.eps_cu_spin, self.fcu_ratio_spin,
-                  self.kappa_max_spin):
-            self._connect(w)
-        cmf.addRow("Transverse", self.spiral_chk)
-        cmf.addRow("ε_c0 (peak, confined)", self.eps_c0_spin)
-        cmf.addRow("ε_cu (crush, confined)", self.eps_cu_spin)
-        cmf.addRow("f_cu / f'c (residual)", self.fcu_ratio_spin)
-        cmf.addRow("κ_max sweep", self.kappa_max_spin)
-        v.addWidget(cmbox)
+        # Reinforcement — Streamlit-style sub-tabs: Rebars (an AdSec GROUPS
+        # table), Tendons (arrangement table), Confinement (M-φ / Mander).
+        v.addWidget(self._build_reinforcement_group())
 
         v.addStretch(1)
         host.setWidget(inner)
@@ -1000,6 +971,12 @@ class SectionDesignerWindow(QMainWindow):
             self._load_custom_tables()
         elif kind == "Composite":
             self._refresh_comp_list()
+        # group Type options track the shape (rect family vs round); rebuild the
+        # table so the combos reflect the new kind, then sync any snapped types.
+        if hasattr(self, "groups_tbl"):
+            self._refresh_groups_table()
+            self._spec = replace(self._spec,
+                                 rebar_groups=self._read_groups_table())
         self._on_value_changed()
 
     def _apply_kind_visibility(self, kind: str) -> None:
@@ -1022,22 +999,225 @@ class SectionDesignerWindow(QMainWindow):
             self.dim_form.addRow(_DIM_LABEL[key], spin)
             self._dim_spins[key] = spin
 
-    # ----------------------------------------------------- arrangements
-    def _arr_group(self, title, tbl, *, tendon: bool):
-        box = CollapsibleGroup(title, collapsed=True)
-        gv = QVBoxLayout(box.body)
-        gv.addWidget(tbl)
-        rem = QPushButton("Remove selected row")
-        rem.clicked.connect(lambda: self._remove_arrangement(tendon=tendon))
-        gv.addWidget(rem)
-        form = InlineArrangementForm(
-            tendon=tendon,
-            mats_provider=lambda: self._names_of_kind(
-                "prestress" if tendon else "steel"),
-            on_add=lambda arr: self._add_arr_inline(arr, tendon))
-        gv.addWidget(form)
-        return box, form
+    # ------------------------------------------------ reinforcement (groups)
+    def _build_reinforcement_group(self) -> CollapsibleGroup:
+        """Reinforcement input as Streamlit-style sub-tabs: Rebars (an AdSec
+        GROUPS table), Tendons (arrangement table), Confinement (M-φ / Mander)."""
+        box = CollapsibleGroup("Reinforcement")
+        outer = QVBoxLayout(box.body)
+        outer.setContentsMargins(0, 0, 0, 0)
+        tabs = QTabWidget()
+        tabs.addTab(self._build_rebars_tab(), "Rebars")
+        tabs.addTab(self._build_tendons_tab(), "Tendons")
+        tabs.addTab(self._build_confinement_tab(), "Confinement")
+        outer.addWidget(tabs)
+        return box
 
+    def _build_rebars_tab(self) -> QWidget:
+        """Uniform cover + spiral + an AdSec-style GROUPS table (each row a
+        reinforcement group: Type / Material / Pattern / Position(s)). The
+        group types track the shape (Top/Bottom/Sides/Link for the rectangular
+        family, Perimeter/Line/Arc/Single otherwise)."""
+        w = QWidget()
+        v = QVBoxLayout(w)
+        v.setContentsMargins(2, 6, 2, 2)
+        cov = QHBoxLayout()
+        cov.addWidget(QLabel("Cover — all faces"))
+        self.cover_spin = self._dspin(5, 150, 5, " mm", 0)
+        self.cover_spin.valueChanged.connect(lambda *_: self._on_value_changed())
+        cov.addWidget(self.cover_spin)
+        cov.addStretch(1)
+        self.spiral_chk = QCheckBox("Spiral (φ cap 0.85)")
+        self.spiral_chk.stateChanged.connect(lambda *_: self._on_value_changed())
+        cov.addWidget(self.spiral_chk)
+        v.addLayout(cov)
+
+        self.groups_tbl = QTableWidget(0, 4)
+        self.groups_tbl.setHorizontalHeaderLabels(
+            ["Type", "Material", "Pattern", "Position(s) [mm, deg]"])
+        hh = self.groups_tbl.horizontalHeader()
+        hh.setStretchLastSection(True)
+        self.groups_tbl.verticalHeader().setVisible(False)
+        self.groups_tbl.setAlternatingRowColors(True)
+        self.groups_tbl.setMinimumHeight(150)
+        self.groups_tbl.itemChanged.connect(self._on_group_item_changed)
+        v.addWidget(self.groups_tbl)
+
+        row = QHBoxLayout()
+        add = QPushButton("＋ Add group")
+        add.clicked.connect(lambda: self._add_group_row())
+        rem = QPushButton("Remove selected")
+        rem.clicked.connect(self._remove_group_row)
+        row.addWidget(add)
+        row.addWidget(rem)
+        row.addStretch(1)
+        v.addLayout(row)
+
+        self.group_warn = QLabel("")
+        self.group_warn.setWordWrap(True)
+        self.group_warn.setStyleSheet("color:#c0392b;")
+        self.group_warn.setVisible(False)
+        v.addWidget(self.group_warn)
+        cap = QLabel(
+            "<b>nBd</b> = n bars ⌀d mm · <b>Bd-s</b> = ⌀d mm at s mm spacing · "
+            "<b>n#N</b>/<b>#N-s</b> = US #N bars.  "
+            "<b>Link</b> = shear tie (Pattern gives hoop ⌀ &amp; spacing). "
+            "Top/Bottom/Sides/Perimeter take a blank Position; "
+            "<b>Single</b> = z,y · <b>Line</b> = z1,y1; z2,y2 · "
+            "<b>Arc</b> = cz,cy,r,a1,a2.")
+        cap.setWordWrap(True)
+        cap.setObjectName("hintLabel")
+        cap.setStyleSheet("color:#5a6b7b; font-size:11px;")
+        v.addWidget(cap)
+        return w
+
+    def _build_tendons_tab(self) -> QWidget:
+        """Tendon arrangements (each row a tendon group with its own strand
+        material) + an inline add-form, matching the Streamlit tendon tab."""
+        w = QWidget()
+        v = QVBoxLayout(w)
+        v.setContentsMargins(2, 6, 2, 2)
+        self.tendon_arr_tbl = self._arr_table(["Type", "n", "Aₚ mm²",
+                                               "Material"])
+        v.addWidget(self.tendon_arr_tbl)
+        rem = QPushButton("Remove selected row")
+        rem.clicked.connect(lambda: self._remove_arrangement(tendon=True))
+        v.addWidget(rem)
+        self.tendon_arr_form = InlineArrangementForm(
+            tendon=True,
+            mats_provider=lambda: self._names_of_kind("prestress"),
+            on_add=lambda arr: self._add_arr_inline(arr, True))
+        v.addWidget(self.tendon_arr_form)
+        return w
+
+    def _build_confinement_tab(self) -> QWidget:
+        """Confined-concrete (M-φ) parameters — the transverse-steel response
+        that drives moment-curvature. Mander-from-Link comes in a later pass."""
+        w = QWidget()
+        f = QFormLayout(w)
+        f.setContentsMargins(2, 6, 2, 2)
+        self.eps_c0_spin = self._dspin(0.001, 0.02, 0.0002, "", 4)
+        self.eps_cu_spin = self._dspin(0.002, 0.05, 0.0005, "", 4)
+        self.fcu_ratio_spin = self._dspin(0.0, 1.0, 0.05, "", 2)
+        self.kappa_max_spin = self._dspin(0.005, 0.5, 0.01, " 1/m", 3)
+        for wgt in (self.eps_c0_spin, self.eps_cu_spin, self.fcu_ratio_spin,
+                    self.kappa_max_spin):
+            wgt.valueChanged.connect(lambda *_: self._on_value_changed())
+        f.addRow("ε_c0 (peak, confined)", self.eps_c0_spin)
+        f.addRow("ε_cu (crush, confined)", self.eps_cu_spin)
+        f.addRow("f_cu / f'c (residual)", self.fcu_ratio_spin)
+        f.addRow("κ_max sweep", self.kappa_max_spin)
+        return w
+
+    def _group_type_options(self) -> list:
+        kind = (self.kind_combo.currentText()
+                if hasattr(self, "kind_combo") else self._spec.kind)
+        faced = kind in ("Rectangular", "Hollow box")
+        return list(core.REBAR_GROUP_TYPES_RECT if faced
+                    else core.REBAR_GROUP_TYPES_ROUND)
+
+    def _add_group_row(self, group=None) -> None:
+        """Append a group row (Type + Material combos, Pattern/Position text).
+        With ``group`` given it seeds from a stored tuple (no change fired);
+        called bare (the ＋ button) it seeds a sensible default and commits."""
+        types = self._group_type_options()
+        steels = self._steel_names()
+        t, pat, pos, mat = group or (
+            types[0], "3B20", "", steels[0] if steels else "")
+        tbl = self.groups_tbl
+        was = getattr(self, "_loading_groups", False)
+        self._loading_groups = True
+        r = tbl.rowCount()
+        tbl.insertRow(r)
+        tcombo = QComboBox()
+        tcombo.addItems(types)
+        i = tcombo.findText(t)
+        tcombo.setCurrentIndex(i if i >= 0 else 0)
+        tcombo.currentIndexChanged.connect(lambda *_: self._groups_changed())
+        tbl.setCellWidget(r, 0, tcombo)
+        mcombo = QComboBox()
+        mcombo.addItems(steels or [""])
+        j = mcombo.findText(mat)
+        mcombo.setCurrentIndex(j if j >= 0 else 0)
+        mcombo.currentIndexChanged.connect(lambda *_: self._groups_changed())
+        tbl.setCellWidget(r, 1, mcombo)
+        tbl.setItem(r, 2, QTableWidgetItem(pat))
+        tbl.setItem(r, 3, QTableWidgetItem(pos))
+        self._loading_groups = was
+        if not was and group is None:
+            self._groups_changed()
+
+    def _remove_group_row(self) -> None:
+        r = self.groups_tbl.currentRow()
+        if r < 0:
+            return
+        self.groups_tbl.removeRow(r)
+        self._groups_changed()
+
+    def _on_group_item_changed(self, *_) -> None:
+        if getattr(self, "_loading_groups", False):
+            return
+        self._groups_changed()
+
+    def _read_groups_table(self) -> tuple:
+        tbl = self.groups_tbl
+        out = []
+        for r in range(tbl.rowCount()):
+            tw = tbl.cellWidget(r, 0)
+            mw = tbl.cellWidget(r, 1)
+            typ = tw.currentText() if tw else ""
+            mat = mw.currentText() if mw else ""
+            pat_it = tbl.item(r, 2)
+            pos_it = tbl.item(r, 3)
+            pat = (pat_it.text() if pat_it else "").strip()
+            pos = (pos_it.text() if pos_it else "").strip()
+            if not pat:
+                continue
+            out.append((typ, pat, pos, mat))
+        return tuple(out)
+
+    def _groups_changed(self) -> None:
+        if getattr(self, "_loading_groups", False) or self._loading:
+            return
+        groups = self._read_groups_table()
+        self._spec = replace(self._spec, rebar_groups=groups)
+        self._validate_groups(groups)
+        self._on_value_changed()
+
+    def _validate_groups(self, groups) -> None:
+        bad = []
+        for g in groups:
+            try:
+                core.parse_bar_desc(g[1])
+            except ValueError:
+                bad.append(g[1])
+        if bad:
+            self.group_warn.setText(
+                "Not valid bar notation: "
+                + ", ".join(dict.fromkeys(bad)))
+        self.group_warn.setVisible(bool(bad))
+
+    def _refresh_groups_table(self) -> None:
+        """Repopulate the groups table from the active spec (on section switch,
+        kind change, or a library edit). Type combos follow the shape; each
+        stored group's Material is preserved when the grade still exists."""
+        if not hasattr(self, "groups_tbl"):
+            return
+        was = getattr(self, "_loading_groups", False)
+        self._loading_groups = True
+        self.groups_tbl.setRowCount(0)
+        types = self._group_type_options()
+        default_steel = (self._steel_names() or [""])[0]
+        for g in self._spec.rebar_groups:
+            t = g[0] if len(g) > 0 else types[0]
+            pat = g[1] if len(g) > 1 else ""
+            pos = g[2] if len(g) > 2 else ""
+            mat = g[3] if len(g) > 3 and g[3] else default_steel
+            self._add_group_row((t, pat, pos, mat))
+        self._loading_groups = was
+        self._validate_groups(self._spec.rebar_groups)
+
+    # ----------------------------------------------------- arrangements
     def _add_arr_inline(self, arr, tendon: bool) -> None:
         if tendon:
             self._spec = replace(self._spec,
@@ -1064,8 +1244,6 @@ class SectionDesignerWindow(QMainWindow):
 
     def _refresh_arr_lists(self) -> None:
         self._loading_arr = True
-        self._fill_arr_table(self.rebar_arr_tbl, self._spec.rebar_arr,
-                             tendon=False)
         self._fill_arr_table(self.tendon_arr_tbl, self._spec.tendon_arr,
                              tendon=True)
         self._loading_arr = False
@@ -1104,7 +1282,7 @@ class SectionDesignerWindow(QMainWindow):
     def _arr_material_changed(self, row: int, tendon: bool) -> None:
         if getattr(self, "_loading_arr", False):
             return
-        tbl = self.tendon_arr_tbl if tendon else self.rebar_arr_tbl
+        tbl = self.tendon_arr_tbl        # arrangements are tendon-only now
         combo = tbl.cellWidget(row, 3)
         if combo is None:
             return
@@ -1142,7 +1320,7 @@ class SectionDesignerWindow(QMainWindow):
         self._queue()
 
     def _remove_arrangement(self, *, tendon: bool) -> None:
-        tbl = self.tendon_arr_tbl if tendon else self.rebar_arr_tbl
+        tbl = self.tendon_arr_tbl        # arrangements are tendon-only now
         i = tbl.currentRow()
         arrs = list(self._spec.tendon_arr if tendon else self._spec.rebar_arr)
         if not (0 <= i < len(arrs)):
@@ -1167,7 +1345,8 @@ class SectionDesignerWindow(QMainWindow):
         self.strand_area_spin.setValue(s.strand_area * 1e6)
         self.fpe_spin.setValue(s.f_pe / 1e6)
         self.strand_y_spin.setValue(s.strand_y * 1000.0)
-        # confinement (section) + M-φ sweep
+        # cover + spiral (Rebars tab), confinement (M-φ sweep)
+        self.cover_spin.setValue(s.cover * 1e3)
         self.spiral_chk.setChecked(bool(s.spiral))
         self.eps_c0_spin.setValue(s.eps_c0)
         self.eps_cu_spin.setValue(s.eps_cu)
@@ -1175,6 +1354,7 @@ class SectionDesignerWindow(QMainWindow):
         self.kappa_max_spin.setValue(s.kappa_max)
         self._refresh_material_combos()
         self._refresh_arr_lists()
+        self._refresh_groups_table()
         self._load_custom_tables()
         self._refresh_comp_list()
         self._apply_kind_visibility(self.kind_combo.currentText())
@@ -1188,6 +1368,7 @@ class SectionDesignerWindow(QMainWindow):
         # reinforcement now comes entirely from the arrangement tables, so the
         # parametric bar counts are always zero (no section-level bars).
         ch.update(n_top=0, n_bot=0, n_side=0, n_perim=0)
+        ch["cover"] = self.cover_spin.value() / 1e3
         ch["spiral"] = self.spiral_chk.isChecked()
         if kind == "PSC girder":
             ch["n_strand"] = self.nstr_spin.value()
@@ -1220,13 +1401,26 @@ class SectionDesignerWindow(QMainWindow):
         conc = self._materials.get(self.conc_mat_combo.currentText())
         if conc:
             ch.update({k: conc[k] for k in self._CONC_KEYS if k in conc})
-        steel = self._nominal_material(spec.rebar_arr, 2, "steel")
+        steel = self._nominal_group_steel(spec.rebar_groups)
         if steel:
             ch.update({k: steel[k] for k in self._STEEL_KEYS if k in steel})
         ps = self._nominal_material(spec.tendon_arr, 3, "prestress")
         if ps:
             ch.update({k: ps[k] for k in self._PS_KEYS if k in ps})
         return replace(spec, **ch) if ch else spec
+
+    def _nominal_group_steel(self, groups):
+        """The section's nominal steel: the first rebar group naming a library
+        steel, else the first library steel (so the single-material P-M-M /
+        verification paths always have a steel). M-φ / stress-field still honour
+        each bar's own group material via ``_analysis_spec``."""
+        for g in groups:
+            name = g[3] if len(g) > 3 else None
+            md = self._materials.get(name) if isinstance(name, str) else None
+            if md and md.get("kind") == "steel":
+                return md
+        names = self._steel_names()
+        return self._materials.get(names[0]) if names else None
 
     def _nominal_material(self, arrs, mat_idx, kind):
         """The section's nominal steel/prestress material: the first arrangement
@@ -1241,21 +1435,35 @@ class SectionDesignerWindow(QMainWindow):
         return self._materials.get(names[0]) if names else None
 
     def _analysis_spec(self) -> core.Spec:
-        """The working spec with each rebar arrangement's chosen material name
-        resolved to its steel properties (a sorted-items tuple), so the engine
-        gives those bars their own law (mixed-material reinforcement). Bars with
-        no chosen material keep the section steel. The stored spec keeps names
-        (for the table + library sync); only this analysis copy embeds props."""
-        def _resolve(arr):
+        """The working spec with each reinforcement group's / arrangement's
+        chosen material name resolved to its steel properties (a sorted-items
+        tuple), so the engine gives those bars their own law (mixed-material
+        reinforcement). Bars with no chosen material keep the section steel. The
+        stored spec keeps names (for the table + library sync); only this
+        analysis copy embeds props."""
+        def _resolve_arr(arr):
             mat = arr[2]
             md = self._materials.get(mat) if isinstance(mat, str) else None
             if md and md.get("kind") == "steel":
                 return (arr[0], arr[1], tuple(sorted(md.items())), arr[3])
             return arr
-        if not self._spec.rebar_arr:
-            return self._spec
-        return replace(self._spec,
-                       rebar_arr=tuple(_resolve(a) for a in self._spec.rebar_arr))
+
+        def _resolve_grp(g):
+            pos = g[2] if len(g) > 2 else ""
+            mat = g[3] if len(g) > 3 else ""
+            md = self._materials.get(mat) if isinstance(mat, str) else None
+            slot = (tuple(sorted(md.items()))
+                    if md and md.get("kind") == "steel" else "")
+            return (g[0], g[1], pos, slot)
+
+        spec = self._spec
+        if spec.rebar_arr:
+            spec = replace(spec, rebar_arr=tuple(
+                _resolve_arr(a) for a in spec.rebar_arr))
+        if spec.rebar_groups:
+            spec = replace(spec, rebar_groups=tuple(
+                _resolve_grp(g) for g in spec.rebar_groups))
+        return spec
 
     def _names_of_kind(self, kind) -> list:
         return [n for n, m in self._materials.items() if m.get("kind") == kind]
@@ -1277,9 +1485,9 @@ class SectionDesignerWindow(QMainWindow):
         want = rec.get("conc_mat")
         i = self.conc_mat_combo.findText(want) if want else -1
         self.conc_mat_combo.setCurrentIndex(i if i >= 0 else 0)
-        if hasattr(self, "rebar_arr_form"):
-            self.rebar_arr_form.refresh_materials()
+        if hasattr(self, "tendon_arr_form"):
             self.tendon_arr_form.refresh_materials()
+        self._refresh_groups_table()
         self._loading = was
 
     def _on_material_choice(self) -> None:
@@ -2285,34 +2493,35 @@ def _perim_arr(n, cover, dia, mat=""):
 
 def _rc_spec(**kw) -> core.Spec:
     """A Spec with the parametric bar counts zeroed — reinforcement comes from
-    the arrangement tables, not section-level counts."""
+    the AdSec groups table, not section-level counts."""
     return core.Spec(n_top=0, n_bot=0, n_side=0, n_perim=0, **kw)
 
 
 def _section_presets() -> dict:
     """Named starter sections {label: fresh Spec} for the New menu. Bars are
-    seeded as arrangement rows (the tables are the reinforcement source)."""
-    D20, D25 = 0.020, 0.025
+    seeded as AdSec reinforcement groups (the groups table is the source)."""
+    S = "S500"
     return {
         "Blank rectangular": _rc_spec(kind="Rectangular", b=0.40, h=0.60),
         "Rectangular RC beam": _rc_spec(
-            kind="Rectangular", b=0.30, h=0.60, rebar_arr=(
-                _line_arr(2, -0.11, 0.25, 0.11, 0.25, D20),
-                _line_arr(3, -0.11, -0.25, 0.11, -0.25, D20))),
+            kind="Rectangular", b=0.30, h=0.60, cover=0.04, rebar_groups=(
+                ("Top", "2B20", "", S), ("Bottom", "3B20", "", S))),
         "Square RC column": _rc_spec(
-            kind="Rectangular", b=0.40, h=0.40,
-            rebar_arr=(_perim_arr(8, 0.04, D25),)),
+            kind="Rectangular", b=0.40, h=0.40, cover=0.04,
+            rebar_groups=(("Perimeter", "8B25", "", S),)),
         "Circular RC column": _rc_spec(
-            kind="Circular", D=0.50, spiral=True,
-            rebar_arr=(_perim_arr(8, 0.04, D25),)),
+            kind="Circular", D=0.50, spiral=True, cover=0.04,
+            rebar_groups=(("Perimeter", "8B25", "", S),)),
+        # T-shape / PSC are not "faced" (only Rectangular / Hollow box are), so
+        # their bars are placed as Line groups at explicit z,y positions [mm].
         "T-beam": _rc_spec(
-            kind="T-shape", b=1.0, h=0.70, t_f=0.15, t_w=0.30, rebar_arr=(
-                _line_arr(2, -0.10, 0.30, 0.10, 0.30, D20),
-                _line_arr(4, -0.10, -0.30, 0.10, -0.30, D20))),
+            kind="T-shape", b=1.0, h=0.70, t_f=0.15, t_w=0.30, cover=0.04,
+            rebar_groups=(("Line", "2B20", "-100,300; 100,300", S),
+                          ("Line", "4B20", "-100,-300; 100,-300", S))),
         "PSC girder": _rc_spec(
             kind="PSC girder", b=0.50, h=1.20, n_strand=10, strand_area=140e-6,
-            f_pe=1200e6, strand_y=-0.50,
-            rebar_arr=(_line_arr(2, -0.18, 0.55, 0.18, 0.55, D20),)),
+            f_pe=1200e6, strand_y=-0.50, cover=0.04,
+            rebar_groups=(("Line", "2B20", "-180,550; 180,550", S),)),
     }
 
 
