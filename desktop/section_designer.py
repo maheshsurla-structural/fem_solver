@@ -1802,7 +1802,7 @@ class MaterialsDialog(QDialog):
     def __init__(self, parent=None, *, materials: dict | None = None):
         super().__init__(parent)
         self.setWindowTitle("Materials library")
-        self.resize(560, 420)
+        self.resize(660, 560)
         self.materials = dict(materials or {})
         self._names = list(self.materials.keys())
         self._mats = [dict(m) for m in self.materials.values()]
@@ -1834,7 +1834,14 @@ class MaterialsDialog(QDialog):
         self.name_edit.editingFinished.connect(self._name_changed)
         self.form.addRow("Name", self.name_edit)
         right.addWidget(self.editor)
-        right.addStretch(1)
+        # stress-strain reference diagram for the selected material
+        chart_box = QGroupBox("Stress-strain diagram")
+        cbl = QVBoxLayout(chart_box)
+        self.mat_fig = Figure(figsize=(4.0, 2.4), layout="constrained")
+        self.mat_canvas = Canvas(self.mat_fig)
+        self.mat_canvas.setMinimumHeight(200)
+        cbl.addWidget(self.mat_canvas)
+        right.addWidget(chart_box, 1)
         bb = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok
                               | QDialogButtonBox.StandardButton.Cancel)
         bb.accepted.connect(self._accept)
@@ -1923,6 +1930,37 @@ class MaterialsDialog(QDialog):
             self.form.addRow(label, w)
             self._widgets[key] = (w, spec)
         self._loading = False
+        self._draw_material_chart(md)
+
+    def _draw_material_chart(self, md: dict) -> None:
+        """AdSec-style stress-strain reference diagram for the material (the
+        engine's own uniaxial law). Concrete uses a nominal unconfined
+        ε_c0/ε_cu baseline — confinement is applied per section."""
+        self.mat_fig.clear()
+        ax = self.mat_fig.add_subplot(111)
+        try:
+            if md.get("kind") == "concrete":
+                m = {"eps_c0": 0.002, "eps_cu": 0.0035, "fcu_ratio": 0.4, **md}
+                law = core.concrete_uniaxial_from(m)
+                eps = np.linspace(-m["eps_cu"] * 1.05, 0.0015, 240)
+            else:
+                law = core.steel_uniaxial_from(md)
+                esu = (md.get("steel_eps_su", 0.05)
+                       if md.get("steel_model") == "Park strain-hardening"
+                       else 0.02)
+                eps = np.linspace(-esu, esu, 240)
+            sig = [law.get_response(float(e))[0] / 1e6 for e in eps]
+            ax.plot(eps * 1e3, sig, "-", color=style.C_PRIMARY, lw=2.0)
+            ax.axhline(0, color=style.AX_SPINE, lw=0.6)
+            ax.axvline(0, color=style.AX_SPINE, lw=0.6)
+            ax.set_xlabel("strain ε  [‰]")
+            ax.set_ylabel("stress σ  [MPa]")
+            style.beautify_axes(ax)
+        except Exception as exc:                       # noqa: BLE001
+            ax.text(0.5, 0.5, f"—\n{exc}", ha="center", va="center",
+                    transform=ax.transAxes, fontsize=8)
+            ax.set_axis_off()
+        self.mat_canvas.draw_idle()
 
     def _field_changed(self, *_a) -> None:
         if self._loading or not (0 <= self._cur < len(self._mats)):
@@ -1936,6 +1974,7 @@ class MaterialsDialog(QDialog):
         it = self.listw.item(self._cur)     # refresh just this row's label
         if it:
             it.setText(self._item_text(self._names[self._cur], md))
+        self._draw_material_chart(md)
 
     def _name_changed(self) -> None:
         if self._loading or not (0 <= self._cur < len(self._names)):
