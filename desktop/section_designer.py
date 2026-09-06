@@ -157,18 +157,21 @@ class SectionDesignerWindow(QMainWindow):
         self.resize(1240, 860)
 
         self._fem = fem_window           # FEM MainWindow for the model bridge
-        self._spec = spec or core.Spec()
+        # default section: reinforcement comes from the tables, so start with
+        # zeroed parametric counts + a couple of starter bar arrangements.
+        self._spec = spec or replace(
+            core.Spec(), n_top=0, n_bot=0, n_side=0, n_perim=0,
+            rebar_arr=(_line_arr(3, -0.15, -0.25, 0.15, -0.25, 0.025),
+                       _line_arr(3, -0.15, 0.25, 0.15, 0.25, 0.025)))
         self._code0 = code if (code and code in core.CODES) else core.CODES[0]
         name0 = section_name or "Section 1"
-        # shared material library {name: matd} — constitutive laws live here;
-        # sections reference materials by name (confinement stays on the spec).
+        # shared material library {name: matd} — constitutive laws live here.
         self._materials: dict = {"C30": _conc_default(30.0),
                                  "S500": _steel_default(500.0),
                                  "Y1860": _prestress_default(1860.0)}
-        # multi-section project: {name: {"spec", "code", "conc_mat", "steel_mat"}}
+        # multi-section project: {name: {"spec", "code", "conc_mat"}}
         self._sections: dict = {name0: {
-            "spec": self._spec, "code": self._code0,
-            "conc_mat": "C30", "steel_mat": "S500", "ps_mat": "Y1860"}}
+            "spec": self._spec, "code": self._code0, "conc_mat": "C30"}}
         self._active = name0
         self._nav_rows: dict = {}        # name -> (item, (name_lbl, sub_lbl))
         self._units = core.Units()
@@ -308,8 +311,7 @@ class SectionDesignerWindow(QMainWindow):
         name = self._unique_name(preset)
         self._sections[name] = {"spec": spec,
                                 "code": self.code_combo.currentText(),
-                                "conc_mat": "C30", "steel_mat": "S500",
-                                "ps_mat": "Y1860"}
+                                "conc_mat": "C30"}
         self._active = name
         self._reload_section_nav()
         self._load_active()
@@ -449,41 +451,20 @@ class SectionDesignerWindow(QMainWindow):
         pf.addRow("Strand y", self.strand_y_spin)
         v.addWidget(self.psc_box)
 
-        # Materials: chosen from the shared library (their constitutive laws
-        # live there); the section keeps only confinement (below).
+        # Materials: only the section concrete is chosen here (one per section);
+        # steel & prestressing steel are chosen per bar/tendon in the tables
+        # below, so different rods can use different steels.
         mbox = CollapsibleGroup("Materials")
         self.mat_box = mbox
         mf = QFormLayout(mbox.body)
         self.conc_mat_combo = QComboBox()
         self.conc_mat_combo.currentTextChanged.connect(
             lambda *_: self._on_material_choice())
-        self.steel_mat_combo = QComboBox()
-        self.steel_mat_combo.currentTextChanged.connect(
-            lambda *_: self._on_material_choice())
-        self.ps_mat_combo = QComboBox()
-        self.ps_mat_combo.currentTextChanged.connect(
-            lambda *_: self._on_material_choice())
         mf.addRow("Concrete", self.conc_mat_combo)
-        mf.addRow("Steel", self.steel_mat_combo)
-        mf.addRow("Prestress", self.ps_mat_combo)
         manage = QPushButton("Manage library…")
         manage.clicked.connect(self._open_materials)
         mf.addRow("", manage)
         v.addWidget(mbox)
-
-        rbox = CollapsibleGroup("Reinforcement")
-        self.rebar_box = rbox
-        self.rebar_form = QFormLayout(rbox.body)
-        self.bardia_combo = QComboBox()
-        self.bardia_combo.addItems(list(core.BAR_SIZES.keys()))
-        self.bardia_combo.currentTextChanged.connect(
-            lambda *_: self._on_value_changed())
-        self.cover_spin = self._dspin(10, 150, 5, " mm", 0)
-        self._connect(self.cover_spin)
-        self.rebar_form.addRow("Bar size", self.bardia_combo)
-        self.rebar_form.addRow("Cover", self.cover_spin)
-        self._rebar_widgets: dict[str, QWidget] = {}
-        v.addWidget(rbox)
 
         # Rebar / tendon arrangements — tables (each row a bar/tendon group
         # with its own material, so different rods can use different steels).
@@ -504,6 +485,8 @@ class SectionDesignerWindow(QMainWindow):
         # response in moment-curvature.
         cmbox = CollapsibleGroup("Confinement & M-φ", collapsed=True)
         cmf = QFormLayout(cmbox.body)
+        self.spiral_chk = QCheckBox("Spiral (φ cap 0.85)")
+        self._connect(self.spiral_chk)
         self.eps_c0_spin = self._dspin(0.001, 0.02, 0.0002, "", 4)
         self.eps_cu_spin = self._dspin(0.002, 0.05, 0.0005, "", 4)
         self.fcu_ratio_spin = self._dspin(0.0, 1.0, 0.05, "", 2)
@@ -511,6 +494,7 @@ class SectionDesignerWindow(QMainWindow):
         for w in (self.eps_c0_spin, self.eps_cu_spin, self.fcu_ratio_spin,
                   self.kappa_max_spin):
             self._connect(w)
+        cmf.addRow("Transverse", self.spiral_chk)
         cmf.addRow("ε_c0 (peak, confined)", self.eps_c0_spin)
         cmf.addRow("ε_cu (crush, confined)", self.eps_cu_spin)
         cmf.addRow("f_cu / f'c (residual)", self.fcu_ratio_spin)
@@ -1013,7 +997,6 @@ class SectionDesignerWindow(QMainWindow):
     # ------------------------------------------------------ dynamic fields
     def _on_kind_changed(self, kind: str) -> None:
         self._rebuild_dim_fields(kind)
-        self._rebuild_rebar_fields(kind)
         self._apply_kind_visibility(kind)
         if kind == "Custom":
             self._load_custom_tables()
@@ -1029,7 +1012,6 @@ class SectionDesignerWindow(QMainWindow):
         self.composite_box.setVisible(kind == "Composite")
         # Composite draws material from its shapes; single-material groups hide.
         self.mat_box.setVisible(kind != "Composite")
-        self.rebar_box.setVisible(kind not in ("Custom", "Composite"))
 
     def _rebuild_dim_fields(self, kind: str) -> None:
         while self.dim_form.rowCount():
@@ -1041,22 +1023,6 @@ class SectionDesignerWindow(QMainWindow):
             spin.valueChanged.connect(lambda *_: self._on_value_changed())
             self.dim_form.addRow(_DIM_LABEL[key], spin)
             self._dim_spins[key] = spin
-
-    def _rebuild_rebar_fields(self, kind: str) -> None:
-        for w in self._rebar_widgets.values():
-            self.rebar_form.removeRow(w)
-        self._rebar_widgets.clear()
-        for key in _REBAR_FOR_KIND.get(kind, []):
-            if key == "spiral":
-                w = QCheckBox()
-                w.setChecked(bool(getattr(self._spec, key)))
-                w.stateChanged.connect(lambda *_: self._on_value_changed())
-            else:
-                w = self._ispin(0, 64)
-                w.setValue(int(getattr(self._spec, key)))
-                w.valueChanged.connect(lambda *_: self._on_value_changed())
-            self.rebar_form.addRow(_REBAR_LABEL[key], w)
-            self._rebar_widgets[key] = w
 
     # ----------------------------------------------------- arrangements
     @staticmethod
@@ -1187,17 +1153,13 @@ class SectionDesignerWindow(QMainWindow):
         s = self._spec
         self.kind_combo.setCurrentText(s.kind if s.kind in _KINDS else _KINDS[0])
         self._rebuild_dim_fields(self.kind_combo.currentText())
-        self._rebuild_rebar_fields(self.kind_combo.currentText())
         self.psc_box.setVisible(self.kind_combo.currentText() == "PSC girder")
-        self.cover_spin.setValue(s.cover * 1000.0)
-        want = f"{int(round(s.bar_dia * 1000))} mm"
-        if want in core.BAR_SIZES:
-            self.bardia_combo.setCurrentText(want)
         self.nstr_spin.setValue(int(s.n_strand))
         self.strand_area_spin.setValue(s.strand_area * 1e6)
         self.fpe_spin.setValue(s.f_pe / 1e6)
         self.strand_y_spin.setValue(s.strand_y * 1000.0)
         # confinement (section) + M-φ sweep
+        self.spiral_chk.setChecked(bool(s.spiral))
         self.eps_c0_spin.setValue(s.eps_c0)
         self.eps_cu_spin.setValue(s.eps_cu)
         self.fcu_ratio_spin.setValue(s.fcu_ratio)
@@ -1214,10 +1176,10 @@ class SectionDesignerWindow(QMainWindow):
         ch: dict = {"kind": kind}
         for key, spin in self._dim_spins.items():
             ch[key] = spin.value() / 1000.0
-        ch["cover"] = self.cover_spin.value() / 1000.0
-        ch["bar_dia"] = core.BAR_SIZES[self.bardia_combo.currentText()]
-        for key, w in self._rebar_widgets.items():
-            ch[key] = w.isChecked() if key == "spiral" else w.value()
+        # reinforcement now comes entirely from the arrangement tables, so the
+        # parametric bar counts are always zero (no section-level bars).
+        ch.update(n_top=0, n_bot=0, n_side=0, n_perim=0)
+        ch["spiral"] = self.spiral_chk.isChecked()
         if kind == "PSC girder":
             ch["n_strand"] = self.nstr_spin.value()
             ch["strand_area"] = self.strand_area_spin.value() * 1e-6
@@ -1240,19 +1202,34 @@ class SectionDesignerWindow(QMainWindow):
     _PS_KEYS = ("Ep", "fpy", "ps_b")
 
     def _apply_material_params(self, spec: core.Spec) -> core.Spec:
-        """Overlay the chosen concrete/steel/prestress materials' constitutive
-        laws onto ``spec`` (confinement fields left untouched)."""
+        """Overlay constitutive laws onto ``spec``: the chosen section concrete,
+        plus a *nominal* section steel and prestress derived from the
+        reinforcement tables (the first rebar/tendon group's material, else a
+        library default). M-φ / stress-field use each bar's own material; the
+        P-M-M and verification paths use this nominal steel."""
         ch: dict = {}
         conc = self._materials.get(self.conc_mat_combo.currentText())
         if conc:
             ch.update({k: conc[k] for k in self._CONC_KEYS if k in conc})
-        steel = self._materials.get(self.steel_mat_combo.currentText())
+        steel = self._nominal_material(spec.rebar_arr, 2, "steel")
         if steel:
             ch.update({k: steel[k] for k in self._STEEL_KEYS if k in steel})
-        ps = self._materials.get(self.ps_mat_combo.currentText())
+        ps = self._nominal_material(spec.tendon_arr, 3, "prestress")
         if ps:
             ch.update({k: ps[k] for k in self._PS_KEYS if k in ps})
         return replace(spec, **ch) if ch else spec
+
+    def _nominal_material(self, arrs, mat_idx, kind):
+        """The section's nominal steel/prestress material: the first arrangement
+        that names a library material of ``kind``, else the first such library
+        material (so the P-M-M / verification paths always have a steel)."""
+        for arr in arrs:
+            name = arr[mat_idx] if mat_idx < len(arr) else None
+            md = self._materials.get(name) if isinstance(name, str) else None
+            if md and md.get("kind") == kind:
+                return md
+        names = self._names_of_kind(kind)
+        return self._materials.get(names[0]) if names else None
 
     def _analysis_spec(self) -> core.Spec:
         """The working spec with each rebar arrangement's chosen material name
@@ -1286,15 +1263,11 @@ class SectionDesignerWindow(QMainWindow):
         was = self._loading
         self._loading = True
         rec = self._sections.get(self._active, {})
-        for combo, names, key in (
-                (self.conc_mat_combo, self._concrete_names(), "conc_mat"),
-                (self.steel_mat_combo, self._steel_names(), "steel_mat"),
-                (self.ps_mat_combo, self._names_of_kind("prestress"), "ps_mat")):
-            combo.clear()
-            combo.addItems(names)
-            want = rec.get(key)
-            i = combo.findText(want) if want else -1
-            combo.setCurrentIndex(i if i >= 0 else 0)
+        self.conc_mat_combo.clear()
+        self.conc_mat_combo.addItems(self._concrete_names())
+        want = rec.get("conc_mat")
+        i = self.conc_mat_combo.findText(want) if want else -1
+        self.conc_mat_combo.setCurrentIndex(i if i >= 0 else 0)
         self._loading = was
 
     def _on_material_choice(self) -> None:
@@ -1303,8 +1276,6 @@ class SectionDesignerWindow(QMainWindow):
         rec = self._sections.get(self._active)
         if rec is not None:
             rec["conc_mat"] = self.conc_mat_combo.currentText() or None
-            rec["steel_mat"] = self.steel_mat_combo.currentText() or None
-            rec["ps_mat"] = self.ps_mat_combo.currentText() or None
         self._on_value_changed()
 
     # ----------------------------------------------------------- recompute
@@ -1867,7 +1838,7 @@ class SectionDesignerWindow(QMainWindow):
 
     def _new_section(self) -> None:
         name = self._unique_name(f"Section {len(self._sections) + 1}")
-        self._sections[name] = {"spec": core.Spec(),
+        self._sections[name] = {"spec": _rc_spec(kind="Rectangular", b=0.40, h=0.60),
                                 "code": self.code_combo.currentText(),
                                 "conc_mat": None, "steel_mat": None}
         self._active = name
@@ -1912,7 +1883,7 @@ class SectionDesignerWindow(QMainWindow):
         self._load_active()
 
     def _new_project(self) -> None:
-        self._sections = {"Section 1": {"spec": core.Spec(),
+        self._sections = {"Section 1": {"spec": _rc_spec(kind="Rectangular", b=0.40, h=0.60),
                                         "code": self.code_combo.currentText(),
                                         "conc_mat": None, "steel_mat": None}}
         self._active = "Section 1"
@@ -2170,24 +2141,44 @@ _CODE_FAMILY = {"AASHTO LRFD 2024": "ACI", "Eurocode 2": "EC2",
                 "IS 456:2000": "IS"}
 
 
+def _line_arr(n, z1, y1, z2, y2, dia, mat=""):
+    return ("line", dia, mat, (n, z1, y1, z2, y2))
+
+
+def _perim_arr(n, cover, dia, mat=""):
+    return ("perim", dia, mat, (n, cover))
+
+
+def _rc_spec(**kw) -> core.Spec:
+    """A Spec with the parametric bar counts zeroed — reinforcement comes from
+    the arrangement tables, not section-level counts."""
+    return core.Spec(n_top=0, n_bot=0, n_side=0, n_perim=0, **kw)
+
+
 def _section_presets() -> dict:
-    """Named starter sections {label: fresh Spec} for the New menu."""
+    """Named starter sections {label: fresh Spec} for the New menu. Bars are
+    seeded as arrangement rows (the tables are the reinforcement source)."""
+    D20, D25 = 0.020, 0.025
     return {
-        "Blank rectangular": core.Spec(kind="Rectangular", b=0.40, h=0.60,
-                                       n_top=0, n_bot=0, n_side=0),
-        "Rectangular RC beam": core.Spec(kind="Rectangular", b=0.30, h=0.60,
-                                         n_top=2, n_bot=3, n_side=0,
-                                         bar_dia=0.020, cover=0.04),
-        "Square RC column": core.Spec(kind="Rectangular", b=0.40, h=0.40,
-                                      n_top=3, n_bot=3, n_side=1,
-                                      bar_dia=0.025, cover=0.04),
-        "Circular RC column": core.Spec(kind="Circular", D=0.50, n_perim=8,
-                                        bar_dia=0.025, cover=0.04, spiral=True),
-        "T-beam": core.Spec(kind="T-shape", b=1.0, h=0.70, t_f=0.15, t_w=0.30,
-                            n_top=2, n_bot=4, bar_dia=0.020, cover=0.04),
-        "PSC girder": core.Spec(kind="PSC girder", b=0.50, h=1.20, n_top=2,
-                                n_strand=10, strand_area=140e-6, f_pe=1200e6,
-                                strand_y=-0.50),
+        "Blank rectangular": _rc_spec(kind="Rectangular", b=0.40, h=0.60),
+        "Rectangular RC beam": _rc_spec(
+            kind="Rectangular", b=0.30, h=0.60, rebar_arr=(
+                _line_arr(2, -0.11, 0.25, 0.11, 0.25, D20),
+                _line_arr(3, -0.11, -0.25, 0.11, -0.25, D20))),
+        "Square RC column": _rc_spec(
+            kind="Rectangular", b=0.40, h=0.40,
+            rebar_arr=(_perim_arr(8, 0.04, D25),)),
+        "Circular RC column": _rc_spec(
+            kind="Circular", D=0.50, spiral=True,
+            rebar_arr=(_perim_arr(8, 0.04, D25),)),
+        "T-beam": _rc_spec(
+            kind="T-shape", b=1.0, h=0.70, t_f=0.15, t_w=0.30, rebar_arr=(
+                _line_arr(2, -0.10, 0.30, 0.10, 0.30, D20),
+                _line_arr(4, -0.10, -0.30, 0.10, -0.30, D20))),
+        "PSC girder": _rc_spec(
+            kind="PSC girder", b=0.50, h=1.20, n_strand=10, strand_area=140e-6,
+            f_pe=1200e6, strand_y=-0.50,
+            rebar_arr=(_line_arr(2, -0.18, 0.55, 0.18, 0.55, D20),)),
     }
 
 

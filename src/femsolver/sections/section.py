@@ -254,8 +254,12 @@ class ReinforcementLayout:
         """
         from shapely.geometry import Polygon
 
-        if n_bars < 1:
-            raise ValueError("n_bars must be >= 1")
+        if n_bars < 0:
+            raise ValueError("n_bars must be >= 0")
+        if n_bars == 0:                       # no perimeter bars (e.g. bars are
+            return cls(                       # supplied via explicit arrangements)
+                bars=[], stirrup_designation=stirrup_designation,
+                stirrup_spacing=stirrup_spacing, stirrup_legs=stirrup_legs)
         if bar_area <= 0 or cover <= 0:
             raise ValueError("bar_area and cover must be > 0")
         poly = section.geometry.polygon
