@@ -812,6 +812,8 @@ class SectionDesignerWindow(QMainWindow):
         self.mphi_metrics = QLabel("—")
         self.mphi_metrics.setTextFormat(Qt.TextFormat.RichText)
         mpv.addWidget(self.mphi_metrics)
+        # milestone table (left) + strain-profile diagram (right)
+        bottom = QHBoxLayout()
         self.mphi_tbl = QTableWidget(0, 4)
         self.mphi_tbl.setHorizontalHeaderLabels(
             ["Point", "State", "Curvature", "Moment"])
@@ -820,8 +822,27 @@ class SectionDesignerWindow(QMainWindow):
         self.mphi_tbl.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.mphi_tbl.setAlternatingRowColors(True)
         self.mphi_tbl.setShowGrid(False)
-        self.mphi_tbl.setMaximumHeight(150)
-        mpv.addWidget(self.mphi_tbl)
+        self.mphi_tbl.setMaximumHeight(170)
+        bottom.addWidget(self.mphi_tbl, 1)
+
+        strain_box = QVBoxLayout()
+        srow = QHBoxLayout()
+        srow.addWidget(QLabel("Strain diagram at:"))
+        self.strain_combo = QComboBox()
+        self.strain_combo.currentIndexChanged.connect(
+            lambda *_: self._draw_strain_profile())
+        srow.addWidget(self.strain_combo, 1)
+        strain_box.addLayout(srow)
+        self.strain_fig = Figure(figsize=(3.2, 2.2), layout="constrained")
+        self.strain_canvas = Canvas(self.strain_fig)
+        self.strain_canvas.setMaximumHeight(190)
+        strain_box.addWidget(self.strain_canvas)
+        self.strain_metrics = QLabel("—")
+        self.strain_metrics.setObjectName("caption")
+        self.strain_metrics.setTextFormat(Qt.TextFormat.RichText)
+        strain_box.addWidget(self.strain_metrics)
+        bottom.addLayout(strain_box, 1)
+        mpv.addLayout(bottom)
         self.tabs.addTab(mp, "Moment-curvature")
 
         # ---- Verification ----
@@ -854,6 +875,29 @@ class SectionDesignerWindow(QMainWindow):
         srow.addStretch(1)
         s3v.addLayout(srow)
         self.tabs.addTab(s3, "3-D P-M-M surface")
+
+        # ---- M-M contour (biaxial slice at a chosen P) ----
+        mm = QWidget()
+        mmv = QVBoxLayout(mm)
+        self.mm_fig = Figure(figsize=(4.2, 4.0), layout="constrained")
+        self.mm_canvas = Canvas(self.mm_fig)
+        mmv.addWidget(self.mm_canvas)
+        mrow = QHBoxLayout()
+        mrow.addWidget(QLabel("Axial P (+comp):"))
+        self.mm_P = self._dspin(-1e6, 1e6, 50, "", 1)
+        self.mm_P.valueChanged.connect(lambda *_: self._queue())
+        mrow.addWidget(self.mm_P)
+        mrow.addWidget(QLabel("Demand Mz:"))
+        self.mm_Mz = self._dspin(-1e6, 1e6, 25, "", 1)
+        self.mm_Mz.valueChanged.connect(lambda *_: self._queue())
+        mrow.addWidget(self.mm_Mz)
+        mrow.addWidget(QLabel("My:"))
+        self.mm_My = self._dspin(-1e6, 1e6, 25, "", 1)
+        self.mm_My.valueChanged.connect(lambda *_: self._queue())
+        mrow.addWidget(self.mm_My)
+        mrow.addStretch(1)
+        mmv.addLayout(mrow)
+        self.tabs.addTab(mm, "M-M contour")
 
         # ---- Report ----
         self.report = QTextBrowser()
@@ -1197,6 +1241,8 @@ class SectionDesignerWindow(QMainWindow):
             elif idx == 4:
                 self._draw_surface(case, code)
             elif idx == 5:
+                self._draw_mm_contour(case, code)
+            elif idx == 6:
                 self._fill_report(case, code)
             self.statusBar().clearMessage()
         except Exception as exc:                       # noqa: BLE001
@@ -1323,6 +1369,57 @@ class SectionDesignerWindow(QMainWindow):
             for col, val in enumerate((lab, state, f"{kx:.4g}", f"{my:.4g}")):
                 self.mphi_tbl.setItem(r, col, QTableWidgetItem(str(val)))
 
+        # strain-profile milestones (real ones carry eps0/eps_top/eps_steel)
+        self._mphi_data = data
+        real = [ms for ms in data.get("milestones", []) if "eps0" in ms]
+        self._strain_marks = real
+        self._loading = True
+        self.strain_combo.clear()
+        self.strain_combo.addItems(
+            [f"{ms.get('label', '')} · {ms.get('state', '')}" for ms in real])
+        if real:
+            self.strain_combo.setCurrentIndex(len(real) - 1)
+        self._loading = False
+        self._draw_strain_profile()
+
+    def _draw_strain_profile(self) -> None:
+        """Strain profile ε(y) = ε0 − y·κ at the selected M-φ milestone, with
+        the rebar strains and the neutral-axis depth (mirrors the Streamlit)."""
+        self.strain_fig.clear()
+        ax = self.strain_fig.add_subplot(111)
+        marks = getattr(self, "_strain_marks", [])
+        data = getattr(self, "_mphi_data", None)
+        i = self.strain_combo.currentIndex()
+        if (not marks or data is None or "y_top" not in data
+                or not (0 <= i < len(marks))):
+            ax.set_axis_off()
+            self.strain_canvas.draw_idle()
+            self.strain_metrics.setText("—")
+            return
+        ms = marks[i]
+        eps0, kap = ms["eps0"], ms["kappa"]
+        y_top, y_bot = data["y_top"], data["y_bot"]
+        # concrete strain profile (linear), y in mm
+        ys = [y_bot, y_top]
+        ax.plot([eps0 - y * kap for y in ys], [y * 1e3 for y in ys], "-",
+                color=style.C_SECONDARY, marker="o", lw=1.8)
+        # rebar strains
+        rys = data.get("rebar_ys", [])
+        if rys:
+            ax.plot([eps0 - ry * kap for ry in rys], [ry * 1e3 for ry in rys],
+                    "o", color="#1f3b6f", ms=5)
+        ax.axvline(0, color=style.AX_SPINE, lw=0.8, ls="--")
+        ax.set_xlabel("strain ε  (tension +)")
+        ax.set_ylabel("y from centroid [mm]")
+        style.beautify_axes(ax)
+        self.strain_canvas.draw_idle()
+        na = (y_top - eps0 / kap) if abs(kap) > 1e-9 else None
+        na_txt = f"{na * 1e3:.0f} mm from top" if na is not None else "—"
+        self.strain_metrics.setText(
+            f"ε_c(top) <b>{ms.get('eps_top', 0):+.4f}</b> &nbsp;·&nbsp; "
+            f"ε_s(max) <b>{ms.get('eps_steel', 0):+.4f}</b> &nbsp;·&nbsp; "
+            f"NA {na_txt}")
+
     # ------------------------------------------------------ 3-D surface
     def _draw_surface(self, case, code) -> None:
         u = self._units
@@ -1358,6 +1455,41 @@ class SectionDesignerWindow(QMainWindow):
         ax.set_title(f"P-Mz-My interaction surface — {code}", color=style.TEXT,
                      fontsize=11, fontweight="bold")
         self.s3_canvas.draw_idle()
+
+    # ------------------------------------------------------ M-M contour
+    def _draw_mm_contour(self, case, code) -> None:
+        u = self._units
+        self.mm_fig.clear()
+        ax = self.mm_fig.add_subplot(111)
+        if self._spec.kind == "Composite":
+            ax.text(0.5, 0.5, "Composite section —\nsee the 3-D surface tab.",
+                    ha="center", va="center", transform=ax.transAxes)
+            ax.set_axis_off()
+            self.mm_canvas.draw_idle()
+            return
+        P = self.mm_P.value()
+        P_kN = P * u.fN / 1e3
+        grid = core.pmm_surface_grid(case, code)
+        Mz, My = core.mm_contour(grid, P_kN)
+        # close the ring
+        mz = [u.M_disp(v) for v in list(Mz) + [Mz[0]]]
+        my = [u.M_disp(v) for v in list(My) + [My[0]]]
+        ax.plot(mz, my, "-", color=style.C_PRIMARY, lw=1.8,
+                label=f"Capacity @ P={P:.0f} {u.Fl}")
+        ax.fill(mz, my, color=style.ACCENT_SOFT, alpha=0.5)
+        dMz, dMy = self.mm_Mz.value(), self.mm_My.value()
+        if dMz or dMy:
+            ax.plot([dMz], [dMy], "o", color=style.C_DEMAND, ms=9,
+                    label="Demand", zorder=5)
+        ax.axhline(0, color=style.AX_SPINE, lw=0.6)
+        ax.axvline(0, color=style.AX_SPINE, lw=0.6)
+        ax.set_aspect("equal", adjustable="datalim")
+        ax.set_xlabel(f"Mz  [{u.Ml}]")
+        ax.set_ylabel(f"My  [{u.Ml}]")
+        ax.set_title(f"M-M interaction @ P = {P:.4g} {u.Fl} — {code}")
+        style.beautify_axes(ax)
+        ax.legend(fontsize=8, loc="best", frameon=False)
+        self.mm_canvas.draw_idle()
 
     # ------------------------------------------------------ verify / report
     def _verify_rows(self, case, code):
