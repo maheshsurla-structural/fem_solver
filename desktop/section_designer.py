@@ -899,6 +899,27 @@ class SectionDesignerWindow(QMainWindow):
         mmv.addLayout(mrow)
         self.tabs.addTab(mm, "M-M contour")
 
+        # ---- Stress field (fibre stresses under a plane-sections strain) ----
+        sf = QWidget()
+        sfv = QVBoxLayout(sf)
+        self.sf_fig = Figure(figsize=(4.2, 4.2), layout="constrained")
+        self.sf_canvas = Canvas(self.sf_fig)
+        sfv.addWidget(self.sf_canvas)
+        sfr = QHBoxLayout()
+        sfr.addWidget(QLabel("ε top-fibre [‰]:"))
+        self.sf_etop = self._dspin(-20, 20, 0.1, "", 2)
+        self.sf_etop.setValue(-1.5)
+        self.sf_etop.valueChanged.connect(lambda *_: self._queue())
+        sfr.addWidget(self.sf_etop)
+        sfr.addWidget(QLabel("ε bottom-fibre [‰]:"))
+        self.sf_ebot = self._dspin(-20, 20, 0.1, "", 2)
+        self.sf_ebot.setValue(1.0)
+        self.sf_ebot.valueChanged.connect(lambda *_: self._queue())
+        sfr.addWidget(self.sf_ebot)
+        sfr.addStretch(1)
+        sfv.addLayout(sfr)
+        self.tabs.addTab(sf, "Stress field")
+
         # ---- Report ----
         self.report = QTextBrowser()
         self.tabs.addTab(self.report, "Report")
@@ -1243,6 +1264,8 @@ class SectionDesignerWindow(QMainWindow):
             elif idx == 5:
                 self._draw_mm_contour(case, code)
             elif idx == 6:
+                self._draw_stress_field(case)
+            elif idx == 7:
                 self._fill_report(case, code)
             self.statusBar().clearMessage()
         except Exception as exc:                       # noqa: BLE001
@@ -1490,6 +1513,79 @@ class SectionDesignerWindow(QMainWindow):
         style.beautify_axes(ax)
         ax.legend(fontsize=8, loc="best", frameon=False)
         self.mm_canvas.draw_idle()
+
+    # ------------------------------------------------------ stress field
+    def _draw_stress_field(self, case) -> None:
+        """Fibre-stress field under a plane-sections strain state (ε linear in
+        y, tension +): concrete fibres + rebar coloured by the section's own
+        material laws, with the neutral axis. Mirrors the Streamlit view."""
+        self.sf_fig.clear()
+        ax = self.sf_fig.add_subplot(111)
+        s = self._spec
+        if s.kind == "Composite":
+            ax.text(0.5, 0.5, "Stress field is single-material —\n"
+                    "not available for composite.", ha="center", va="center",
+                    transform=ax.transAxes)
+            ax.set_axis_off()
+            self.sf_canvas.draw_idle()
+            return
+        e_top = self.sf_etop.value() / 1000.0
+        e_bot = self.sf_ebot.value() / 1000.0
+        from shapely.geometry import Point
+        conc = core.concrete_uniaxial_from(dict(
+            fc=s.fc, conc_model=s.conc_model, eps_c0=s.eps_c0, eps_cu=s.eps_cu,
+            fcu_ratio=s.fcu_ratio, fr_model=s.fr_model, fr_coeff=s.fr_coeff,
+            eps_decay=s.eps_decay, conc_f1_ratio=s.conc_f1_ratio))
+        steel = core.steel_uniaxial_from(dict(
+            fy=s.fy, Es=s.Es, steel_model=s.steel_model, steel_b=s.steel_b,
+            steel_fu_ratio=s.steel_fu_ratio, steel_eps_sh=s.steel_eps_sh,
+            steel_eps_su=s.steel_eps_su))
+        poly = case.section.geometry.polygon
+        minz, miny, maxz, maxy = poly.bounds
+        span = (maxy - miny) or 1.0
+
+        def eps(y):
+            return e_bot + (e_top - e_bot) * (y - miny) / span
+
+        Z, Y, S = [], [], []
+        for yy in np.linspace(miny, maxy, 48):
+            sig = conc.get_response(float(eps(yy)))[0] / 1e6
+            for zz in np.linspace(minz, maxz, 32):
+                if poly.contains(Point(float(zz), float(yy))):
+                    Z.append(zz * 1e3)
+                    Y.append(yy * 1e3)
+                    S.append(sig)
+        bars = (case.section.reinforcement.bars
+                if case.section.reinforcement else [])
+        bsig = [steel.get_response(float(eps(b.y)))[0] / 1e6 for b in bars]
+        # scale colours to the concrete field so its gradient stays readable;
+        # steel (σ several× higher) saturates the ends of the same scale.
+        clim = max([abs(v) for v in S] + [1.0])
+        bsig = [max(-clim, min(clim, v)) for v in bsig]
+        # section outline
+        ex, ey = poly.exterior.xy
+        ax.plot([z * 1e3 for z in ex], [y * 1e3 for y in ey], color="#5b7aa8",
+                lw=1.5, zorder=1)
+        sc = ax.scatter(Z, Y, c=S, cmap="RdBu_r", vmin=-clim, vmax=clim,
+                        marker="s", s=16, linewidths=0, zorder=2)
+        if bars:
+            ax.scatter([b.z * 1e3 for b in bars], [b.y * 1e3 for b in bars],
+                       c=bsig, cmap="RdBu_r", vmin=-clim, vmax=clim, s=60,
+                       edgecolors="#222", linewidths=1, zorder=3)
+        # neutral axis (eps = 0)
+        if (e_top > 0) != (e_bot > 0) and e_top != e_bot:
+            y0 = (miny + (0.0 - e_bot) * span / (e_top - e_bot)) * 1e3
+            if miny * 1e3 <= y0 <= maxy * 1e3:
+                ax.axhline(y0, color="#e5484d", lw=1.4, ls="--")
+                ax.annotate("N.A.", (maxz * 1e3, y0), color="#e5484d",
+                            fontsize=8, va="bottom", ha="right")
+        self.sf_fig.colorbar(sc, ax=ax, label="σ  [MPa]", shrink=0.85)
+        ax.set_aspect("equal", adjustable="datalim")
+        ax.set_xlabel("z [mm]")
+        ax.set_ylabel("y [mm]")
+        ax.set_title("Fibre-stress field (tension +)")
+        style.beautify_axes(ax)
+        self.sf_canvas.draw_idle()
 
     # ------------------------------------------------------ verify / report
     def _verify_rows(self, case, code):
