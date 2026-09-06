@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import math
 import os
+import re
 import tempfile
 from dataclasses import dataclass, astuple, replace
 from pathlib import Path
@@ -337,13 +338,26 @@ class Spec:
     # later shapes displace earlier ones on overlap). Rebar comes from the
     # rebar arrangements + the section steel.
     shapes: tuple = ()
+    # AdSec-style reinforcement GROUPS — the newer model (each row a group):
+    #   (type, pattern, position[, material]) where type is a REBAR_GROUP_TYPE
+    #   (Top/Bottom/Sides/Link/Perimeter/Line/Arc/Single), pattern is a bar
+    #   description ("4B25", "B16-200", "4#8", "#5-150") and position is a
+    #   free-text coord string. When non-empty, these supersede the parametric
+    #   counts + rebar_arr for non-Custom/Composite kinds (see build_case).
+    rebar_groups: tuple = ()
+    # Variable cover (AdSec): when cover_variable, Top/Bottom/Sides use their
+    # own covers; else the uniform ``cover`` applies to all faces.
+    cover_variable: bool = False
+    cover_top: float = 0.05
+    cover_bot: float = 0.05
+    cover_side: float = 0.05
 
     def __post_init__(self):
         # Coerce the variable-length nested-tuple fields even if they arrive as
         # lists (JSON load, widget read-back), so the frozen Spec is always
         # hashable for st.cache_data / astuple round-trips.
         for f in ("custom_outline", "custom_holes", "custom_bars",
-                  "rebar_arr", "tendon_arr", "shapes"):
+                  "rebar_arr", "tendon_arr", "shapes", "rebar_groups"):
             object.__setattr__(self, f, _deep_tuple(getattr(self, f)))
 
 
@@ -455,6 +469,157 @@ def bars_from_arrangements(arrangements, section, default_mat=None):
             out.append(RebarBar(z=float(z), y=float(y), area=area,
                                 material=bar_mat, designation=desig))
     return out
+
+
+# US (imperial) reinforcing-bar nominal diameters [mm], for #-size notation.
+US_BAR_MM = {
+    3: 9.525, 4: 12.7, 5: 15.875, 6: 19.05, 7: 22.225, 8: 25.4,
+    9: 28.651, 10: 32.258, 11: 35.814, 14: 43.0, 18: 57.33,
+}
+# AdSec-style reinforcement GROUP types (the newer 'Groups' table model).
+REBAR_GROUP_TYPES_RECT = ["Link", "Top", "Bottom", "Sides",
+                          "Perimeter", "Line", "Arc", "Single"]
+REBAR_GROUP_TYPES_ROUND = ["Perimeter", "Line", "Arc", "Single"]
+REBAR_GROUP_TYPES = REBAR_GROUP_TYPES_RECT          # back-compat alias
+
+
+def parse_bar_desc(desc: str, notation: str = "any"):
+    """Parse an AdSec-style bar description into ``(count, dia_m, spacing_m)``:
+    ``'4B25'`` -> (4, 0.025, None); ``'B16-200'`` -> (None, 0.016, 0.200);
+    ``'B10'`` -> (1, 0.010, None); ``'4#8'`` -> (4, 0.0254, None);
+    ``'#5-150'`` -> (None, 0.0159, 0.150). ``notation`` enforces a rebar
+    standard: ``"us"`` accepts only US ``#``-sizes, ``"metric"`` only ``B``/⌀mm,
+    ``"any"`` both. Raises ValueError on a bad string or notation mismatch."""
+    s = str(desc).strip().upper().replace(" ", "")
+    if notation == "us" and "B" in s:
+        raise ValueError(f"{desc!r} is a metric bar — the US rebar standard "
+                         "uses US sizes, e.g. '4#8' or '#5-150'.")
+    if notation == "metric" and "#" in s:
+        raise ValueError(f"{desc!r} is a US #-size — the metric rebar standard "
+                         "uses ⌀mm sizes, e.g. '4B25' or 'B16-200'.")
+
+    def _us(n):
+        try:
+            return US_BAR_MM[int(n)] / 1e3
+        except (KeyError, ValueError):
+            raise ValueError(f"unknown US bar size #{n}")
+
+    m = re.fullmatch(r"(\d+)B(\d+(?:\.\d+)?)", s)               # nBd
+    if m:
+        return int(m.group(1)), float(m.group(2)) / 1e3, None
+    m = re.fullmatch(r"(\d+)#(\d+)", s)                         # n#N (US)
+    if m:
+        return int(m.group(1)), _us(m.group(2)), None
+    m = re.fullmatch(r"B(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)", s)    # Bd-s
+    if m:
+        return None, float(m.group(1)) / 1e3, float(m.group(2)) / 1e3
+    m = re.fullmatch(r"#(\d+)-(\d+(?:\.\d+)?)", s)              # #N-s (US)
+    if m:
+        return None, _us(m.group(1)), float(m.group(2)) / 1e3
+    m = re.fullmatch(r"B(\d+(?:\.\d+)?)", s)                    # Bd
+    if m:
+        return 1, float(m.group(1)) / 1e3, None
+    m = re.fullmatch(r"#(\d+)", s)                             # #N (US)
+    if m:
+        return 1, _us(m.group(1)), None
+    raise ValueError(f"unrecognised bar description {desc!r} "
+                     "(use e.g. '4B25', 'B16-200', '4#8' or '#5-150')")
+
+
+def _parse_positions(pos):
+    """Free-text Position(s) -> flat [floats] (mm lengths / deg angles)."""
+    out = []
+    for t in re.split(r"[,;\s]+", str(pos or "").strip()):
+        if t:
+            try:
+                out.append(float(t))
+            except ValueError:
+                pass
+    return out
+
+
+def _line_pts(z1, y1, z2, y2, n):
+    if n <= 1:
+        return [((z1 + z2) / 2.0, (y1 + y2) / 2.0)]
+    return [(z1 + (z2 - z1) * i / (n - 1), y1 + (y2 - y1) * i / (n - 1))
+            for i in range(n)]
+
+
+def _arc_pts(cz, cy, r, a1, a2, n):
+    a1r, a2r = math.radians(a1), math.radians(a2)
+    if n <= 1:
+        return [(cz + r * math.cos(a1r), cy + r * math.sin(a1r))]
+    return [(cz + r * math.cos(a1r + (a2r - a1r) * i / (n - 1)),
+             cy + r * math.sin(a1r + (a2r - a1r) * i / (n - 1)))
+            for i in range(n)]
+
+
+def bars_from_groups(groups, sec, cover, rect=None, face_covers=None):
+    """Build :class:`RebarBar` objects from AdSec-style reinforcement groups —
+    each ``(type, description[, position[, material]])``. Position numbers are
+    mm / degrees. Face types Top/Bottom/Sides (Link is skipped as a shear tie)
+    need ``rect=(b, h)`` (m); Perimeter rings the outline at ``cover``; Line
+    needs ``z1,y1;z2,y2`` and Arc ``cz,cy,r,a1,a2``. A steel-material key-value
+    tuple in slot 3 gives that group its own law (mixed-material)."""
+    bars = []
+
+    def _add(z, y, dia, mat):
+        bars.append(RebarBar(z=float(z), y=float(y), area=bar_area(dia),
+                             material=mat, designation=f"{dia * 1e3:.0f}mm"))
+
+    for g in groups:
+        typ = g[0]
+        desc = g[1] if len(g) > 1 else ""
+        pos = g[2] if len(g) > 2 else ""
+        matslot = g[3] if len(g) > 3 else ""
+        mat = (steel_uniaxial_from(dict(matslot))
+               if isinstance(matslot, (tuple, list)) and matslot else None)
+        try:
+            n, dia, sp = parse_bar_desc(desc)
+        except ValueError:
+            continue
+        p = _parse_positions(pos)
+        if typ == "Link":
+            continue
+        if typ in ("Top", "Bottom", "Sides") and rect:
+            b, h = rect
+            c_top, c_bot, c_side = face_covers or (cover, cover, cover)
+            zc = b / 2.0 - c_side
+            y_top, y_bot = h / 2.0 - c_top, -h / 2.0 + c_bot
+            if typ in ("Top", "Bottom"):
+                y = y_top if typ == "Top" else y_bot
+                count = max(1, n if n else
+                            (int(round((2 * zc) / sp)) + 1 if sp else 1))
+                for (z, yy) in _line_pts(-zc, y, zc, y, count):
+                    _add(z, yy, dia, mat)
+            else:                                   # Sides
+                height = y_top - y_bot
+                count = (n if n else
+                         (max(0, int(round(height / sp)) - 1) if sp else 0))
+                for i in range(1, count + 1):
+                    yy = y_bot + height * i / (count + 1)
+                    _add(-zc, yy, dia, mat)
+                    _add(zc, yy, dia, mat)
+        elif typ == "Perimeter":
+            try:
+                rl = ReinforcementLayout.from_perimeter(
+                    sec, n_bars=int(n or 8), bar_area=bar_area(dia),
+                    cover=float(cover), material=mat,
+                    designation=f"{dia * 1e3:.0f}mm")
+                bars.extend(rl.bars)
+            except Exception:                        # noqa: BLE001
+                pass
+        elif typ == "Line" and len(p) >= 4:
+            for (z, y) in _line_pts(p[0] / 1e3, p[1] / 1e3, p[2] / 1e3,
+                                    p[3] / 1e3, n or 2):
+                _add(z, y, dia, mat)
+        elif typ == "Arc" and len(p) >= 5:
+            for (z, y) in _arc_pts(p[0] / 1e3, p[1] / 1e3, p[2] / 1e3,
+                                   p[3], p[4], n or 4):
+                _add(z, y, dia, mat)
+        elif typ == "Single" and len(p) >= 2:
+            _add(p[0] / 1e3, p[1] / 1e3, dia, mat)
+    return bars
 
 
 def tendons_from_arrangements(arrangements, section, material):
@@ -872,6 +1037,17 @@ def build_case(spec: Spec) -> SectionCase:
                             material=strand_mat, f_pe=spec.f_pe,
                             designation="0.6in Gr270")
             for z in zs])
+
+    # AdSec-style reinforcement GROUPS (Top/Bottom/Sides/Link/Perimeter/Line/
+    # Arc/Single) — the newer model. When present they REPLACE the parametric
+    # bars for the section (the desktop zeroes the counts anyway).
+    if spec.rebar_groups and spec.kind not in ("Custom", "Composite"):
+        rect = ((spec.b, spec.h)
+                if spec.kind in ("Rectangular", "Hollow box") else None)
+        fc = ((spec.cover_top, spec.cover_bot, spec.cover_side)
+              if spec.cover_variable else None)
+        gbars = bars_from_groups(spec.rebar_groups, sec, spec.cover, rect, fc)
+        sec.reinforcement = ReinforcementLayout(bars=gbars)
 
     # additive rebar arrangements (point/line/arc/rectangle/perimeter).
     # Composite handles its own (centroid-shifted) rebar in its branch above.
