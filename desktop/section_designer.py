@@ -59,7 +59,7 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox,
                                QGroupBox, QHBoxLayout, QLabel, QLineEdit,
                                QListWidget, QListWidgetItem, QMainWindow, QMenu,
                                QMessageBox, QPushButton, QScrollArea, QSpinBox,
-                               QSplitter, QTableWidget,
+                               QSplitter, QStackedWidget, QTableWidget,
                                QTableWidgetItem, QTabWidget, QTextBrowser,
                                QVBoxLayout, QWidget)
 
@@ -832,7 +832,6 @@ class SectionDesignerWindow(QMainWindow):
         self.dem_lbl = QLabel("—")
         self.dem_lbl.setTextFormat(Qt.TextFormat.RichText)
         pmv.addWidget(self.dem_lbl)
-        self.tabs.addTab(pm, "P-M interaction")
 
         # ---- Moment-curvature ----
         mp = QWidget()
@@ -885,7 +884,6 @@ class SectionDesignerWindow(QMainWindow):
         strain_box.addWidget(self.strain_metrics)
         bottom.addLayout(strain_box, 1)
         mpv.addLayout(bottom)
-        self.tabs.addTab(mp, "Moment-curvature")
 
         # ---- Verification ----
         vt = QWidget()
@@ -899,7 +897,6 @@ class SectionDesignerWindow(QMainWindow):
         self.verify_tbl.setAlternatingRowColors(True)
         self.verify_tbl.setShowGrid(False)
         vtv.addWidget(self.verify_tbl)
-        self.tabs.addTab(vt, "Verification")
 
         # ---- 3-D P-M-M surface ----
         s3 = QWidget()
@@ -916,7 +913,6 @@ class SectionDesignerWindow(QMainWindow):
         srow.addWidget(self.mesh_combo)
         srow.addStretch(1)
         s3v.addLayout(srow)
-        self.tabs.addTab(s3, "3-D P-M-M surface")
 
         # ---- M-M contour (biaxial slice at a chosen P) ----
         mm = QWidget()
@@ -939,7 +935,6 @@ class SectionDesignerWindow(QMainWindow):
         mrow.addWidget(self.mm_My)
         mrow.addStretch(1)
         mmv.addLayout(mrow)
-        self.tabs.addTab(mm, "M-M contour")
 
         # ---- Stress field (fibre stresses under a plane-sections strain) ----
         sf = QWidget()
@@ -960,10 +955,33 @@ class SectionDesignerWindow(QMainWindow):
         sfr.addWidget(self.sf_ebot)
         sfr.addStretch(1)
         sfv.addLayout(sfr)
-        self.tabs.addTab(sf, "Stress field")
+
+        # ---- combined P-M-M interaction tab (P-M curve | 3-D surface | M-M) --
+        inter = QWidget()
+        iv = QVBoxLayout(inter)
+        selrow = QHBoxLayout()
+        selrow.addWidget(QLabel("View:"))
+        self.inter_view = QComboBox()
+        self.inter_view.addItems(["P-M curve", "3-D P-M-M surface",
+                                  "M-M contour"])
+        self.inter_view.currentIndexChanged.connect(self._on_inter_view)
+        selrow.addWidget(self.inter_view)
+        selrow.addStretch(1)
+        iv.addLayout(selrow)
+        self.inter_stack = QStackedWidget()
+        self.inter_stack.addWidget(pm)          # 0: P-M curve
+        self.inter_stack.addWidget(s3)          # 1: 3-D surface
+        self.inter_stack.addWidget(mm)          # 2: M-M contour
+        iv.addWidget(self.inter_stack, 1)
 
         # ---- Report ----
         self.report = QTextBrowser()
+
+        # assemble the workspace tabs (Section is inserted at 0 later)
+        self.tabs.addTab(inter, "P-M-M interaction")
+        self.tabs.addTab(mp, "Moment-curvature")
+        self.tabs.addTab(vt, "Verification")
+        self.tabs.addTab(sf, "Stress field")
         self.tabs.addTab(self.report, "Report")
         return self.tabs
 
@@ -1276,6 +1294,11 @@ class SectionDesignerWindow(QMainWindow):
             pass
         self.head_sub.setText("  ·  ".join(bits))
 
+    def _on_inter_view(self, i: int) -> None:
+        """Switch the P-M-M interaction sub-view (P-M / 3-D / M-M) and recompute."""
+        self.inter_stack.setCurrentIndex(i)
+        self._queue()
+
     def _recompute_analysis(self) -> None:
         code = self.code_combo.currentText()
         try:
@@ -1295,19 +1318,21 @@ class SectionDesignerWindow(QMainWindow):
                 "compute interaction, moment-curvature and verification.")
             return
         try:
-            if idx == 1:
-                self._draw_pm(case, code)
+            if idx == 1:                    # P-M-M interaction (sub-view)
+                sub = self.inter_view.currentIndex()
+                if sub == 0:
+                    self._draw_pm(case, code)
+                elif sub == 1:
+                    self._draw_surface(case, code)
+                else:
+                    self._draw_mm_contour(case, code)
             elif idx == 2:
                 self._draw_mphi(case)
             elif idx == 3:
                 self._fill_verify(case, code)
             elif idx == 4:
-                self._draw_surface(case, code)
-            elif idx == 5:
-                self._draw_mm_contour(case, code)
-            elif idx == 6:
                 self._draw_stress_field(case)
-            elif idx == 7:
+            elif idx == 5:
                 self._fill_report(case, code)
             self.statusBar().clearMessage()
         except Exception as exc:                       # noqa: BLE001
