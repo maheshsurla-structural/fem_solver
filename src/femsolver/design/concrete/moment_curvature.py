@@ -216,9 +216,12 @@ def moment_curvature(
     rebar_fibers = []
     if has_rebar:
         for bar in section.reinforcement.bars:
+            # honour a per-bar material when one is set (mixed-material
+            # reinforcement), else the section-wide steel law
+            bar_mat = bar.material if bar.material is not None else steel_uniaxial
             rebar_fibers.append(Fiber(
                 y=bar.y, z=bar.z, area=bar.area,
-                material=steel_uniaxial.clone(),
+                material=bar_mat.clone(),
             ))
     tendon_fibers = []
     if has_prestress:

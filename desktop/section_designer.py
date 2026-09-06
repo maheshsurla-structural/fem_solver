@@ -485,17 +485,17 @@ class SectionDesignerWindow(QMainWindow):
         self._rebar_widgets: dict[str, QWidget] = {}
         v.addWidget(rbox)
 
-        # Rebar / tendon arrangements (layout generators added to the bars)
-        self.rebar_arr_list = QListWidget()
-        self.rebar_arr_list.setMaximumHeight(90)
+        # Rebar / tendon arrangements — tables (each row a bar/tendon group
+        # with its own material, so different rods can use different steels).
+        self.rebar_arr_tbl = self._arr_table(["Type", "n", "⌀ mm", "Material"])
         v.addWidget(self._arr_group(
-            "Rebar arrangements", self.rebar_arr_list,
+            "Rebar arrangements", self.rebar_arr_tbl,
             lambda: self._add_arrangement(tendon=False),
             lambda: self._remove_arrangement(tendon=False)))
-        self.tendon_arr_list = QListWidget()
-        self.tendon_arr_list.setMaximumHeight(90)
+        self.tendon_arr_tbl = self._arr_table(["Type", "n", "Aₚ mm²",
+                                               "Material"])
         v.addWidget(self._arr_group(
-            "Tendon arrangements", self.tendon_arr_list,
+            "Tendon arrangements", self.tendon_arr_tbl,
             lambda: self._add_arrangement(tendon=True),
             lambda: self._remove_arrangement(tendon=True)))
 
@@ -1060,10 +1060,10 @@ class SectionDesignerWindow(QMainWindow):
 
     # ----------------------------------------------------- arrangements
     @staticmethod
-    def _arr_group(title, listw, on_add, on_remove) -> CollapsibleGroup:
+    def _arr_group(title, tbl, on_add, on_remove) -> CollapsibleGroup:
         box = CollapsibleGroup(title, collapsed=True)
         gv = QVBoxLayout(box.body)
-        gv.addWidget(listw)
+        gv.addWidget(tbl)
         row = QHBoxLayout()
         add = QPushButton("Add…")
         add.clicked.connect(lambda: on_add())
@@ -1074,13 +1074,80 @@ class SectionDesignerWindow(QMainWindow):
         gv.addLayout(row)
         return box
 
+    @staticmethod
+    def _arr_table(headers) -> QTableWidget:
+        t = QTableWidget(0, len(headers))
+        t.setHorizontalHeaderLabels(headers)
+        t.horizontalHeader().setStretchLastSection(True)
+        t.verticalHeader().setVisible(False)
+        t.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        t.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        t.setAlternatingRowColors(True)
+        t.setShowGrid(False)
+        t.setMaximumHeight(140)
+        return t
+
     def _refresh_arr_lists(self) -> None:
-        self.rebar_arr_list.clear()
-        for arr in self._spec.rebar_arr:
-            self.rebar_arr_list.addItem(_rebar_arr_label(arr))
-        self.tendon_arr_list.clear()
-        for arr in self._spec.tendon_arr:
-            self.tendon_arr_list.addItem(_tendon_arr_label(arr))
+        self._loading_arr = True
+        self._fill_arr_table(self.rebar_arr_tbl, self._spec.rebar_arr,
+                             tendon=False)
+        self._fill_arr_table(self.tendon_arr_tbl, self._spec.tendon_arr,
+                             tendon=True)
+        self._loading_arr = False
+
+    def _fill_arr_table(self, tbl, arrs, *, tendon: bool) -> None:
+        mats = (["(default strand)"] + self._names_of_kind("prestress")
+                if tendon else ["(section steel)"] + self._names_of_kind("steel"))
+        tbl.setRowCount(len(arrs))
+        for r, arr in enumerate(arrs):
+            typ = arr[0]
+            if tendon:
+                n = 1 if typ == "point" else int(arr[4][0])
+                size = f"{arr[1] * 1e6:.0f}"
+                mat_name = arr[3] or "(default strand)"
+            else:
+                p = arr[3]
+                if typ == "point":
+                    n = 1
+                elif typ == "rect":
+                    n = int(p[0]) * int(p[1])
+                else:
+                    n = int(p[0])
+                size = f"{arr[1] * 1e3:.0f}"
+                mat_name = arr[2] or "(section steel)"
+            for c, val in enumerate((typ.title(), str(n), size)):
+                it = QTableWidgetItem(val)
+                tbl.setItem(r, c, it)
+            combo = QComboBox()
+            combo.addItems(mats)
+            i = combo.findText(mat_name)
+            combo.setCurrentIndex(i if i >= 0 else 0)
+            combo.currentIndexChanged.connect(
+                lambda _i, row=r, td=tendon: self._arr_material_changed(row, td))
+            tbl.setCellWidget(r, 3, combo)
+
+    def _arr_material_changed(self, row: int, tendon: bool) -> None:
+        if getattr(self, "_loading_arr", False):
+            return
+        tbl = self.tendon_arr_tbl if tendon else self.rebar_arr_tbl
+        combo = tbl.cellWidget(row, 3)
+        if combo is None:
+            return
+        name = combo.currentText()
+        default = name.startswith("(")
+        arrs = list(self._spec.tendon_arr if tendon else self._spec.rebar_arr)
+        if not (0 <= row < len(arrs)):
+            return
+        arr = list(arrs[row])
+        idx = 3 if tendon else 2               # material slot in the tuple
+        arr[idx] = "" if default else name
+        arrs[row] = tuple(arr)
+        if tendon:
+            self._spec = replace(self._spec, tendon_arr=tuple(arrs))
+        else:
+            self._spec = replace(self._spec, rebar_arr=tuple(arrs))
+        self._refresh_geometry()
+        self._queue()
 
     def _add_arrangement(self, *, tendon: bool) -> None:
         want = "prestress" if tendon else "steel"
@@ -1100,8 +1167,8 @@ class SectionDesignerWindow(QMainWindow):
         self._queue()
 
     def _remove_arrangement(self, *, tendon: bool) -> None:
-        listw = self.tendon_arr_list if tendon else self.rebar_arr_list
-        i = listw.currentRow()
+        tbl = self.tendon_arr_tbl if tendon else self.rebar_arr_tbl
+        i = tbl.currentRow()
         arrs = list(self._spec.tendon_arr if tendon else self._spec.rebar_arr)
         if not (0 <= i < len(arrs)):
             return
@@ -1186,6 +1253,23 @@ class SectionDesignerWindow(QMainWindow):
         if ps:
             ch.update({k: ps[k] for k in self._PS_KEYS if k in ps})
         return replace(spec, **ch) if ch else spec
+
+    def _analysis_spec(self) -> core.Spec:
+        """The working spec with each rebar arrangement's chosen material name
+        resolved to its steel properties (a sorted-items tuple), so the engine
+        gives those bars their own law (mixed-material reinforcement). Bars with
+        no chosen material keep the section steel. The stored spec keeps names
+        (for the table + library sync); only this analysis copy embeds props."""
+        def _resolve(arr):
+            mat = arr[2]
+            md = self._materials.get(mat) if isinstance(mat, str) else None
+            if md and md.get("kind") == "steel":
+                return (arr[0], arr[1], tuple(sorted(md.items())), arr[3])
+            return arr
+        if not self._spec.rebar_arr:
+            return self._spec
+        return replace(self._spec,
+                       rebar_arr=tuple(_resolve(a) for a in self._spec.rebar_arr))
 
     def _names_of_kind(self, kind) -> list:
         return [n for n, m in self._materials.items() if m.get("kind") == kind]
@@ -1302,7 +1386,7 @@ class SectionDesignerWindow(QMainWindow):
     def _recompute_analysis(self) -> None:
         code = self.code_combo.currentText()
         try:
-            case = _case(self._spec)
+            case = _case(self._analysis_spec())   # per-arrangement materials
         except Exception as exc:                       # noqa: BLE001
             self.statusBar().showMessage(f"Build error: {exc}")
             return

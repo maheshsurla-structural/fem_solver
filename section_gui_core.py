@@ -436,10 +436,16 @@ def _arrangement_points(typ, params, section):
 def bars_from_arrangements(arrangements, section, default_mat=None):
     """Build :class:`RebarBar` objects from the rebar arrangements, in the
     section's (already-centred) frame. ``arrangements`` items are
-    ``(type, dia, mat, (params...))``."""
+    ``(type, dia, mat, (params...))``. ``mat`` may be a steel-material
+    key-value tuple ``tuple(sorted(props.items()))`` — then that arrangement's
+    bars get their own steel law (mixed-material reinforcement); an empty ``""``
+    or a bare name falls back to ``default_mat`` (the section steel)."""
     out = []
     for arr in arrangements:
-        typ, dia = arr[0], float(arr[1])
+        typ, dia, mat = arr[0], float(arr[1]), arr[2]
+        bar_mat = default_mat
+        if isinstance(mat, (tuple, list)) and mat:
+            bar_mat = steel_uniaxial_from(dict(mat))
         params = list(arr[3])
         if typ == "perim":                       # perimeter also needs dia
             params = list(params) + [dia]
@@ -447,7 +453,7 @@ def bars_from_arrangements(arrangements, section, default_mat=None):
         desig = f"{dia * 1e3:.0f}mm"
         for (z, y) in _arrangement_points(typ, params, section):
             out.append(RebarBar(z=float(z), y=float(y), area=area,
-                                material=default_mat, designation=desig))
+                                material=bar_mat, designation=desig))
     return out
 
 
