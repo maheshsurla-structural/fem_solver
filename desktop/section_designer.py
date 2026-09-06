@@ -467,18 +467,16 @@ class SectionDesignerWindow(QMainWindow):
         v.addWidget(mbox)
 
         # Rebar / tendon arrangements — tables (each row a bar/tendon group
-        # with its own material, so different rods can use different steels).
+        # with its own material) + an inline add-form (no modal), Streamlit-style.
         self.rebar_arr_tbl = self._arr_table(["Type", "n", "⌀ mm", "Material"])
-        v.addWidget(self._arr_group(
-            "Rebar arrangements", self.rebar_arr_tbl,
-            lambda: self._add_arrangement(tendon=False),
-            lambda: self._remove_arrangement(tendon=False)))
+        box, self.rebar_arr_form = self._arr_group(
+            "Rebar arrangements", self.rebar_arr_tbl, tendon=False)
+        v.addWidget(box)
         self.tendon_arr_tbl = self._arr_table(["Type", "n", "Aₚ mm²",
                                                "Material"])
-        v.addWidget(self._arr_group(
-            "Tendon arrangements", self.tendon_arr_tbl,
-            lambda: self._add_arrangement(tendon=True),
-            lambda: self._remove_arrangement(tendon=True)))
+        box2, self.tendon_arr_form = self._arr_group(
+            "Tendon arrangements", self.tendon_arr_tbl, tendon=True)
+        v.addWidget(box2)
 
         # Confinement — section-dependent (transverse reinforcement), so it
         # stays here rather than on the material. Drives the confined concrete
@@ -1025,20 +1023,31 @@ class SectionDesignerWindow(QMainWindow):
             self._dim_spins[key] = spin
 
     # ----------------------------------------------------- arrangements
-    @staticmethod
-    def _arr_group(title, tbl, on_add, on_remove) -> CollapsibleGroup:
+    def _arr_group(self, title, tbl, *, tendon: bool):
         box = CollapsibleGroup(title, collapsed=True)
         gv = QVBoxLayout(box.body)
         gv.addWidget(tbl)
-        row = QHBoxLayout()
-        add = QPushButton("Add…")
-        add.clicked.connect(lambda: on_add())
-        rem = QPushButton("Remove")
-        rem.clicked.connect(lambda: on_remove())
-        row.addWidget(add)
-        row.addWidget(rem)
-        gv.addLayout(row)
-        return box
+        rem = QPushButton("Remove selected row")
+        rem.clicked.connect(lambda: self._remove_arrangement(tendon=tendon))
+        gv.addWidget(rem)
+        form = InlineArrangementForm(
+            tendon=tendon,
+            mats_provider=lambda: self._names_of_kind(
+                "prestress" if tendon else "steel"),
+            on_add=lambda arr: self._add_arr_inline(arr, tendon))
+        gv.addWidget(form)
+        return box, form
+
+    def _add_arr_inline(self, arr, tendon: bool) -> None:
+        if tendon:
+            self._spec = replace(self._spec,
+                                 tendon_arr=self._spec.tendon_arr + (arr,))
+        else:
+            self._spec = replace(self._spec,
+                                 rebar_arr=self._spec.rebar_arr + (arr,))
+        self._refresh_arr_lists()
+        self._refresh_geometry()
+        self._queue()
 
     @staticmethod
     def _arr_table(headers) -> QTableWidget:
@@ -1268,6 +1277,9 @@ class SectionDesignerWindow(QMainWindow):
         want = rec.get("conc_mat")
         i = self.conc_mat_combo.findText(want) if want else -1
         self.conc_mat_combo.setCurrentIndex(i if i >= 0 else 0)
+        if hasattr(self, "rebar_arr_form"):
+            self.rebar_arr_form.refresh_materials()
+            self.tendon_arr_form.refresh_materials()
         self._loading = was
 
     def _on_material_choice(self) -> None:
@@ -2122,6 +2134,128 @@ class ArrangementDialog(QDialog):
             self.result_arr = (code, core.BAR_SIZES[self.dia_combo.currentText()],
                                mat, params)
         self.accept()
+
+
+def _arr_param_specs(typ, tendon):
+    """(label, key, suffix, decimals, default, is_int) for an arrangement type's
+    position fields — shared by the dialog and the inline form."""
+    mm = (" mm", 0)
+    if typ == "Point":
+        return [("z", "z", *mm, 0, 0),
+                ("y", "y", *mm, -350 if tendon else 0, 0)]
+    if typ == "Line":
+        return [("Count n", "n", "", 0, 4 if tendon else 3, 1),
+                ("z1", "z1", *mm, -200 if tendon else -150, 0),
+                ("y1", "y1", *mm, -350 if tendon else -250, 0),
+                ("z2", "z2", *mm, 200 if tendon else 150, 0),
+                ("y2", "y2", *mm, -350 if tendon else -250, 0)]
+    if typ == "Arc":
+        return [("Count n", "n", "", 0, 4, 1), ("centre z", "cz", *mm, 0, 0),
+                ("centre y", "cy", *mm, 0, 0),
+                ("radius", "r", *mm, 300 if tendon else 200, 0),
+                ("start °", "a1", " °", 0, 200 if tendon else 0, 0),
+                ("end °", "a2", " °", 0, 340 if tendon else 360, 0)]
+    if typ == "Rectangle":
+        return [("n horiz.", "nz", "", 0, 3, 1), ("n vert.", "ny", "", 0, 3, 1),
+                ("centre z", "cz", *mm, 0, 0), ("centre y", "cy", *mm, 0, 0),
+                ("width", "w", *mm, 300, 0), ("height", "h", *mm, 500, 0)]
+    return [("Count n", "n", "", 0, 8, 1), ("cover", "cov", *mm, 50, 0)]
+
+
+def _arr_build_params(spins, typ):
+    g = {k: sp.value() for k, sp in spins.items()}
+
+    def m(k):
+        return g[k] / 1000.0
+    if typ == "Point":
+        return (m("z"), m("y"))
+    if typ == "Line":
+        return (int(g["n"]), m("z1"), m("y1"), m("z2"), m("y2"))
+    if typ == "Arc":
+        return (int(g["n"]), m("cz"), m("cy"), m("r"), g["a1"], g["a2"])
+    if typ == "Rectangle":
+        return (int(g["nz"]), int(g["ny"]), m("cz"), m("cy"), m("w"), m("h"))
+    return (int(g["n"]), m("cov"))
+
+
+class InlineArrangementForm(QWidget):
+    """An inline 'add arrangement' form (no modal): a type selector, adaptive
+    position fields, a bar size / tendon strength, a material picker and an Add
+    button — mirrors the Streamlit inline add-forms for faster input. Calls
+    ``on_add(arr_tuple)`` with the engine tuple."""
+
+    def __init__(self, parent=None, *, tendon: bool, mats_provider, on_add):
+        super().__init__(parent)
+        self._tendon = tendon
+        self._mats_provider = mats_provider
+        self._on_add = on_add
+        v = QVBoxLayout(self)
+        v.setContentsMargins(0, 4, 0, 0)
+        v.setSpacing(4)
+
+        top = QFormLayout()
+        self.type_combo = QComboBox()
+        self.type_combo.addItems(core.TENDON_ARR_TYPES if tendon
+                                 else core.REBAR_ARR_TYPES)
+        self.type_combo.currentTextChanged.connect(self._rebuild)
+        top.addRow("Add — Type", self.type_combo)
+        if tendon:
+            self.area_spin = ArrangementDialog._d(50, 5000, 10, " mm²", 0, 140)
+            self.fpe_spin = ArrangementDialog._d(500, 1600, 25, " MPa", 0, 1100)
+            top.addRow("Aₚ / tendon", self.area_spin)
+            top.addRow("f_pe", self.fpe_spin)
+        else:
+            self.dia_combo = QComboBox()
+            self.dia_combo.addItems(list(core.BAR_SIZES))
+            self.dia_combo.setCurrentText("25 mm")
+            top.addRow("Bar size", self.dia_combo)
+        self.mat_combo = QComboBox()
+        top.addRow("Material", self.mat_combo)
+        v.addLayout(top)
+
+        self.param_form = QFormLayout()
+        self._spins: dict = {}
+        v.addLayout(self.param_form)
+        add = QPushButton("＋ Add arrangement")
+        add.clicked.connect(self._add)
+        v.addWidget(add)
+        self.refresh_materials()
+        self._rebuild()
+
+    def refresh_materials(self):
+        cur = self.mat_combo.currentText()
+        default = "(default strand)" if self._tendon else "(section steel)"
+        self.mat_combo.clear()
+        self.mat_combo.addItems([default] + list(self._mats_provider()))
+        i = self.mat_combo.findText(cur)
+        if i >= 0:
+            self.mat_combo.setCurrentIndex(i)
+
+    def _rebuild(self, *_a):
+        while self.param_form.rowCount():
+            self.param_form.removeRow(0)
+        self._spins.clear()
+        for label, key, suffix, dec, default, is_int in _arr_param_specs(
+                self.type_combo.currentText(), self._tendon):
+            lo, hi = (1, 200) if is_int else (-5000, 5000)
+            sp = ArrangementDialog._d(lo, hi, 1 if is_int else 10, suffix,
+                                      0 if is_int else dec, default)
+            self.param_form.addRow(label, sp)
+            self._spins[key] = sp
+
+    def _add(self):
+        typ = self.type_combo.currentText()
+        code = _ARR_CODE[typ]
+        params = _arr_build_params(self._spins, typ)
+        mat = self.mat_combo.currentText()
+        mat = "" if mat.startswith("(") else mat
+        if self._tendon:
+            arr = (code, self.area_spin.value() * 1e-6,
+                   self.fpe_spin.value() * 1e6, mat, params)
+        else:
+            arr = (code, core.BAR_SIZES[self.dia_combo.currentText()], mat,
+                   params)
+        self._on_add(arr)
 
 
 def _conc_default(fc_mpa=30.0) -> dict:
