@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import csv
 import os
+import re
 import sys
 from dataclasses import replace
 from functools import lru_cache
@@ -1091,11 +1092,25 @@ class SectionDesignerWindow(QMainWindow):
         return w
 
     def _build_confinement_tab(self) -> QWidget:
-        """Confined-concrete (M-φ) parameters — the transverse-steel response
-        that drives moment-curvature. Mander-from-Link comes in a later pass."""
+        """Mander confinement — read from the section's **Link** tie group +
+        geometry (hoop ⌀/spacing/grade, tie legs, core dims, ρ_cc). Shows the
+        computed confined-concrete quantities and drives the two-zone M-φ. Below
+        it, the base (unconfined) M-φ / sweep parameters."""
         w = QWidget()
-        f = QFormLayout(w)
-        f.setContentsMargins(2, 6, 2, 2)
+        v = QVBoxLayout(w)
+        v.setContentsMargins(2, 6, 2, 2)
+        self.conf_status = QLabel("")
+        self.conf_status.setWordWrap(True)
+        self.conf_status.setTextFormat(Qt.TextFormat.RichText)
+        v.addWidget(self.conf_status)
+        self.conf_metrics = QLabel("")
+        self.conf_metrics.setWordWrap(True)
+        self.conf_metrics.setTextFormat(Qt.TextFormat.RichText)
+        self.conf_metrics.setVisible(False)
+        v.addWidget(self.conf_metrics)
+
+        pbox = CollapsibleGroup("Base concrete (M-φ) parameters", collapsed=True)
+        f = QFormLayout(pbox.body)
         self.eps_c0_spin = self._dspin(0.001, 0.02, 0.0002, "", 4)
         self.eps_cu_spin = self._dspin(0.002, 0.05, 0.0005, "", 4)
         self.fcu_ratio_spin = self._dspin(0.0, 1.0, 0.05, "", 2)
@@ -1103,11 +1118,62 @@ class SectionDesignerWindow(QMainWindow):
         for wgt in (self.eps_c0_spin, self.eps_cu_spin, self.fcu_ratio_spin,
                     self.kappa_max_spin):
             wgt.valueChanged.connect(lambda *_: self._on_value_changed())
-        f.addRow("ε_c0 (peak, confined)", self.eps_c0_spin)
-        f.addRow("ε_cu (crush, confined)", self.eps_cu_spin)
+        f.addRow("ε_c0 (peak, unconfined)", self.eps_c0_spin)
+        f.addRow("ε_cu (crush, unconfined)", self.eps_cu_spin)
         f.addRow("f_cu / f'c (residual)", self.fcu_ratio_spin)
         f.addRow("κ_max sweep", self.kappa_max_spin)
+        v.addWidget(pbox)
+        v.addStretch(1)
         return w
+
+    _CONF_REASONS = {
+        "shape": "Mander confinement applies to Rectangular / Circular "
+                 "sections only.",
+        "no-link": "Add a tie (<b>Link</b>) group on the Rebars tab — e.g. "
+                   "<code>B10-150</code> with legs <code>2x2</code> — to apply "
+                   "Mander confinement.",
+        "no-spacing": "The tie (<b>Link</b>) group needs a spacing, e.g. "
+                      "<code>B10-150</code>.",
+        "bad-pattern": "Couldn't read the tie (<b>Link</b>) pattern.",
+        "no-cage": "Need a longitudinal cage (≥ 4 bars) for the confined core.",
+    }
+
+    def _refresh_confinement_echo(self) -> None:
+        """Recompute the section-derived Mander confinement and echo it (or the
+        reason it isn't applied) into the Confinement tab."""
+        if not hasattr(self, "conf_status"):
+            return
+        conf, info = _section_confinement(self._spec, self._materials)
+        if conf is None:
+            self.conf_metrics.setVisible(False)
+            self.conf_status.setText(
+                self._CONF_REASONS.get(info, "Confinement not applied."))
+            return
+        try:
+            r = core.mander_confinement(dict(
+                fc=self._spec.fc, eps_c0=self._spec.eps_c0, **conf))
+        except Exception as exc:                       # noqa: BLE001
+            self.conf_metrics.setVisible(False)
+            self.conf_status.setText(f"Confinement error: {exc}")
+            return
+        i = info if isinstance(info, dict) else {}
+        tie = (f"⌀{i.get('dia_h', 0) * 1e3:.0f} @ {i.get('s', 0) * 1e3:.0f} mm"
+               if i else "tie")
+        legs = f"{int(i.get('ny', 2))}×{int(i.get('nz', 2))} legs" if i else ""
+        self.conf_status.setText(
+            f"<b>Mander confinement applied</b> from the Link tie "
+            f"({tie}, {legs}) → the M-φ uses a confined core + unconfined "
+            f"cover.")
+        self.conf_metrics.setVisible(True)
+        kcc = r.get("kcc", 1.0)
+        self.conf_metrics.setText(
+            f"f′cc <b>{r['fcc'] / 1e6:.1f}</b> MPa "
+            f"(k<sub>cc</sub> {kcc:.2f}) &nbsp;·&nbsp; "
+            f"ε_cc <b>{r['eps_cc']:.4f}</b> &nbsp;·&nbsp; "
+            f"ε_cu <b>{r['eps_cu']:.4f}</b> &nbsp;·&nbsp; "
+            f"k_e <b>{r.get('ke', 0):.3f}</b> &nbsp;·&nbsp; "
+            f"f_l <b>{r.get('fl', 0) / 1e6:.2f}</b> MPa &nbsp;·&nbsp; "
+            f"ρ_cc <b>{r.get('rho_cc', 0) * 100:.2f}%</b>")
 
     def _group_type_options(self) -> list:
         kind = (self.kind_combo.currentText()
@@ -1581,6 +1647,9 @@ class SectionDesignerWindow(QMainWindow):
         except Exception as exc:                       # noqa: BLE001
             self.statusBar().showMessage(f"Build error: {exc}")
             return
+        # the confinement echo (Section tab) is an input readout — refresh it
+        # every recompute regardless of the active analysis tab.
+        self._refresh_confinement_echo()
         # tab 0 is the Section (inputs + drawing) — geometry is already live,
         # no analysis to run.
         idx = self.tabs.currentIndex()
@@ -1687,13 +1756,23 @@ class SectionDesignerWindow(QMainWindow):
         P = self.mphi_P.value()          # in the current force unit
         P_kN = P * u.fN / 1e3            # -> kN (engine base)
         ang = self.mphi_ang.value()
+        confined = False
         if self._spec.kind == "Composite":
             data = core.composite_mphi(self._spec, P_kN, na_angle=ang,
                                        kappa_max=self._spec.kappa_max,
                                        materials=self._materials)
         else:
-            data = core.mphi_data(case, P_kN, na_angle=ang,
-                                  **core.mphi_props(self._spec))
+            conf, _info = _section_confinement(self._spec, self._materials)
+            if conf is not None and self._spec.kind in ("Rectangular",
+                                                        "Circular"):
+                # Mander two-zone (confined core + unconfined cover) from the
+                # section's Link tie group.
+                data = core.confined_mphi(self._spec, conf, P_kN, na_angle=ang,
+                                          kappa_max=self._spec.kappa_max)
+                confined = True
+            else:
+                data = core.mphi_data(case, P_kN, na_angle=ang,
+                                      **core.mphi_props(self._spec))
         self.mp_fig.clear()
         ax = self.mp_fig.add_subplot(111)
         ax.plot([u.curv_disp(k) for k in data["kappa"]],
@@ -1718,7 +1797,8 @@ class SectionDesignerWindow(QMainWindow):
             rows.append((ms.get("label", ""), ms.get("state", ""), kx, my))
         ax.set_xlabel(f"curvature κ  [{u.Kl}]")
         ax.set_ylabel(f"moment M  [{u.Ml}]")
-        ax.set_title(f"Moment-curvature at P = {P:.4g} {u.Fl}")
+        suffix = "  ·  Mander confined core" if confined else ""
+        ax.set_title(f"Moment-curvature at P = {P:.4g} {u.Fl}{suffix}")
         style.beautify_axes(ax)
         self.mp_canvas.draw_idle()
 
@@ -2523,6 +2603,91 @@ def _section_presets() -> dict:
             f_pe=1200e6, strand_y=-0.50, cover=0.04,
             rebar_groups=(("Line", "2B20", "-180,550; 180,550", S),)),
     }
+
+
+def _parse_legs(txt):
+    """Parse a tie group's leg count 'n_y×n_z' (accepts 2x3, 2×3, 2,3, or a
+    single 3→3×3). Defaults to a perimeter hoop 2×2."""
+    nums = re.findall(r"\d+", str(txt or ""))
+    if len(nums) >= 2:
+        return max(int(nums[0]), 1), max(int(nums[1]), 1)
+    if len(nums) == 1:
+        return max(int(nums[0]), 1), max(int(nums[0]), 1)
+    return 2, 2
+
+
+def _auto_section_confinement(spec, materials):
+    """Read Mander confinement parameters straight off a Rectangular/Circular
+    section: core dims from the geometry minus cover, the hoop A_sp/s/s'/f_yh/
+    ε_su from the section's **Link** (tie) group and its steel grade, tie legs
+    from that group's Position ('n_y×n_z'), and ρ_cc / n_long from the
+    longitudinal bars. Returns ``(conf_dict, info)`` — or ``(None, reason)`` if
+    the shape is unsupported or no usable tie group is defined."""
+    if spec.kind not in ("Rectangular", "Circular"):
+        return None, "shape"
+    link = next((g for g in spec.rebar_groups if g and g[0] == "Link"), None)
+    if link is None:
+        return None, "no-link"
+    try:
+        _n, dia_h, s = core.parse_bar_desc(link[1] if len(link) > 1 else "")
+    except Exception:                              # noqa: BLE001
+        return None, "bad-pattern"
+    if not s or s <= 0:
+        return None, "no-spacing"           # a tie needs a spacing (e.g. B10-150)
+    asp = core.bar_area(dia_h)
+    sp = max(s - dia_h, 1e-3)               # clear spacing s' = s − hoop dia
+    hoopmat = materials.get(link[3]) if len(link) > 3 else None
+    fyh = float((hoopmat or {}).get("fy", 400e6))
+    esu = float((hoopmat or {}).get("steel_eps_su", 0.10))
+    es_h = float((hoopmat or {}).get("Es", 200e9))
+    ny, nz = _parse_legs(link[2] if len(link) > 2 else "")
+    cover = float(spec.cover)
+    try:
+        sec = core.build_case(spec).section
+        bars = sec.reinforcement.bars if sec.reinforcement else []
+    except Exception:                              # noqa: BLE001
+        bars = []
+    nlong = len(bars)
+    if nlong < 4:            # no real longitudinal cage → confinement undefined
+        return None, "no-cage"
+    as_long = sum(b.area for b in bars)
+
+    conf = dict(conf_shape=spec.kind, conf_fyh=fyh, conf_Asp=asp, conf_s=s,
+                conf_sp=sp, conf_eps_su_h=esu, conf_Es_h=es_h,
+                conf_ny=ny, conf_nz=nz, conf_nlong=nlong)
+    if spec.kind == "Circular":
+        ds = max(spec.D - 2.0 * cover, 1e-3)
+        a_core = np.pi / 4.0 * ds * ds
+        conf["conf_ds"] = ds
+        conf["conf_hooptype"] = "Spiral" if spec.spiral else "Hoop"
+    else:
+        bc = max(spec.b - 2.0 * cover, 1e-3)
+        dc = max(spec.h - 2.0 * cover, 1e-3)
+        a_core = bc * dc
+        conf["conf_bc"], conf["conf_dc"] = bc, dc
+    conf["conf_rho_cc"] = (min(max(as_long / a_core, 0.005), 0.08)
+                           if a_core > 0 else 0.02)
+    info = dict(dia_h=dia_h, s=s, sp=sp, fyh=fyh, esu=esu, ny=ny, nz=nz,
+                nlong=nlong, cover=cover, as_long=as_long, a_core=a_core,
+                hoop_grade=(link[3] if len(link) > 3 else None))
+    return conf, info
+
+
+def _section_confinement(spec, materials):
+    """Effective Mander confinement for a section: user-override inputs
+    (``spec.conf_manual`` when ``spec.conf_override``) else auto-read from the
+    tie group + geometry. Per-output overrides (``spec.conf_out``) and the ε_cu
+    method layer on top as ``ov_*`` / ``conf_ecu_method`` keys, so every
+    override flows straight into the moment-curvature. Returns ``(conf, info)``."""
+    if getattr(spec, "conf_override", False) and spec.conf_manual:
+        conf, info = {k: v for (k, v) in spec.conf_manual}, {"override": True}
+    else:
+        conf, info = _auto_section_confinement(spec, materials)
+    if conf is not None:
+        ov = {f"ov_{k}": v for (k, v) in getattr(spec, "conf_out", ())}
+        ov["conf_ecu_method"] = getattr(spec, "conf_ecu_method", "energy")
+        conf = dict(conf, **ov)
+    return conf, info
 
 
 def _material_from_grade(fam: str, kind: str, grade: str) -> dict:

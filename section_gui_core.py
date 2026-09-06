@@ -351,13 +351,24 @@ class Spec:
     cover_top: float = 0.05
     cover_bot: float = 0.05
     cover_side: float = 0.05
+    # Mander confinement source: by default confinement is auto-read from the
+    # section's tie (Link) group + geometry. ``conf_override`` supplies the
+    # confinement inputs directly, stored as sorted (key, value) pairs of the
+    # ``conf_*`` dict in ``conf_manual``. ``conf_out`` carries Midas-GSD-style
+    # per-output overrides (name, value pairs -> ``ov_<name>``); ``conf_ecu_method``
+    # is "energy" (area balance) or "experiment" (Mander/Priestley formula).
+    conf_override: bool = False
+    conf_manual: tuple = ()
+    conf_out: tuple = ()
+    conf_ecu_method: str = "energy"
 
     def __post_init__(self):
         # Coerce the variable-length nested-tuple fields even if they arrive as
         # lists (JSON load, widget read-back), so the frozen Spec is always
         # hashable for st.cache_data / astuple round-trips.
         for f in ("custom_outline", "custom_holes", "custom_bars",
-                  "rebar_arr", "tendon_arr", "shapes", "rebar_groups"):
+                  "rebar_arr", "tendon_arr", "shapes", "rebar_groups",
+                  "conf_manual", "conf_out"):
             object.__setattr__(self, f, _deep_tuple(getattr(self, f)))
 
 
@@ -1283,6 +1294,151 @@ def _rotate_case(case: SectionCase, angle_deg: float) -> SectionCase:
     return replace(case, section=rsec)
 
 
+def _has_confinement_params(m: dict) -> bool:
+    """True if a material dict carries enough confinement-steel data to run the
+    Mander confinement calculator (else the confined model falls back to the
+    unconfined base curve)."""
+    return (float(m.get("conf_Asp", 0.0)) > 0.0
+            and float(m.get("conf_s", 0.0)) > 0.0)
+
+
+def mander_confinement(m: dict) -> dict:
+    """Compute Mander (1988) confined-concrete properties from the confinement
+    reinforcement described in a material dict, for circular or rectangular
+    cores. Returns a dict of results **and** every intermediate value so the
+    GUI can echo them for checking:
+
+    ``fcc`` (confined peak, Pa), ``eps_cc`` (peak strain), ``eps_cu`` (ultimate
+    strain from the Mander energy balance), ``ke`` (confinement effectiveness),
+    ``fl`` (effective lateral confining stress, Pa), ``rho_cc`` (longitudinal
+    ratio), ``rho_s`` (circular) or ``rho_x``/``rho_y`` (rectangular), etc.
+
+    Parameter keys (SI): ``conf_shape`` ("Circular"/"Rectangular"), ``conf_fyh``
+    (hoop yield Pa), ``conf_Asp`` (one tie-leg / spiral-bar area m^2), ``conf_s``
+    (hoop centre spacing m), ``conf_sp`` (clear spacing s' m), ``conf_rho_cc``
+    (longitudinal steel ratio), ``conf_eps_su_h`` (hoop fracture strain),
+    ``conf_Es_h`` (hoop modulus Pa). Circular: ``conf_ds`` (core dia to hoop
+    centre m), ``conf_hooptype`` ("Spiral"/"Hoop"). Rectangular: ``conf_bc``,
+    ``conf_dc`` (core dims m), ``conf_ny``, ``conf_nz`` (tie legs each dir),
+    ``conf_nlong`` (# longitudinal bars, for the sum(w_i^2) term)."""
+    fc = float(m["fc"])
+    shape = m.get("conf_shape", "Rectangular")
+    fyh = float(m.get("conf_fyh", 400e6))
+    asp = float(m.get("conf_Asp", 0.0))
+    s = float(m.get("conf_s", 0.1))
+    sp = float(m.get("conf_sp", max(s - 0.01, 1e-3)))
+    rho_cc = min(max(float(m.get("conf_rho_cc", 0.02)), 0.0), 0.2)
+    eps_su_h = float(m.get("conf_eps_su_h", 0.10))
+    es_h = float(m.get("conf_Es_h", E_S))
+    ecu_method = m.get("conf_ecu_method", "energy")
+
+    def OV(name, auto):
+        """A per-parameter user override: ``ov_<name>`` in the dict wins over the
+        auto-computed value, and downstream terms recompute from it (Midas GSD's
+        checkbox-per-field behaviour)."""
+        v = m.get("ov_" + name, None)
+        try:
+            return float(v) if v is not None and v != "" else auto
+        except (TypeError, ValueError):
+            return auto
+
+    eps_c0 = OV("eps_cy", float(m.get("eps_c0", 0.002)))   # εcy = unconfined peak
+
+    out = dict(shape=shape, rho_cc=rho_cc, Ec=4700.0 * math.sqrt(fc / 1e6) * 1e6)
+    if shape == "Circular":
+        ds = float(m.get("conf_ds", 0.4))
+        spiral = m.get("conf_hooptype", "Spiral") == "Spiral"
+        rho_s = OV("rho_s", 4.0 * asp / (ds * s) if ds > 0 and s > 0 else 0.0)
+        Ac = math.pi / 4.0 * ds * ds
+        Acc = OV("Acc", Ac * max(1.0 - rho_cc, 1e-6))
+        ke_geom = (max(1.0 - sp / (2.0 * ds), 0.0)
+                   ** (1 if spiral else 2)) / max(1.0 - rho_cc, 1e-6)
+        Ae = OV("Ae", ke_geom * Acc)
+        ke = OV("ke", Ae / Acc if Acc > 0 else ke_geom)
+        fl = OV("fl", 0.5 * ke * rho_s * fyh)       # effective lateral stress
+        rho_tot = rho_s
+        out.update(rho_s=rho_s, ke=ke, fl=fl, Ac=Ac, Acc=Acc, Ae=Ae)
+    else:
+        bc = float(m.get("conf_bc", 0.4))
+        dc = float(m.get("conf_dc", 0.4))
+        ny = float(m.get("conf_ny", 2))
+        nz = float(m.get("conf_nz", 2))
+        nlong = max(float(m.get("conf_nlong", 8)), 1.0)
+        # Midas convention: rho_y = A_sy/(d_c*s), A_sy = ny*A_sp (y-dir legs);
+        # rho_z = A_sz/(b_c*s), A_sz = nz*A_sp (z-dir legs).
+        rho_y = (ny * asp) / (s * dc) if s > 0 and dc > 0 else 0.0
+        rho_z = (nz * asp) / (s * bc) if s > 0 and bc > 0 else 0.0
+        perim = 2.0 * (bc + dc)
+        # Σw′² for the effectively-confined-area term. EXACT (Midas): the user's
+        # clear bar spacings, conf_sum_wi2 = 2·Σw′yi² + 2·Σw′zj². Else fall back
+        # to an equal-spacing approximation from the longitudinal-bar count —
+        # floored at 4 (a rectangular confined core has ≥4 corner bars) so a
+        # degenerate count can't drive the whole perimeter into one gap.
+        sum_wi2 = (float(m["conf_sum_wi2"])
+                   if float(m.get("conf_sum_wi2", 0.0) or 0.0) > 0.0
+                   else perim * perim / max(nlong, 4.0))
+        Ac = bc * dc                                # core within hoop centrelines
+        Acc = OV("Acc", Ac * max(1.0 - rho_cc, 1e-6))   # net of longitudinal steel
+        ke_geom = ((max(1.0 - sum_wi2 / (6.0 * Ac), 0.0))
+                   * max(1.0 - sp / (2.0 * bc), 0.0)
+                   * max(1.0 - sp / (2.0 * dc), 0.0)) / max(1.0 - rho_cc, 1e-6)
+        Ae = OV("Ae", ke_geom * Acc)
+        ke = OV("ke", Ae / Acc if Acc > 0 else ke_geom)
+        fly = OV("fly", ke * rho_y * fyh)
+        flz = OV("flz", ke * rho_z * fyh)
+        fl = 0.5 * (fly + flz)          # mean lateral pressure (chart approx.)
+        rho_tot = OV("rho_s", rho_y + rho_z)
+        out.update(rho_y=rho_y, rho_z=rho_z, ke=ke, fly=fly, flz=flz, fl=fl,
+                   sum_wi2=sum_wi2, Ac=Ac, Acc=Acc, Ae=Ae)
+
+    # Confined peak strength (Mander single-pressure equation) and strain.
+    if fl > 0.0 and fc > 0.0:
+        fcc_auto = fc * (-1.254 + 2.254 * math.sqrt(1.0 + 7.94 * fl / fc)
+                         - 2.0 * fl / fc)
+    else:
+        fcc_auto = fc
+    fcc = OV("fcc", max(fcc_auto, fc))              # confinement never weakens
+    eps_cc = OV("eps_cc", eps_c0 * (1.0 + 5.0 * (fcc / fc - 1.0)))
+
+    # Ultimate strain: "energy" (area under the confined curve = unconfined
+    # energy U_co ~ 0.017 f'c + the confining-steel energy) or "experiment"
+    # (Mander/Priestley ε_cu = 0.004 + 1.4 ρs f_yh ε_su / f'cc), then override.
+    eps_yh = fyh / es_h
+    u_steel = rho_tot * fyh * max(eps_su_h - 0.5 * eps_yh, 0.0)
+    u_co = 0.017 * fc
+    if ecu_method == "experiment":
+        eps_cu_auto = (0.004 + 1.4 * rho_tot * fyh * eps_su_h / fcc
+                       if fcc > 0 else 0.004)
+    else:
+        target = u_co + u_steel
+        law = ConcreteMander(fpc=fcc, eps_c0=eps_cc, min_strength_ratio=0.2)
+
+        def _area(eu):
+            n, a, prev = 160, 0.0, 0.0
+            for i in range(1, n + 1):
+                sig = -law.get_response(-eu * i / n)[0]     # positive magnitude
+                a += 0.5 * (prev + sig) * (eu / n)
+                prev = sig
+            return a
+        lo, hi = eps_cc, 0.08
+        if _area(hi) < target:
+            eps_cu_auto = hi
+        else:
+            for _ in range(38):
+                mid = 0.5 * (lo + hi)
+                if _area(mid) < target:
+                    lo = mid
+                else:
+                    hi = mid
+            eps_cu_auto = 0.5 * (lo + hi)
+    eps_cu = OV("eps_cu", min(max(eps_cu_auto, eps_cc + 1e-3), 0.08))
+
+    out.update(fcc=fcc, eps_cc=eps_cc, eps_cu=eps_cu, eps_cy=eps_c0,
+               rho_tot=rho_tot, u_co=u_co, u_steel=u_steel,
+               kcc=fcc / fc if fc else 1.0)
+    return out
+
+
 def concrete_uniaxial_from(m: dict):
     """Tension-stiffened concrete constitutive model from a material dict
     (keys: fc, conc_model, eps_c0, eps_cu, fcu_ratio, fr_model, fr_coeff,
@@ -1294,7 +1450,17 @@ def concrete_uniaxial_from(m: dict):
     fcu = float(m.get("fcu_ratio", 0.4))
     model = m.get("conc_model", "Kent-Park")
     if model == "Mander":
-        base = ConcreteMander(fpc=fc, eps_c0=eps_c0, min_strength_ratio=fcu)
+        # The material is the UNCONFINED base curve (peak f'c at eps_c0).
+        # Confinement lives on the SECTION — when it injects its tie steel
+        # (conf_* keys, e.g. the confined core built in confined_mphi) the peak
+        # rises to fcc' at the larger strain eps_cc = eps_c0*[1 + 5*(fcc/f'c-1)]
+        # (Mander/Priestley 1988).
+        if _has_confinement_params(m):
+            r = mander_confinement(m)
+            base = ConcreteMander(fpc=r["fcc"], eps_c0=r["eps_cc"],
+                                  min_strength_ratio=fcu)
+        else:
+            base = ConcreteMander(fpc=fc, eps_c0=eps_c0, min_strength_ratio=fcu)
     elif model == "Parabola-rectangle (EC2)":
         base = ConcreteParabolaRectangle(fpc=fc, eps_c2=eps_c0, eps_cu2=eps_cu,
                                          n=2.0)
@@ -1440,6 +1606,170 @@ def mphi_data(case: SectionCase, P_target_kN: float, *,
         "na_angle": float(na_angle),
         "conc_model": conc_model, "steel_model": steel_model,
     }
+
+
+def _confined_fiber_section(spec, conf, na_angle=0.0, n_z=28, n_y=56):
+    """Two-zone fibre section for a confined Circular / Rectangular column: an
+    unconfined COVER ring plus a confined Mander CORE (the outline inset by the
+    cover) plus the longitudinal rebar. ``conf`` is the section-derived
+    confinement dict (``conf_*`` keys, e.g. from the tie Link group). Returns
+    ``(fiber_section, geo, f_r, E_c, eps_cu_core)``; ``geo`` carries the core
+    edges so crushing can be judged there, not at the (spalling) cover edge."""
+    from shapely.affinity import rotate as srotate
+    case = build_case(spec)
+    outline = case.section.geometry.polygon
+    cover = float(spec.cover)
+    base = dict(fc=spec.fc, eps_c0=spec.eps_c0, eps_cu=spec.eps_cu,
+                fcu_ratio=spec.fcu_ratio, fr_model=spec.fr_model,
+                fr_coeff=spec.fr_coeff, eps_decay=spec.eps_decay,
+                conc_f1_ratio=spec.conc_f1_ratio)
+    cover_law = concrete_uniaxial_from(dict(base, conc_model="Mander"))
+    core_props = dict(base, conc_model="Mander", **(conf or {}))
+    core_law = concrete_uniaxial_from(core_props)
+    eps_cu_core = (mander_confinement(core_props)["eps_cu"]
+                   if _has_confinement_params(core_props)
+                   else float(spec.eps_cu))
+
+    def xf(g):
+        return srotate(g, -na_angle, origin=(0, 0)) if abs(na_angle) > 1e-9 else g
+
+    core = outline.buffer(-cover, join_style=2)
+    fibers = []
+    if core.is_empty or core.area <= 1e-9:
+        core = None
+        fibers += _discretize_polygon_to_fibers(xf(outline), cover_law,
+                                                n_z=n_z, n_y=n_y)
+    else:
+        ring = outline.difference(core)
+        if not ring.is_empty:
+            fibers += _discretize_polygon_to_fibers(xf(ring), cover_law,
+                                                    n_z=n_z, n_y=n_y)
+        fibers += _discretize_polygon_to_fibers(xf(core), core_law,
+                                                n_z=n_z, n_y=n_y)
+
+    steel = steel_uniaxial_from(dict(
+        fy=spec.fy, Es=spec.Es, steel_model=spec.steel_model,
+        steel_b=spec.steel_b, steel_fu_ratio=spec.steel_fu_ratio,
+        steel_eps_sh=spec.steel_eps_sh, steel_eps_su=spec.steel_eps_su))
+    th = math.radians(-na_angle)
+    cth, sth = math.cos(th), math.sin(th)
+    rebar_ys = []
+    bars = case.section.reinforcement.bars if case.section.reinforcement else []
+    for b in bars:
+        z, y = float(b.z), float(b.y)
+        if abs(na_angle) > 1e-9:
+            z, y = z * cth - y * sth, z * sth + y * cth
+        fibers.append(Fiber(y=y, z=z, area=float(b.area),
+                            material=steel.clone()))
+        rebar_ys.append(y)
+
+    fs = FiberSection2D(fibers)
+    _minz, miny, _maxz, maxy = xf(outline).bounds
+    geo = dict(y_top=maxy, y_bot=miny, A=float(outline.area),
+               y_core_top=(maxy - cover) if core is not None else maxy,
+               y_core_bot=(miny + cover) if core is not None else miny,
+               rebar_ys=rebar_ys, n_fiber=len(fibers))
+    return fs, geo, core_law.f_ct, core_law.E_ct, eps_cu_core
+
+
+def confined_mphi(spec, conf, P_target_kN, *, na_angle=0.0, kappa_max=0.06,
+                  **_ignored):
+    """Moment-curvature for a confined Circular / Rectangular column on a
+    two-zone (confined core + unconfined cover) fibre section — the Midas-GSD
+    model. Same return shape as :func:`mphi_data`. Crushing is judged at the
+    CORE edge reaching the confined ε_cu, so cover spalling (handled by the
+    cover fibres' own descending branch) doesn't prematurely end the curve."""
+    fs, geo, f_r, E_c, eps_cu = _confined_fiber_section(spec, conf, na_angle)
+    y_top, y_bot = geo["y_top"], geo["y_bot"]
+    y_core_top, rebar_ys = geo["y_core_top"], geo["rebar_ys"]
+    N_target = -P_target_kN * 1e3
+    eps_y = spec.fy / spec.Es
+    A = max(geo.get("A", 0.0), 1e-6)
+    kcr = f_r / max(E_c * abs(y_bot), 1e-9)
+    kappas = np.unique(np.concatenate([
+        np.linspace(0.0, 3.0 * kcr, 10), [kcr],
+        np.linspace(3.0 * kcr, kappa_max, 55)]))
+    eps0 = N_target / max(E_c * A, 1e6)          # elastic axial warm start
+    pts = []
+    M_y = kappa_y = None
+    failure = ""
+    for kappa in kappas:
+        # damped, clamped Newton on the reference strain to hold P = N_target;
+        # the warm start + step cap avoid the spurious fully-crushed root.
+        for _ in range(80):
+            s, ks = fs.get_response(np.array([eps0, kappa]))
+            resid = s[0] - N_target
+            tol = max(1.0, abs(N_target) * 1e-8, 100.0)
+            if abs(resid) < tol:
+                break
+            dN = ks[0, 0]
+            step = resid / (dN if abs(dN) >= 1e6 else 1e8)
+            eps0 = min(0.05, max(-0.05, eps0 - max(-2e-3, min(2e-3, step))))
+        s, _ = fs.get_response(np.array([eps0, kappa]))
+        eps_top = eps0 - y_top * kappa            # extreme (cover) fibre
+        eps_core = eps0 - y_core_top * kappa      # core edge — governs crushing
+        eps_steel = max((eps0 - ry * kappa for ry in rebar_ys), default=0.0)
+        pts.append({"kappa": float(kappa), "M": float(s[1]), "P": float(-s[0]),
+                    "axial_strain": float(eps0), "eps_top": float(eps_top),
+                    "eps_steel": float(eps_steel)})
+        fs.commit_state()
+        if M_y is None and eps_steel >= eps_y and kappa > 0:
+            M_y, kappa_y = float(s[1]), float(kappa)
+        if -eps_core >= eps_cu:
+            failure = "core_crushing"
+            break
+        if eps_steel >= 0.05:
+            failure = "steel_rupture"
+            break
+
+    kap = [p["kappa"] for p in pts]
+    Ms = [p["M"] for p in pts]
+    ipk = int(np.argmax(Ms)) if Ms else 0
+    M_u, kappa_u = (Ms[ipk], kap[ipk]) if pts else (0.0, 0.0)
+    if not failure:
+        failure = "kappa_max_reached" if ipk == len(pts) - 1 else "M_peak"
+    eps_cr = f_r / E_c
+    kappa_cr = M_cr = None
+    prev = None
+    for p in pts:
+        eb = p["axial_strain"] - y_bot * p["kappa"]
+        if p["kappa"] > 0 and eb >= eps_cr:
+            if prev is not None:
+                eb0 = prev["axial_strain"] - y_bot * prev["kappa"]
+                t = min(1.0, max(0.0, (eps_cr - eb0) / (eb - eb0)
+                                 if eb > eb0 else 1.0))
+                kappa_cr = prev["kappa"] + t * (p["kappa"] - prev["kappa"])
+                M_cr = prev["M"] + t * (p["M"] - prev["M"])
+            else:
+                kappa_cr, M_cr = p["kappa"], p["M"]
+            break
+        prev = p
+
+    def near(k):
+        return min(pts, key=lambda p: abs(p["kappa"] - k)) if k and pts else None
+
+    milestones = []
+    for lab, state, k, m in (("a", "Cracking", kappa_cr, M_cr),
+                             ("b", "First yield (tension steel)", kappa_y, M_y),
+                             ("d", f"Ultimate ({failure})", kappa_u, M_u * 1e3)):
+        if k is None or m is None:
+            continue
+        p = near(k)
+        milestones.append({
+            "label": lab, "state": state, "kappa": float(k), "M": m / 1e3,
+            "eps0": float(p["axial_strain"]) if p else 0.0,
+            "eps_top": float(p["eps_top"]) if p else 0.0,
+            "eps_steel": float(p["eps_steel"]) if p else 0.0})
+    mu = (kappa_u / kappa_y) if kappa_y else None
+    return {
+        "kappa": kap, "M": [m / 1e3 for m in Ms],
+        "M_cr": (M_cr or 0) / 1e3, "kappa_cr": kappa_cr,
+        "M_y": (M_y / 1e3) if M_y else None, "kappa_y": kappa_y,
+        "M_u": M_u / 1e3, "kappa_u": kappa_u, "mu_phi": mu,
+        "failure_mode": failure, "milestones": milestones, "ideal": None,
+        "y_top": y_top, "y_bot": y_bot, "rebar_ys": rebar_ys,
+        "na_angle": float(na_angle),
+        "conc_model": spec.conc_model, "steel_model": spec.steel_model}
 
 
 def _surface_for_code(case: SectionCase, code: str, na: int, nd: int):
