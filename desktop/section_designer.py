@@ -55,9 +55,9 @@ from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox,
                                QDoubleSpinBox, QFileDialog, QFormLayout,
                                QGroupBox, QHBoxLayout, QLabel, QLineEdit,
-                               QListWidget, QMainWindow, QMessageBox,
-                               QPushButton, QScrollArea, QSpinBox, QSplitter,
-                               QTableWidget,
+                               QListWidget, QListWidgetItem, QMainWindow, QMenu,
+                               QMessageBox, QPushButton, QScrollArea, QSpinBox,
+                               QSplitter, QTableWidget,
                                QTableWidgetItem, QTabWidget, QTextBrowser,
                                QVBoxLayout, QWidget)
 
@@ -167,6 +167,7 @@ class SectionDesignerWindow(QMainWindow):
             "spec": self._spec, "code": self._code0,
             "conc_mat": "C30", "steel_mat": "S500"}}
         self._active = name0
+        self._nav_rows: dict = {}        # name -> (item, (name_lbl, sub_lbl))
         self._units = core.Units()
         self._loading = False
         self._timer = QTimer(self)
@@ -268,7 +269,14 @@ class SectionDesignerWindow(QMainWindow):
         lbl.setObjectName("sub")
         v.addWidget(lbl)
         self.nav_list = QListWidget()
+        self.nav_list.setSpacing(2)
         self.nav_list.currentRowChanged.connect(self._on_nav_changed)
+        self.nav_list.itemDoubleClicked.connect(
+            lambda _it: self._rename_section())
+        self.nav_list.setContextMenuPolicy(
+            Qt.ContextMenuPolicy.CustomContextMenu)
+        self.nav_list.customContextMenuRequested.connect(self._nav_menu)
+        self._nav_rows: dict = {}
         v.addWidget(self.nav_list, 1)
         row = QHBoxLayout()
         for txt, fn in (("＋ New", self._new_section),
@@ -279,6 +287,66 @@ class SectionDesignerWindow(QMainWindow):
             row.addWidget(b)
         v.addLayout(row)
         return w
+
+    def _nav_menu(self, pos) -> None:
+        item = self.nav_list.itemAt(pos)
+        menu = QMenu(self)
+        if item is not None:
+            name = item.data(Qt.ItemDataRole.UserRole)
+
+            def _sel(fn):
+                self._switch_section(name)
+                fn()
+            menu.addAction("Rename…", lambda: _sel(self._rename_section))
+            menu.addAction("Duplicate", lambda: _sel(self._dup_section))
+            menu.addAction("Delete", lambda: _sel(self._del_section))
+            menu.addSeparator()
+        menu.addAction("New section", self._new_section)
+        menu.exec(self.nav_list.mapToGlobal(pos))
+
+    # ---- navigator rows (name + summary + status) ----
+    def _spec_summary(self, spec) -> str:
+        kind = spec.kind
+        if kind in ("Rectangular", "T-shape", "Hollow box", "PSC girder"):
+            size = f"{spec.b * 1e3:.0f}×{spec.h * 1e3:.0f} mm"
+        elif kind == "Circular":
+            size = f"⌀{spec.D * 1e3:.0f} mm"
+        elif kind == "L-shape":
+            size = f"leg {spec.leg * 1e3:.0f} mm"
+        else:
+            size = ""
+        return f"{kind} · {size}" if size else kind
+
+    def _section_has_reinf(self, spec) -> bool:
+        if spec.kind == "Composite":
+            return bool(spec.shapes)
+        try:
+            sec = _case(spec).section
+            return bool((sec.reinforcement and sec.reinforcement.bars)
+                        or (getattr(sec, "prestress", None)
+                            and sec.prestress.tendons))
+        except Exception:                              # noqa: BLE001
+            return True
+
+    def _make_nav_widget(self, name, rec):
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        lay.setContentsMargins(8, 5, 8, 5)
+        lay.setSpacing(1)
+        nl = QLabel()
+        nl.setStyleSheet("font-weight:600; background:transparent;")
+        sl = QLabel()
+        sl.setObjectName("sub")
+        sl.setStyleSheet("background:transparent;")
+        lay.addWidget(nl)
+        lay.addWidget(sl)
+        self._fill_nav_labels(nl, sl, name, rec["spec"])
+        return w, (nl, sl)
+
+    def _fill_nav_labels(self, nl, sl, name, spec) -> None:
+        warn = "" if self._section_has_reinf(spec) else "⚠ "
+        nl.setText(f"{warn}{name}")
+        sl.setText(self._spec_summary(spec))
 
     def _build_section_tab(self) -> QWidget:
         """The 'Section' workspace tab: inputs (left) + cross-section drawing
@@ -1045,6 +1113,7 @@ class SectionDesignerWindow(QMainWindow):
                 self._sections[self._active]["spec"] = self._spec
                 self._sections[self._active]["code"] = \
                     self.code_combo.currentText()
+                self._update_nav_item(self._active)
             self._timer.start()
 
     def _refresh_geometry(self) -> None:
@@ -1361,16 +1430,34 @@ class SectionDesignerWindow(QMainWindow):
     def _reload_section_nav(self) -> None:
         self._loading = True
         self.nav_list.clear()
-        self.nav_list.addItems(list(self._sections))
+        self._nav_rows = {}
+        for name, rec in self._sections.items():
+            it = QListWidgetItem()
+            it.setData(Qt.ItemDataRole.UserRole, name)
+            self.nav_list.addItem(it)
+            wdg, labels = self._make_nav_widget(name, rec)
+            it.setSizeHint(wdg.sizeHint())
+            self.nav_list.setItemWidget(it, wdg)
+            self._nav_rows[name] = (it, labels)
         names = list(self._sections)
         if self._active in names:
             self.nav_list.setCurrentRow(names.index(self._active))
         self._loading = False
 
+    def _update_nav_item(self, name: str) -> None:
+        """Refresh one navigator row's summary + status (live, on edits)."""
+        row = self._nav_rows.get(name)
+        rec = self._sections.get(name)
+        if row and rec:
+            nl, sl = row[1]
+            self._fill_nav_labels(nl, sl, name, rec["spec"])
+
     def _on_nav_changed(self, row: int) -> None:
         if self._loading or not (0 <= row < self.nav_list.count()):
             return
-        self._switch_section(self.nav_list.item(row).text())
+        name = self.nav_list.item(row).data(Qt.ItemDataRole.UserRole)
+        if name:
+            self._switch_section(name)
 
     def _switch_section(self, name: str) -> None:
         if self._loading or name not in self._sections or name == self._active:
