@@ -51,7 +51,9 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as Canvas
 from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  (registers 3-d proj.)
 from PySide6.QtCore import Qt, QByteArray, QTimer
+from PySide6.QtCore import QSize
 from PySide6.QtSvgWidgets import QSvgWidget
+from PySide6.QtWidgets import QToolButton
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox,
                                QDoubleSpinBox, QFileDialog, QFormLayout,
                                QGroupBox, QHBoxLayout, QLabel, QLineEdit,
@@ -280,14 +282,37 @@ class SectionDesignerWindow(QMainWindow):
         self._nav_rows: dict = {}
         v.addWidget(self.nav_list, 1)
         row = QHBoxLayout()
-        for txt, fn in (("＋ New", self._new_section),
-                        ("Dup", self._dup_section),
-                        ("Del", self._del_section)):
+        # New: a menu of starter presets (plus a blank section)
+        new_btn = QToolButton()
+        new_btn.setText("＋ New")
+        new_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        menu = QMenu(new_btn)
+        menu.addAction("Blank section", self._new_section)
+        menu.addSeparator()
+        for name in _section_presets():
+            menu.addAction(name,
+                           lambda _=False, n=name: self._new_from_preset(n))
+        new_btn.setMenu(menu)
+        row.addWidget(new_btn)
+        for txt, fn in (("Dup", self._dup_section), ("Del", self._del_section)):
             b = QPushButton(txt)
             b.clicked.connect(lambda _=False, f=fn: f())
             row.addWidget(b)
         v.addLayout(row)
         return w
+
+    def _new_from_preset(self, preset: str) -> None:
+        spec = _section_presets().get(preset)
+        if spec is None:
+            return
+        name = self._unique_name(preset)
+        self._sections[name] = {"spec": spec,
+                                "code": self.code_combo.currentText(),
+                                "conc_mat": "C30", "steel_mat": "S500",
+                                "ps_mat": "Y1860"}
+        self._active = name
+        self._reload_section_nav()
+        self._load_active()
 
     def _nav_menu(self, pos) -> None:
         item = self.nav_list.itemAt(pos)
@@ -331,23 +356,40 @@ class SectionDesignerWindow(QMainWindow):
 
     def _make_nav_widget(self, name, rec):
         w = QWidget()
-        lay = QVBoxLayout(w)
-        lay.setContentsMargins(8, 5, 8, 5)
-        lay.setSpacing(1)
+        lay = QHBoxLayout(w)
+        lay.setContentsMargins(6, 4, 6, 4)
+        lay.setSpacing(8)
+        thumb = QSvgWidget()
+        thumb.setFixedSize(QSize(44, 44))
+        lay.addWidget(thumb)
+        txt = QVBoxLayout()
+        txt.setSpacing(1)
         nl = QLabel()
         nl.setStyleSheet("font-weight:600; background:transparent;")
         sl = QLabel()
         sl.setObjectName("sub")
         sl.setStyleSheet("background:transparent;")
-        lay.addWidget(nl)
-        lay.addWidget(sl)
+        txt.addWidget(nl)
+        txt.addWidget(sl)
+        lay.addLayout(txt, 1)
         self._fill_nav_labels(nl, sl, name, rec["spec"])
-        return w, (nl, sl)
+        self._fill_nav_thumb(thumb, rec["spec"])
+        return w, (nl, sl, thumb)
 
     def _fill_nav_labels(self, nl, sl, name, spec) -> None:
         warn = "" if self._section_has_reinf(spec) else "⚠ "
         nl.setText(f"{warn}{name}")
         sl.setText(self._spec_summary(spec))
+
+    def _fill_nav_thumb(self, thumb, spec) -> None:
+        """Mini cross-section drawing for a navigator row (aspect preserved)."""
+        try:
+            thumb.load(QByteArray(core.svg_of(_case(spec)).encode("utf-8")))
+            r = thumb.renderer()
+            if r is not None:
+                r.setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
+        except Exception:                              # noqa: BLE001
+            thumb.load(QByteArray(b""))
 
     def _build_section_tab(self) -> QWidget:
         """The 'Section' workspace tab: inputs (left) + cross-section drawing
@@ -1686,12 +1728,13 @@ class SectionDesignerWindow(QMainWindow):
         self._loading = False
 
     def _update_nav_item(self, name: str) -> None:
-        """Refresh one navigator row's summary + status (live, on edits)."""
+        """Refresh one navigator row's summary + status + thumbnail (live)."""
         row = self._nav_rows.get(name)
         rec = self._sections.get(name)
         if row and rec:
-            nl, sl = row[1]
+            nl, sl, thumb = row[1]
             self._fill_nav_labels(nl, sl, name, rec["spec"])
+            self._fill_nav_thumb(thumb, rec["spec"])
 
     def _on_nav_changed(self, row: int) -> None:
         if self._loading or not (0 <= row < self.nav_list.count()):
@@ -2016,6 +2059,27 @@ def _steel_default(fy_mpa=500.0) -> dict:
 # Section-Designer design code -> CODE_GRADES family (standard grade catalog).
 _CODE_FAMILY = {"AASHTO LRFD 2024": "ACI", "Eurocode 2": "EC2",
                 "IS 456:2000": "IS"}
+
+
+def _section_presets() -> dict:
+    """Named starter sections {label: fresh Spec} for the New menu."""
+    return {
+        "Blank rectangular": core.Spec(kind="Rectangular", b=0.40, h=0.60,
+                                       n_top=0, n_bot=0, n_side=0),
+        "Rectangular RC beam": core.Spec(kind="Rectangular", b=0.30, h=0.60,
+                                         n_top=2, n_bot=3, n_side=0,
+                                         bar_dia=0.020, cover=0.04),
+        "Square RC column": core.Spec(kind="Rectangular", b=0.40, h=0.40,
+                                      n_top=3, n_bot=3, n_side=1,
+                                      bar_dia=0.025, cover=0.04),
+        "Circular RC column": core.Spec(kind="Circular", D=0.50, n_perim=8,
+                                        bar_dia=0.025, cover=0.04, spiral=True),
+        "T-beam": core.Spec(kind="T-shape", b=1.0, h=0.70, t_f=0.15, t_w=0.30,
+                            n_top=2, n_bot=4, bar_dia=0.020, cover=0.04),
+        "PSC girder": core.Spec(kind="PSC girder", b=0.50, h=1.20, n_top=2,
+                                n_strand=10, strand_area=140e-6, f_pe=1200e6,
+                                strand_y=-0.50),
+    }
 
 
 def _material_from_grade(fam: str, kind: str, grade: str) -> dict:
