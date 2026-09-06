@@ -166,7 +166,7 @@ class SectionDesignerWindow(QMainWindow):
         # multi-section project: {name: {"spec", "code", "conc_mat", "steel_mat"}}
         self._sections: dict = {name0: {
             "spec": self._spec, "code": self._code0,
-            "conc_mat": "C30", "steel_mat": "S500"}}
+            "conc_mat": "C30", "steel_mat": "S500", "ps_mat": "Y1860"}}
         self._active = name0
         self._nav_rows: dict = {}        # name -> (item, (name_lbl, sub_lbl))
         self._units = core.Units()
@@ -418,8 +418,12 @@ class SectionDesignerWindow(QMainWindow):
         self.steel_mat_combo = QComboBox()
         self.steel_mat_combo.currentTextChanged.connect(
             lambda *_: self._on_material_choice())
+        self.ps_mat_combo = QComboBox()
+        self.ps_mat_combo.currentTextChanged.connect(
+            lambda *_: self._on_material_choice())
         mf.addRow("Concrete", self.conc_mat_combo)
         mf.addRow("Steel", self.steel_mat_combo)
+        mf.addRow("Prestress", self.ps_mat_combo)
         manage = QPushButton("Manage library…")
         manage.clicked.connect(self._open_materials)
         mf.addRow("", manage)
@@ -1041,10 +1045,11 @@ class SectionDesignerWindow(QMainWindow):
                   "eps_decay")
     _STEEL_KEYS = ("fy", "Es", "steel_model", "steel_b", "steel_fu_ratio",
                    "steel_eps_sh", "steel_eps_su")
+    _PS_KEYS = ("Ep", "fpy", "ps_b")
 
     def _apply_material_params(self, spec: core.Spec) -> core.Spec:
-        """Overlay the chosen concrete/steel materials' constitutive laws onto
-        ``spec`` (confinement fields left untouched)."""
+        """Overlay the chosen concrete/steel/prestress materials' constitutive
+        laws onto ``spec`` (confinement fields left untouched)."""
         ch: dict = {}
         conc = self._materials.get(self.conc_mat_combo.currentText())
         if conc:
@@ -1052,25 +1057,30 @@ class SectionDesignerWindow(QMainWindow):
         steel = self._materials.get(self.steel_mat_combo.currentText())
         if steel:
             ch.update({k: steel[k] for k in self._STEEL_KEYS if k in steel})
+        ps = self._materials.get(self.ps_mat_combo.currentText())
+        if ps:
+            ch.update({k: ps[k] for k in self._PS_KEYS if k in ps})
         return replace(spec, **ch) if ch else spec
 
+    def _names_of_kind(self, kind) -> list:
+        return [n for n, m in self._materials.items() if m.get("kind") == kind]
+
     def _concrete_names(self) -> list:
-        return [n for n, m in self._materials.items()
-                if m.get("kind") == "concrete"]
+        return self._names_of_kind("concrete")
 
     def _steel_names(self) -> list:
-        return [n for n, m in self._materials.items()
-                if m.get("kind") == "steel"]
+        return self._names_of_kind("steel")
 
     def _refresh_material_combos(self) -> None:
-        """Repopulate the section's concrete/steel pickers from the library,
-        preserving the active section's stored choice."""
+        """Repopulate the section's concrete/steel/prestress pickers from the
+        library, preserving the active section's stored choice."""
         was = self._loading
         self._loading = True
         rec = self._sections.get(self._active, {})
         for combo, names, key in (
                 (self.conc_mat_combo, self._concrete_names(), "conc_mat"),
-                (self.steel_mat_combo, self._steel_names(), "steel_mat")):
+                (self.steel_mat_combo, self._steel_names(), "steel_mat"),
+                (self.ps_mat_combo, self._names_of_kind("prestress"), "ps_mat")):
             combo.clear()
             combo.addItems(names)
             want = rec.get(key)
@@ -1085,6 +1095,7 @@ class SectionDesignerWindow(QMainWindow):
         if rec is not None:
             rec["conc_mat"] = self.conc_mat_combo.currentText() or None
             rec["steel_mat"] = self.steel_mat_combo.currentText() or None
+            rec["ps_mat"] = self.ps_mat_combo.currentText() or None
         self._on_value_changed()
 
     # ----------------------------------------------------------- recompute

@@ -298,6 +298,12 @@ class Spec:
     strand_area: float = 140e-6
     f_pe: float = 1100e6
     strand_y: float = -0.38
+    # prestressing-steel (strand) material — the tendon base uniaxial law.
+    # Defaults reproduce the historical hardcoded strand (E_p 195 GPa, f_py
+    # 1675 MPa, b 0.005), so existing specs are unchanged.
+    Ep: float = 195.0e9          # prestressing-steel elastic modulus (Pa)
+    fpy: float = 1675.0e6        # prestressing-steel yield (Pa)
+    ps_b: float = 0.005          # prestressing-steel strain-hardening ratio
     # nonlinear constitutive (moment-curvature / strain analysis)
     eps_c0: float = 0.002        # concrete peak-compression strain
     eps_cu: float = 0.0035       # concrete crushing strain
@@ -850,7 +856,7 @@ def build_case(spec: Spec) -> SectionCase:
         spiral=spec.spiral, prestressed=prestressed)
 
     if prestressed:
-        strand_mat = UniaxialBilinear(E=195e9, sigma_y=1675e6, b=0.005)
+        strand_mat = UniaxialBilinear(E=spec.Ep, sigma_y=spec.fpy, b=spec.ps_b)
         edge = spec.b / 2.0 - spec.cover
         n = spec.n_strand
         zs = [0.0] if n == 1 else [
@@ -871,7 +877,7 @@ def build_case(spec: Spec) -> SectionCase:
 
     # additive tendon arrangements
     if spec.tendon_arr and spec.kind != "Composite":
-        strand_mat = UniaxialBilinear(E=195e9, sigma_y=1675e6, b=0.005)
+        strand_mat = UniaxialBilinear(E=spec.Ep, sigma_y=spec.fpy, b=spec.ps_b)
         extra_t = tendons_from_arrangements(spec.tendon_arr, sec, strand_mat)
         base_t = (list(sec.prestress.tendons)
                   if getattr(sec, "prestress", None) else [])
