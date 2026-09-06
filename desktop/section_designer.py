@@ -397,9 +397,9 @@ class SectionDesignerWindow(QMainWindow):
         inner = QSplitter(Qt.Orientation.Horizontal)
         inner.addWidget(self._build_definition_panel())
         inner.addWidget(self._build_preview_panel())
-        inner.setStretchFactor(0, 0)
+        inner.setStretchFactor(0, 1)
         inner.setStretchFactor(1, 1)
-        inner.setSizes([340, 480])
+        inner.setSizes([520, 520])
         inner.setHandleWidth(8)
         return inner
 
@@ -407,8 +407,8 @@ class SectionDesignerWindow(QMainWindow):
     def _build_definition_panel(self) -> QWidget:
         host = QScrollArea()
         host.setWidgetResizable(True)
-        host.setMinimumWidth(320)
-        host.setMaximumWidth(460)
+        host.setMinimumWidth(360)
+        host.setMaximumWidth(720)
         inner = QWidget()
         inner.setObjectName("sd_inner")
         v = QVBoxLayout(inner)
