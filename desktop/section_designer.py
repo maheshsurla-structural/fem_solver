@@ -161,7 +161,8 @@ class SectionDesignerWindow(QMainWindow):
         # shared material library {name: matd} — constitutive laws live here;
         # sections reference materials by name (confinement stays on the spec).
         self._materials: dict = {"C30": _conc_default(30.0),
-                                 "S500": _steel_default(500.0)}
+                                 "S500": _steel_default(500.0),
+                                 "Y1860": _prestress_default(1860.0)}
         # multi-section project: {name: {"spec", "code", "conc_mat", "steel_mat"}}
         self._sections: dict = {name0: {
             "spec": self._spec, "code": self._code0,
@@ -953,9 +954,10 @@ class SectionDesignerWindow(QMainWindow):
             self.tendon_arr_list.addItem(_tendon_arr_label(arr))
 
     def _add_arrangement(self, *, tendon: bool) -> None:
-        steels = [n for n, m in self._materials.items()
-                  if m.get("kind") == "steel"]
-        dlg = ArrangementDialog(self, tendon=tendon, steels=steels)
+        want = "prestress" if tendon else "steel"
+        mats = [n for n, m in self._materials.items()
+                if m.get("kind") == want]
+        dlg = ArrangementDialog(self, tendon=tendon, steels=mats)
         if dlg.exec() != QDialog.DialogCode.Accepted or dlg.result_arr is None:
             return
         if tendon:
@@ -1771,6 +1773,13 @@ def _steel_default(fy_mpa=500.0) -> dict:
                 steel_eps_sh=0.008, steel_eps_su=0.10)
 
 
+def _prestress_default(fpu_mpa=1860.0) -> dict:
+    """Prestressing (tendon) steel — the second 'rebar steel' kind. f_py ~ 0.9
+    f_pu; strand law is a bilinear per the engine (E_p 195 GPa)."""
+    return dict(kind="prestress", fpu=fpu_mpa * 1e6, fpy=0.9 * fpu_mpa * 1e6,
+                Ep=195e9, ps_b=0.005)
+
+
 # material parameter editors: (label, key, spec) where spec is
 # ("spin", lo, hi, step, decimals, store_scale) — display value ×scale = stored
 # SI value (f'c MPa→Pa, E_s GPa→Pa) — or ("combo", options).
@@ -1790,6 +1799,12 @@ _STEEL_FIELDS = [
     ("f_su / f_y", "steel_fu_ratio", ("spin", 1.0, 2.0, 0.05, 2, 1)),
     ("ε_sh onset", "steel_eps_sh", ("spin", 0.0, 0.05, 0.001, 3, 1)),
     ("ε_su ultimate", "steel_eps_su", ("spin", 0.0, 0.3, 0.005, 3, 1)),
+]
+_PRESTRESS_FIELDS = [
+    ("f_pu [MPa]", "fpu", ("spin", 1500, 2100, 10, 0, 1e6)),
+    ("f_py [MPa]", "fpy", ("spin", 1300, 1900, 10, 0, 1e6)),
+    ("E_p [GPa]", "Ep", ("spin", 180, 210, 5, 0, 1e9)),
+    ("Hardening b", "ps_b", ("spin", 0.0, 0.05, 0.005, 3, 1)),
 ]
 
 
@@ -1819,6 +1834,7 @@ class MaterialsDialog(QDialog):
         brow = QHBoxLayout()
         for txt, fn in (("+ Concrete", lambda: self._add(_conc_default())),
                         ("+ Steel", lambda: self._add(_steel_default())),
+                        ("+ Prestress", lambda: self._add(_prestress_default())),
                         ("Remove", self._remove)):
             b = QPushButton(txt)
             b.clicked.connect(fn)
@@ -1855,11 +1871,14 @@ class MaterialsDialog(QDialog):
 
     # ---- list ----
     @staticmethod
-    def _item_text(nm: str, md: dict) -> str:
+    def _strength(md: dict) -> float:
         kind = md.get("kind", "concrete")
-        strg = (md.get("fc", 0) if kind == "concrete"
-                else md.get("fy", 0)) / 1e6
-        return f"{nm}   ·  {kind} {strg:.0f} MPa"
+        key = {"concrete": "fc", "steel": "fy", "prestress": "fpu"}.get(kind,
+                                                                        "fc")
+        return md.get(key, 0.0) / 1e6
+
+    def _item_text(self, nm: str, md: dict) -> str:
+        return f"{nm}   ·  {md.get('kind', 'concrete')} {self._strength(md):.0f} MPa"
 
     def _reload_list(self) -> None:
         was = self._loading
@@ -1870,9 +1889,9 @@ class MaterialsDialog(QDialog):
         self._loading = was
 
     def _add(self, md: dict) -> None:
-        kind = md["kind"]
-        strg = (md.get("fc", 0) if kind == "concrete" else md.get("fy", 0)) / 1e6
-        base = f"{'C' if kind == 'concrete' else 'S'}{strg:.0f}"
+        prefix = {"concrete": "C", "steel": "S", "prestress": "Y"}.get(
+            md["kind"], "M")
+        base = f"{prefix}{self._strength(md):.0f}"
         name, i = base, 2
         while name in self._names:
             name = f"{base} ({i})"
@@ -1911,8 +1930,12 @@ class MaterialsDialog(QDialog):
         self._loading = True
         self._clear_form_rows()
         self.name_edit.setText(self._names[self._cur])
-        fields = _CONC_FIELDS if md.get("kind") == "concrete" else _STEEL_FIELDS
-        self.editor.setTitle(md.get("kind", "material").title())
+        fields = {"concrete": _CONC_FIELDS, "steel": _STEEL_FIELDS,
+                  "prestress": _PRESTRESS_FIELDS}.get(md.get("kind"),
+                                                      _CONC_FIELDS)
+        title = {"prestress": "Prestressing steel"}.get(
+            md.get("kind"), md.get("kind", "material").title())
+        self.editor.setTitle(title)
         for label, key, spec in fields:
             if spec[0] == "spin":
                 _, lo, hi, step, dec, scale = spec
@@ -1939,10 +1962,17 @@ class MaterialsDialog(QDialog):
         self.mat_fig.clear()
         ax = self.mat_fig.add_subplot(111)
         try:
-            if md.get("kind") == "concrete":
+            kind = md.get("kind")
+            if kind == "concrete":
                 m = {"eps_c0": 0.002, "eps_cu": 0.0035, "fcu_ratio": 0.4, **md}
                 law = core.concrete_uniaxial_from(m)
                 eps = np.linspace(-m["eps_cu"] * 1.05, 0.0015, 240)
+            elif kind == "prestress":
+                from femsolver.materials.uniaxial import UniaxialBilinear
+                law = UniaxialBilinear(E=md.get("Ep", 195e9),
+                                       sigma_y=md.get("fpy", 1675e6),
+                                       b=md.get("ps_b", 0.005))
+                eps = np.linspace(-0.005, 0.025, 240)
             else:
                 law = core.steel_uniaxial_from(md)
                 esu = (md.get("steel_eps_su", 0.05)
