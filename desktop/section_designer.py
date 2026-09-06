@@ -1577,7 +1577,8 @@ class SectionDesignerWindow(QMainWindow):
             QMessageBox.critical(self, "Save failed", str(exc))
 
     def _open_materials(self) -> None:
-        dlg = MaterialsDialog(self, materials=self._materials)
+        dlg = MaterialsDialog(self, materials=self._materials,
+                              code=self.code_combo.currentText())
         if dlg.exec() == QDialog.DialogCode.Accepted:
             self._materials = dlg.materials
             self._refresh_material_combos()   # section pickers
@@ -1784,6 +1785,22 @@ def _steel_default(fy_mpa=500.0) -> dict:
                 steel_eps_sh=0.008, steel_eps_su=0.10)
 
 
+# Section-Designer design code -> CODE_GRADES family (standard grade catalog).
+_CODE_FAMILY = {"AASHTO LRFD 2024": "ACI", "Eurocode 2": "EC2",
+                "IS 456:2000": "IS"}
+
+
+def _material_from_grade(fam: str, kind: str, grade: str) -> dict:
+    """Build a library material dict from a standard code grade
+    (``core.CODE_GRADES``): concrete carries the family's model."""
+    g = core.CODE_GRADES[fam]
+    if kind == "concrete":
+        md = _conc_default(g["concrete"][grade] / 1e6)
+        md["conc_model"] = g.get("conc_model", md["conc_model"])
+        return md
+    return _steel_default(g["steel"][grade] / 1e6)
+
+
 def _prestress_default(fpu_mpa=1860.0) -> dict:
     """Prestressing (tendon) steel — the second 'rebar steel' kind. f_py ~ 0.9
     f_pu; strand law is a bilinear per the engine (E_p 195 GPa)."""
@@ -1825,10 +1842,12 @@ class MaterialsDialog(QDialog):
     model + hardening) is edited here and reused by every section that
     references it. Confinement is NOT here — it lives on the section."""
 
-    def __init__(self, parent=None, *, materials: dict | None = None):
+    def __init__(self, parent=None, *, materials: dict | None = None,
+                 code: str | None = None):
         super().__init__(parent)
         self.setWindowTitle("Materials library")
         self.resize(660, 560)
+        self._family0 = _CODE_FAMILY.get(code or "", "ACI")
         self.materials = dict(materials or {})
         self._names = list(self.materials.keys())
         self._mats = [dict(m) for m in self.materials.values()]
@@ -1851,6 +1870,21 @@ class MaterialsDialog(QDialog):
             b.clicked.connect(fn)
             brow.addWidget(b)
         left.addLayout(brow)
+        # standard code-grade catalog (ACI / EC2 / IS)
+        grow = QHBoxLayout()
+        grow.addWidget(QLabel("Std:"))
+        self.grade_fam = QComboBox()
+        self.grade_fam.addItems(list(core.CODE_GRADES))
+        self.grade_fam.setCurrentText(self._family0)
+        self.grade_fam.currentTextChanged.connect(self._reload_grades)
+        grow.addWidget(self.grade_fam)
+        self.grade_combo = QComboBox()
+        grow.addWidget(self.grade_combo, 1)
+        gadd = QPushButton("Add grade")
+        gadd.clicked.connect(self._add_grade)
+        grow.addWidget(gadd)
+        left.addLayout(grow)
+        self._reload_grades()
         row.addLayout(left, 1)
 
         # right: the selected material's editable parameters
@@ -1902,7 +1936,9 @@ class MaterialsDialog(QDialog):
     def _add(self, md: dict) -> None:
         prefix = {"concrete": "C", "steel": "S", "prestress": "Y"}.get(
             md["kind"], "M")
-        base = f"{prefix}{self._strength(md):.0f}"
+        self._add_named(f"{prefix}{self._strength(md):.0f}", md)
+
+    def _add_named(self, base: str, md: dict) -> None:
         name, i = base, 2
         while name in self._names:
             name = f"{base} ({i})"
@@ -1911,6 +1947,24 @@ class MaterialsDialog(QDialog):
         self._mats.append(md)
         self._reload_list()
         self.listw.setCurrentRow(len(self._names) - 1)
+
+    # ---- standard code-grade catalog ----
+    def _reload_grades(self, *_a) -> None:
+        fam = self.grade_fam.currentText()
+        g = core.CODE_GRADES.get(fam, {})
+        self.grade_combo.clear()
+        for kind in ("concrete", "steel"):
+            for grade in g.get(kind, {}):
+                self.grade_combo.addItem(f"{kind[0].upper()}· {grade}",
+                                         (kind, grade))
+
+    def _add_grade(self) -> None:
+        data = self.grade_combo.currentData()
+        if not data:
+            return
+        kind, grade = data
+        md = _material_from_grade(self.grade_fam.currentText(), kind, grade)
+        self._add_named(grade, md)
 
     def _remove(self) -> None:
         r = self.listw.currentRow()
