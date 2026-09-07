@@ -23,8 +23,7 @@ from __future__ import annotations
 import math
 
 from PySide6.QtCore import Qt, QPointF, QRectF, Signal
-from PySide6.QtGui import (QBrush, QColor, QPainter, QPainterPath, QPen,
-                           QPolygonF)
+from PySide6.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import (QGraphicsEllipseItem, QGraphicsItem,
                                QGraphicsLineItem, QGraphicsPathItem,
                                QGraphicsScene, QGraphicsSimpleTextItem,
@@ -42,6 +41,16 @@ _PRIMARY_DIMS = {
     "PSC girder":  ("b", "h"),
 }
 _MIN_DIM = 0.02          # metres — don't let a drag collapse a dimension
+
+
+def _seg_dist(pz, py, z1, y1, z2, y2) -> float:
+    """Distance from point (pz,py) to the segment (z1,y1)-(z2,y2)."""
+    dz, dy = z2 - z1, y2 - y1
+    L2 = dz * dz + dy * dy
+    if L2 <= 1e-18:
+        return math.hypot(pz - z1, py - y1)
+    t = max(0.0, min(1.0, ((pz - z1) * dz + (py - y1) * dy) / L2))
+    return math.hypot(pz - (z1 + t * dz), py - (y1 + t * dy))
 
 
 class SectionCanvas(QGraphicsView):
@@ -100,6 +109,16 @@ class SectionCanvas(QGraphicsView):
                            for r in poly.interiors]
         except Exception:                              # noqa: BLE001
             self._ext, self._holes = [], []
+        # dims + model bounds (metres) for placing the drag-resize handles
+        self._dims = {k: float(getattr(spec, k, 0.0))
+                      for k in ("b", "h", "D", "leg", "thick", "t_f", "t_w",
+                                "wall_t")}
+        if self._ext:
+            zs = [z for z, _ in self._ext]
+            ys = [y for _, y in self._ext]
+            self._mb = (min(zs), min(ys), max(zs), max(ys))
+        else:
+            self._mb = (-0.2, -0.3, 0.2, 0.3)
         # a fresh Custom section with no stored vertices is still editable —
         # seed the editable outline from the drawn exterior.
         if spec.kind == "Custom" and not self._outline:
@@ -219,22 +238,47 @@ class SectionCanvas(QGraphicsView):
         self._label(0.0, -(r.top() - mx) if r.top() < 0 else r.bottom() + mx,
                     "Z", "#5a6b7b")
 
+    def _dim_handle(self, z, y, axis, key, mode, v0, vmax=None) -> None:
+        """A draggable dimension handle. ``mode``: 'sym' (edge tracks cursor,
+        symmetric dim = 2·|cursor|), 'grow_pos' (dim = v0 + Δ, drag outward
+        grows), 'grow_neg' (dim = v0 − Δ, drag inward grows)."""
+        self._handle(z, y, "#f59f00",
+                     {"t": "dim", "axis": axis, "key": key, "mode": mode,
+                      "v0": v0, "vmax": vmax})
+
     def _add_dim_handles(self) -> None:
-        r = self._content_rect()          # scene rect (x=z, y=-y_model)
-        if not r.isValid():
-            return
-        wkey, hkey = _PRIMARY_DIMS[self._kind]
-        width, height = r.width(), r.height()
-        # right-edge handle (controls width), placed at mid-height
-        rz, ry = r.right(), -(r.top() + r.height() / 2.0)
-        self._handle(rz, ry, "#f90",
-                     {"t": "dim", "axis": "z", "key": wkey, "w0": width,
-                      "h0": height, "edge": r.right()})
-        # top-edge handle (controls height), placed at mid-width
-        tz, ty = r.left() + r.width() / 2.0, -r.top()
-        self._handle(tz, ty, "#f90",
-                     {"t": "dim", "axis": "y", "key": hkey, "w0": width,
-                      "h0": height, "edge": -r.top()})
+        minz, miny, maxz, maxy = self._mb
+        d = self._dims
+        k = self._kind
+        if k == "Rectangular":
+            self._dim_handle(maxz, 0.0, "z", "b", "sym", d["b"])
+            self._dim_handle(0.0, maxy, "y", "h", "sym", d["h"])
+        elif k == "Circular":
+            self._dim_handle(maxz, 0.0, "z", "D", "sym", d["D"])
+            self._dim_handle(0.0, maxy, "y", "D", "sym", d["D"])
+        elif k == "Hollow box":
+            self._dim_handle(maxz, 0.0, "z", "b", "sym", d["b"])
+            self._dim_handle(0.0, maxy, "y", "h", "sym", d["h"])
+            self._dim_handle(maxz - d["wall_t"], 0.0, "z", "wall_t", "grow_neg",
+                             d["wall_t"], vmax=min(d["b"], d["h"]) / 2 - _MIN_DIM)
+        elif k == "T-shape":
+            tf, tw = d["t_f"], d["t_w"]
+            self._dim_handle(maxz, (maxy + (maxy - tf)) / 2, "z", "b", "sym",
+                             d["b"])
+            self._dim_handle(0.0, miny, "y", "h", "grow_neg", d["h"])
+            self._dim_handle(0.0, maxy - tf, "y", "t_f", "grow_neg", tf,
+                             vmax=d["h"] - _MIN_DIM)
+            self._dim_handle(tw / 2, (miny + (maxy - tf)) / 2, "z", "t_w", "sym",
+                             tw, vmax=d["b"] - _MIN_DIM)
+        elif k == "L-shape":
+            leg, th = d["leg"], d["thick"]
+            self._dim_handle(maxz, miny + th / 2, "z", "leg", "grow_pos", leg)
+            self._dim_handle(minz + th / 2, maxy, "y", "leg", "grow_pos", leg)
+            self._dim_handle(minz + th, miny + th / 2, "z", "thick", "grow_pos",
+                             th, vmax=leg - _MIN_DIM)
+        elif k == "PSC girder":
+            self._dim_handle(maxz, 0.0, "z", "b", "sym", d["b"])
+            self._dim_handle(0.0, maxy, "y", "h", "grow_pos", d["h"])
 
     # -------------------------------------------------- interaction
     def _model_at(self, view_pos) -> tuple:
@@ -268,7 +312,7 @@ class SectionCanvas(QGraphicsView):
             return
         if self._mode == "add_vertex" and self._kind == "Custom":
             z, y = self._model_at(vp)
-            self._outline.append((z, y))
+            self._insert_vertex(z, y)
             self.outlineChanged.emit(tuple(self._outline))
             return
         if self._mode == "add_bar":
@@ -311,12 +355,19 @@ class SectionCanvas(QGraphicsView):
         d = self._drag
         t = d["t"]
         if t == "dim":
-            if d["axis"] == "z":
-                new = d["w0"] + (z - d["sz"])
-                self.dimChanged.emit(d["key"], max(new, _MIN_DIM))
-            else:
-                new = d["h0"] + (y - d["sy"])
-                self.dimChanged.emit(d["key"], max(new, _MIN_DIM))
+            c = z if d["axis"] == "z" else y
+            c0 = d["sz"] if d["axis"] == "z" else d["sy"]
+            mode, v0 = d["mode"], d["v0"]
+            if mode == "sym":
+                val = 2.0 * abs(c)
+            elif mode == "grow_pos":
+                val = v0 + (c - c0)
+            else:                                       # grow_neg
+                val = v0 + (c0 - c)
+            val = max(val, _MIN_DIM)
+            if d.get("vmax"):
+                val = min(val, d["vmax"])
+            self.dimChanged.emit(d["key"], val)
         elif t == "vertex":
             i = d["i"]
             if 0 <= i < len(self._outline):
@@ -328,6 +379,23 @@ class SectionCanvas(QGraphicsView):
                 dia = self._bars[i][2]
                 self._bars[i] = (z, y, dia)
                 self.barsChanged.emit(tuple(self._bars))
+
+    def _insert_vertex(self, z, y) -> None:
+        """Insert a new vertex on the outline edge nearest the click (so the
+        polygon keeps its shape), or append when there's no edge yet."""
+        pts = self._outline
+        n = len(pts)
+        if n < 2:
+            pts.append((z, y))
+            return
+        best_i, best_d = n - 1, float("inf")
+        for i in range(n):
+            z1, y1 = pts[i]
+            z2, y2 = pts[(i + 1) % n]
+            dd = _seg_dist(z, y, z1, y1, z2, y2)
+            if dd < best_d:
+                best_d, best_i = dd, i
+        pts.insert(best_i + 1, (z, y))
 
     def _delete(self, d) -> None:
         i = d.get("i")

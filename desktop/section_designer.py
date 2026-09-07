@@ -798,6 +798,12 @@ class SectionDesignerWindow(QMainWindow):
         fitb.setText("Fit")
         fitb.clicked.connect(lambda: self.canvas.fit())
         tools.addWidget(fitb)
+        self._edit_free_btn = QToolButton()
+        self._edit_free_btn.setText("Edit freely →")
+        self._edit_free_btn.setToolTip(
+            "Convert this parametric shape to an editable Custom polygon")
+        self._edit_free_btn.clicked.connect(self._convert_to_custom)
+        tools.addWidget(self._edit_free_btn)
         tools.addStretch(1)
         self.coord_lbl = QLabel("")
         self.coord_lbl.setStyleSheet("color:#5a6b7b;")
@@ -1065,6 +1071,8 @@ class SectionDesignerWindow(QMainWindow):
             self._canvas_mode_btns["add_vertex"].setEnabled(kind == "Custom")
             if kind != "Custom" and self._canvas_mode_btns["add_vertex"].isChecked():
                 self._set_canvas_mode("select")
+        if hasattr(self, "_edit_free_btn"):
+            self._edit_free_btn.setEnabled(kind in _PARAMETRIC)
 
     def _apply_cover_visibility(self) -> None:
         """Variable (per-face) cover is only meaningful for the rectangular
@@ -1858,6 +1866,32 @@ class SectionDesignerWindow(QMainWindow):
         pat = "1#6" if self._rebar_notation() == "us" else "1B20"
         self._add_group_row(("Single", pat, f"{z_m * 1e3:g},{y_m * 1e3:g}", mat))
         self._groups_changed()
+
+    def _convert_to_custom(self) -> None:
+        """Turn the current parametric shape into an editable Custom polygon —
+        its outline + rebars become custom_outline / custom_bars, so the user
+        can then drag any vertex freely."""
+        if self._spec.kind not in _PARAMETRIC:
+            return
+        try:
+            case = _case(self._spec)
+            poly = case.section.geometry.polygon
+            outline = tuple((float(z), float(y))
+                            for z, y in list(poly.exterior.coords)[:-1])
+            bars = (case.section.reinforcement.bars
+                    if case.section.reinforcement else [])
+            cbars = tuple((float(b.z), float(b.y),
+                           float(2.0 * np.sqrt(float(b.area) / np.pi)))
+                          for b in bars)
+        except Exception as exc:                       # noqa: BLE001
+            self.statusBar().showMessage(f"Convert failed: {exc}")
+            return
+        self._spec = replace(self._spec, kind="Custom", custom_outline=outline,
+                             custom_bars=cbars, rebar_groups=())
+        self._sections[self._active]["spec"] = self._spec
+        # setting the kind fires _on_kind_changed, which reloads the Custom
+        # editor + canvas from the spec we just seeded.
+        self.kind_combo.setCurrentText("Custom")
 
     def _update_header(self, case) -> None:
         """Preview header: section name + a one-line dimensional summary."""
