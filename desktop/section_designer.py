@@ -74,6 +74,7 @@ if _REPO_ROOT not in sys.path:
 
 import section_gui_core as core
 import style
+from section_canvas import SectionCanvas
 from widgets import CollapsibleGroup
 
 # section kinds this desktop front-end exposes (the engine also knows "Custom"
@@ -778,12 +779,37 @@ class SectionDesignerWindow(QMainWindow):
         self.head_sub.setObjectName("sub")
         v.addWidget(self.head_sub)
 
-        # cross-section drawing on a neutral canvas, aspect ratio preserved
+        # interactive cross-section canvas: drag-resize the built-in shapes,
+        # draw/drag custom polygons, place rebars, over a mm grid + Y/Z axes.
         canvas = QGroupBox("Cross-section")
         cv = QVBoxLayout(canvas)
-        self.svg = QSvgWidget()
-        self.svg.setMinimumHeight(300)
-        cv.addWidget(self.svg)
+        tools = QHBoxLayout()
+        self._canvas_mode_btns = {}
+        for mode, label in (("select", "Select"), ("add_vertex", "＋ Point"),
+                            ("add_bar", "＋ Rebar")):
+            b = QToolButton()
+            b.setText(label)
+            b.setCheckable(True)
+            b.clicked.connect(lambda _c=False, m=mode: self._set_canvas_mode(m))
+            tools.addWidget(b)
+            self._canvas_mode_btns[mode] = b
+        self._canvas_mode_btns["select"].setChecked(True)
+        fitb = QToolButton()
+        fitb.setText("Fit")
+        fitb.clicked.connect(lambda: self.canvas.fit())
+        tools.addWidget(fitb)
+        tools.addStretch(1)
+        self.coord_lbl = QLabel("")
+        self.coord_lbl.setStyleSheet("color:#5a6b7b;")
+        tools.addWidget(self.coord_lbl)
+        cv.addLayout(tools)
+        self.canvas = SectionCanvas()
+        self.canvas.dimChanged.connect(self._on_canvas_dim)
+        self.canvas.outlineChanged.connect(self._on_canvas_outline)
+        self.canvas.barsChanged.connect(self._on_canvas_bars)
+        self.canvas.rebarAdded.connect(self._on_canvas_rebar_added)
+        self.canvas.cursorMoved.connect(self._on_canvas_cursor)
+        cv.addWidget(self.canvas)
         v.addWidget(canvas, 3)
 
         props_box = QGroupBox("Section properties")
@@ -1033,6 +1059,12 @@ class SectionDesignerWindow(QMainWindow):
         # Composite draws material from its shapes; single-material groups hide.
         self.mat_box.setVisible(kind != "Composite")
         self._apply_cover_visibility()
+        # canvas: "+ Point" is a Custom-only tool; drag handles/rebar work for
+        # every kind. Leaving Custom drops the vertex tool back to Select.
+        if hasattr(self, "_canvas_mode_btns"):
+            self._canvas_mode_btns["add_vertex"].setEnabled(kind == "Custom")
+            if kind != "Custom" and self._canvas_mode_btns["add_vertex"].isChecked():
+                self._set_canvas_mode("select")
 
     def _apply_cover_visibility(self) -> None:
         """Variable (per-face) cover is only meaningful for the rectangular
@@ -1771,12 +1803,7 @@ class SectionDesignerWindow(QMainWindow):
     def _refresh_geometry(self) -> None:
         try:
             case = _case(self._spec)
-            self.svg.load(QByteArray(core.svg_of(
-                case, show_axes=True, axis_labels=("Y", "Z")).encode("utf-8")))
-            # keep the section undistorted (letterbox to the widget)
-            r = self.svg.renderer()
-            if r is not None:
-                r.setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
+            self.canvas.render_case(case, self._spec)
             self._update_header(case)
             props = core.props_of(case)
             self.props.setRowCount(len(props))
@@ -1791,6 +1818,46 @@ class SectionDesignerWindow(QMainWindow):
             self.statusBar().clearMessage()
         except Exception as exc:                       # noqa: BLE001
             self.statusBar().showMessage(f"Geometry error: {exc}")
+
+    # ------------------------------------------------ interactive canvas
+    def _set_canvas_mode(self, mode: str) -> None:
+        for m, b in self._canvas_mode_btns.items():
+            b.setChecked(m == mode)
+        self.canvas.set_mode(mode)
+
+    def _on_canvas_cursor(self, zy) -> None:
+        if zy is None:
+            self.coord_lbl.setText("")
+        else:
+            self.coord_lbl.setText(f"Y {zy[0]:.0f}, Z {zy[1]:.0f} mm")
+
+    def _on_canvas_dim(self, key: str, value_m: float) -> None:
+        """A drag-resize handle moved: push the new dimension into its spin box
+        (which recomputes + re-renders the canvas)."""
+        spin = self._dim_spins.get(key)
+        if spin is not None:
+            spin.setValue(value_m * 1000.0)
+
+    def _on_canvas_outline(self, outline) -> None:
+        self._spec = replace(self._spec, custom_outline=tuple(outline))
+        self._load_custom_tables()
+        self._refresh_geometry()
+        self._queue()
+
+    def _on_canvas_bars(self, bars) -> None:
+        self._spec = replace(self._spec, custom_bars=tuple(bars))
+        self._load_custom_tables()
+        self._refresh_geometry()
+        self._queue()
+
+    def _on_canvas_rebar_added(self, z_m: float, y_m: float) -> None:
+        """A rebar dropped on a non-custom section becomes a Single group at
+        that Y,Z position (custom sections store it in custom_bars directly)."""
+        steels = self._steel_names()
+        mat = steels[0] if steels else ""
+        pat = "1#6" if self._rebar_notation() == "us" else "1B20"
+        self._add_group_row(("Single", pat, f"{z_m * 1e3:g},{y_m * 1e3:g}", mat))
+        self._groups_changed()
 
     def _update_header(self, case) -> None:
         """Preview header: section name + a one-line dimensional summary."""
