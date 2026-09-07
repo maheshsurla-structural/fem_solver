@@ -60,7 +60,8 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox,
                                QGroupBox, QHBoxLayout, QLabel, QLineEdit,
                                QListWidget, QListWidgetItem, QMainWindow, QMenu,
                                QMessageBox, QPushButton, QScrollArea, QSpinBox,
-                               QSplitter, QStackedWidget, QTableWidget,
+                               QSplitter, QStackedWidget, QStyledItemDelegate,
+                               QTableWidget,
                                QTableWidgetItem, QTabWidget, QTextBrowser,
                                QVBoxLayout, QWidget)
 
@@ -145,6 +146,34 @@ def _tendon_arr_label(arr) -> str:
 def _case(spec: core.Spec):
     """Cache SectionCase by Spec (mirrors the Streamlit @st.cache_data)."""
     return core.build_case(spec)
+
+
+class ComboBoxDelegate(QStyledItemDelegate):
+    """Table-cell delegate that shows the value as plain text but edits it with
+    a drop-down — so a column of choices reads as a table, not a strip of
+    embedded combo widgets. ``options`` is a zero-arg callable returning the
+    current choice list (evaluated each time the cell is edited)."""
+
+    def __init__(self, options, parent=None):
+        super().__init__(parent)
+        self._options = options
+
+    def createEditor(self, parent, option, index):
+        cb = QComboBox(parent)
+        cb.addItems([str(o) for o in self._options()])
+        # commit + close as soon as the user picks, so one click edits the cell
+        cb.activated.connect(lambda *_: (self.commitData.emit(cb),
+                                         self.closeEditor.emit(cb)))
+        return cb
+
+    def setEditorData(self, editor, index):
+        val = str(index.data(Qt.ItemDataRole.EditRole) or "")
+        i = editor.findText(val)
+        editor.setCurrentIndex(i if i >= 0 else 0)
+        editor.showPopup()
+
+    def setModelData(self, editor, model, index):
+        model.setData(index, editor.currentText(), Qt.ItemDataRole.EditRole)
 
 
 class SectionDesignerWindow(QMainWindow):
@@ -1097,6 +1126,11 @@ class SectionDesignerWindow(QMainWindow):
         self.groups_tbl.verticalHeader().setVisible(False)
         self.groups_tbl.setAlternatingRowColors(True)
         self.groups_tbl.setMinimumHeight(150)
+        # Type + Material edit via a drop-down but render as plain text cells.
+        self.groups_tbl.setItemDelegateForColumn(
+            0, ComboBoxDelegate(self._group_type_options, self.groups_tbl))
+        self.groups_tbl.setItemDelegateForColumn(
+            1, ComboBoxDelegate(self._steel_names, self.groups_tbl))
         self.groups_tbl.itemChanged.connect(self._on_group_item_changed)
         v.addWidget(self.groups_tbl)
 
@@ -1141,6 +1175,10 @@ class SectionDesignerWindow(QMainWindow):
         self.tendon_tbl.verticalHeader().setVisible(False)
         self.tendon_tbl.setAlternatingRowColors(True)
         self.tendon_tbl.setMinimumHeight(150)
+        self.tendon_tbl.setItemDelegateForColumn(
+            0, ComboBoxDelegate(lambda: core.TENDON_ARR_TYPES, self.tendon_tbl))
+        self.tendon_tbl.setItemDelegateForColumn(
+            1, ComboBoxDelegate(self._tendon_mat_names, self.tendon_tbl))
         self.tendon_tbl.itemChanged.connect(self._on_tendon_item_changed)
         v.addWidget(self.tendon_tbl)
         row = QHBoxLayout()
@@ -1255,9 +1293,10 @@ class SectionDesignerWindow(QMainWindow):
                     else core.REBAR_GROUP_TYPES_ROUND)
 
     def _add_group_row(self, group=None) -> None:
-        """Append a group row (Type + Material combos, Pattern/Position text).
-        With ``group`` given it seeds from a stored tuple (no change fired);
-        called bare (the ＋ button) it seeds a sensible default and commits."""
+        """Append a group row (Type / Material / Pattern / Position). Type and
+        Material edit via the drop-down delegate but store as plain text. With
+        ``group`` given it seeds from a stored tuple (no change fired); called
+        bare (the ＋ button) it seeds a default and commits."""
         types = self._group_type_options()
         steels = self._steel_names()
         t, pat, pos, mat = group or (
@@ -1268,20 +1307,8 @@ class SectionDesignerWindow(QMainWindow):
         self._loading_groups = True
         r = tbl.rowCount()
         tbl.insertRow(r)
-        tcombo = QComboBox()
-        tcombo.addItems(types)
-        i = tcombo.findText(t)
-        tcombo.setCurrentIndex(i if i >= 0 else 0)
-        tcombo.currentIndexChanged.connect(lambda *_: self._groups_changed())
-        tbl.setCellWidget(r, 0, tcombo)
-        mcombo = QComboBox()
-        mcombo.addItems(steels or [""])
-        j = mcombo.findText(mat)
-        mcombo.setCurrentIndex(j if j >= 0 else 0)
-        mcombo.currentIndexChanged.connect(lambda *_: self._groups_changed())
-        tbl.setCellWidget(r, 1, mcombo)
-        tbl.setItem(r, 2, QTableWidgetItem(pat))
-        tbl.setItem(r, 3, QTableWidgetItem(pos))
+        for c, val in enumerate((t, mat, pat, pos)):
+            tbl.setItem(r, c, QTableWidgetItem(str(val)))
         self._loading_groups = was
         if not was and group is None:
             self._groups_changed()
@@ -1338,22 +1365,9 @@ class SectionDesignerWindow(QMainWindow):
         self._loading_tendon = True
         r = tbl.rowCount()
         tbl.insertRow(r)
-        tcombo = QComboBox()
-        tcombo.addItems(core.TENDON_ARR_TYPES)
-        i = tcombo.findText(typ)
-        tcombo.setCurrentIndex(i if i >= 0 else 0)
-        tcombo.currentIndexChanged.connect(lambda *_: self._tendons_changed())
-        tbl.setCellWidget(r, 0, tcombo)
-        mcombo = QComboBox()
-        mcombo.addItems(self._tendon_mat_names())
-        j = mcombo.findText(mat_name)
-        mcombo.setCurrentIndex(j if j >= 0 else 0)
-        mcombo.currentIndexChanged.connect(lambda *_: self._tendons_changed())
-        tbl.setCellWidget(r, 1, mcombo)
-        tbl.setItem(r, 2, QTableWidgetItem(str(count)))
-        tbl.setItem(r, 3, QTableWidgetItem(f"{area_mm:g}"))
-        tbl.setItem(r, 4, QTableWidgetItem(f"{fpe_mpa:g}"))
-        tbl.setItem(r, 5, QTableWidgetItem(pos))
+        vals = (typ, mat_name, str(count), f"{area_mm:g}", f"{fpe_mpa:g}", pos)
+        for c, val in enumerate(vals):
+            tbl.setItem(r, c, QTableWidgetItem(str(val)))
         self._loading_tendon = was
         if not was and arr is None:
             self._tendons_changed()
@@ -1374,11 +1388,10 @@ class SectionDesignerWindow(QMainWindow):
         tbl = self.tendon_tbl
         out = []
         for r in range(tbl.rowCount()):
-            tw = tbl.cellWidget(r, 0)
-            mw = tbl.cellWidget(r, 1)
-            typ = (tw.currentText() if tw else "Line").lower()
-            name = mw.currentText() if mw else "(default strand)"
-            mat = "" if name.startswith("(") else name
+            t_it, m_it = tbl.item(r, 0), tbl.item(r, 1)
+            typ = (t_it.text() if t_it else "Line").strip().lower() or "line"
+            name = (m_it.text() if m_it else "(default strand)").strip()
+            mat = "" if (not name or name.startswith("(")) else name
 
             def _num(c, d=0.0):
                 it = tbl.item(r, c)
@@ -1427,14 +1440,10 @@ class SectionDesignerWindow(QMainWindow):
         tbl = self.groups_tbl
         out = []
         for r in range(tbl.rowCount()):
-            tw = tbl.cellWidget(r, 0)
-            mw = tbl.cellWidget(r, 1)
-            typ = tw.currentText() if tw else ""
-            mat = mw.currentText() if mw else ""
-            pat_it = tbl.item(r, 2)
-            pos_it = tbl.item(r, 3)
-            pat = (pat_it.text() if pat_it else "").strip()
-            pos = (pos_it.text() if pos_it else "").strip()
+            def _t(c):
+                it = tbl.item(r, c)
+                return (it.text() if it else "").strip()
+            typ, mat, pat, pos = _t(0), _t(1), _t(2), _t(3)
             if not pat:
                 continue
             out.append((typ, pat, pos, mat))
