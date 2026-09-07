@@ -170,7 +170,6 @@ class ComboBoxDelegate(QStyledItemDelegate):
         val = str(index.data(Qt.ItemDataRole.EditRole) or "")
         i = editor.findText(val)
         editor.setCurrentIndex(i if i >= 0 else 0)
-        editor.showPopup()
 
     def setModelData(self, editor, model, index):
         model.setData(index, editor.currentText(), Qt.ItemDataRole.EditRole)
@@ -1126,6 +1125,12 @@ class SectionDesignerWindow(QMainWindow):
         self.groups_tbl.verticalHeader().setVisible(False)
         self.groups_tbl.setAlternatingRowColors(True)
         self.groups_tbl.setMinimumHeight(150)
+        # feel like a spreadsheet: a click on the selected cell starts editing
+        self.groups_tbl.setEditTriggers(
+            QTableWidget.EditTrigger.DoubleClicked
+            | QTableWidget.EditTrigger.SelectedClicked
+            | QTableWidget.EditTrigger.EditKeyPressed
+            | QTableWidget.EditTrigger.AnyKeyPressed)
         # Type + Material edit via a drop-down but render as plain text cells.
         self.groups_tbl.setItemDelegateForColumn(
             0, ComboBoxDelegate(self._group_type_options, self.groups_tbl))
@@ -1172,6 +1177,11 @@ class SectionDesignerWindow(QMainWindow):
         self.tendon_tbl.verticalHeader().setVisible(False)
         self.tendon_tbl.setAlternatingRowColors(True)
         self.tendon_tbl.setMinimumHeight(150)
+        self.tendon_tbl.setEditTriggers(
+            QTableWidget.EditTrigger.DoubleClicked
+            | QTableWidget.EditTrigger.SelectedClicked
+            | QTableWidget.EditTrigger.EditKeyPressed
+            | QTableWidget.EditTrigger.AnyKeyPressed)
         self.tendon_tbl.setItemDelegateForColumn(
             0, ComboBoxDelegate(lambda: core.TENDON_ARR_TYPES, self.tendon_tbl))
         self.tendon_tbl.setItemDelegateForColumn(
@@ -2538,6 +2548,22 @@ class AddGroupDialog(QDialog):
             elif isinstance(wdg, QComboBox):
                 wdg.currentTextChanged.connect(lambda *_: self._update_preview())
 
+    def _point_row(self, label, zkey, ykey, zval, yval):
+        """A single 'z, y' coordinate row (two labelled spins side by side),
+        stored under ``zkey``/``ykey``. Returns ``(label, container)`` for
+        ``QFormLayout.addRow``."""
+        cont = QWidget()
+        h = QHBoxLayout(cont)
+        h.setContentsMargins(0, 0, 0, 0)
+        self._w[zkey] = self._dspin(-5000, 5000, zval, "")
+        self._w[ykey] = self._dspin(-5000, 5000, yval, "")
+        h.addWidget(QLabel("z"))
+        h.addWidget(self._w[zkey], 1)
+        h.addSpacing(8)
+        h.addWidget(QLabel("y"))
+        h.addWidget(self._w[ykey], 1)
+        return (f"{label} [mm]", cont)
+
     def _rebuild(self) -> None:
         while self._dyn_form.rowCount():
             self._dyn_form.removeRow(0)
@@ -2556,23 +2582,21 @@ class AddGroupDialog(QDialog):
         elif typ == "Line":
             self._w["n"] = self._ispin(1, 50, 4)
             self._dyn_form.addRow("Number of bars", self._w["n"])
-            for k, lab, val in (("z1", "z₁ [mm]", -150),
-                                ("y1", "y₁ [mm]", -250),
-                                ("z2", "z₂ [mm]", 150),
-                                ("y2", "y₂ [mm]", -250)):
-                self._w[k] = self._dspin(-5000, 5000, val)
-                self._dyn_form.addRow(lab, self._w[k])
+            self._dyn_form.addRow(*self._point_row(
+                "Point 1", "z1", "y1", -150, -250))
+            self._dyn_form.addRow(*self._point_row(
+                "Point 2", "z2", "y2", 150, -250))
             self._connect_preview(self._w["n"])
         elif typ == "Arc":
             self._w["n"] = self._ispin(1, 50, 6)
             self._dyn_form.addRow("Number of bars", self._w["n"])
-            for k, lab, val, sfx in (("cz", "centre z [mm]", 0, " mm"),
-                                     ("cy", "centre y [mm]", 0, " mm"),
-                                     ("r", "radius [mm]", 200, " mm"),
-                                     ("a1", "start angle", 0, "°"),
-                                     ("a2", "end angle", 180, "°")):
-                self._w[k] = self._dspin(-5000, 5000, val, sfx)
-                self._dyn_form.addRow(lab, self._w[k])
+            self._dyn_form.addRow(*self._point_row("Centre", "cz", "cy", 0, 0))
+            self._w["r"] = self._dspin(0, 5000, 200)
+            self._dyn_form.addRow("Radius [mm]", self._w["r"])
+            self._w["a1"] = self._dspin(-360, 360, 0, "°")
+            self._dyn_form.addRow("Start angle", self._w["a1"])
+            self._w["a2"] = self._dspin(-360, 360, 180, "°")
+            self._dyn_form.addRow("End angle", self._w["a2"])
             self._connect_preview(self._w["n"])
         elif typ == "Single":
             self._w["tbl"] = tbl = QTableWidget(0, 2)
