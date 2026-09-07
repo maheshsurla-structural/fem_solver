@@ -1765,6 +1765,8 @@ class SectionDesignerWindow(QMainWindow):
     # swapped for display (value-preserving): engine I_zz (about the
     # horizontal axis) is shown as I_yy, and engine I_yy as I_zz.
     _PROP_RELABEL = {"I_zz [mm⁴]": "I_yy [mm⁴]", "I_yy [mm⁴]": "I_zz [mm⁴]"}
+    # (horizontal, vertical) axis subscripts for report_html / items_data
+    _AXIS_LABELS = ("y", "z")
 
     def _refresh_geometry(self) -> None:
         try:
@@ -2186,7 +2188,8 @@ class SectionDesignerWindow(QMainWindow):
     def _verify_rows(self, case, code):
         if self._spec.kind == "Composite":
             return []                    # single-material verification n/a
-        return core.items_data(case, code, core.mphi_props(self._spec))
+        return core.items_data(case, code, core.mphi_props(self._spec),
+                               axis_labels=self._AXIS_LABELS)
 
     def _fill_verify(self, case, code) -> None:
         rows = self._verify_rows(case, code)
@@ -2210,9 +2213,10 @@ class SectionDesignerWindow(QMainWindow):
         composite): section properties + moment-curvature milestones."""
         u = self._units
         rows = "".join(
-            f"<tr><td>{k}</td><td style='text-align:right'>{v:,.0f}</td></tr>"
+            f"<tr><td>{self._PROP_RELABEL.get(k, k)}</td>"
+            f"<td style='text-align:right'>{v:,.0f}</td></tr>"
             if isinstance(v, (int, float)) else
-            f"<tr><td>{k}</td><td>{v}</td></tr>"
+            f"<tr><td>{self._PROP_RELABEL.get(k, k)}</td><td>{v}</td></tr>"
             for k, v in core.props_of(case).items())
         mphi = ""
         try:
@@ -2248,7 +2252,7 @@ class SectionDesignerWindow(QMainWindow):
             except Exception:                          # noqa: BLE001
                 dres = None
         return core.report_html(case, code, self._units, mphi=mphi,
-                                demand_results=dres,
+                                demand_results=dres, axis_labels=self._AXIS_LABELS,
                                 meta={"Kind": self._spec.kind, "Code": code})
 
     # -------------------------------------------------- sections / project

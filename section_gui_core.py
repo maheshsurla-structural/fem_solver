@@ -1966,17 +1966,22 @@ def demand_check(case: SectionCase, code: str, demands, *,
 
 
 def items_data(case: SectionCase, code: str,
-               mphi_props: Optional[dict] = None) -> list[dict]:
+               mphi_props: Optional[dict] = None,
+               axis_labels: tuple = ("z", "y")) -> list[dict]:
     """Verification quantities for one section evaluated in ONE design
     code (Midas-GSD style: each section carries its own code). Values in
-    canonical display units (kN, kN.m, mm, mm^2, mm^4, 1/m)."""
+    canonical display units (kN, kN.m, mm, mm^2, mm^4, 1/m). ``axis_labels`` is
+    ``(horizontal, vertical)`` axis letters for the inertia subscripts (the
+    horizontal-axis inertia is engine ``I_zz``, the vertical-axis one ``I_yy``);
+    default ``("z","y")`` keeps the engine convention."""
     g = case.section.geometry
     _cz, cy = g.centroid
     miny = g.polygon.bounds[1]
+    h, v = axis_labels
     rows = [
         ("-", "Gross area A_g", "mm^2", g.area * 1e6, 1.0),
-        ("-", "I_zz (about centroidal z)", "mm^4", g.I_zz * 1e12, 1.0),
-        ("-", "I_yy (about centroidal y)", "mm^4", g.I_yy * 1e12, 1.0),
+        ("-", f"I_{h}{h} (about centroidal {h})", "mm^4", g.I_zz * 1e12, 1.0),
+        ("-", f"I_{v}{v} (about centroidal {v})", "mm^4", g.I_yy * 1e12, 1.0),
         ("-", "Centroid above bottom fibre", "mm", (cy - miny) * 1e3, 1.0),
     ]
     if case.prestressed:
@@ -2123,14 +2128,19 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
 def report_html(case: SectionCase, code: str, u: "Units", *,
                 mphi: Optional[dict] = None,
                 demand_results: Optional[list] = None,
-                meta: Optional[dict] = None) -> str:
+                meta: Optional[dict] = None,
+                axis_labels: tuple = ("z", "y")) -> str:
     """A self-contained HTML calc sheet for one section: sketch, materials,
     reinforcement schedule, P-M interaction diagram + capacity landmarks,
     moment-curvature summary, and (if provided) the demand/utilization check.
-    Prints cleanly to PDF from a browser."""
+    Prints cleanly to PDF from a browser. ``axis_labels`` is ``(horizontal,
+    vertical)`` axis letters for the inertia subscripts (the strong/horizontal-
+    axis inertia is engine ``I_zz``, the weak/vertical one ``I_yy``); default
+    ``("z","y")`` keeps the engine convention."""
     meta = meta or {}
     g = case.section.geometry
     esc = _html_escape
+    h, v = axis_labels
 
     # ---- properties / materials ----
     A_g = u.area_disp(g.area * 1e6)
@@ -2138,8 +2148,8 @@ def report_html(case: SectionCase, code: str, u: "Units", *,
         (f"Gross area A_g [{u.Al}]", A_g),
         (f"Depth × width [{u.Ll}]",
          f"{u.len_disp(g.depth * 1e3):.4g} × {u.len_disp(g.width * 1e3):.4g}"),
-        (f"I_zz (strong) [{u.Il}]", f"{u.inertia_disp(g.I_zz * 1e12):.4g}"),
-        (f"I_yy (weak) [{u.Il}]", f"{u.inertia_disp(g.I_yy * 1e12):.4g}"),
+        (f"I_{h}{h} (strong) [{u.Il}]", f"{u.inertia_disp(g.I_zz * 1e12):.4g}"),
+        (f"I_{v}{v} (weak) [{u.Il}]", f"{u.inertia_disp(g.I_yy * 1e12):.4g}"),
     ]
     mats = [
         (f"Concrete f'c / f_ck [{u.Sl}]", f"{u.from_Pa(case.f_c_prime):.4g}"),
