@@ -638,6 +638,7 @@ class SectionCanvas(QGraphicsView):
             val = max(val, _MIN_DIM)
             if d.get("vmax"):
                 val = min(val, d["vmax"])
+            self.dimChanged.emit(d["key"], val)
             self._drag_tip = f"{d['key']} = {val * 1e3:.0f} mm"
             return
         z, y = self._constrain(z, y, d["sz"], d["sy"], mods, align=True)

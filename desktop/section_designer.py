@@ -592,19 +592,29 @@ class SectionDesignerWindow(QMainWindow):
             b.clicked.connect(fn)
             vr.addWidget(b)
         v.addLayout(vr)
-        v.addWidget(QLabel("Bars (z, y, ⌀mm)"))
+        return box
+
+    def _build_custom_bars_panel(self) -> QWidget:
+        """The Custom bar-coordinate table (z, y, ⌀) + Fill-perimeter — lives in
+        the Reinforcement ▸ Rebars tab so a Custom section's bars sit with the
+        other kinds' reinforcement, not in the geometry editor."""
+        w = QWidget()
+        v = QVBoxLayout(w)
+        v.setContentsMargins(0, 0, 0, 0)
+        v.addWidget(QLabel("Bars (Y, Z, ⌀ mm)"))
         self.cust_bars = QTableWidget(0, 3)
-        self.cust_bars.setHorizontalHeaderLabels(["z", "y", "⌀"])
+        self.cust_bars.setHorizontalHeaderLabels(["Y", "Z", "⌀"])
         self.cust_bars.horizontalHeader().setStretchLastSection(True)
-        self.cust_bars.setMaximumHeight(120)
+        self.cust_bars.setMinimumHeight(150)
         self.cust_bars.itemChanged.connect(lambda *_: self._custom_changed())
         v.addWidget(self.cust_bars)
         br = QHBoxLayout()
-        for txt, fn in (("+ Bar", lambda: self._add_row(self.cust_bars, 3)),
-                        ("- Bar", lambda: self._del_row(self.cust_bars))):
+        for txt, fn in (("＋ Bar", lambda: self._add_row(self.cust_bars, 3)),
+                        ("Remove selected", lambda: self._del_row(self.cust_bars))):
             b = QPushButton(txt)
             b.clicked.connect(fn)
             br.addWidget(b)
+        br.addStretch(1)
         v.addLayout(br)
         fr = QHBoxLayout()
         fr.addWidget(QLabel("Fill perimeter n:"))
@@ -618,8 +628,9 @@ class SectionDesignerWindow(QMainWindow):
         fb = QPushButton("Fill")
         fb.clicked.connect(self._fill_perimeter)
         fr.addWidget(fb)
+        fr.addStretch(1)
         v.addLayout(fr)
-        return box
+        return w
 
     def _add_row(self, tbl, ncols) -> None:
         r = tbl.rowCount()
@@ -835,8 +846,9 @@ class SectionDesignerWindow(QMainWindow):
 
         # interactive cross-section canvas: drag-resize the built-in shapes,
         # draw/drag custom polygons, place rebars, over a mm grid + Y/Z axes.
-        canvas = QGroupBox("Cross-section")
+        canvas = QWidget()
         cv = QVBoxLayout(canvas)
+        cv.setContentsMargins(0, 0, 0, 0)
         self.canvas = SectionCanvas()
         self.canvas.dimChanged.connect(self._on_canvas_dim)
         self.canvas.outlineChanged.connect(self._on_canvas_outline)
@@ -914,10 +926,11 @@ class SectionDesignerWindow(QMainWindow):
         sr.addWidget(hint)
         self.sel_row.setVisible(False)
         cv.addWidget(self.sel_row)
-        v.addWidget(canvas, 3)
 
-        props_box = QGroupBox("Section properties")
-        pv = QVBoxLayout(props_box)
+        # Drawing gets the full height; properties live behind a tab.
+        props_page = QWidget()
+        pv = QVBoxLayout(props_page)
+        pv.setContentsMargins(0, 0, 0, 0)
         self.props = QTableWidget(0, 2)
         self.props.setHorizontalHeaderLabels(["Quantity", "Value"])
         self.props.horizontalHeader().setStretchLastSection(True)
@@ -926,7 +939,11 @@ class SectionDesignerWindow(QMainWindow):
         self.props.setShowGrid(False)
         self.props.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         pv.addWidget(self.props)
-        v.addWidget(props_box, 2)
+
+        preview_tabs = QTabWidget()
+        preview_tabs.addTab(canvas, "Drawing")
+        preview_tabs.addTab(props_page, "Properties")
+        v.addWidget(preview_tabs, 1)
         return w
 
     def _build_analysis_panel(self) -> QWidget:
@@ -1173,6 +1190,11 @@ class SectionDesignerWindow(QMainWindow):
             self._edit_free_btn.setEnabled(kind in _PARAMETRIC)
         if hasattr(self, "_void_btn"):
             self._void_btn.setEnabled(kind == "Custom")
+        # Custom sections edit bars as coordinates; every other kind uses the
+        # AdSec groups table. Both live in the Reinforcement ▸ Rebars tab.
+        if hasattr(self, "_cbars_panel"):
+            self._cbars_panel.setVisible(kind == "Custom")
+            self._groups_panel.setVisible(kind != "Custom")
 
     def _apply_cover_visibility(self) -> None:
         """Variable (per-face) cover is only meaningful for the rectangular
@@ -1277,8 +1299,12 @@ class SectionDesignerWindow(QMainWindow):
         self.groups_tbl.setItemDelegateForColumn(
             1, ComboBoxDelegate(self._steel_names, self.groups_tbl))
         self.groups_tbl.itemChanged.connect(self._on_group_item_changed)
-        v.addWidget(self.groups_tbl)
-
+        # the AdSec groups table (used by every kind except Custom) lives in a
+        # panel we can hide as a unit; Custom shows its bar-coordinate table.
+        self._groups_panel = QWidget()
+        gpl = QVBoxLayout(self._groups_panel)
+        gpl.setContentsMargins(0, 0, 0, 0)
+        gpl.addWidget(self.groups_tbl)
         row = QHBoxLayout()
         add = QPushButton("＋ Add group…")
         add.clicked.connect(self._add_group_via_dialog)
@@ -1287,19 +1313,22 @@ class SectionDesignerWindow(QMainWindow):
         row.addWidget(add)
         row.addWidget(rem)
         row.addStretch(1)
-        v.addLayout(row)
-
+        gpl.addLayout(row)
         self.group_warn = QLabel("")
         self.group_warn.setWordWrap(True)
         self.group_warn.setStyleSheet("color:#c0392b;")
         self.group_warn.setVisible(False)
-        v.addWidget(self.group_warn)
+        gpl.addWidget(self.group_warn)
         self.groups_cap = QLabel("")
         self.groups_cap.setWordWrap(True)
         self.groups_cap.setObjectName("hintLabel")
         self.groups_cap.setStyleSheet("color:#5a6b7b; font-size:11px;")
-        v.addWidget(self.groups_cap)
+        gpl.addWidget(self.groups_cap)
         self._refresh_groups_caption()
+        v.addWidget(self._groups_panel)
+        # Custom sections edit bars as coordinates here instead of groups
+        self._cbars_panel = self._build_custom_bars_panel()
+        v.addWidget(self._cbars_panel)
         return w
 
     def _build_tendons_tab(self) -> QWidget:
