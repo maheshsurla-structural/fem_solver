@@ -57,6 +57,7 @@ class SectionCanvas(QGraphicsView):
     dimChanged = Signal(str, float)      # (dim_key, value_metres)
     outlineChanged = Signal(tuple)       # ((z_m, y_m), ...)
     barsChanged = Signal(tuple)          # ((z_m, y_m, dia_m), ...)
+    holesChanged = Signal(tuple)         # (((z_m, y_m), ...), ...)  void rings
     rebarAdded = Signal(float, float)    # z_m, y_m  (non-custom kinds)
     cursorMoved = Signal(object)         # (z_mm, y_mm) or None
 
@@ -71,15 +72,22 @@ class SectionCanvas(QGraphicsView):
         self.setTransformationAnchor(
             QGraphicsView.ViewportAnchor.AnchorUnderMouse)
 
-        self._mode = "select"            # select | add_vertex | add_bar
+        self._mode = "select"            # select | add_vertex | add_bar | add_hole
         self._kind = "Rectangular"
         self._ext: list = []             # exterior ring (metres) from the case
-        self._holes: list = []           # hole rings (metres)
+        self._holes: list = []           # rendered hole rings (metres)
         self._render_bars: list = []     # (z, y, r) metres — every drawn bar
         self._outline: list = []         # custom vertices (metres), editable
         self._bars: list = []            # custom bars (z, y, dia) metres
+        self._holes_edit: list = []      # editable void rings (Custom)
+        self._dims: dict = {}            # current spec dims (for handle math)
+        self._mb = (-0.2, -0.3, 0.2, 0.3)  # model bounds
+        self._new_void = False           # next add_hole click starts a new ring
         self._default_dia = 0.020        # for click-placed custom bars
         self._grid = 0.05                # 50 mm grid
+        self._snap_on = False            # snap placements/drags to _snap
+        self._snap = 0.005               # 5 mm snap step
+        self._dims_on = False            # overall W×H dimension annotations
         self._drag = None                # active drag descriptor
         self._pan = None                 # last pan point (device px)
         self._fitted_kind = None         # refit when the shape kind changes
@@ -94,6 +102,32 @@ class SectionCanvas(QGraphicsView):
         if dia_m and dia_m > 0:
             self._default_dia = dia_m
 
+    def set_snap(self, on: bool) -> None:
+        self._snap_on = bool(on)
+
+    def set_dims(self, on: bool) -> None:
+        self._dims_on = bool(on)
+        self._rebuild_scene()
+
+    def start_void(self) -> None:
+        """Begin a new void ring — the next add_hole clicks build it."""
+        self._new_void = True
+        self.set_mode("add_hole")
+
+    def _constrain(self, z, y, sz=None, sy=None, mods=None):
+        """Apply Shift-ortho (lock to the axis of larger travel from an anchor)
+        then snap-to-grid, when each is active."""
+        if (mods is not None and sz is not None
+                and (mods & Qt.KeyboardModifier.ShiftModifier)):
+            if abs(z - sz) >= abs(y - sy):
+                y = sy
+            else:
+                z = sz
+        if self._snap_on and self._snap > 0:
+            z = round(z / self._snap) * self._snap
+            y = round(y / self._snap) * self._snap
+        return z, y
+
     def render_case(self, case, spec) -> None:
         """Rebuild the scene from the current case + spec (never emits)."""
         self._kind = spec.kind
@@ -101,6 +135,8 @@ class SectionCanvas(QGraphicsView):
                          in (spec.custom_outline or ())]
         self._bars = [(float(z), float(y), float(d)) for (z, y, d)
                       in (spec.custom_bars or ())]
+        self._holes_edit = [[(float(z), float(y)) for (z, y) in ring]
+                            for ring in (spec.custom_holes or ())]
         try:
             poly = case.section.geometry.polygon
             ext = list(poly.exterior.coords)
@@ -141,8 +177,19 @@ class SectionCanvas(QGraphicsView):
                            Qt.AspectRatioMode.KeepAspectRatio)
 
     # -------------------------------------------------- scene building
+    def _body_ring(self):
+        """The ring drawn as the section body — the editable outline for
+        Custom (so vertex handles sit on it), else the case exterior."""
+        if self._kind == "Custom" and len(self._outline) >= 3:
+            return self._outline
+        return self._ext
+
+    def _body_holes(self):
+        return self._holes_edit if self._kind == "Custom" else self._holes
+
     def _content_rect(self) -> QRectF:
-        pts = [(z, -y) for (z, y) in self._ext] or [(-0.2, -0.3), (0.2, 0.3)]
+        pts = [(z, -y) for (z, y) in self._body_ring()] or [(-0.2, -0.3),
+                                                             (0.2, 0.3)]
         xs = [p[0] for p in pts]
         ys = [p[1] for p in pts]
         return QRectF(min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys))
@@ -182,8 +229,8 @@ class SectionCanvas(QGraphicsView):
         self._scene.clear()
         # section outline (+ holes) as an even-odd path
         path = QPainterPath()
-        self._ring(path, self._ext)
-        for h in self._holes:
+        self._ring(path, self._body_ring())
+        for h in self._body_holes():
             self._ring(path, h)
         path.setFillRule(Qt.FillRule.OddEvenFill)
         body = QGraphicsPathItem(path)
@@ -210,12 +257,19 @@ class SectionCanvas(QGraphicsView):
             dot.setZValue(5)
             self._scene.addItem(dot)
 
+        if self._dims_on:
+            self._draw_dimensions()
+
         # interactive handles
         if self._kind == "Custom":
             for i, (z, y) in enumerate(self._outline):
-                self._handle(z, y, "#3d7", {"t": "vertex", "i": i})
+                self._handle(z, y, "#37d67a", {"t": "vertex", "i": i})
+            for r, ring in enumerate(self._holes_edit):
+                for i, (z, y) in enumerate(ring):
+                    self._handle(z, y, "#c084fc", {"t": "hole", "ring": r,
+                                                   "i": i}, r=4)
             for i, (z, y, _d) in enumerate(self._bars):
-                self._handle(z, y, "#e8b", {"t": "bar", "i": i}, r=4)
+                self._handle(z, y, "#e879b0", {"t": "bar", "i": i}, r=4)
         elif self._kind in _PRIMARY_DIMS:
             self._add_dim_handles()
 
@@ -238,6 +292,49 @@ class SectionCanvas(QGraphicsView):
         self._label(0.0, -(r.top() - mx) if r.top() < 0 else r.bottom() + mx,
                     "Z", "#5a6b7b")
 
+    def _dim_line(self, x1, y1, x2, y2, color="#8a97a2"):
+        ln = QGraphicsLineItem(x1, y1, x2, y2)
+        p = QPen(QColor(color))
+        p.setCosmetic(True)
+        ln.setPen(p)
+        ln.setZValue(3)
+        self._scene.addItem(ln)
+
+    def _scene_text(self, sx, sy, text, color="#556677"):
+        t = QGraphicsSimpleTextItem(text)
+        t.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations)
+        t.setBrush(QBrush(QColor(color)))
+        f = t.font()
+        f.setPointSize(9)
+        t.setFont(f)
+        t.setPos(sx, sy)
+        t.setZValue(16)
+        self._scene.addItem(t)
+
+    def _draw_dimensions(self) -> None:
+        """Overall width (Y) and height (Z) dimension lines with mm values."""
+        ring = self._body_ring()
+        if len(ring) < 2:
+            return
+        zs = [z for z, _ in ring]
+        ys = [y for _, y in ring]
+        minz, maxz, miny, maxy = min(zs), max(zs), min(ys), max(ys)
+        w, h = maxz - minz, maxy - miny
+        off = max(w, h) * 0.10 + 0.02
+        tick = off * 0.25
+        # width dimension, below the section (scene bottom = -miny)
+        by = -miny + off
+        self._dim_line(minz, by, maxz, by)
+        self._dim_line(minz, by - tick, minz, by + tick)
+        self._dim_line(maxz, by - tick, maxz, by + tick)
+        self._scene_text((minz + maxz) / 2, by, f"{w * 1e3:.0f} mm")
+        # height dimension, right of the section
+        bx = maxz + off
+        self._dim_line(bx, -miny, bx, -maxy)
+        self._dim_line(bx - tick, -miny, bx + tick, -miny)
+        self._dim_line(bx - tick, -maxy, bx + tick, -maxy)
+        self._scene_text(bx, -(miny + maxy) / 2, f"{h * 1e3:.0f} mm")
+
     def _dim_handle(self, z, y, axis, key, mode, v0, vmax=None) -> None:
         """A draggable dimension handle. ``mode``: 'sym' (edge tracks cursor,
         symmetric dim = 2·|cursor|), 'grow_pos' (dim = v0 + Δ, drag outward
@@ -247,8 +344,10 @@ class SectionCanvas(QGraphicsView):
                       "v0": v0, "vmax": vmax})
 
     def _add_dim_handles(self) -> None:
-        minz, miny, maxz, maxy = self._mb
         d = self._dims
+        if not d:                         # nothing rendered yet
+            return
+        minz, miny, maxz, maxy = self._mb
         k = self._kind
         if k == "Rectangular":
             self._dim_handle(maxz, 0.0, "z", "b", "sym", d["b"])
@@ -300,7 +399,7 @@ class SectionCanvas(QGraphicsView):
         vp = e.position().toPoint()
         if e.button() == Qt.MouseButton.RightButton:
             d = self._handle_at(vp)
-            if d and d.get("t") in ("vertex", "bar"):
+            if d and d.get("t") in ("vertex", "bar", "hole"):
                 self._delete(d)
             return
         if e.button() != Qt.MouseButton.LeftButton:
@@ -310,13 +409,25 @@ class SectionCanvas(QGraphicsView):
             z, y = self._model_at(vp)
             self._drag = dict(d, sz=z, sy=y)
             return
+        z, y = self._model_at(vp)
         if self._mode == "add_vertex" and self._kind == "Custom":
-            z, y = self._model_at(vp)
+            anchor = self._outline[-1] if self._outline else (None, None)
+            z, y = self._constrain(z, y, anchor[0], anchor[1], e.modifiers())
             self._insert_vertex(z, y)
             self.outlineChanged.emit(tuple(self._outline))
             return
+        if self._mode == "add_hole" and self._kind == "Custom":
+            if self._new_void or not self._holes_edit:
+                self._holes_edit.append([])
+                self._new_void = False
+            ring = self._holes_edit[-1]
+            anchor = ring[-1] if ring else (None, None)
+            z, y = self._constrain(z, y, anchor[0], anchor[1], e.modifiers())
+            ring.append((z, y))
+            self._emit_holes()
+            return
         if self._mode == "add_bar":
-            z, y = self._model_at(vp)
+            z, y = self._constrain(z, y)
             if self._kind == "Custom":
                 self._bars.append((z, y, self._default_dia))
                 self.barsChanged.emit(tuple(self._bars))
@@ -325,12 +436,16 @@ class SectionCanvas(QGraphicsView):
             return
         self._pan = vp                    # empty space -> pan
 
+    def _emit_holes(self) -> None:
+        self.holesChanged.emit(tuple(tuple(r) for r in self._holes_edit
+                                     if len(r) >= 3))
+
     def mouseMoveEvent(self, e):
         vp = e.position().toPoint()
         z, y = self._model_at(vp)
         self.cursorMoved.emit((z * 1e3, y * 1e3))
         if self._drag is not None:
-            self._apply_drag(z, y)
+            self._apply_drag(z, y, e.modifiers())
             return
         if self._pan is not None:
             delta = vp - self._pan
@@ -351,11 +466,13 @@ class SectionCanvas(QGraphicsView):
         self.cursorMoved.emit(None)
         super().leaveEvent(e)
 
-    def _apply_drag(self, z, y) -> None:
+    def _apply_drag(self, z, y, mods=None) -> None:
         d = self._drag
         t = d["t"]
         if t == "dim":
             c = z if d["axis"] == "z" else y
+            if self._snap_on and self._snap > 0:
+                c = round(c / self._snap) * self._snap
             c0 = d["sz"] if d["axis"] == "z" else d["sy"]
             mode, v0 = d["mode"], d["v0"]
             if mode == "sym":
@@ -368,11 +485,18 @@ class SectionCanvas(QGraphicsView):
             if d.get("vmax"):
                 val = min(val, d["vmax"])
             self.dimChanged.emit(d["key"], val)
-        elif t == "vertex":
+            return
+        z, y = self._constrain(z, y, d["sz"], d["sy"], mods)
+        if t == "vertex":
             i = d["i"]
             if 0 <= i < len(self._outline):
                 self._outline[i] = (z, y)
                 self.outlineChanged.emit(tuple(self._outline))
+        elif t == "hole":
+            r, i = d["ring"], d["i"]
+            if 0 <= r < len(self._holes_edit) and 0 <= i < len(self._holes_edit[r]):
+                self._holes_edit[r][i] = (z, y)
+                self._emit_holes()
         elif t == "bar":
             i = d["i"]
             if 0 <= i < len(self._bars):
@@ -405,6 +529,15 @@ class SectionCanvas(QGraphicsView):
         elif d["t"] == "bar" and 0 <= i < len(self._bars):
             del self._bars[i]
             self.barsChanged.emit(tuple(self._bars))
+        elif d["t"] == "hole":
+            r = d.get("ring")
+            if 0 <= r < len(self._holes_edit):
+                ring = self._holes_edit[r]
+                if 0 <= i < len(ring):
+                    del ring[i]
+                if len(ring) < 3:            # a void needs ≥ 3 vertices
+                    del self._holes_edit[r]
+                self._emit_holes()
 
     # -------------------------------------------------- grid
     def drawBackground(self, painter, rect) -> None:

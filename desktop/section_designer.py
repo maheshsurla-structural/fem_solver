@@ -53,6 +53,7 @@ from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  (registers 3-d proj.)
 from PySide6.QtCore import Qt, QByteArray, QTimer
 from PySide6.QtCore import QSize
+from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import QToolButton
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox,
@@ -210,6 +211,14 @@ class SectionDesignerWindow(QMainWindow):
         self._timer.setSingleShot(True)
         self._timer.setInterval(250)
         self._timer.timeout.connect(self._recompute_analysis)
+        # undo/redo: snapshot the active section's spec after edits settle
+        self._hist: list = []
+        self._hist_idx = -1
+        self._hist_restoring = False
+        self._hist_timer = QTimer(self)
+        self._hist_timer.setSingleShot(True)
+        self._hist_timer.setInterval(500)
+        self._hist_timer.timeout.connect(self._commit_history)
 
         self._build_menu()
         self._build_toolbar(code)
@@ -240,6 +249,48 @@ class SectionDesignerWindow(QMainWindow):
         self._sections[self._active]["spec"] = self._spec
         self._refresh_geometry()
         self._recompute_analysis()
+        self._reset_history()
+        QShortcut(QKeySequence.StandardKey.Undo, self, self._undo)
+        QShortcut(QKeySequence.StandardKey.Redo, self, self._redo)
+        QShortcut(QKeySequence("Ctrl+Y"), self, self._redo)
+
+    # --------------------------------------------------------- undo / redo
+    def _reset_history(self) -> None:
+        self._hist = [self._spec]
+        self._hist_idx = 0
+
+    def _commit_history(self) -> None:
+        if self._hist_restoring:
+            return
+        if self._hist and self._hist[self._hist_idx] == self._spec:
+            return
+        del self._hist[self._hist_idx + 1:]          # drop the redo branch
+        self._hist.append(self._spec)
+        if len(self._hist) > 100:
+            self._hist.pop(0)
+        self._hist_idx = len(self._hist) - 1
+
+    def _undo(self) -> None:
+        self._hist_timer.stop()
+        self._commit_history()                       # capture any pending edit
+        if self._hist_idx > 0:
+            self._hist_idx -= 1
+            self._restore_history()
+
+    def _redo(self) -> None:
+        if self._hist_idx < len(self._hist) - 1:
+            self._hist_idx += 1
+            self._restore_history()
+
+    def _restore_history(self) -> None:
+        self._hist_restoring = True
+        self._spec = self._hist[self._hist_idx]
+        self._sections[self._active]["spec"] = self._spec
+        self._load_form_from_spec()
+        self._refresh_geometry()
+        self._update_nav_item(self._active)
+        self._recompute_analysis()
+        self._hist_restoring = False
 
     # ------------------------------------------------------------- chrome
     def _build_menu(self) -> None:
@@ -783,6 +834,13 @@ class SectionDesignerWindow(QMainWindow):
         # draw/drag custom polygons, place rebars, over a mm grid + Y/Z axes.
         canvas = QGroupBox("Cross-section")
         cv = QVBoxLayout(canvas)
+        self.canvas = SectionCanvas()
+        self.canvas.dimChanged.connect(self._on_canvas_dim)
+        self.canvas.outlineChanged.connect(self._on_canvas_outline)
+        self.canvas.barsChanged.connect(self._on_canvas_bars)
+        self.canvas.holesChanged.connect(self._on_canvas_holes)
+        self.canvas.rebarAdded.connect(self._on_canvas_rebar_added)
+        self.canvas.cursorMoved.connect(self._on_canvas_cursor)
         tools = QHBoxLayout()
         self._canvas_mode_btns = {}
         for mode, label in (("select", "Select"), ("add_vertex", "＋ Point"),
@@ -794,6 +852,24 @@ class SectionDesignerWindow(QMainWindow):
             tools.addWidget(b)
             self._canvas_mode_btns[mode] = b
         self._canvas_mode_btns["select"].setChecked(True)
+        self._void_btn = QToolButton()
+        self._void_btn.setText("＋ Void")
+        self._void_btn.setToolTip("Draw a hole/void (click to add its corners)")
+        self._void_btn.clicked.connect(self._start_void)
+        tools.addWidget(self._void_btn)
+        tools.addSpacing(8)
+        self._snap_btn = QToolButton()
+        self._snap_btn.setText("Snap")
+        self._snap_btn.setCheckable(True)
+        self._snap_btn.setToolTip("Snap points to a 5 mm grid (Shift = ortho)")
+        self._snap_btn.toggled.connect(self.canvas.set_snap)
+        tools.addWidget(self._snap_btn)
+        self._dims_btn = QToolButton()
+        self._dims_btn.setText("Dims")
+        self._dims_btn.setCheckable(True)
+        self._dims_btn.setToolTip("Show overall width/height dimensions")
+        self._dims_btn.toggled.connect(self.canvas.set_dims)
+        tools.addWidget(self._dims_btn)
         fitb = QToolButton()
         fitb.setText("Fit")
         fitb.clicked.connect(lambda: self.canvas.fit())
@@ -809,12 +885,6 @@ class SectionDesignerWindow(QMainWindow):
         self.coord_lbl.setStyleSheet("color:#5a6b7b;")
         tools.addWidget(self.coord_lbl)
         cv.addLayout(tools)
-        self.canvas = SectionCanvas()
-        self.canvas.dimChanged.connect(self._on_canvas_dim)
-        self.canvas.outlineChanged.connect(self._on_canvas_outline)
-        self.canvas.barsChanged.connect(self._on_canvas_bars)
-        self.canvas.rebarAdded.connect(self._on_canvas_rebar_added)
-        self.canvas.cursorMoved.connect(self._on_canvas_cursor)
         cv.addWidget(self.canvas)
         v.addWidget(canvas, 3)
 
@@ -1073,6 +1143,8 @@ class SectionDesignerWindow(QMainWindow):
                 self._set_canvas_mode("select")
         if hasattr(self, "_edit_free_btn"):
             self._edit_free_btn.setEnabled(kind in _PARAMETRIC)
+        if hasattr(self, "_void_btn"):
+            self._void_btn.setEnabled(kind == "Custom")
 
     def _apply_cover_visibility(self) -> None:
         """Variable (per-face) cover is only meaningful for the rectangular
@@ -1798,6 +1870,8 @@ class SectionDesignerWindow(QMainWindow):
                     self.code_combo.currentText()
                 self._update_nav_item(self._active)
             self._timer.start()
+            if not self._hist_restoring:
+                self._hist_timer.start()      # snapshot once the edit settles
 
     # GUI axis convention: horizontal = Y, vertical = Z (the drawing +
     # coordinate inputs use these labels). The engine names the horizontal
@@ -1857,6 +1931,19 @@ class SectionDesignerWindow(QMainWindow):
         self._load_custom_tables()
         self._refresh_geometry()
         self._queue()
+
+    def _on_canvas_holes(self, holes) -> None:
+        self._spec = replace(self._spec,
+                             custom_holes=tuple(tuple(r) for r in holes))
+        self._refresh_geometry()
+        self._queue()
+
+    def _start_void(self) -> None:
+        if self._spec.kind != "Custom":
+            return
+        for b in self._canvas_mode_btns.values():
+            b.setChecked(False)
+        self.canvas.start_void()
 
     def _on_canvas_rebar_added(self, z_m: float, y_m: float) -> None:
         """A rebar dropped on a non-custom section becomes a Single group at
@@ -2367,6 +2454,7 @@ class SectionDesignerWindow(QMainWindow):
         self._load_form_from_spec()
         self._refresh_geometry()
         self._recompute_analysis()
+        self._reset_history()          # undo history is per active section
 
     def _reload_section_nav(self) -> None:
         self._loading = True
