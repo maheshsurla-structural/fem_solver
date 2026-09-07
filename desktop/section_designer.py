@@ -242,8 +242,24 @@ class SectionDesignerWindow(QMainWindow):
         self.code_combo.addItems(core.CODES)
         if code and code in core.CODES:
             self.code_combo.setCurrentText(code)
-        self.code_combo.currentTextChanged.connect(lambda *_: self._queue())
+        self.code_combo.currentTextChanged.connect(
+            lambda *_: self._on_code_changed())
         tb.addWidget(self.code_combo)
+        tb.addWidget(QLabel("  Rebar:  "))
+        # Reinforcement standard, decoupled from the design code — drives the
+        # Pattern notation (US #-sizes for ASTM, metric ⌀mm otherwise).
+        self.rebar_std_combo = QComboBox()
+        for label, data in (("Follow design code", "auto"),
+                            ("ASTM (US #)", "ACI"), ("EN (⌀ mm)", "EC2"),
+                            ("IS (⌀ mm)", "IS")):
+            self.rebar_std_combo.addItem(label, data)
+        # default to metric ⌀mm — the presets are metric, and the rebar standard
+        # is deliberately decoupled from the (US-default) design code.
+        self.rebar_std_combo.setCurrentIndex(
+            self.rebar_std_combo.findData("EC2"))
+        self.rebar_std_combo.currentIndexChanged.connect(
+            lambda *_: self._on_rebar_std_changed())
+        tb.addWidget(self.rebar_std_combo)
         tb.addSeparator()
         tb.addWidget(QLabel("  Units — force:"))
         self.force_combo = QComboBox()
@@ -988,6 +1004,25 @@ class SectionDesignerWindow(QMainWindow):
         self.composite_box.setVisible(kind == "Composite")
         # Composite draws material from its shapes; single-material groups hide.
         self.mat_box.setVisible(kind != "Composite")
+        self._apply_cover_visibility()
+
+    def _apply_cover_visibility(self) -> None:
+        """Variable (per-face) cover is only meaningful for the rectangular
+        family (Top/Bottom/Sides). Show the mode picker there; elsewhere fall
+        back to the single uniform-cover spin."""
+        if not hasattr(self, "cover_mode_combo"):
+            return
+        kind = self.kind_combo.currentText()
+        faced = kind in ("Rectangular", "Hollow box")
+        self.cover_mode_combo.setVisible(faced)
+        variable = faced and self.cover_mode_combo.currentText() == "Variable"
+        self.cover_face_row.setVisible(variable)
+        self.cover_spin.setVisible(not variable)
+
+    def _on_cover_mode_changed(self) -> None:
+        self._apply_cover_visibility()
+        if not self._loading:
+            self._on_value_changed()
 
     def _rebuild_dim_fields(self, kind: str) -> None:
         while self.dim_form.rowCount():
@@ -1022,8 +1057,14 @@ class SectionDesignerWindow(QMainWindow):
         w = QWidget()
         v = QVBoxLayout(w)
         v.setContentsMargins(2, 6, 2, 2)
+        # Cover: Uniform (all faces) or Variable (Top/Bottom/Sides), AdSec-style.
         cov = QHBoxLayout()
-        cov.addWidget(QLabel("Cover — all faces"))
+        cov.addWidget(QLabel("Cover"))
+        self.cover_mode_combo = QComboBox()
+        self.cover_mode_combo.addItems(["Uniform", "Variable"])
+        self.cover_mode_combo.currentIndexChanged.connect(
+            lambda *_: self._on_cover_mode_changed())
+        cov.addWidget(self.cover_mode_combo)
         self.cover_spin = self._dspin(5, 150, 5, " mm", 0)
         self.cover_spin.valueChanged.connect(lambda *_: self._on_value_changed())
         cov.addWidget(self.cover_spin)
@@ -1032,6 +1073,21 @@ class SectionDesignerWindow(QMainWindow):
         self.spiral_chk.stateChanged.connect(lambda *_: self._on_value_changed())
         cov.addWidget(self.spiral_chk)
         v.addLayout(cov)
+        # Per-face covers (shown only for the rectangular family + Variable mode)
+        self.cover_face_row = QWidget()
+        fcov = QHBoxLayout(self.cover_face_row)
+        fcov.setContentsMargins(0, 0, 0, 0)
+        self.cover_top_spin = self._dspin(5, 150, 5, "", 0)
+        self.cover_bot_spin = self._dspin(5, 150, 5, "", 0)
+        self.cover_side_spin = self._dspin(5, 150, 5, "", 0)
+        for lab, sp in (("Top", self.cover_top_spin), ("Bottom",
+                        self.cover_bot_spin), ("Sides", self.cover_side_spin)):
+            fcov.addWidget(QLabel(f"{lab} [mm]"))
+            sp.valueChanged.connect(lambda *_: self._on_value_changed())
+            fcov.addWidget(sp)
+        fcov.addStretch(1)
+        self.cover_face_row.setVisible(False)
+        v.addWidget(self.cover_face_row)
 
         self.groups_tbl = QTableWidget(0, 4)
         self.groups_tbl.setHorizontalHeaderLabels(
@@ -1049,8 +1105,11 @@ class SectionDesignerWindow(QMainWindow):
         add.clicked.connect(lambda: self._add_group_row())
         rem = QPushButton("Remove selected")
         rem.clicked.connect(self._remove_group_row)
+        indiv = QPushButton("＋ Individual bars…")
+        indiv.clicked.connect(self._add_individual_bars)
         row.addWidget(add)
         row.addWidget(rem)
+        row.addWidget(indiv)
         row.addStretch(1)
         v.addLayout(row)
 
@@ -1059,17 +1118,12 @@ class SectionDesignerWindow(QMainWindow):
         self.group_warn.setStyleSheet("color:#c0392b;")
         self.group_warn.setVisible(False)
         v.addWidget(self.group_warn)
-        cap = QLabel(
-            "<b>nBd</b> = n bars ⌀d mm · <b>Bd-s</b> = ⌀d mm at s mm spacing · "
-            "<b>n#N</b>/<b>#N-s</b> = US #N bars.  "
-            "<b>Link</b> = shear tie (Pattern gives hoop ⌀ &amp; spacing). "
-            "Top/Bottom/Sides/Perimeter take a blank Position; "
-            "<b>Single</b> = z,y · <b>Line</b> = z1,y1; z2,y2 · "
-            "<b>Arc</b> = cz,cy,r,a1,a2.")
-        cap.setWordWrap(True)
-        cap.setObjectName("hintLabel")
-        cap.setStyleSheet("color:#5a6b7b; font-size:11px;")
-        v.addWidget(cap)
+        self.groups_cap = QLabel("")
+        self.groups_cap.setWordWrap(True)
+        self.groups_cap.setObjectName("hintLabel")
+        self.groups_cap.setStyleSheet("color:#5a6b7b; font-size:11px;")
+        v.addWidget(self.groups_cap)
+        self._refresh_groups_caption()
         return w
 
     def _build_tendons_tab(self) -> QWidget:
@@ -1189,7 +1243,8 @@ class SectionDesignerWindow(QMainWindow):
         types = self._group_type_options()
         steels = self._steel_names()
         t, pat, pos, mat = group or (
-            types[0], "3B20", "", steels[0] if steels else "")
+            types[0], self._default_pattern(), "",
+            steels[0] if steels else "")
         tbl = self.groups_tbl
         was = getattr(self, "_loading_groups", False)
         self._loading_groups = True
@@ -1218,6 +1273,18 @@ class SectionDesignerWindow(QMainWindow):
         if r < 0:
             return
         self.groups_tbl.removeRow(r)
+        self._groups_changed()
+
+    def _add_individual_bars(self) -> None:
+        """Open the coordinate editor and append each entered bar as a Single
+        group at its z,y (the AdSec '+ Individual bars' path)."""
+        pat = "1#6" if self._rebar_notation() == "us" else "1B20"
+        dlg = IndividualBarsDialog(self, steels=self._steel_names(),
+                                   default_pattern=pat)
+        if dlg.exec() != QDialog.DialogCode.Accepted or not dlg.result_bars:
+            return
+        for pat, pos, mat in dlg.result_bars:
+            self._add_group_row(("Single", pat, pos, mat))
         self._groups_changed()
 
     def _on_group_item_changed(self, *_) -> None:
@@ -1251,16 +1318,18 @@ class SectionDesignerWindow(QMainWindow):
         self._on_value_changed()
 
     def _validate_groups(self, groups) -> None:
+        notn = self._rebar_notation()
         bad = []
         for g in groups:
             try:
-                core.parse_bar_desc(g[1])
+                core.parse_bar_desc(g[1], notation=notn)   # strict: off-code -> bad
             except ValueError:
                 bad.append(g[1])
         if bad:
             self.group_warn.setText(
-                "Not valid bar notation: "
-                + ", ".join(dict.fromkeys(bad)))
+                f"Not valid for the {self._rebar_fam()} rebar standard: "
+                + ", ".join(dict.fromkeys(bad))
+                + f".  Use e.g. {self._rebar_examples()}.")
         self.group_warn.setVisible(bool(bad))
 
     def _refresh_groups_table(self) -> None:
@@ -1413,6 +1482,11 @@ class SectionDesignerWindow(QMainWindow):
         self.strand_y_spin.setValue(s.strand_y * 1000.0)
         # cover + spiral (Rebars tab), confinement (M-φ sweep)
         self.cover_spin.setValue(s.cover * 1e3)
+        self.cover_mode_combo.setCurrentText(
+            "Variable" if s.cover_variable else "Uniform")
+        self.cover_top_spin.setValue(s.cover_top * 1e3)
+        self.cover_bot_spin.setValue(s.cover_bot * 1e3)
+        self.cover_side_spin.setValue(s.cover_side * 1e3)
         self.spiral_chk.setChecked(bool(s.spiral))
         self.eps_c0_spin.setValue(s.eps_c0)
         self.eps_cu_spin.setValue(s.eps_cu)
@@ -1435,6 +1509,14 @@ class SectionDesignerWindow(QMainWindow):
         # parametric bar counts are always zero (no section-level bars).
         ch.update(n_top=0, n_bot=0, n_side=0, n_perim=0)
         ch["cover"] = self.cover_spin.value() / 1e3
+        # variable per-face cover (rectangular family only)
+        faced = kind in ("Rectangular", "Hollow box")
+        variable = faced and self.cover_mode_combo.currentText() == "Variable"
+        ch["cover_variable"] = variable
+        if variable:
+            ch["cover_top"] = self.cover_top_spin.value() / 1e3
+            ch["cover_bot"] = self.cover_bot_spin.value() / 1e3
+            ch["cover_side"] = self.cover_side_spin.value() / 1e3
         ch["spiral"] = self.spiral_chk.isChecked()
         if kind == "PSC girder":
             ch["n_strand"] = self.nstr_spin.value()
@@ -1563,6 +1645,57 @@ class SectionDesignerWindow(QMainWindow):
         if rec is not None:
             rec["conc_mat"] = self.conc_mat_combo.currentText() or None
         self._on_value_changed()
+
+    # ------------------------------------------------ rebar standard / notation
+    def _rebar_fam(self) -> str:
+        """Material family of the reinforcement standard — an explicit
+        ACI/EC2/IS choice, or (auto) the current design code's family."""
+        rc = self.rebar_std_combo.currentData()
+        if rc in ("ACI", "EC2", "IS"):
+            return rc
+        return _CODE_FAMILY.get(self.code_combo.currentText(), "EC2")
+
+    def _rebar_notation(self) -> str:
+        """Bar-size notation for the current rebar standard: US ``#``-sizes for
+        ASTM/ACI, metric ⌀mm otherwise (passed to ``parse_bar_desc``)."""
+        return "us" if self._rebar_fam() == "ACI" else "metric"
+
+    def _rebar_examples(self) -> str:
+        return ("4#8, #5-150 (n#8 / #5-s)" if self._rebar_notation() == "us"
+                else "4B25, B16-200 (nBd / Bd-s)")
+
+    def _default_pattern(self) -> str:
+        return "4#8" if self._rebar_notation() == "us" else "3B20"
+
+    def _on_rebar_std_changed(self) -> None:
+        if self._loading:
+            return
+        self._refresh_groups_caption()
+        self._groups_changed()
+
+    def _on_code_changed(self) -> None:
+        # design code drives the "Follow design code" notation, so refresh the
+        # caption + re-validate the patterns when it changes too.
+        self._refresh_groups_caption()
+        if hasattr(self, "groups_tbl"):
+            self._validate_groups(self._spec.rebar_groups)
+        self._queue()
+
+    def _refresh_groups_caption(self) -> None:
+        if not hasattr(self, "groups_cap"):
+            return
+        us = self._rebar_notation() == "us"
+        head = ("<b>n#N</b> = n bars #N · <b>#N-s</b> = #N at s mm spacing"
+                if us else
+                "<b>nBd</b> = n bars ⌀d mm · <b>Bd-s</b> = ⌀d mm at s mm spacing")
+        tie = "#3-150" if us else "B10-150"
+        self.groups_cap.setText(
+            f"{head}.  <b>Link</b> = shear tie (Pattern gives hoop ⌀ &amp; "
+            f"spacing, e.g. <code>{tie}</code>; put tie legs n_y×n_z in its "
+            "Position, e.g. <code>2x2</code>, for Mander confinement). "
+            "Top/Bottom/Sides/Perimeter take a blank Position; "
+            "<b>Single</b> = z,y · <b>Line</b> = z1,y1; z2,y2 · "
+            "<b>Arc</b> = cz,cy,r,a1,a2.")
 
     # ----------------------------------------------------------- recompute
     def _on_units_changed(self) -> None:
@@ -2299,6 +2432,85 @@ class SectionDesignerWindow(QMainWindow):
             QMessageBox.critical(self, "Export failed", str(exc))
 
 
+class IndividualBarsDialog(QDialog):
+    """Enter individual reinforcing bars at explicit z,y [mm] coordinates. Each
+    row becomes a ``Single`` group (same Pattern + Material) on accept, exposed
+    via ``result_bars`` = [(pattern, "z,y", material), ...]."""
+
+    def __init__(self, parent=None, *, steels=None, default_pattern="1B20"):
+        super().__init__(parent)
+        self.result_bars = []
+        self.setWindowTitle("Add individual bars")
+        v = QVBoxLayout(self)
+
+        top = QFormLayout()
+        self.pat_edit = QLineEdit(default_pattern)
+        self.pat_edit.setToolTip("One bar, e.g. 1B20 (⌀20 mm) or 1#6 (US #6)")
+        top.addRow("Pattern (per bar)", self.pat_edit)
+        self.mat_combo = QComboBox()
+        self.mat_combo.addItems(list(steels or []) or ["(section steel)"])
+        top.addRow("Material", self.mat_combo)
+        v.addLayout(top)
+
+        v.addWidget(QLabel("Bar coordinates (z, y) [mm]"))
+        self.tbl = QTableWidget(0, 2)
+        self.tbl.setHorizontalHeaderLabels(["z", "y"])
+        self.tbl.horizontalHeader().setStretchLastSection(True)
+        self.tbl.verticalHeader().setVisible(False)
+        self.tbl.setMinimumHeight(160)
+        v.addWidget(self.tbl)
+        self._add_row(0.0, 0.0)
+
+        btns = QHBoxLayout()
+        addb = QPushButton("＋ Row")
+        addb.clicked.connect(lambda: self._add_row(0.0, 0.0))
+        remb = QPushButton("Remove selected")
+        remb.clicked.connect(self._remove_row)
+        btns.addWidget(addb)
+        btns.addWidget(remb)
+        btns.addStretch(1)
+        v.addLayout(btns)
+
+        bb = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok
+                              | QDialogButtonBox.StandardButton.Cancel)
+        bb.accepted.connect(self._accept)
+        bb.rejected.connect(self.reject)
+        v.addWidget(bb)
+
+    def _add_row(self, z, y) -> None:
+        r = self.tbl.rowCount()
+        self.tbl.insertRow(r)
+        self.tbl.setItem(r, 0, QTableWidgetItem(f"{z:g}"))
+        self.tbl.setItem(r, 1, QTableWidgetItem(f"{y:g}"))
+
+    def _remove_row(self) -> None:
+        r = self.tbl.currentRow()
+        if r >= 0:
+            self.tbl.removeRow(r)
+
+    def _accept(self) -> None:
+        pat = self.pat_edit.text().strip() or "1B20"
+        try:
+            core.parse_bar_desc(pat)
+        except ValueError:
+            QMessageBox.warning(self, "Invalid pattern",
+                                f"'{pat}' is not a valid bar pattern.")
+            return
+        name = self.mat_combo.currentText()
+        mat = "" if name.startswith("(") else name
+        bars = []
+        for r in range(self.tbl.rowCount()):
+            zi, yi = self.tbl.item(r, 0), self.tbl.item(r, 1)
+            try:
+                z = float((zi.text() if zi else "").strip())
+                y = float((yi.text() if yi else "").strip())
+            except ValueError:
+                continue
+            bars.append((pat, f"{z:g},{y:g}", mat))
+        self.result_bars = bars
+        self.accept()
+
+
 class ArrangementDialog(QDialog):
     """Add a rebar or tendon *arrangement* (layout generator). Returns the
     engine tuple via ``result_arr`` — ``(code, dia, mat, params)`` for rebar or
@@ -2561,14 +2773,6 @@ def _steel_default(fy_mpa=500.0) -> dict:
 # Section-Designer design code -> CODE_GRADES family (standard grade catalog).
 _CODE_FAMILY = {"AASHTO LRFD 2024": "ACI", "Eurocode 2": "EC2",
                 "IS 456:2000": "IS"}
-
-
-def _line_arr(n, z1, y1, z2, y2, dia, mat=""):
-    return ("line", dia, mat, (n, z1, y1, z2, y2))
-
-
-def _perim_arr(n, cover, dia, mat=""):
-    return ("perim", dia, mat, (n, cover))
 
 
 def _rc_spec(**kw) -> core.Spec:
