@@ -74,6 +74,7 @@ if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
 import section_gui_core as core
+import section_import
 import style
 from section_canvas import SectionCanvas
 from widgets import CollapsibleGroup
@@ -298,6 +299,8 @@ class SectionDesignerWindow(QMainWindow):
         fm.addAction("&New project", self._new_project)
         fm.addAction("&Open project…", self._open_project)
         fm.addAction("&Save project…", self._save_project)
+        fm.addSeparator()
+        fm.addAction("&Import section (DXF/CSV)…", self._import_section)
         if self._fem is not None:
             fm.addSeparator()
             fm.addAction("&Apply active section to FEM model",
@@ -2559,6 +2562,61 @@ class SectionDesignerWindow(QMainWindow):
         self._active = name
         self._reload_section_nav()
         self._load_active()
+
+    def _import_section(self) -> None:
+        """Import a Custom section outline (+ holes + rebars) from a DXF or CSV
+        file, as a new section."""
+        from PySide6.QtWidgets import QInputDialog
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Import section", "",
+            "CAD / CSV (*.dxf *.csv);;DXF (*.dxf);;CSV (*.csv)")
+        if not path:
+            return
+        try:
+            if path.lower().endswith(".dxf"):
+                data = section_import.parse_dxf(path)
+            else:
+                with open(path, encoding="utf-8", errors="replace") as f:
+                    data = section_import.parse_csv(f.read())
+        except Exception as exc:                       # noqa: BLE001
+            QMessageBox.warning(self, "Import failed", f"Couldn't read the "
+                                f"file:\n{exc}")
+            return
+        outline = data.get("outline") or []
+        if len(outline) < 3:
+            QMessageBox.warning(
+                self, "Import failed",
+                "No closed outline (≥ 3 points) was found in the file.\n\n"
+                "DXF: draw the section as a closed LWPOLYLINE/POLYLINE "
+                "(circles become rebars). CSV: rows of 'z,y' (mm), or tag rows "
+                "as outline / hole / bar.")
+            return
+        unit, ok = QInputDialog.getItem(
+            self, "Import units", "Coordinates in the file are in:",
+            ["mm", "cm", "m"], 0, False)
+        if not ok:
+            return
+        s = {"mm": 1e-3, "cm": 1e-2, "m": 1.0}[unit]
+        spec = _rc_spec(
+            kind="Custom",
+            custom_outline=tuple((z * s, y * s) for z, y in outline),
+            custom_holes=tuple(tuple((z * s, y * s) for z, y in ring)
+                               for ring in data.get("holes", [])),
+            custom_bars=tuple((z * s, y * s, d * s)
+                              for z, y, d in data.get("bars", [])))
+        name = self._unique_name(
+            os.path.splitext(os.path.basename(path))[0] or "Imported")
+        self._sections[name] = {"spec": spec,
+                                "code": self.code_combo.currentText(),
+                                "conc_mat": None, "steel_mat": None}
+        self._active = name
+        self._reload_section_nav()
+        self._load_active()
+        QMessageBox.information(
+            self, "Imported",
+            f"Imported '{name}': {len(outline)} vertices, "
+            f"{len(data.get('holes', []))} void(s), "
+            f"{len(data.get('bars', []))} bar(s).")
 
     def _dup_section(self) -> None:
         name = self._unique_name(f"{self._active} copy")
