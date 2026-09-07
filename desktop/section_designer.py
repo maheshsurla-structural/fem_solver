@@ -1135,15 +1135,12 @@ class SectionDesignerWindow(QMainWindow):
         v.addWidget(self.groups_tbl)
 
         row = QHBoxLayout()
-        add = QPushButton("＋ Add group")
-        add.clicked.connect(lambda: self._add_group_row())
+        add = QPushButton("＋ Add group…")
+        add.clicked.connect(self._add_group_via_dialog)
         rem = QPushButton("Remove selected")
         rem.clicked.connect(self._remove_group_row)
-        indiv = QPushButton("＋ Individual bars…")
-        indiv.clicked.connect(self._add_individual_bars)
         row.addWidget(add)
         row.addWidget(rem)
-        row.addWidget(indiv)
         row.addStretch(1)
         v.addLayout(row)
 
@@ -1320,16 +1317,18 @@ class SectionDesignerWindow(QMainWindow):
         self.groups_tbl.removeRow(r)
         self._groups_changed()
 
-    def _add_individual_bars(self) -> None:
-        """Open the coordinate editor and append each entered bar as a Single
-        group at its z,y (the AdSec '+ Individual bars' path)."""
-        pat = "1#6" if self._rebar_notation() == "us" else "1B20"
-        dlg = IndividualBarsDialog(self, steels=self._steel_names(),
-                                   default_pattern=pat)
-        if dlg.exec() != QDialog.DialogCode.Accepted or not dlg.result_bars:
+    def _add_group_via_dialog(self) -> None:
+        """Open the guided Add-group dialog: the user fills structured inputs
+        (bar size, count or spacing, position) and the dialog writes the AdSec
+        pattern. Single accepts many coordinates (folding in individual bars).
+        Inline cell editing stays available for those who know the notation."""
+        dlg = AddGroupDialog(self, types=self._group_type_options(),
+                             steels=self._steel_names(),
+                             notation=self._rebar_notation())
+        if dlg.exec() != QDialog.DialogCode.Accepted or not dlg.result_groups:
             return
-        for pat, pos, mat in dlg.result_bars:
-            self._add_group_row(("Single", pat, pos, mat))
+        for g in dlg.result_groups:
+            self._add_group_row(g)
         self._groups_changed()
 
     # -------------------------------------------------- tendon groups table
@@ -2454,82 +2453,248 @@ class SectionDesignerWindow(QMainWindow):
             QMessageBox.critical(self, "Export failed", str(exc))
 
 
-class IndividualBarsDialog(QDialog):
-    """Enter individual reinforcing bars at explicit z,y [mm] coordinates. Each
-    row becomes a ``Single`` group (same Pattern + Material) on accept, exposed
-    via ``result_bars`` = [(pattern, "z,y", material), ...]."""
+class AddGroupDialog(QDialog):
+    """Guided add-a-reinforcement-group dialog: the user picks Type, bar size,
+    quantity (by count or spacing) and position from structured fields, and the
+    dialog builds the AdSec Pattern string — so nobody needs to know the ``nBd``
+    / ``Bd-s`` notation. ``Single`` shows a coordinate table (many bars at
+    once), folding in the old 'Individual bars' path. Result is a list of
+    ``(type, pattern, position, material)`` in ``result_groups``.
 
-    def __init__(self, parent=None, *, steels=None, default_pattern="1B20"):
+    Metric sizes are ⌀mm (pattern ``B25``); US sizes are #-numbers (``#8``)."""
+
+    _MM_SIZES = ["8", "10", "12", "16", "20", "25", "32", "40"]
+    _US_SIZES = ["3", "4", "5", "6", "7", "8", "9", "10", "11", "14", "18"]
+
+    def __init__(self, parent=None, *, types=None, steels=None,
+                 notation="metric"):
         super().__init__(parent)
-        self.result_bars = []
-        self.setWindowTitle("Add individual bars")
-        v = QVBoxLayout(self)
+        self.result_groups = []
+        self._notation = notation
+        self.setWindowTitle("Add reinforcement group")
+        self.setMinimumWidth(380)
+        root = QVBoxLayout(self)
 
-        top = QFormLayout()
-        self.pat_edit = QLineEdit(default_pattern)
-        self.pat_edit.setToolTip("One bar, e.g. 1B20 (⌀20 mm) or 1#6 (US #6)")
-        top.addRow("Pattern (per bar)", self.pat_edit)
+        form = QFormLayout()
+        self.type_combo = QComboBox()
+        self.type_combo.addItems(list(types or core.REBAR_GROUP_TYPES_RECT))
+        self.type_combo.currentTextChanged.connect(lambda *_: self._rebuild())
+        form.addRow("Type", self.type_combo)
         self.mat_combo = QComboBox()
         self.mat_combo.addItems(list(steels or []) or ["(section steel)"])
-        top.addRow("Material", self.mat_combo)
-        v.addLayout(top)
+        form.addRow("Material", self.mat_combo)
+        self.size_combo = QComboBox()
+        self.size_combo.setEditable(True)
+        if notation == "us":
+            self.size_combo.addItems([f"#{s}" for s in self._US_SIZES])
+            self.size_combo.setCurrentText("#8")
+            form.addRow("Bar size (US #)", self.size_combo)
+        else:
+            self.size_combo.addItems(self._MM_SIZES)
+            self.size_combo.setCurrentText("20")
+            form.addRow("Bar ⌀ [mm]", self.size_combo)
+        root.addLayout(form)
 
-        v.addWidget(QLabel("Bar coordinates (z, y) [mm]"))
-        self.tbl = QTableWidget(0, 2)
-        self.tbl.setHorizontalHeaderLabels(["z", "y"])
-        self.tbl.horizontalHeader().setStretchLastSection(True)
-        self.tbl.verticalHeader().setVisible(False)
-        self.tbl.setMinimumHeight(160)
-        v.addWidget(self.tbl)
-        self._add_row(0.0, 0.0)
+        self._dyn = QWidget()
+        self._dyn_form = QFormLayout(self._dyn)
+        self._dyn_form.setContentsMargins(0, 0, 0, 0)
+        root.addWidget(self._dyn)
 
-        btns = QHBoxLayout()
-        addb = QPushButton("＋ Row")
-        addb.clicked.connect(lambda: self._add_row(0.0, 0.0))
-        remb = QPushButton("Remove selected")
-        remb.clicked.connect(self._remove_row)
-        btns.addWidget(addb)
-        btns.addWidget(remb)
-        btns.addStretch(1)
-        v.addLayout(btns)
+        self.preview = QLabel("")
+        self.preview.setStyleSheet("color:#5a6b7b; font-size:11px;")
+        root.addWidget(self.preview)
 
         bb = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok
                               | QDialogButtonBox.StandardButton.Cancel)
         bb.accepted.connect(self._accept)
         bb.rejected.connect(self.reject)
-        v.addWidget(bb)
+        self.size_combo.currentTextChanged.connect(lambda *_: self._update_preview())
+        root.addWidget(bb)
+        self._w = {}
+        self._rebuild()
 
-    def _add_row(self, z, y) -> None:
-        r = self.tbl.rowCount()
-        self.tbl.insertRow(r)
-        self.tbl.setItem(r, 0, QTableWidgetItem(f"{z:g}"))
-        self.tbl.setItem(r, 1, QTableWidgetItem(f"{y:g}"))
+    # ---- little spin factories ----
+    @staticmethod
+    def _ispin(lo, hi, val):
+        s = QSpinBox()
+        s.setRange(lo, hi)
+        s.setValue(val)
+        return s
 
-    def _remove_row(self) -> None:
-        r = self.tbl.currentRow()
+    @staticmethod
+    def _dspin(lo, hi, val, suffix=" mm"):
+        s = QDoubleSpinBox()
+        s.setRange(lo, hi)
+        s.setDecimals(0)
+        s.setSingleStep(5)
+        s.setSuffix(suffix)
+        s.setValue(val)
+        return s
+
+    def _connect_preview(self, *widgets):
+        for wdg in widgets:
+            if isinstance(wdg, (QSpinBox, QDoubleSpinBox)):
+                wdg.valueChanged.connect(lambda *_: self._update_preview())
+            elif isinstance(wdg, QComboBox):
+                wdg.currentTextChanged.connect(lambda *_: self._update_preview())
+
+    def _rebuild(self) -> None:
+        while self._dyn_form.rowCount():
+            self._dyn_form.removeRow(0)
+        self._w = {}
+        typ = self.type_combo.currentText()
+        if typ in ("Top", "Bottom", "Sides", "Perimeter"):
+            mode = QComboBox()
+            mode.addItems(["By count", "By spacing"])
+            mode.currentTextChanged.connect(lambda *_: self._on_mode())
+            self._w["mode"] = mode
+            self._dyn_form.addRow("Quantity", mode)
+            self._w["qty_label"] = QLabel("Number of bars")
+            self._w["qty"] = self._ispin(1, 50, 3)
+            self._dyn_form.addRow(self._w["qty_label"], self._w["qty"])
+            self._connect_preview(mode, self._w["qty"])
+        elif typ == "Line":
+            self._w["n"] = self._ispin(1, 50, 4)
+            self._dyn_form.addRow("Number of bars", self._w["n"])
+            for k, lab, val in (("z1", "z₁ [mm]", -150),
+                                ("y1", "y₁ [mm]", -250),
+                                ("z2", "z₂ [mm]", 150),
+                                ("y2", "y₂ [mm]", -250)):
+                self._w[k] = self._dspin(-5000, 5000, val)
+                self._dyn_form.addRow(lab, self._w[k])
+            self._connect_preview(self._w["n"])
+        elif typ == "Arc":
+            self._w["n"] = self._ispin(1, 50, 6)
+            self._dyn_form.addRow("Number of bars", self._w["n"])
+            for k, lab, val, sfx in (("cz", "centre z [mm]", 0, " mm"),
+                                     ("cy", "centre y [mm]", 0, " mm"),
+                                     ("r", "radius [mm]", 200, " mm"),
+                                     ("a1", "start angle", 0, "°"),
+                                     ("a2", "end angle", 180, "°")):
+                self._w[k] = self._dspin(-5000, 5000, val, sfx)
+                self._dyn_form.addRow(lab, self._w[k])
+            self._connect_preview(self._w["n"])
+        elif typ == "Single":
+            self._w["tbl"] = tbl = QTableWidget(0, 2)
+            tbl.setHorizontalHeaderLabels(["z [mm]", "y [mm]"])
+            tbl.horizontalHeader().setStretchLastSection(True)
+            tbl.verticalHeader().setVisible(False)
+            tbl.setMinimumHeight(140)
+            self._dyn_form.addRow(tbl)
+            self._single_add_row(0.0, 0.0)
+            btns = QHBoxLayout()
+            addb = QPushButton("＋ Bar")
+            addb.clicked.connect(lambda: self._single_add_row(0.0, 0.0))
+            remb = QPushButton("Remove")
+            remb.clicked.connect(self._single_remove_row)
+            btns.addWidget(addb)
+            btns.addWidget(remb)
+            btns.addStretch(1)
+            holder = QWidget()
+            holder.setLayout(btns)
+            self._dyn_form.addRow(holder)
+        elif typ == "Link":
+            self._w["s"] = self._ispin(25, 600, 150)
+            self._dyn_form.addRow("Tie spacing [mm]", self._w["s"])
+            self._w["ny"] = self._ispin(2, 12, 2)
+            self._dyn_form.addRow("Legs across (n_y)", self._w["ny"])
+            self._w["nz"] = self._ispin(2, 12, 2)
+            self._dyn_form.addRow("Legs along (n_z)", self._w["nz"])
+            self._connect_preview(self._w["s"], self._w["ny"], self._w["nz"])
+        self._update_preview()
+
+    def _on_mode(self) -> None:
+        spacing = self._w["mode"].currentText() == "By spacing"
+        self._w["qty_label"].setText("Spacing [mm]" if spacing
+                                     else "Number of bars")
+        self._w["qty"].setRange(*((25, 600) if spacing else (1, 50)))
+        self._w["qty"].setValue(200 if spacing else 3)
+        self._update_preview()
+
+    def _single_add_row(self, z, y) -> None:
+        tbl = self._w["tbl"]
+        r = tbl.rowCount()
+        tbl.insertRow(r)
+        tbl.setItem(r, 0, QTableWidgetItem(f"{z:g}"))
+        tbl.setItem(r, 1, QTableWidgetItem(f"{y:g}"))
+
+    def _single_remove_row(self) -> None:
+        tbl = self._w["tbl"]
+        r = tbl.currentRow()
         if r >= 0:
-            self.tbl.removeRow(r)
+            tbl.removeRow(r)
+
+    def _size_token(self) -> str:
+        txt = self.size_combo.currentText().strip()
+        if self._notation == "us":
+            return "#" + txt.lstrip("#").strip()
+        return "B" + txt.lstrip("Bb").strip()
+
+    def _pattern(self, typ) -> str:
+        tok = self._size_token()
+        if typ in ("Top", "Bottom", "Sides", "Perimeter"):
+            if self._w["mode"].currentText() == "By spacing":
+                return f"{tok}-{self._w['qty'].value()}"
+            return f"{self._w['qty'].value()}{tok}"
+        if typ in ("Line", "Arc"):
+            return f"{self._w['n'].value()}{tok}"
+        if typ == "Link":
+            return f"{tok}-{self._w['s'].value()}"
+        return f"1{tok}"                       # Single
+
+    def _update_preview(self) -> None:
+        if not self._w:
+            self.preview.setText("")
+            return
+        try:
+            typ = self.type_combo.currentText()
+            self.preview.setText(f"Pattern → <b>{self._pattern(typ)}</b>")
+        except Exception:                              # noqa: BLE001
+            self.preview.setText("")
 
     def _accept(self) -> None:
-        pat = self.pat_edit.text().strip() or "1B20"
-        try:
-            core.parse_bar_desc(pat)
-        except ValueError:
-            QMessageBox.warning(self, "Invalid pattern",
-                                f"'{pat}' is not a valid bar pattern.")
-            return
+        typ = self.type_combo.currentText()
         name = self.mat_combo.currentText()
         mat = "" if name.startswith("(") else name
-        bars = []
-        for r in range(self.tbl.rowCount()):
-            zi, yi = self.tbl.item(r, 0), self.tbl.item(r, 1)
-            try:
-                z = float((zi.text() if zi else "").strip())
-                y = float((yi.text() if yi else "").strip())
-            except ValueError:
-                continue
-            bars.append((pat, f"{z:g},{y:g}", mat))
-        self.result_bars = bars
+        pat = self._pattern(typ)
+        groups = []
+        if typ in ("Top", "Bottom", "Sides", "Perimeter"):
+            groups.append((typ, pat, "", mat))
+        elif typ == "Line":
+            pos = (f"{self._w['z1'].value():g},{self._w['y1'].value():g}; "
+                   f"{self._w['z2'].value():g},{self._w['y2'].value():g}")
+            groups.append((typ, pat, pos, mat))
+        elif typ == "Arc":
+            pos = (f"{self._w['cz'].value():g},{self._w['cy'].value():g},"
+                   f"{self._w['r'].value():g},{self._w['a1'].value():g},"
+                   f"{self._w['a2'].value():g}")
+            groups.append((typ, pat, pos, mat))
+        elif typ == "Link":
+            pos = f"{self._w['ny'].value()}x{self._w['nz'].value()}"
+            groups.append((typ, pat, pos, mat))
+        else:                                          # Single — many points
+            tbl = self._w["tbl"]
+            for r in range(tbl.rowCount()):
+                zi, yi = tbl.item(r, 0), tbl.item(r, 1)
+                try:
+                    z = float((zi.text() if zi else "").strip())
+                    y = float((yi.text() if yi else "").strip())
+                except ValueError:
+                    continue
+                groups.append(("Single", pat, f"{z:g},{y:g}", mat))
+            if not groups:
+                QMessageBox.warning(self, "No bars",
+                                    "Add at least one bar coordinate.")
+                return
+        try:
+            core.parse_bar_desc(pat, notation=self._notation)
+        except ValueError:
+            QMessageBox.warning(
+                self, "Invalid size",
+                f"Could not build a valid bar pattern ('{pat}') from these "
+                "inputs for this rebar standard.")
+            return
+        self.result_groups = groups
         self.accept()
 
 
