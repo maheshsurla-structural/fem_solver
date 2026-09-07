@@ -27,7 +27,7 @@ from PySide6.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import (QGraphicsEllipseItem, QGraphicsItem,
                                QGraphicsLineItem, QGraphicsPathItem,
                                QGraphicsScene, QGraphicsSimpleTextItem,
-                               QGraphicsView)
+                               QGraphicsView, QToolTip)
 
 # primary (width, height) dimension key per parametric kind — the bounding-box
 # width equals the width dim and the bbox height the height dim, so a right/top
@@ -60,6 +60,7 @@ class SectionCanvas(QGraphicsView):
     holesChanged = Signal(tuple)         # (((z_m, y_m), ...), ...)  void rings
     rebarAdded = Signal(float, float)    # z_m, y_m  (non-custom kinds)
     cursorMoved = Signal(object)         # (z_mm, y_mm) or None
+    selectionChanged = Signal(object)    # {t,Y_mm,Z_mm,dia_mm} or None
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -89,8 +90,12 @@ class SectionCanvas(QGraphicsView):
         self._snap = 0.005               # 5 mm snap step
         self._dims_on = False            # overall W×H dimension annotations
         self._drag = None                # active drag descriptor
+        self._drag_tip = ""              # tooltip text during a drag
         self._pan = None                 # last pan point (device px)
         self._fitted_kind = None         # refit when the shape kind changes
+        self._selected = None            # selected point handle (vertex/bar/hole)
+        self._guides: list = []          # ('v'|'h', coord) alignment guides
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
     # -------------------------------------------------- public API
     def set_mode(self, mode: str) -> None:
@@ -114,9 +119,10 @@ class SectionCanvas(QGraphicsView):
         self._new_void = True
         self.set_mode("add_hole")
 
-    def _constrain(self, z, y, sz=None, sy=None, mods=None):
-        """Apply Shift-ortho (lock to the axis of larger travel from an anchor)
-        then snap-to-grid, when each is active."""
+    def _constrain(self, z, y, sz=None, sy=None, mods=None, align=False):
+        """Apply Shift-ortho (lock to the axis of larger travel from an anchor),
+        snap-to-grid, and (when ``align`` and snap is on) snap to an existing
+        vertex's Y/Z or the axes, recording guide lines to draw."""
         if (mods is not None and sz is not None
                 and (mods & Qt.KeyboardModifier.ShiftModifier)):
             if abs(z - sz) >= abs(y - sy):
@@ -126,7 +132,89 @@ class SectionCanvas(QGraphicsView):
         if self._snap_on and self._snap > 0:
             z = round(z / self._snap) * self._snap
             y = round(y / self._snap) * self._snap
+        if align and self._snap_on:
+            z, y = self._align(z, y)
         return z, y
+
+    def _align(self, z, y):
+        """Snap Y/Z to a nearby existing vertex coordinate or an axis (0),
+        within a few pixels, and remember the guide lines for feedback."""
+        self._guides = []
+        m11 = self.transform().m11() or 1.0
+        tol = 7.0 / m11                          # ~7 px in model units
+        cands_z = [0.0]
+        cands_y = [0.0]
+        for ring in (self._outline, *self._holes_edit):
+            for (vz, vy) in ring:
+                cands_z.append(vz)
+                cands_y.append(vy)
+        bz = min(cands_z, key=lambda c: abs(c - z))
+        if abs(bz - z) <= tol:
+            z = bz
+            self._guides.append(("v", z))
+        by = min(cands_y, key=lambda c: abs(c - y))
+        if abs(by - y) <= tol:
+            y = by
+            self._guides.append(("h", y))
+        return z, y
+
+    def _is_selected(self, data) -> bool:
+        s = self._selected
+        if not s or s.get("t") != data.get("t"):
+            return False
+        return (s.get("i") == data.get("i")
+                and s.get("ring") == data.get("ring"))
+
+    def _emit_selection(self) -> None:
+        s = self._selected
+        if not s:
+            self.selectionChanged.emit(None)
+            return
+        pt = self._selected_point()
+        if pt is None:
+            self.selectionChanged.emit(None)
+            return
+        z, y = pt[0], pt[1]
+        dia = pt[2] if (s["t"] == "bar" and len(pt) > 2) else None
+        self.selectionChanged.emit({
+            "t": s["t"], "Y_mm": z * 1e3, "Z_mm": y * 1e3,
+            "dia_mm": (dia * 1e3 if dia is not None else None)})
+
+    def _selected_point(self):
+        s = self._selected
+        if not s:
+            return None
+        t, i = s["t"], s.get("i", -1)
+        if t == "vertex" and 0 <= i < len(self._outline):
+            return self._outline[i]
+        if t == "bar" and 0 <= i < len(self._bars):
+            return self._bars[i]
+        if t == "hole":
+            r = s.get("ring", -1)
+            if 0 <= r < len(self._holes_edit) and 0 <= i < len(self._holes_edit[r]):
+                return self._holes_edit[r][i]
+        return None
+
+    def set_selected_coords(self, y_horiz_mm, z_vert_mm, dia_mm=None) -> None:
+        """Set the selected point from the editor fields (Y = horizontal, Z =
+        vertical). Emits the matching change signal."""
+        s = self._selected
+        if not s:
+            return
+        z, y = y_horiz_mm / 1e3, z_vert_mm / 1e3
+        t, i = s["t"], s.get("i", -1)
+        if t == "vertex" and 0 <= i < len(self._outline):
+            self._outline[i] = (z, y)
+            self.outlineChanged.emit(tuple(self._outline))
+        elif t == "bar" and 0 <= i < len(self._bars):
+            d = (dia_mm / 1e3) if dia_mm else self._bars[i][2]
+            self._bars[i] = (z, y, d)
+            self.barsChanged.emit(tuple(self._bars))
+        elif t == "hole":
+            r = s.get("ring", -1)
+            if 0 <= r < len(self._holes_edit) and 0 <= i < len(self._holes_edit[r]):
+                self._holes_edit[r][i] = (z, y)
+                self._emit_holes()
 
     def render_case(self, case, spec) -> None:
         """Rebuild the scene from the current case + spec (never emits)."""
@@ -164,6 +252,9 @@ class SectionCanvas(QGraphicsView):
         self._render_bars = [(float(b.z), float(b.y),
                               max(math.sqrt(float(b.area) / math.pi), 0.004))
                              for b in bars]
+        if self._selected and self._selected_point() is None:
+            self._selected = None                # selection no longer exists
+            self.selectionChanged.emit(None)
         self._rebuild_scene()
         if self._fitted_kind != spec.kind:
             self.fit()
@@ -204,12 +295,14 @@ class SectionCanvas(QGraphicsView):
         path.closeSubpath()
 
     def _handle(self, z, y, color, data, r=5):
-        h = QGraphicsEllipseItem(-r, -r, 2 * r, 2 * r)
+        sel = self._is_selected(data)
+        rr = r + 3 if sel else r
+        h = QGraphicsEllipseItem(-rr, -rr, 2 * rr, 2 * rr)
         h.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations)
         h.setPos(z, -y)
         h.setBrush(QBrush(QColor(color)))
-        h.setPen(QPen(QColor("#20303c"), 1.2))
-        h.setZValue(20)
+        h.setPen(QPen(QColor("#0b6" if sel else "#20303c"), 2.4 if sel else 1.2))
+        h.setZValue(22 if sel else 20)
         h.setData(0, data)
         self._scene.addItem(h)
 
@@ -259,6 +352,20 @@ class SectionCanvas(QGraphicsView):
 
         if self._dims_on:
             self._draw_dimensions()
+
+        # alignment guides (drawn while a snap is active during a drag)
+        for orient, coord in self._guides:
+            if orient == "v":                    # constant Y (model z)
+                gl = QGraphicsLineItem(coord, -(self._mb[3] + 0.1),
+                                       coord, -(self._mb[1] - 0.1))
+            else:                                # constant Z (model y)
+                gl = QGraphicsLineItem(self._mb[0] - 0.1, -coord,
+                                       self._mb[2] + 0.1, -coord)
+            gp = QPen(QColor("#f0a"), 0, Qt.PenStyle.DashLine)
+            gp.setCosmetic(True)
+            gl.setPen(gp)
+            gl.setZValue(4)
+            self._scene.addItem(gl)
 
         # interactive handles
         if self._kind == "Custom":
@@ -408,8 +515,14 @@ class SectionCanvas(QGraphicsView):
         if d:
             z, y = self._model_at(vp)
             self._drag = dict(d, sz=z, sy=y)
+            # selectable points also become the selection
+            if d.get("t") in ("vertex", "bar", "hole"):
+                self._select(d)
+            else:
+                self._select(None)
             return
         z, y = self._model_at(vp)
+        self._select(None)                    # click empty space clears
         if self._mode == "add_vertex" and self._kind == "Custom":
             anchor = self._outline[-1] if self._outline else (None, None)
             z, y = self._constrain(z, y, anchor[0], anchor[1], e.modifiers())
@@ -446,6 +559,8 @@ class SectionCanvas(QGraphicsView):
         self.cursorMoved.emit((z * 1e3, y * 1e3))
         if self._drag is not None:
             self._apply_drag(z, y, e.modifiers())
+            if self._drag_tip:
+                QToolTip.showText(self.mapToGlobal(vp), self._drag_tip, self)
             return
         if self._pan is not None:
             delta = vp - self._pan
@@ -460,11 +575,50 @@ class SectionCanvas(QGraphicsView):
     def mouseReleaseEvent(self, e):
         self._drag = None
         self._pan = None
+        self._drag_tip = ""
+        if self._guides:                          # clear alignment guides
+            self._guides = []
+            self._rebuild_scene()
         super().mouseReleaseEvent(e)
 
     def leaveEvent(self, e):
         self.cursorMoved.emit(None)
         super().leaveEvent(e)
+
+    def _select(self, data) -> None:
+        self._selected = ({"t": data["t"], "i": data.get("i"),
+                           "ring": data.get("ring")} if data else None)
+        self._emit_selection()
+        self._rebuild_scene()
+
+    def keyPressEvent(self, e):
+        """Arrow keys nudge the selected point by the snap step (else 1 mm);
+        Delete/Backspace removes it."""
+        s = self._selected
+        if not s:
+            return super().keyPressEvent(e)
+        k = e.key()
+        if k in (Qt.Key.Key_Delete, Qt.Key.Key_Backspace):
+            self._delete(dict(s))
+            self._select(None)
+            return
+        step = self._snap if self._snap_on else 0.001
+        dz = dy = 0.0
+        if k == Qt.Key.Key_Left:
+            dz = -step
+        elif k == Qt.Key.Key_Right:
+            dz = step
+        elif k == Qt.Key.Key_Up:
+            dy = step
+        elif k == Qt.Key.Key_Down:
+            dy = -step
+        else:
+            return super().keyPressEvent(e)
+        pt = self._selected_point()
+        if pt is not None:
+            self.set_selected_coords((pt[0] + dz) * 1e3, (pt[1] + dy) * 1e3,
+                                     (pt[2] * 1e3 if s["t"] == "bar" else None))
+            self._emit_selection()
 
     def _apply_drag(self, z, y, mods=None) -> None:
         d = self._drag
@@ -484,25 +638,29 @@ class SectionCanvas(QGraphicsView):
             val = max(val, _MIN_DIM)
             if d.get("vmax"):
                 val = min(val, d["vmax"])
-            self.dimChanged.emit(d["key"], val)
+            self._drag_tip = f"{d['key']} = {val * 1e3:.0f} mm"
             return
-        z, y = self._constrain(z, y, d["sz"], d["sy"], mods)
+        z, y = self._constrain(z, y, d["sz"], d["sy"], mods, align=True)
+        self._drag_tip = f"Y {z * 1e3:.0f}, Z {y * 1e3:.0f} mm"
         if t == "vertex":
             i = d["i"]
             if 0 <= i < len(self._outline):
                 self._outline[i] = (z, y)
                 self.outlineChanged.emit(tuple(self._outline))
+                self._emit_selection()
         elif t == "hole":
             r, i = d["ring"], d["i"]
             if 0 <= r < len(self._holes_edit) and 0 <= i < len(self._holes_edit[r]):
                 self._holes_edit[r][i] = (z, y)
                 self._emit_holes()
+                self._emit_selection()
         elif t == "bar":
             i = d["i"]
             if 0 <= i < len(self._bars):
                 dia = self._bars[i][2]
                 self._bars[i] = (z, y, dia)
                 self.barsChanged.emit(tuple(self._bars))
+                self._emit_selection()
 
     def _insert_vertex(self, z, y) -> None:
         """Insert a new vertex on the outline edge nearest the click (so the

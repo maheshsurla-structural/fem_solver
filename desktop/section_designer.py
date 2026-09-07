@@ -841,6 +841,7 @@ class SectionDesignerWindow(QMainWindow):
         self.canvas.holesChanged.connect(self._on_canvas_holes)
         self.canvas.rebarAdded.connect(self._on_canvas_rebar_added)
         self.canvas.cursorMoved.connect(self._on_canvas_cursor)
+        self.canvas.selectionChanged.connect(self._on_canvas_selection)
         tools = QHBoxLayout()
         self._canvas_mode_btns = {}
         for mode, label in (("select", "Select"), ("add_vertex", "＋ Point"),
@@ -886,6 +887,30 @@ class SectionDesignerWindow(QMainWindow):
         tools.addWidget(self.coord_lbl)
         cv.addLayout(tools)
         cv.addWidget(self.canvas)
+        # selected-point precise editor (hidden until a point is picked)
+        self._sel_loading = False
+        self.sel_row = QWidget()
+        sr = QHBoxLayout(self.sel_row)
+        sr.setContentsMargins(2, 0, 2, 0)
+        sr.addWidget(QLabel("Selected"))
+        sr.addWidget(QLabel("Y"))
+        self.sel_Y = self._dspin(-100000, 100000, 1, " mm", 0)
+        sr.addWidget(self.sel_Y)
+        sr.addWidget(QLabel("Z"))
+        self.sel_Z = self._dspin(-100000, 100000, 1, " mm", 0)
+        sr.addWidget(self.sel_Z)
+        self.sel_D_lbl = QLabel("⌀")
+        sr.addWidget(self.sel_D_lbl)
+        self.sel_D = self._dspin(1, 200, 1, " mm", 0)
+        sr.addWidget(self.sel_D)
+        for sp in (self.sel_Y, self.sel_Z, self.sel_D):
+            sp.valueChanged.connect(lambda *_: self._on_sel_field())
+        sr.addStretch(1)
+        hint = QLabel("drag · arrows nudge · Del removes")
+        hint.setStyleSheet("color:#8a97a2; font-size:11px;")
+        sr.addWidget(hint)
+        self.sel_row.setVisible(False)
+        cv.addWidget(self.sel_row)
         v.addWidget(canvas, 3)
 
         props_box = QGroupBox("Section properties")
@@ -1944,6 +1969,30 @@ class SectionDesignerWindow(QMainWindow):
         for b in self._canvas_mode_btns.values():
             b.setChecked(False)
         self.canvas.start_void()
+
+    def _on_canvas_selection(self, payload) -> None:
+        """Show/populate the precise-coordinate editor for the picked point."""
+        if payload is None:
+            self.sel_row.setVisible(False)
+            return
+        self._sel_loading = True
+        self.sel_Y.setValue(payload["Y_mm"])
+        self.sel_Z.setValue(payload["Z_mm"])
+        has_d = payload.get("dia_mm") is not None
+        self._sel_has_dia = has_d
+        self.sel_D.setVisible(has_d)
+        self.sel_D_lbl.setVisible(has_d)
+        if has_d:
+            self.sel_D.setValue(payload["dia_mm"])
+        self.sel_row.setVisible(True)
+        self._sel_loading = False
+
+    def _on_sel_field(self) -> None:
+        if self._sel_loading:
+            return
+        dia = self.sel_D.value() if getattr(self, "_sel_has_dia", False) else None
+        self.canvas.set_selected_coords(self.sel_Y.value(), self.sel_Z.value(),
+                                        dia)
 
     def _on_canvas_rebar_added(self, z_m: float, y_m: float) -> None:
         """A rebar dropped on a non-custom section becomes a Single group at
