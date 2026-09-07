@@ -902,12 +902,19 @@ class SectionDesignerWindow(QMainWindow):
         tools.addWidget(self.coord_lbl)
         cv.addLayout(tools)
         cv.addWidget(self.canvas)
-        # selected-point precise editor (hidden until a point is picked)
+        # selected-point precise editor — always visible so it's clear you can
+        # click a point and type its exact coordinates (disabled until picked).
         self._sel_loading = False
         self.sel_row = QWidget()
+        self.sel_row.setObjectName("selRow")
+        self.sel_row.setStyleSheet(
+            "#selRow{background:#f4f7fa; border:1px solid #dce3ea; "
+            "border-radius:6px;}")
         sr = QHBoxLayout(self.sel_row)
-        sr.setContentsMargins(2, 0, 2, 0)
-        sr.addWidget(QLabel("Selected"))
+        sr.setContentsMargins(8, 4, 8, 4)
+        self.sel_lbl = QLabel("Selected point")
+        self.sel_lbl.setStyleSheet("font-weight:600;")
+        sr.addWidget(self.sel_lbl)
         sr.addWidget(QLabel("Y"))
         self.sel_Y = self._dspin(-100000, 100000, 1, " mm", 0)
         sr.addWidget(self.sel_Y)
@@ -921,11 +928,11 @@ class SectionDesignerWindow(QMainWindow):
         for sp in (self.sel_Y, self.sel_Z, self.sel_D):
             sp.valueChanged.connect(lambda *_: self._on_sel_field())
         sr.addStretch(1)
-        hint = QLabel("drag · arrows nudge · Del removes")
+        hint = QLabel("click a point to edit · drag · arrows nudge · Del removes")
         hint.setStyleSheet("color:#8a97a2; font-size:11px;")
         sr.addWidget(hint)
-        self.sel_row.setVisible(False)
         cv.addWidget(self.sel_row)
+        self._on_canvas_selection(None)          # start in the empty state
 
         # Drawing gets the full height; properties live behind a tab.
         props_page = QWidget()
@@ -2003,20 +2010,30 @@ class SectionDesignerWindow(QMainWindow):
         self.canvas.start_void()
 
     def _on_canvas_selection(self, payload) -> None:
-        """Show/populate the precise-coordinate editor for the picked point."""
-        if payload is None:
-            self.sel_row.setVisible(False)
-            return
+        """Populate the always-visible precise-coordinate editor for the picked
+        point; when nothing is selected the fields disable with a hint."""
         self._sel_loading = True
+        if payload is None:
+            self.sel_lbl.setText("No point selected —")
+            self._sel_has_dia = False
+            for wdg in (self.sel_Y, self.sel_Z, self.sel_D):
+                wdg.setEnabled(False)
+            self.sel_D.setVisible(False)
+            self.sel_D_lbl.setVisible(False)
+            self._sel_loading = False
+            return
+        self.sel_lbl.setText("Selected point")
+        self.sel_Y.setEnabled(True)
+        self.sel_Z.setEnabled(True)
         self.sel_Y.setValue(payload["Y_mm"])
         self.sel_Z.setValue(payload["Z_mm"])
         has_d = payload.get("dia_mm") is not None
         self._sel_has_dia = has_d
         self.sel_D.setVisible(has_d)
+        self.sel_D.setEnabled(has_d)
         self.sel_D_lbl.setVisible(has_d)
         if has_d:
             self.sel_D.setValue(payload["dia_mm"])
-        self.sel_row.setVisible(True)
         self._sel_loading = False
 
     def _on_sel_field(self) -> None:
