@@ -339,16 +339,33 @@ class SectionCanvas(QGraphicsView):
         # reference axes (Y horizontal = engine z, Z vertical = engine y)
         self._draw_axes()
 
-        # rebar dots
-        for (z, y, r) in self._render_bars:
-            dot = QGraphicsEllipseItem(z - r, -y - r, 2 * r, 2 * r)
-            dot.setBrush(QBrush(QColor("#b03030")))
-            dp = QPen(QColor("#401010"), 0)
-            dp.setCosmetic(True)
-            dp.setWidthF(0.6)
-            dot.setPen(dp)
-            dot.setZValue(5)
-            self._scene.addItem(dot)
+        # rebar dots. For Custom the editable bars ARE the drawn dots (one
+        # visual, draggable/selectable) — drawn from the stored custom_bars in
+        # the same frame as the outline. Other kinds show the analysis bars
+        # (read-only; edited via the Rebars groups table).
+        if self._kind == "Custom":
+            for i, (z, y, dia) in enumerate(self._bars):
+                r = max(dia / 2.0, 0.004)
+                dot = QGraphicsEllipseItem(z - r, -y - r, 2 * r, 2 * r)
+                dot.setBrush(QBrush(QColor("#b03030")))
+                sel = self._is_selected({"t": "bar", "i": i})
+                dp = QPen(QColor("#0b6" if sel else "#401010"))
+                dp.setCosmetic(True)
+                dp.setWidthF(2.4 if sel else 0.6)
+                dot.setPen(dp)
+                dot.setZValue(7 if sel else 6)
+                dot.setData(0, {"t": "bar", "i": i})
+                self._scene.addItem(dot)
+        else:
+            for (z, y, r) in self._render_bars:
+                dot = QGraphicsEllipseItem(z - r, -y - r, 2 * r, 2 * r)
+                dot.setBrush(QBrush(QColor("#b03030")))
+                dp = QPen(QColor("#401010"), 0)
+                dp.setCosmetic(True)
+                dp.setWidthF(0.6)
+                dot.setPen(dp)
+                dot.setZValue(5)
+                self._scene.addItem(dot)
 
         if self._dims_on:
             self._draw_dimensions()
@@ -375,8 +392,7 @@ class SectionCanvas(QGraphicsView):
                 for i, (z, y) in enumerate(ring):
                     self._handle(z, y, "#c084fc", {"t": "hole", "ring": r,
                                                    "i": i}, r=4)
-            for i, (z, y, _d) in enumerate(self._bars):
-                self._handle(z, y, "#e879b0", {"t": "bar", "i": i}, r=4)
+            # (custom bars are drawn above as their own draggable red dots)
         elif self._kind in _PRIMARY_DIMS:
             self._add_dim_handles()
 
