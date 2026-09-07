@@ -1198,8 +1198,8 @@ class SectionDesignerWindow(QMainWindow):
         row.addStretch(1)
         v.addLayout(row)
         cap = QLabel(
-            "Each row is a tendon group.  <b>Point</b> = 1 tendon at z,y · "
-            "<b>Line</b> = z1,y1; z2,y2 · <b>Arc</b> = cz,cy,r,a1,a2 place "
+            "Each row is a tendon group.  <b>Point</b> = 1 tendon at Y,Z · "
+            "<b>Line</b> = Y1,Z1; Y2,Z2 · <b>Arc</b> = cY,cZ,r,a1,a2 place "
             "<i>Count</i> tendons.  Aₚ = area per tendon, f_pe = effective "
             "prestress.")
         cap.setWordWrap(True)
@@ -1725,8 +1725,8 @@ class SectionDesignerWindow(QMainWindow):
             f"spacing, e.g. <code>{tie}</code>; put tie legs n_y×n_z in its "
             "Position, e.g. <code>2x2</code>, for Mander confinement). "
             "Top/Bottom/Sides/Perimeter take a blank Position; "
-            "<b>Single</b> = z,y · <b>Line</b> = z1,y1; z2,y2 · "
-            "<b>Arc</b> = cz,cy,r,a1,a2.")
+            "<b>Single</b> = Y,Z · <b>Line</b> = Y1,Z1; Y2,Z2 · "
+            "<b>Arc</b> = cY,cZ,r,a1,a2  (Y horizontal, Z vertical).")
 
     # ----------------------------------------------------------- recompute
     def _on_units_changed(self) -> None:
@@ -1759,10 +1759,18 @@ class SectionDesignerWindow(QMainWindow):
                 self._update_nav_item(self._active)
             self._timer.start()
 
+    # GUI axis convention: horizontal = Y, vertical = Z (the drawing +
+    # coordinate inputs use these labels). The engine names the horizontal
+    # axis z and the vertical y internally, so the inertia subscripts are
+    # swapped for display (value-preserving): engine I_zz (about the
+    # horizontal axis) is shown as I_yy, and engine I_yy as I_zz.
+    _PROP_RELABEL = {"I_zz [mm⁴]": "I_yy [mm⁴]", "I_yy [mm⁴]": "I_zz [mm⁴]"}
+
     def _refresh_geometry(self) -> None:
         try:
             case = _case(self._spec)
-            self.svg.load(QByteArray(core.svg_of(case).encode("utf-8")))
+            self.svg.load(QByteArray(core.svg_of(
+                case, show_axes=True, axis_labels=("Y", "Z")).encode("utf-8")))
             # keep the section undistorted (letterbox to the widget)
             r = self.svg.renderer()
             if r is not None:
@@ -1771,6 +1779,7 @@ class SectionDesignerWindow(QMainWindow):
             props = core.props_of(case)
             self.props.setRowCount(len(props))
             for row, (k, val) in enumerate(props.items()):
+                k = self._PROP_RELABEL.get(k, k)
                 self.props.setItem(row, 0, QTableWidgetItem(str(k)))
                 txt = f"{val:,.0f}" if isinstance(val, (int, float)) else str(val)
                 it = QTableWidgetItem(txt)
@@ -2555,12 +2564,13 @@ class AddGroupDialog(QDialog):
         cont = QWidget()
         h = QHBoxLayout(cont)
         h.setContentsMargins(0, 0, 0, 0)
+        # horizontal = Y, vertical = Z (GUI convention); stored engine-order.
         self._w[zkey] = self._dspin(-5000, 5000, zval, "")
         self._w[ykey] = self._dspin(-5000, 5000, yval, "")
-        h.addWidget(QLabel("z"))
+        h.addWidget(QLabel("Y"))
         h.addWidget(self._w[zkey], 1)
         h.addSpacing(8)
-        h.addWidget(QLabel("y"))
+        h.addWidget(QLabel("Z"))
         h.addWidget(self._w[ykey], 1)
         return (f"{label} [mm]", cont)
 
@@ -2600,7 +2610,7 @@ class AddGroupDialog(QDialog):
             self._connect_preview(self._w["n"])
         elif typ == "Single":
             self._w["tbl"] = tbl = QTableWidget(0, 2)
-            tbl.setHorizontalHeaderLabels(["z [mm]", "y [mm]"])
+            tbl.setHorizontalHeaderLabels(["Y [mm]", "Z [mm]"])
             tbl.horizontalHeader().setStretchLastSection(True)
             tbl.verticalHeader().setVisible(False)
             tbl.setMinimumHeight(140)

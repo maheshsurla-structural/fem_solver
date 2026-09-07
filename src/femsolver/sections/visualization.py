@@ -35,6 +35,8 @@ def section_to_svg(
     show_centroid: bool = True,
     show_rebar: bool = True,
     show_dimensions: bool = True,
+    show_axes: bool = False,
+    axis_labels: tuple = ("z", "y"),
     fill: str = "#cfe8ff",
     stroke: str = "#1f4f73",
     rebar_color: str = "#b03030",
@@ -56,6 +58,12 @@ def section_to_svg(
         Draw rebar bars as filled circles.
     show_dimensions : bool
         Annotate overall depth and width.
+    show_axes : bool
+        Draw centroidal reference axes (horizontal + vertical) with
+        arrowheads and letter labels.
+    axis_labels : tuple
+        ``(horizontal, vertical)`` axis letters for the reference axes
+        (e.g. ``("z", "y")`` for +z-right/+y-up, or ``("Y", "Z")``).
     fill, stroke, rebar_color : str
         SVG color strings.
     """
@@ -140,6 +148,38 @@ def section_to_svg(
                 f'r="{r_px:.2f}" fill="{rebar_color}" '
                 f'stroke="#400" stroke-width="0.5"/>'
             )
+
+    # Reference axes (centroidal): +horizontal and +vertical, with arrowheads
+    # and letter labels. Positive horizontal points right, positive vertical up.
+    if show_axes:
+        cz, cy = section.centroid
+        pcx, pcy = _x(cz), _y(cy)
+        right, top = _x(maxz), _y(maxy)
+        hlab, vlab = axis_labels
+        ac = "#333"
+
+        def _arrow(x1, y1, x2, y2):
+            ang = math.atan2(y2 - y1, x2 - x1)
+            hl, hw = 7.0, 3.2
+            bx, by = x2 - hl * math.cos(ang), y2 - hl * math.sin(ang)
+            ox, oy = -math.sin(ang) * hw, math.cos(ang) * hw
+            return (
+                f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" '
+                f'y2="{y2:.1f}" stroke="{ac}" stroke-width="1.2"/>'
+                f'<polygon points="{x2:.1f},{y2:.1f} {bx+ox:.1f},{by+oy:.1f} '
+                f'{bx-ox:.1f},{by-oy:.1f}" fill="{ac}"/>'
+            )
+
+        parts.append(_arrow(pcx, pcy, right, pcy))       # +horizontal
+        parts.append(_arrow(pcx, pcy, pcx, top))         # +vertical
+        parts.append(
+            f'<text x="{right - 10:.1f}" y="{pcy - 5:.1f}" font-size="12" '
+            f'font-weight="bold" fill="{ac}">{_escape(str(hlab))}</text>'
+        )
+        parts.append(
+            f'<text x="{pcx + 5:.1f}" y="{top + 13:.1f}" font-size="12" '
+            f'font-weight="bold" fill="{ac}">{_escape(str(vlab))}</text>'
+        )
 
     # Dimensions
     if show_dimensions:

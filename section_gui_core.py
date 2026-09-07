@@ -2017,9 +2017,11 @@ def props_of(case: SectionCase) -> dict:
     }
 
 
-def svg_of(case: SectionCase) -> str:
+def svg_of(case: SectionCase, *, show_axes: bool = False,
+           axis_labels: tuple = ("z", "y")) -> str:
     return section_to_svg(case.section, width_px=380, show_rebar=True,
-                          show_dimensions=True)
+                          show_dimensions=True, show_axes=show_axes,
+                          axis_labels=axis_labels)
 
 
 def _pm_diagram_svg(curve: dict, u: "Units", W: int = 470, H: int = 330) -> str:
