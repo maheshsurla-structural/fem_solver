@@ -857,6 +857,7 @@ class SectionDesignerWindow(QMainWindow):
         self.canvas.rebarAdded.connect(self._on_canvas_rebar_added)
         self.canvas.cursorMoved.connect(self._on_canvas_cursor)
         self.canvas.selectionChanged.connect(self._on_canvas_selection)
+        self.canvas.selPosChanged.connect(self._on_sel_pos)
         tools = QHBoxLayout()
         self._canvas_mode_btns = {}
         for mode, label in (("select", "Select"), ("add_vertex", "＋ Point"),
@@ -902,37 +903,35 @@ class SectionDesignerWindow(QMainWindow):
         tools.addWidget(self.coord_lbl)
         cv.addLayout(tools)
         cv.addWidget(self.canvas)
-        # selected-point precise editor — always visible so it's clear you can
-        # click a point and type its exact coordinates (disabled until picked).
+        # selected-point coordinate editor — a small floating panel that sits
+        # NEXT TO the picked point on the canvas, showing/editing its (Y, Z).
         self._sel_loading = False
-        self.sel_row = QWidget()
-        self.sel_row.setObjectName("selRow")
-        self.sel_row.setStyleSheet(
-            "#selRow{background:#f4f7fa; border:1px solid #dce3ea; "
+        self._sel_active = False
+        self._sel_pos = None
+        self.sel_editor = QWidget(self.canvas)
+        self.sel_editor.setObjectName("selEditor")
+        self.sel_editor.setStyleSheet(
+            "#selEditor{background:#ffffff; border:1px solid #b9c6d2; "
             "border-radius:6px;}")
-        sr = QHBoxLayout(self.sel_row)
-        sr.setContentsMargins(8, 4, 8, 4)
-        self.sel_lbl = QLabel("Selected point")
-        self.sel_lbl.setStyleSheet("font-weight:600;")
-        sr.addWidget(self.sel_lbl)
+        sr = QHBoxLayout(self.sel_editor)
+        sr.setContentsMargins(6, 3, 6, 3)
+        sr.setSpacing(4)
         sr.addWidget(QLabel("Y"))
-        self.sel_Y = self._dspin(-100000, 100000, 1, " mm", 0)
+        self.sel_Y = self._dspin(-100000, 100000, 1, "", 0)
+        self.sel_Y.setFixedWidth(64)
         sr.addWidget(self.sel_Y)
         sr.addWidget(QLabel("Z"))
-        self.sel_Z = self._dspin(-100000, 100000, 1, " mm", 0)
+        self.sel_Z = self._dspin(-100000, 100000, 1, "", 0)
+        self.sel_Z.setFixedWidth(64)
         sr.addWidget(self.sel_Z)
         self.sel_D_lbl = QLabel("⌀")
         sr.addWidget(self.sel_D_lbl)
-        self.sel_D = self._dspin(1, 200, 1, " mm", 0)
+        self.sel_D = self._dspin(1, 200, 1, "", 0)
+        self.sel_D.setFixedWidth(56)
         sr.addWidget(self.sel_D)
         for sp in (self.sel_Y, self.sel_Z, self.sel_D):
             sp.valueChanged.connect(lambda *_: self._on_sel_field())
-        sr.addStretch(1)
-        hint = QLabel("click a point to edit · drag · arrows nudge · Del removes")
-        hint.setStyleSheet("color:#8a97a2; font-size:11px;")
-        sr.addWidget(hint)
-        cv.addWidget(self.sel_row)
-        self._on_canvas_selection(None)          # start in the empty state
+        self.sel_editor.hide()
 
         # Drawing gets the full height; properties live behind a tab.
         props_page = QWidget()
@@ -2010,31 +2009,44 @@ class SectionDesignerWindow(QMainWindow):
         self.canvas.start_void()
 
     def _on_canvas_selection(self, payload) -> None:
-        """Populate the always-visible precise-coordinate editor for the picked
-        point; when nothing is selected the fields disable with a hint."""
-        self._sel_loading = True
-        if payload is None:
-            self.sel_lbl.setText("No point selected —")
-            self._sel_has_dia = False
-            for wdg in (self.sel_Y, self.sel_Z, self.sel_D):
-                wdg.setEnabled(False)
-            self.sel_D.setVisible(False)
-            self.sel_D_lbl.setVisible(False)
+        """Populate the floating point editor; None hides it."""
+        self._sel_active = payload is not None
+        if payload is not None:
+            self._sel_loading = True
+            self.sel_Y.setValue(payload["Y_mm"])
+            self.sel_Z.setValue(payload["Z_mm"])
+            has_d = payload.get("dia_mm") is not None
+            self._sel_has_dia = has_d
+            self.sel_D.setVisible(has_d)
+            self.sel_D_lbl.setVisible(has_d)
+            if has_d:
+                self.sel_D.setValue(payload["dia_mm"])
+            self.sel_editor.adjustSize()
             self._sel_loading = False
+        self._position_sel_editor()
+
+    def _on_sel_pos(self, pos) -> None:
+        self._sel_pos = pos
+        self._position_sel_editor()
+
+    def _position_sel_editor(self) -> None:
+        """Float the editor just above-right of the selected point, clamped to
+        the canvas."""
+        if not self._sel_active or self._sel_pos is None:
+            self.sel_editor.hide()
             return
-        self.sel_lbl.setText("Selected point")
-        self.sel_Y.setEnabled(True)
-        self.sel_Z.setEnabled(True)
-        self.sel_Y.setValue(payload["Y_mm"])
-        self.sel_Z.setValue(payload["Z_mm"])
-        has_d = payload.get("dia_mm") is not None
-        self._sel_has_dia = has_d
-        self.sel_D.setVisible(has_d)
-        self.sel_D.setEnabled(has_d)
-        self.sel_D_lbl.setVisible(has_d)
-        if has_d:
-            self.sel_D.setValue(payload["dia_mm"])
-        self._sel_loading = False
+        self.sel_editor.adjustSize()
+        ew, eh = self.sel_editor.width(), self.sel_editor.height()
+        cw, ch = self.canvas.width(), self.canvas.height()
+        x = self._sel_pos.x() + 14
+        y = self._sel_pos.y() - eh - 12
+        if y < 2:                                # no room above → below
+            y = self._sel_pos.y() + 14
+        x = max(2, min(x, cw - ew - 2))
+        y = max(2, min(y, ch - eh - 2))
+        self.sel_editor.move(x, y)
+        self.sel_editor.show()
+        self.sel_editor.raise_()
 
     def _on_sel_field(self) -> None:
         if self._sel_loading:

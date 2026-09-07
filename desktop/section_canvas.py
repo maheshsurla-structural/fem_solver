@@ -61,6 +61,7 @@ class SectionCanvas(QGraphicsView):
     rebarAdded = Signal(float, float)    # z_m, y_m  (non-custom kinds)
     cursorMoved = Signal(object)         # (z_mm, y_mm) or None
     selectionChanged = Signal(object)    # {t,Y_mm,Z_mm,dia_mm} or None
+    selPosChanged = Signal(object)       # QPoint (viewport) of selection, or None
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -157,6 +158,15 @@ class SectionCanvas(QGraphicsView):
             y = by
             self._guides.append(("h", y))
         return z, y
+
+    def _emit_sel_pos(self) -> None:
+        """Report the selected point's current viewport position (for the
+        floating coordinate editor), or None when nothing is selected."""
+        pt = self._selected_point()
+        if pt is None:
+            self.selPosChanged.emit(None)
+            return
+        self.selPosChanged.emit(self.mapFromScene(QPointF(pt[0], -pt[1])))
 
     def _is_selected(self, data) -> bool:
         s = self._selected
@@ -266,6 +276,11 @@ class SectionCanvas(QGraphicsView):
             m = max(r.width(), r.height()) * 0.12 + 0.02
             self.fitInView(r.adjusted(-m, -m, m, m),
                            Qt.AspectRatioMode.KeepAspectRatio)
+        self._emit_sel_pos()
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        self._emit_sel_pos()
 
     # -------------------------------------------------- scene building
     def _body_ring(self):
@@ -395,6 +410,7 @@ class SectionCanvas(QGraphicsView):
             # (custom bars are drawn above as their own draggable red dots)
         elif self._kind in _PRIMARY_DIMS:
             self._add_dim_handles()
+        self._emit_sel_pos()
 
     def _draw_axes(self) -> None:
         r = self._content_rect()
@@ -517,6 +533,7 @@ class SectionCanvas(QGraphicsView):
     def wheelEvent(self, e):
         f = 1.15 if e.angleDelta().y() > 0 else 1.0 / 1.15
         self.scale(f, f)
+        self._emit_sel_pos()
 
     def mousePressEvent(self, e):
         vp = e.position().toPoint()
@@ -585,6 +602,7 @@ class SectionCanvas(QGraphicsView):
                 self.horizontalScrollBar().value() - delta.x())
             self.verticalScrollBar().setValue(
                 self.verticalScrollBar().value() - delta.y())
+            self._emit_sel_pos()
             return
         super().mouseMoveEvent(e)
 
