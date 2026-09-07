@@ -1127,22 +1127,40 @@ class SectionDesignerWindow(QMainWindow):
         return w
 
     def _build_tendons_tab(self) -> QWidget:
-        """Tendon arrangements (each row a tendon group with its own strand
-        material) + an inline add-form, matching the Streamlit tendon tab."""
+        """Tendons as an editable GROUPS table (Type / Material / Count / Aₚ /
+        f_pe / Position) — Point places 1 tendon, Line/Arc place Count along
+        the geometry — mirroring the Rebars table. Writes spec.tendon_arr."""
         w = QWidget()
         v = QVBoxLayout(w)
         v.setContentsMargins(2, 6, 2, 2)
-        self.tendon_arr_tbl = self._arr_table(["Type", "n", "Aₚ mm²",
-                                               "Material"])
-        v.addWidget(self.tendon_arr_tbl)
-        rem = QPushButton("Remove selected row")
-        rem.clicked.connect(lambda: self._remove_arrangement(tendon=True))
-        v.addWidget(rem)
-        self.tendon_arr_form = InlineArrangementForm(
-            tendon=True,
-            mats_provider=lambda: self._names_of_kind("prestress"),
-            on_add=lambda arr: self._add_arr_inline(arr, True))
-        v.addWidget(self.tendon_arr_form)
+        self.tendon_tbl = QTableWidget(0, 6)
+        self.tendon_tbl.setHorizontalHeaderLabels(
+            ["Type", "Material", "Count", "Aₚ [mm²]", "f_pe [MPa]",
+             "Position(s) [mm, deg]"])
+        self.tendon_tbl.horizontalHeader().setStretchLastSection(True)
+        self.tendon_tbl.verticalHeader().setVisible(False)
+        self.tendon_tbl.setAlternatingRowColors(True)
+        self.tendon_tbl.setMinimumHeight(150)
+        self.tendon_tbl.itemChanged.connect(self._on_tendon_item_changed)
+        v.addWidget(self.tendon_tbl)
+        row = QHBoxLayout()
+        add = QPushButton("＋ Add tendon")
+        add.clicked.connect(lambda: self._add_tendon_row())
+        rem = QPushButton("Remove selected")
+        rem.clicked.connect(self._remove_tendon_row)
+        row.addWidget(add)
+        row.addWidget(rem)
+        row.addStretch(1)
+        v.addLayout(row)
+        cap = QLabel(
+            "Each row is a tendon group.  <b>Point</b> = 1 tendon at z,y · "
+            "<b>Line</b> = z1,y1; z2,y2 · <b>Arc</b> = cz,cy,r,a1,a2 place "
+            "<i>Count</i> tendons.  Aₚ = area per tendon, f_pe = effective "
+            "prestress.")
+        cap.setWordWrap(True)
+        cap.setObjectName("hintLabel")
+        cap.setStyleSheet("color:#5a6b7b; font-size:11px;")
+        v.addWidget(cap)
         return w
 
     def _build_confinement_tab(self) -> QWidget:
@@ -1287,6 +1305,119 @@ class SectionDesignerWindow(QMainWindow):
             self._add_group_row(("Single", pat, pos, mat))
         self._groups_changed()
 
+    # -------------------------------------------------- tendon groups table
+    def _tendon_mat_names(self) -> list:
+        return ["(default strand)"] + self._names_of_kind("prestress")
+
+    @staticmethod
+    def _tendon_row_fields(arr):
+        """Unpack a stored tendon_arr tuple into display fields (mm / MPa), or
+        return the default new-row seed when ``arr`` is None."""
+        if arr is None:
+            return ("Line", "(default strand)", 4, 140.0, 1100.0,
+                    "-200,-350; 200,-350")
+        typ, area, f_pe, mat, p = (arr[0], arr[1], arr[2], arr[3], list(arr[4]))
+        mat_name = mat or "(default strand)"
+        area_mm, fpe_mpa = area * 1e6, f_pe / 1e6
+        if typ == "point":
+            count, pos = 1, f"{p[0] * 1e3:g},{p[1] * 1e3:g}"
+        elif typ == "line":
+            count = int(p[0])
+            pos = (f"{p[1] * 1e3:g},{p[2] * 1e3:g}; "
+                   f"{p[3] * 1e3:g},{p[4] * 1e3:g}")
+        else:                                            # arc
+            count = int(p[0])
+            pos = (f"{p[1] * 1e3:g},{p[2] * 1e3:g},{p[3] * 1e3:g},"
+                   f"{p[4]:g},{p[5]:g}")
+        return (typ.title(), mat_name, count, area_mm, fpe_mpa, pos)
+
+    def _add_tendon_row(self, arr=None) -> None:
+        typ, mat_name, count, area_mm, fpe_mpa, pos = self._tendon_row_fields(arr)
+        tbl = self.tendon_tbl
+        was = getattr(self, "_loading_tendon", False)
+        self._loading_tendon = True
+        r = tbl.rowCount()
+        tbl.insertRow(r)
+        tcombo = QComboBox()
+        tcombo.addItems(core.TENDON_ARR_TYPES)
+        i = tcombo.findText(typ)
+        tcombo.setCurrentIndex(i if i >= 0 else 0)
+        tcombo.currentIndexChanged.connect(lambda *_: self._tendons_changed())
+        tbl.setCellWidget(r, 0, tcombo)
+        mcombo = QComboBox()
+        mcombo.addItems(self._tendon_mat_names())
+        j = mcombo.findText(mat_name)
+        mcombo.setCurrentIndex(j if j >= 0 else 0)
+        mcombo.currentIndexChanged.connect(lambda *_: self._tendons_changed())
+        tbl.setCellWidget(r, 1, mcombo)
+        tbl.setItem(r, 2, QTableWidgetItem(str(count)))
+        tbl.setItem(r, 3, QTableWidgetItem(f"{area_mm:g}"))
+        tbl.setItem(r, 4, QTableWidgetItem(f"{fpe_mpa:g}"))
+        tbl.setItem(r, 5, QTableWidgetItem(pos))
+        self._loading_tendon = was
+        if not was and arr is None:
+            self._tendons_changed()
+
+    def _remove_tendon_row(self) -> None:
+        r = self.tendon_tbl.currentRow()
+        if r < 0:
+            return
+        self.tendon_tbl.removeRow(r)
+        self._tendons_changed()
+
+    def _on_tendon_item_changed(self, *_) -> None:
+        if getattr(self, "_loading_tendon", False):
+            return
+        self._tendons_changed()
+
+    def _read_tendon_table(self) -> tuple:
+        tbl = self.tendon_tbl
+        out = []
+        for r in range(tbl.rowCount()):
+            tw = tbl.cellWidget(r, 0)
+            mw = tbl.cellWidget(r, 1)
+            typ = (tw.currentText() if tw else "Line").lower()
+            name = mw.currentText() if mw else "(default strand)"
+            mat = "" if name.startswith("(") else name
+
+            def _num(c, d=0.0):
+                it = tbl.item(r, c)
+                try:
+                    return float((it.text() if it else "").strip())
+                except ValueError:
+                    return d
+            count = max(int(_num(2, 1) or 1), 1)
+            area = _num(3, 0.0) / 1e6
+            f_pe = _num(4, 0.0) * 1e6
+            pos_it = tbl.item(r, 5)
+            p = core._parse_positions(pos_it.text() if pos_it else "")
+            if typ == "point" and len(p) >= 2:
+                params = (p[0] / 1e3, p[1] / 1e3)
+            elif typ == "line" and len(p) >= 4:
+                params = (count, p[0] / 1e3, p[1] / 1e3, p[2] / 1e3, p[3] / 1e3)
+            elif typ == "arc" and len(p) >= 5:
+                params = (count, p[0] / 1e3, p[1] / 1e3, p[2] / 1e3, p[3], p[4])
+            else:
+                continue
+            out.append((typ, area, f_pe, mat, params))
+        return tuple(out)
+
+    def _tendons_changed(self) -> None:
+        if getattr(self, "_loading_tendon", False) or self._loading:
+            return
+        self._spec = replace(self._spec, tendon_arr=self._read_tendon_table())
+        self._on_value_changed()
+
+    def _refresh_tendon_table(self) -> None:
+        if not hasattr(self, "tendon_tbl"):
+            return
+        was = getattr(self, "_loading_tendon", False)
+        self._loading_tendon = True
+        self.tendon_tbl.setRowCount(0)
+        for arr in self._spec.tendon_arr:
+            self._add_tendon_row(arr)
+        self._loading_tendon = was
+
     def _on_group_item_changed(self, *_) -> None:
         if getattr(self, "_loading_groups", False):
             return
@@ -1352,123 +1483,6 @@ class SectionDesignerWindow(QMainWindow):
         self._loading_groups = was
         self._validate_groups(self._spec.rebar_groups)
 
-    # ----------------------------------------------------- arrangements
-    def _add_arr_inline(self, arr, tendon: bool) -> None:
-        if tendon:
-            self._spec = replace(self._spec,
-                                 tendon_arr=self._spec.tendon_arr + (arr,))
-        else:
-            self._spec = replace(self._spec,
-                                 rebar_arr=self._spec.rebar_arr + (arr,))
-        self._refresh_arr_lists()
-        self._refresh_geometry()
-        self._queue()
-
-    @staticmethod
-    def _arr_table(headers) -> QTableWidget:
-        t = QTableWidget(0, len(headers))
-        t.setHorizontalHeaderLabels(headers)
-        t.horizontalHeader().setStretchLastSection(True)
-        t.verticalHeader().setVisible(False)
-        t.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        t.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        t.setAlternatingRowColors(True)
-        t.setShowGrid(False)
-        t.setMaximumHeight(140)
-        return t
-
-    def _refresh_arr_lists(self) -> None:
-        self._loading_arr = True
-        self._fill_arr_table(self.tendon_arr_tbl, self._spec.tendon_arr,
-                             tendon=True)
-        self._loading_arr = False
-
-    def _fill_arr_table(self, tbl, arrs, *, tendon: bool) -> None:
-        mats = (["(default strand)"] + self._names_of_kind("prestress")
-                if tendon else ["(section steel)"] + self._names_of_kind("steel"))
-        tbl.setRowCount(len(arrs))
-        for r, arr in enumerate(arrs):
-            typ = arr[0]
-            if tendon:
-                n = 1 if typ == "point" else int(arr[4][0])
-                size = f"{arr[1] * 1e6:.0f}"
-                mat_name = arr[3] or "(default strand)"
-            else:
-                p = arr[3]
-                if typ == "point":
-                    n = 1
-                elif typ == "rect":
-                    n = int(p[0]) * int(p[1])
-                else:
-                    n = int(p[0])
-                size = f"{arr[1] * 1e3:.0f}"
-                mat_name = arr[2] or "(section steel)"
-            for c, val in enumerate((typ.title(), str(n), size)):
-                it = QTableWidgetItem(val)
-                tbl.setItem(r, c, it)
-            combo = QComboBox()
-            combo.addItems(mats)
-            i = combo.findText(mat_name)
-            combo.setCurrentIndex(i if i >= 0 else 0)
-            combo.currentIndexChanged.connect(
-                lambda _i, row=r, td=tendon: self._arr_material_changed(row, td))
-            tbl.setCellWidget(r, 3, combo)
-
-    def _arr_material_changed(self, row: int, tendon: bool) -> None:
-        if getattr(self, "_loading_arr", False):
-            return
-        tbl = self.tendon_arr_tbl        # arrangements are tendon-only now
-        combo = tbl.cellWidget(row, 3)
-        if combo is None:
-            return
-        name = combo.currentText()
-        default = name.startswith("(")
-        arrs = list(self._spec.tendon_arr if tendon else self._spec.rebar_arr)
-        if not (0 <= row < len(arrs)):
-            return
-        arr = list(arrs[row])
-        idx = 3 if tendon else 2               # material slot in the tuple
-        arr[idx] = "" if default else name
-        arrs[row] = tuple(arr)
-        if tendon:
-            self._spec = replace(self._spec, tendon_arr=tuple(arrs))
-        else:
-            self._spec = replace(self._spec, rebar_arr=tuple(arrs))
-        self._refresh_geometry()
-        self._queue()
-
-    def _add_arrangement(self, *, tendon: bool) -> None:
-        want = "prestress" if tendon else "steel"
-        mats = [n for n, m in self._materials.items()
-                if m.get("kind") == want]
-        dlg = ArrangementDialog(self, tendon=tendon, steels=mats)
-        if dlg.exec() != QDialog.DialogCode.Accepted or dlg.result_arr is None:
-            return
-        if tendon:
-            self._spec = replace(
-                self._spec, tendon_arr=self._spec.tendon_arr + (dlg.result_arr,))
-        else:
-            self._spec = replace(
-                self._spec, rebar_arr=self._spec.rebar_arr + (dlg.result_arr,))
-        self._refresh_arr_lists()
-        self._refresh_geometry()
-        self._queue()
-
-    def _remove_arrangement(self, *, tendon: bool) -> None:
-        tbl = self.tendon_arr_tbl        # arrangements are tendon-only now
-        i = tbl.currentRow()
-        arrs = list(self._spec.tendon_arr if tendon else self._spec.rebar_arr)
-        if not (0 <= i < len(arrs)):
-            return
-        del arrs[i]
-        if tendon:
-            self._spec = replace(self._spec, tendon_arr=tuple(arrs))
-        else:
-            self._spec = replace(self._spec, rebar_arr=tuple(arrs))
-        self._refresh_arr_lists()
-        self._refresh_geometry()
-        self._queue()
-
     # --------------------------------------------------------- spec <-> form
     def _load_form_from_spec(self) -> None:
         self._loading = True
@@ -1493,7 +1507,7 @@ class SectionDesignerWindow(QMainWindow):
         self.fcu_ratio_spin.setValue(s.fcu_ratio)
         self.kappa_max_spin.setValue(s.kappa_max)
         self._refresh_material_combos()
-        self._refresh_arr_lists()
+        self._refresh_tendon_table()
         self._refresh_groups_table()
         self._load_custom_tables()
         self._refresh_comp_list()
@@ -1633,8 +1647,7 @@ class SectionDesignerWindow(QMainWindow):
         want = rec.get("conc_mat")
         i = self.conc_mat_combo.findText(want) if want else -1
         self.conc_mat_combo.setCurrentIndex(i if i >= 0 else 0)
-        if hasattr(self, "tendon_arr_form"):
-            self.tendon_arr_form.refresh_materials()
+        self._refresh_tendon_table()
         self._refresh_groups_table()
         self._loading = was
 
@@ -2510,252 +2523,6 @@ class IndividualBarsDialog(QDialog):
         self.result_bars = bars
         self.accept()
 
-
-class ArrangementDialog(QDialog):
-    """Add a rebar or tendon *arrangement* (layout generator). Returns the
-    engine tuple via ``result_arr`` — ``(code, dia, mat, params)`` for rebar or
-    ``(code, area, f_pe, mat, params)`` for tendon. Coordinates entered in mm,
-    stored in metres; angles in degrees. Mirrors the Streamlit add-forms."""
-
-    def __init__(self, parent=None, *, tendon: bool = False, steels=None):
-        super().__init__(parent)
-        self._tendon = tendon
-        self.result_arr = None
-        self.setWindowTitle("Add tendon arrangement" if tendon
-                            else "Add rebar arrangement")
-        v = QVBoxLayout(self)
-
-        top = QFormLayout()
-        self.type_combo = QComboBox()
-        self.type_combo.addItems(core.TENDON_ARR_TYPES if tendon
-                                 else core.REBAR_ARR_TYPES)
-        self.type_combo.currentTextChanged.connect(self._rebuild)
-        top.addRow("Type", self.type_combo)
-        if tendon:
-            self.area_spin = self._d(50, 5000, 10, " mm²", 0, 140)
-            self.fpe_spin = self._d(500, 1600, 25, " MPa", 0, 1100)
-            top.addRow("Aₚ / tendon", self.area_spin)
-            top.addRow("f_pe", self.fpe_spin)
-        else:
-            self.dia_combo = QComboBox()
-            self.dia_combo.addItems(list(core.BAR_SIZES))
-            self.dia_combo.setCurrentText("25 mm")
-            top.addRow("Bar size", self.dia_combo)
-        self.mat_combo = QComboBox()
-        self.mat_combo.addItems(["(section steel)"] + list(steels or []))
-        top.addRow("Material", self.mat_combo)
-        v.addLayout(top)
-
-        self.param_box = QGroupBox("Parameters")
-        self.param_form = QFormLayout(self.param_box)
-        self._spins: dict[str, QDoubleSpinBox] = {}
-        v.addWidget(self.param_box)
-
-        bb = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok
-                              | QDialogButtonBox.StandardButton.Cancel)
-        bb.accepted.connect(self._accept)
-        bb.rejected.connect(self.reject)
-        v.addWidget(bb)
-        self._rebuild()
-
-    @staticmethod
-    def _d(lo, hi, step, suffix, dec, val) -> QDoubleSpinBox:
-        s = QDoubleSpinBox()
-        s.setRange(lo, hi)
-        s.setSingleStep(step)
-        s.setDecimals(dec)
-        if suffix:
-            s.setSuffix(suffix)
-        s.setValue(val)
-        return s
-
-    def _rebuild(self, *_a) -> None:
-        while self.param_form.rowCount():
-            self.param_form.removeRow(0)
-        self._spins.clear()
-        typ = self.type_combo.currentText()
-        # (label, key, suffix, decimals, default, is_int)
-        specs: list[tuple] = []
-        mm = (" mm", 0)
-        if typ == "Point":
-            specs = [("z", "z", *mm, 0, 0), ("y", "y", *mm, (-350 if self._tendon
-                                                             else 0), 0)]
-        elif typ == "Line":
-            specs = [("Count n", "n", "", 0, 4 if self._tendon else 3, 1),
-                     ("z1", "z1", *mm, -200 if self._tendon else -150, 0),
-                     ("y1", "y1", *mm, -350 if self._tendon else -250, 0),
-                     ("z2", "z2", *mm, 200 if self._tendon else 150, 0),
-                     ("y2", "y2", *mm, -350 if self._tendon else -250, 0)]
-        elif typ == "Arc":
-            specs = [("Count n", "n", "", 0, 4, 1),
-                     ("centre z", "cz", *mm, 0, 0),
-                     ("centre y", "cy", *mm, 0, 0),
-                     ("radius", "r", *mm, 300 if self._tendon else 200, 0),
-                     ("start °", "a1", " °", 0, 200 if self._tendon else 0, 0),
-                     ("end °", "a2", " °", 0, 340 if self._tendon else 360, 0)]
-        elif typ == "Rectangle":
-            specs = [("n horiz.", "nz", "", 0, 3, 1), ("n vert.", "ny", "", 0, 3, 1),
-                     ("centre z", "cz", *mm, 0, 0), ("centre y", "cy", *mm, 0, 0),
-                     ("width", "w", *mm, 300, 0), ("height", "h", *mm, 500, 0)]
-        else:                                        # Perimeter
-            specs = [("Count n", "n", "", 0, 8, 1), ("cover", "cov", *mm, 50, 0)]
-        for label, key, suffix, dec, default, is_int in specs:
-            lo, hi = (1, 200) if is_int else (-5000, 5000)
-            sp = self._d(lo, hi, 1 if is_int else 10, suffix,
-                         0 if is_int else dec, default)
-            self.param_form.addRow(label, sp)
-            self._spins[key] = sp
-
-    def _params(self) -> tuple:
-        typ = self.type_combo.currentText()
-        g = {k: sp.value() for k, sp in self._spins.items()}
-
-        def m(k):                                    # mm -> metres
-            return g[k] / 1000.0
-        if typ == "Point":
-            return (m("z"), m("y"))
-        if typ == "Line":
-            return (int(g["n"]), m("z1"), m("y1"), m("z2"), m("y2"))
-        if typ == "Arc":
-            return (int(g["n"]), m("cz"), m("cy"), m("r"), g["a1"], g["a2"])
-        if typ == "Rectangle":
-            return (int(g["nz"]), int(g["ny"]), m("cz"), m("cy"), m("w"), m("h"))
-        return (int(g["n"]), m("cov"))               # Perimeter
-
-    def _accept(self) -> None:
-        code = _ARR_CODE[self.type_combo.currentText()]
-        params = self._params()
-        mat = self.mat_combo.currentText()
-        mat = "" if mat == "(section steel)" else mat
-        if self._tendon:
-            self.result_arr = (code, self.area_spin.value() * 1e-6,
-                               self.fpe_spin.value() * 1e6, mat, params)
-        else:
-            self.result_arr = (code, core.BAR_SIZES[self.dia_combo.currentText()],
-                               mat, params)
-        self.accept()
-
-
-def _arr_param_specs(typ, tendon):
-    """(label, key, suffix, decimals, default, is_int) for an arrangement type's
-    position fields — shared by the dialog and the inline form."""
-    mm = (" mm", 0)
-    if typ == "Point":
-        return [("z", "z", *mm, 0, 0),
-                ("y", "y", *mm, -350 if tendon else 0, 0)]
-    if typ == "Line":
-        return [("Count n", "n", "", 0, 4 if tendon else 3, 1),
-                ("z1", "z1", *mm, -200 if tendon else -150, 0),
-                ("y1", "y1", *mm, -350 if tendon else -250, 0),
-                ("z2", "z2", *mm, 200 if tendon else 150, 0),
-                ("y2", "y2", *mm, -350 if tendon else -250, 0)]
-    if typ == "Arc":
-        return [("Count n", "n", "", 0, 4, 1), ("centre z", "cz", *mm, 0, 0),
-                ("centre y", "cy", *mm, 0, 0),
-                ("radius", "r", *mm, 300 if tendon else 200, 0),
-                ("start °", "a1", " °", 0, 200 if tendon else 0, 0),
-                ("end °", "a2", " °", 0, 340 if tendon else 360, 0)]
-    if typ == "Rectangle":
-        return [("n horiz.", "nz", "", 0, 3, 1), ("n vert.", "ny", "", 0, 3, 1),
-                ("centre z", "cz", *mm, 0, 0), ("centre y", "cy", *mm, 0, 0),
-                ("width", "w", *mm, 300, 0), ("height", "h", *mm, 500, 0)]
-    return [("Count n", "n", "", 0, 8, 1), ("cover", "cov", *mm, 50, 0)]
-
-
-def _arr_build_params(spins, typ):
-    g = {k: sp.value() for k, sp in spins.items()}
-
-    def m(k):
-        return g[k] / 1000.0
-    if typ == "Point":
-        return (m("z"), m("y"))
-    if typ == "Line":
-        return (int(g["n"]), m("z1"), m("y1"), m("z2"), m("y2"))
-    if typ == "Arc":
-        return (int(g["n"]), m("cz"), m("cy"), m("r"), g["a1"], g["a2"])
-    if typ == "Rectangle":
-        return (int(g["nz"]), int(g["ny"]), m("cz"), m("cy"), m("w"), m("h"))
-    return (int(g["n"]), m("cov"))
-
-
-class InlineArrangementForm(QWidget):
-    """An inline 'add arrangement' form (no modal): a type selector, adaptive
-    position fields, a bar size / tendon strength, a material picker and an Add
-    button — mirrors the Streamlit inline add-forms for faster input. Calls
-    ``on_add(arr_tuple)`` with the engine tuple."""
-
-    def __init__(self, parent=None, *, tendon: bool, mats_provider, on_add):
-        super().__init__(parent)
-        self._tendon = tendon
-        self._mats_provider = mats_provider
-        self._on_add = on_add
-        v = QVBoxLayout(self)
-        v.setContentsMargins(0, 4, 0, 0)
-        v.setSpacing(4)
-
-        top = QFormLayout()
-        self.type_combo = QComboBox()
-        self.type_combo.addItems(core.TENDON_ARR_TYPES if tendon
-                                 else core.REBAR_ARR_TYPES)
-        self.type_combo.currentTextChanged.connect(self._rebuild)
-        top.addRow("Add — Type", self.type_combo)
-        if tendon:
-            self.area_spin = ArrangementDialog._d(50, 5000, 10, " mm²", 0, 140)
-            self.fpe_spin = ArrangementDialog._d(500, 1600, 25, " MPa", 0, 1100)
-            top.addRow("Aₚ / tendon", self.area_spin)
-            top.addRow("f_pe", self.fpe_spin)
-        else:
-            self.dia_combo = QComboBox()
-            self.dia_combo.addItems(list(core.BAR_SIZES))
-            self.dia_combo.setCurrentText("25 mm")
-            top.addRow("Bar size", self.dia_combo)
-        self.mat_combo = QComboBox()
-        top.addRow("Material", self.mat_combo)
-        v.addLayout(top)
-
-        self.param_form = QFormLayout()
-        self._spins: dict = {}
-        v.addLayout(self.param_form)
-        add = QPushButton("＋ Add arrangement")
-        add.clicked.connect(self._add)
-        v.addWidget(add)
-        self.refresh_materials()
-        self._rebuild()
-
-    def refresh_materials(self):
-        cur = self.mat_combo.currentText()
-        default = "(default strand)" if self._tendon else "(section steel)"
-        self.mat_combo.clear()
-        self.mat_combo.addItems([default] + list(self._mats_provider()))
-        i = self.mat_combo.findText(cur)
-        if i >= 0:
-            self.mat_combo.setCurrentIndex(i)
-
-    def _rebuild(self, *_a):
-        while self.param_form.rowCount():
-            self.param_form.removeRow(0)
-        self._spins.clear()
-        for label, key, suffix, dec, default, is_int in _arr_param_specs(
-                self.type_combo.currentText(), self._tendon):
-            lo, hi = (1, 200) if is_int else (-5000, 5000)
-            sp = ArrangementDialog._d(lo, hi, 1 if is_int else 10, suffix,
-                                      0 if is_int else dec, default)
-            self.param_form.addRow(label, sp)
-            self._spins[key] = sp
-
-    def _add(self):
-        typ = self.type_combo.currentText()
-        code = _ARR_CODE[typ]
-        params = _arr_build_params(self._spins, typ)
-        mat = self.mat_combo.currentText()
-        mat = "" if mat.startswith("(") else mat
-        if self._tendon:
-            arr = (code, self.area_spin.value() * 1e-6,
-                   self.fpe_spin.value() * 1e6, mat, params)
-        else:
-            arr = (code, core.BAR_SIZES[self.dia_combo.currentText()], mat,
-                   params)
-        self._on_add(arr)
 
 
 def _conc_default(fc_mpa=30.0) -> dict:
