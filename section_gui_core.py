@@ -2068,14 +2068,38 @@ def _composite_cell_fibers(spec, csz_z, csz_y, eps0=None, kappa=None) -> list:
     return rows
 
 
+def _polar_divisions(target: int):
+    """Rings × sectors for a polar mesh with ~``target`` cells and ~square cells
+    at the perimeter (radial step ≈ arc step)."""
+    n_r = max(4, int(round((target / (2.0 * math.pi)) ** 0.5)))
+    n_theta = max(8, int(round(2.0 * math.pi * n_r)))
+    return n_r, n_theta
+
+
 def section_fiber_mesh(spec: "Spec", target: int = 1400) -> dict:
     """The fibre discretisation grid clipped to the section — the cell
     boundaries, for drawing the actual mesh (CSiBridge-style). Returns
-    ``{"segments": [((z0,y0),(z1,y1)), ...], "n_z", "n_y"}`` in SI metres. The
-    grid matches :func:`section_fibers` (same n_z × n_y from the bounds); each
-    grid line is intersected with the (holed) polygon so only the parts inside
-    the section are returned."""
+    ``{"segments": [((z0,y0),(z1,y1)), ...], "n_z", "n_y"}`` in SI metres.
+    Circular sections use a polar (rings + spokes) mesh; everything else uses the
+    Cartesian n_z × n_y grid intersected with the (holed) polygon so only the
+    parts inside the section are returned."""
     from shapely.geometry import LineString
+
+    if spec.kind == "Circular":
+        R = float(spec.D) / 2.0
+        n_r, n_theta = _polar_divisions(target)
+        dr, dth = R / n_r, 2.0 * math.pi / n_theta
+        segments = []
+        for i in range(1, n_r + 1):                    # rings (arcs)
+            r = i * dr
+            pts = [(r * math.cos(k * dth), r * math.sin(k * dth))
+                   for k in range(n_theta + 1)]
+            segments.extend(zip(pts[:-1], pts[1:]))
+        for j in range(n_theta):                       # spokes
+            th = j * dth
+            segments.append(((0.0, 0.0),
+                             (R * math.cos(th), R * math.sin(th))))
+        return {"segments": segments, "n_z": n_r, "n_y": n_theta}
 
     case = build_case(spec)
     poly = case.section.geometry.polygon
@@ -2144,7 +2168,24 @@ def section_fibers(spec: "Spec", target: int = 1400,
             row["stress"] = float(law.get_response(eps)[0])
         return row
 
-    if spec.kind == "Composite":
+    if spec.kind == "Circular":
+        # polar (rings × sectors) discretisation — the cell is an annular sector
+        R = float(spec.D) / 2.0
+        n_z, n_y = _polar_divisions(target)            # rings, sectors
+        dr, dth, al = R / n_z, 2.0 * math.pi / n_y, math.pi / n_y
+        cells = []
+        for i in range(n_z):
+            r1, r2 = i * dr, (i + 1) * dr
+            Rc = ((2.0 / 3.0) * (math.sin(al) / al)
+                  * (r2 ** 3 - r1 ** 3) / max(r2 ** 2 - r1 ** 2, 1e-12))
+            a_cell = 0.5 * dth * (r2 ** 2 - r1 ** 2)
+            for j in range(n_y):
+                thm = (j + 0.5) * dth
+                cells.append(_state(
+                    {"area": a_cell, "z": Rc * math.cos(thm),
+                     "y": Rc * math.sin(thm), "mat": "Concrete", "cell": True},
+                    conc_law))
+    elif spec.kind == "Composite":
         cells = _composite_cell_fibers(spec, w / n_z, h / n_y, eps0, kappa)
     else:
         cells = [_state({"area": float(f.area), "z": float(f.z),
