@@ -27,7 +27,7 @@ from PySide6.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import (QGraphicsEllipseItem, QGraphicsItem,
                                QGraphicsLineItem, QGraphicsPathItem,
                                QGraphicsScene, QGraphicsSimpleTextItem,
-                               QGraphicsView, QToolTip)
+                               QGraphicsView, QLabel, QToolTip)
 
 import style
 
@@ -101,6 +101,16 @@ class SectionCanvas(QGraphicsView):
         self._fib_mesh = None            # fibre discretisation grid segments
         self._fib_centroids = None       # optional fibre centroid rows
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
+        # empty-state hint, shown centred when the section has no geometry yet
+        self._empty_hint = QLabel(self.viewport())
+        self._empty_hint.setObjectName("canvasHint")
+        self._empty_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._empty_hint.setWordWrap(True)
+        self._empty_hint.setText(
+            "Nothing drawn yet\n\nUse the Point tool to click an outline, "
+            "or pick a built-in shape / template.")
+        self._empty_hint.hide()
 
     # -------------------------------------------------- public API
     def set_mode(self, mode: str) -> None:
@@ -302,6 +312,15 @@ class SectionCanvas(QGraphicsView):
             self.fit()
             self._fitted_kind = spec.kind
 
+    def show_empty(self) -> None:
+        """Clear the drawing and show the empty-state hint (for a section that
+        won't build, or has no geometry yet)."""
+        self._ext, self._holes, self._outline = [], [], []
+        self._render_bars, self._bars, self._holes_edit = [], [], []
+        self._dims = {}
+        self._selected = None
+        self._rebuild_scene()
+
     def fit(self) -> None:
         r = self._content_rect()
         if r.isValid():
@@ -313,6 +332,15 @@ class SectionCanvas(QGraphicsView):
     def resizeEvent(self, e):
         super().resizeEvent(e)
         self._emit_sel_pos()
+        self._position_hint()
+
+    def _position_hint(self) -> None:
+        vp = self.viewport().rect()
+        self._empty_hint.setFixedWidth(min(320, max(160, vp.width() - 40)))
+        self._empty_hint.adjustSize()
+        self._empty_hint.move(
+            (vp.width() - self._empty_hint.width()) // 2,
+            (vp.height() - self._empty_hint.height()) // 2)
 
     # -------------------------------------------------- scene building
     def _body_ring(self):
@@ -368,6 +396,12 @@ class SectionCanvas(QGraphicsView):
 
     def _rebuild_scene(self) -> None:
         self._scene.clear()
+        # empty-state hint when there's no drawable body yet
+        empty = len(self._body_ring()) < 3
+        self._empty_hint.setVisible(empty)
+        if empty:
+            self._position_hint()
+            self._empty_hint.raise_()
         # section outline (+ holes) as an even-odd path
         path = QPainterPath()
         self._ring(path, self._body_ring())

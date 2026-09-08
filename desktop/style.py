@@ -324,6 +324,16 @@ QLabel#navName {{ font-weight: 600; color: {TEXT}; background: transparent; }}
 QLabel#navSub {{ color: {MUTED}; font-size: {FS_SMALL}px;
                 background: transparent; }}
 QLineEdit#navEdit {{ padding: 1px 4px; }}
+
+/* ---- empty-state canvas hint ---- */
+QLabel#canvasHint {{ color: {MUTED}; font-size: {FS_H3}px;
+    background: transparent; }}
+
+/* ---- template gallery ---- */
+QFrame#tplCard {{ background: {PANEL}; border: 1px solid {BORDER};
+    border-radius: {R_MD}px; }}
+QFrame#tplCard:hover {{ border-color: {ACCENT}; }}
+QLabel#tplName {{ font-weight: 600; color: {TEXT}; background: transparent; }}
 """
 
 

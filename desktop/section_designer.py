@@ -61,7 +61,8 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox,
                                QComboBox, QDialog,
                                QDialogButtonBox,
                                QDoubleSpinBox, QFileDialog, QFormLayout,
-                               QFrame, QGraphicsOpacityEffect, QGroupBox,
+                               QFrame, QGraphicsOpacityEffect, QGridLayout,
+                               QGroupBox,
                                QHBoxLayout, QLabel, QLineEdit,
                                QListWidget, QListWidgetItem, QMainWindow, QMenu,
                                QMessageBox, QProgressBar, QPushButton,
@@ -283,6 +284,13 @@ class SectionDesignerWindow(QMainWindow):
         QShortcut(QKeySequence.StandardKey.Undo, self, self._undo)
         QShortcut(QKeySequence.StandardKey.Redo, self, self._redo)
         QShortcut(QKeySequence("Ctrl+Y"), self, self._redo)
+
+        # quiet first-run hint (once ever), pointing at the starter templates
+        if not self._settings.value("intro_seen", False, type=bool):
+            self._settings.setValue("intro_seen", True)
+            QTimer.singleShot(700, lambda: self._toast(
+                "Tip: start from  ＋ New ▸ From a template,  or draw a Custom "
+                "section with the Point tool.", msecs=6000))
 
     # --------------------------------------------------------- undo / redo
     def _reset_history(self) -> None:
@@ -580,6 +588,7 @@ class SectionDesignerWindow(QMainWindow):
         new_btn.setText("＋ New")
         new_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         menu = QMenu(new_btn)
+        menu.addAction("From a template…", self._new_from_gallery)
         menu.addAction("Blank section", self._new_section)
         menu.addSeparator()
         for name in _section_presets():
@@ -606,6 +615,12 @@ class SectionDesignerWindow(QMainWindow):
         self._active = name
         self._reload_section_nav()
         self._load_active()
+
+    def _new_from_gallery(self) -> None:
+        """Add a section chosen from the visual template gallery."""
+        dlg = TemplateGalleryDialog(self, _section_presets())
+        if dlg.exec() == QDialog.DialogCode.Accepted and dlg.chosen:
+            self._new_from_preset(dlg.chosen)
 
     def _nav_menu(self, pos) -> None:
         item = self.nav_list.itemAt(pos)
@@ -2413,6 +2428,9 @@ class SectionDesignerWindow(QMainWindow):
                 self.props.setItem(row, 1, it)
             self.statusBar().clearMessage()
         except Exception as exc:                       # noqa: BLE001
+            # a degenerate / unbuildable section: clear the canvas so the
+            # empty-state hint guides the user instead of a stale drawing.
+            self.canvas.show_empty()
             self.statusBar().showMessage(f"Geometry error: {exc}")
 
     # ------------------------------------------------ interactive canvas
@@ -3523,11 +3541,16 @@ class SectionDesignerWindow(QMainWindow):
         self._load_active()
 
     def _new_project(self) -> None:
-        self._sections = {"Section 1": {"spec": _rc_spec(kind="Rectangular", b=0.40, h=0.60),
-                                        "code": self.code_combo.currentText(),
-                                        "conc_mat": None, "steel_mat": None}}
+        # start from the template gallery; Cancel leaves the current project be
+        dlg = TemplateGalleryDialog(self, _section_presets(), new_project=True)
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+        spec = (_section_presets().get(dlg.chosen) if dlg.chosen
+                else _rc_spec(kind="Rectangular", b=0.40, h=0.60))
+        self._sections = {"Section 1": {
+            "spec": spec, "code": self.code_combo.currentText(),
+            "conc_mat": "C30", "steel_mat": None}}
         self._active = "Section 1"
-        self._materials = {}
         self._reload_section_nav()
         self._load_active()
 
@@ -3689,6 +3712,66 @@ class SectionDesignerWindow(QMainWindow):
         except Exception as exc:                       # noqa: BLE001
             QMessageBox.critical(self, "Export failed", str(exc))
             self._toast("Export failed", kind="err")
+
+
+class TemplateGalleryDialog(QDialog):
+    """A visual starter-template picker: a grid of preset cards (thumbnail +
+    name). Clicking a card chooses it and accepts; ``chosen`` holds the picked
+    preset name (or None on cancel)."""
+
+    def __init__(self, parent, presets, *, new_project: bool = False):
+        super().__init__(parent)
+        self.setWindowTitle("New project" if new_project
+                            else "Start from a template")
+        self.chosen: str | None = None
+        v = QVBoxLayout(self)
+        v.setContentsMargins(style.SP_XL, style.SP_LG, style.SP_XL, style.SP_LG)
+        v.setSpacing(style.SP_SM)
+        head = QLabel("Pick a starting section")
+        head.setObjectName("h2")
+        v.addWidget(head)
+        sub = QLabel("A starting point — every dimension, bar and material "
+                     "is editable afterwards.")
+        sub.setObjectName("sub")
+        v.addWidget(sub)
+        grid = QGridLayout()
+        grid.setSpacing(style.SP_MD)
+        grid.setContentsMargins(0, style.SP_SM, 0, style.SP_SM)
+        cols = 3
+        for i, (name, spec) in enumerate(presets.items()):
+            grid.addWidget(self._card(name, spec), i // cols, i % cols)
+        v.addLayout(grid)
+        bb = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel)
+        bb.rejected.connect(self.reject)
+        v.addWidget(bb)
+
+    def _card(self, name, spec) -> QFrame:
+        card = QFrame()
+        card.setObjectName("tplCard")
+        card.setCursor(Qt.CursorShape.PointingHandCursor)
+        cv = QVBoxLayout(card)
+        cv.setContentsMargins(style.SP_MD, style.SP_MD, style.SP_MD, style.SP_MD)
+        cv.setSpacing(style.SP_SM)
+        thumb = QSvgWidget()
+        thumb.setFixedSize(QSize(128, 108))
+        try:
+            thumb.load(QByteArray(core.svg_of(_case(spec)).encode("utf-8")))
+            r = thumb.renderer()
+            if r is not None:
+                r.setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
+        except Exception:                              # noqa: BLE001
+            pass
+        cv.addWidget(thumb, 0, Qt.AlignmentFlag.AlignHCenter)
+        nl = QLabel(name)
+        nl.setObjectName("tplName")
+        nl.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        cv.addWidget(nl)
+        card.mouseReleaseEvent = lambda _e, n=name: self._pick(n)
+        return card
+
+    def _pick(self, name: str) -> None:
+        self.chosen = name
+        self.accept()
 
 
 class AddGroupDialog(QDialog):
