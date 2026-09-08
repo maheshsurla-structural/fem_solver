@@ -57,7 +57,8 @@ from PySide6.QtCore import QSize, QSettings, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import QToolButton
-from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog,
+from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox,
+                               QComboBox, QDialog,
                                QDialogButtonBox,
                                QDoubleSpinBox, QFileDialog, QFormLayout,
                                QFrame, QGraphicsOpacityEffect, QGroupBox,
@@ -446,6 +447,7 @@ class SectionDesignerWindow(QMainWindow):
         self._style_sel_editor()
         self._sync_theme_btn()
         self.canvas.apply_theme()               # canvas bg/grid + re-render
+        self._reload_section_nav()              # re-colour the status dots
         self._refresh_geometry()                # props + header
         self._recompute_analysis()              # redraw the active chart
 
@@ -557,16 +559,22 @@ class SectionDesignerWindow(QMainWindow):
         lbl.setObjectName("sub")
         v.addWidget(lbl)
         self.nav_list = QListWidget()
-        self.nav_list.setSpacing(2)
+        self.nav_list.setSpacing(3)
         self.nav_list.currentRowChanged.connect(self._on_nav_changed)
-        self.nav_list.itemDoubleClicked.connect(
-            lambda _it: self._rename_section())
+        self.nav_list.itemDoubleClicked.connect(self._begin_inline_rename)
         self.nav_list.setContextMenuPolicy(
             Qt.ContextMenuPolicy.CustomContextMenu)
         self.nav_list.customContextMenuRequested.connect(self._nav_menu)
+        # drag to reorder the sections in the project
+        self.nav_list.setDragDropMode(
+            QAbstractItemView.DragDropMode.InternalMove)
+        self.nav_list.model().rowsMoved.connect(
+            lambda *_: self._persist_nav_order())
         self._nav_rows: dict = {}
+        self._inline_editing = False
         v.addWidget(self.nav_list, 1)
         row = QHBoxLayout()
+        row.setSpacing(4)
         # New: a menu of starter presets (plus a blank section)
         new_btn = QToolButton()
         new_btn.setText("＋ New")
@@ -579,7 +587,8 @@ class SectionDesignerWindow(QMainWindow):
                            lambda _=False, n=name: self._new_from_preset(n))
         new_btn.setMenu(menu)
         row.addWidget(new_btn)
-        for txt, fn in (("Dup", self._dup_section), ("Del", self._del_section)):
+        for txt, fn in (("Dup", self._dup_section), ("Mirror", self._mirror_section),
+                        ("Del", self._del_section)):
             b = QPushButton(txt)
             b.clicked.connect(lambda _=False, f=fn: f())
             row.addWidget(b)
@@ -607,12 +616,102 @@ class SectionDesignerWindow(QMainWindow):
             def _sel(fn):
                 self._switch_section(name)
                 fn()
-            menu.addAction("Rename…", lambda: _sel(self._rename_section))
+            menu.addAction("Rename",
+                           lambda: self._begin_inline_rename(item))
             menu.addAction("Duplicate", lambda: _sel(self._dup_section))
+            menu.addAction("Mirror", lambda: _sel(self._mirror_section))
             menu.addAction("Delete", lambda: _sel(self._del_section))
             menu.addSeparator()
         menu.addAction("New section", self._new_section)
         menu.exec(self.nav_list.mapToGlobal(pos))
+
+    # ---- inline rename ----
+    def _begin_inline_rename(self, item) -> None:
+        name = item.data(Qt.ItemDataRole.UserRole)
+        row = self._nav_rows.get(name)
+        if not row:
+            return
+        nl, _sl, _thumb, _dot, edit = row[1]
+        self._inline_old = name
+        self._inline_editing = True
+        edit.setText(name)
+        nl.hide()
+        edit.show()
+        edit.setFocus()
+        edit.selectAll()
+
+    def _commit_inline_rename(self) -> None:
+        if not self._inline_editing:
+            return
+        self._inline_editing = False
+        old = self._inline_old
+        row = self._nav_rows.get(old)
+        if not row:
+            return
+        nl, _sl, _thumb, _dot, edit = row[1]
+        new = edit.text().strip()
+        edit.hide()
+        nl.show()
+        if not new or new == old:
+            return
+        if new in self._sections:
+            self._toast("A section with that name already exists", kind="err")
+            return
+        self._sections = {new if k == old else k: v
+                          for k, v in self._sections.items()}
+        if self._active == old:
+            self._active = new
+            self.hdr_title.setText(new)
+        self._reload_section_nav()
+
+    # ---- drag reorder ----
+    def _persist_nav_order(self) -> None:
+        if self._loading:
+            return
+        order = [self.nav_list.item(i).data(Qt.ItemDataRole.UserRole)
+                 for i in range(self.nav_list.count())]
+        order = [n for n in order if n in self._sections]
+        if len(order) == len(self._sections) and order != list(self._sections):
+            self._sections = {n: self._sections[n] for n in order}
+            self._reload_section_nav()
+
+    # ---- mirror ----
+    def _mirror_spec(self, spec):
+        """A left/right mirror of the section about the vertical axis
+        (engine z → −z): custom geometry and any explicit bar coordinates."""
+        kw = {}
+        if spec.custom_outline:
+            kw["custom_outline"] = tuple((-z, y) for z, y in spec.custom_outline)
+        if spec.custom_holes:
+            kw["custom_holes"] = tuple(tuple((-z, y) for z, y in ring)
+                                       for ring in spec.custom_holes)
+        if spec.custom_bars:
+            kw["custom_bars"] = tuple((-z, y, d) for z, y, d in spec.custom_bars)
+        if spec.rebar_groups:
+            groups = []
+            for t, pat, pos, mat in spec.rebar_groups:
+                p = pos
+                if pos and "," in pos:
+                    try:
+                        zz, yy = (float(x) for x in pos.split(",")[:2])
+                        p = f"{-zz:g},{yy:g}"
+                    except ValueError:
+                        p = pos
+                groups.append((t, pat, p, mat))
+            kw["rebar_groups"] = tuple(groups)
+        return replace(spec, **kw)
+
+    def _mirror_section(self) -> None:
+        name = self._unique_name(f"{self._active} mirror")
+        rec = self._sections[self._active]
+        self._sections[name] = {"spec": self._mirror_spec(rec["spec"]),
+                                "code": rec["code"],
+                                "conc_mat": rec.get("conc_mat"),
+                                "steel_mat": rec.get("steel_mat")}
+        self._active = name
+        self._reload_section_nav()
+        self._load_active()
+        self._toast(f"Mirrored → {name}")
 
     # ---- navigator rows (name + summary + status) ----
     def _spec_summary(self, spec) -> str:
@@ -638,32 +737,65 @@ class SectionDesignerWindow(QMainWindow):
         except Exception:                              # noqa: BLE001
             return True
 
+    def _section_status(self, spec) -> str:
+        """Readiness of a section for analysis: ``error`` (won't build),
+        ``warn`` (no reinforcement yet) or ``ok`` (ready)."""
+        try:
+            _case(spec)
+        except Exception:                              # noqa: BLE001
+            return "error"
+        return "ok" if self._section_has_reinf(spec) else "warn"
+
+    _STATUS_TIP = {"ok": "Ready to analyse",
+                   "warn": "No reinforcement yet",
+                   "error": "Section won't build"}
+
     def _make_nav_widget(self, name, rec):
         w = QWidget()
         lay = QHBoxLayout(w)
-        lay.setContentsMargins(6, 4, 6, 4)
-        lay.setSpacing(8)
+        lay.setContentsMargins(6, 5, 6, 5)
+        lay.setSpacing(10)
+        frame = QFrame()
+        frame.setObjectName("navThumb")
+        frame.setFixedSize(QSize(64, 64))
+        fl = QVBoxLayout(frame)
+        fl.setContentsMargins(3, 3, 3, 3)
         thumb = QSvgWidget()
-        thumb.setFixedSize(QSize(44, 44))
-        lay.addWidget(thumb)
+        fl.addWidget(thumb)
+        lay.addWidget(frame)
         txt = QVBoxLayout()
-        txt.setSpacing(1)
+        txt.setSpacing(2)
+        top = QHBoxLayout()
+        top.setSpacing(6)
+        dot = QLabel()
+        dot.setFixedSize(9, 9)
+        top.addWidget(dot)
         nl = QLabel()
-        nl.setStyleSheet("font-weight:600; background:transparent;")
+        nl.setObjectName("navName")
+        top.addWidget(nl)
+        edit = QLineEdit()
+        edit.setObjectName("navEdit")
+        edit.hide()
+        edit.returnPressed.connect(self._commit_inline_rename)
+        edit.editingFinished.connect(self._commit_inline_rename)
+        top.addWidget(edit, 1)
+        top.addStretch(1)
+        txt.addLayout(top)
         sl = QLabel()
-        sl.setObjectName("sub")
-        sl.setStyleSheet("background:transparent;")
-        txt.addWidget(nl)
+        sl.setObjectName("navSub")
         txt.addWidget(sl)
         lay.addLayout(txt, 1)
-        self._fill_nav_labels(nl, sl, name, rec["spec"])
+        self._fill_nav_labels(nl, sl, dot, name, rec["spec"])
         self._fill_nav_thumb(thumb, rec["spec"])
-        return w, (nl, sl, thumb)
+        return w, (nl, sl, thumb, dot, edit)
 
-    def _fill_nav_labels(self, nl, sl, name, spec) -> None:
-        warn = "" if self._section_has_reinf(spec) else "⚠ "
-        nl.setText(f"{warn}{name}")
+    def _fill_nav_labels(self, nl, sl, dot, name, spec) -> None:
+        nl.setText(name)
         sl.setText(self._spec_summary(spec))
+        st = self._section_status(spec)
+        col = {"ok": style.OK, "warn": style.WARN, "error": style.BAD}[st]
+        dot.setStyleSheet(f"background:{col}; border-radius:4px;")
+        dot.setToolTip(self._STATUS_TIP[st])
 
     def _fill_nav_thumb(self, thumb, spec) -> None:
         """Mini cross-section drawing for a navigator row (aspect preserved)."""
@@ -3265,8 +3397,8 @@ class SectionDesignerWindow(QMainWindow):
         row = self._nav_rows.get(name)
         rec = self._sections.get(name)
         if row and rec:
-            nl, sl, thumb = row[1]
-            self._fill_nav_labels(nl, sl, name, rec["spec"])
+            nl, sl, thumb, dot, _edit = row[1]
+            self._fill_nav_labels(nl, sl, dot, name, rec["spec"])
             self._fill_nav_thumb(thumb, rec["spec"])
 
     def _on_nav_changed(self, row: int) -> None:

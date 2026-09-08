@@ -316,6 +316,14 @@ QLabel#toastErr {{ background: {BAD}; }}
 QProgressBar#busyBar {{ background: {BORDER}; border: none; border-radius: 3px;
     max-height: 6px; }}
 QProgressBar#busyBar::chunk {{ background: {ACCENT}; border-radius: 3px; }}
+
+/* ---- section navigator rows ---- */
+QFrame#navThumb {{ background: {CANVAS_BG}; border: 1px solid {BORDER};
+                  border-radius: {R_SM}px; }}
+QLabel#navName {{ font-weight: 600; color: {TEXT}; background: transparent; }}
+QLabel#navSub {{ color: {MUTED}; font-size: {FS_SMALL}px;
+                background: transparent; }}
+QLineEdit#navEdit {{ padding: 1px 4px; }}
 """
 
 
