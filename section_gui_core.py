@@ -2068,6 +2068,42 @@ def _composite_cell_fibers(spec, csz_z, csz_y, eps0=None, kappa=None) -> list:
     return rows
 
 
+def section_fiber_mesh(spec: "Spec", target: int = 1400) -> dict:
+    """The fibre discretisation grid clipped to the section — the cell
+    boundaries, for drawing the actual mesh (CSiBridge-style). Returns
+    ``{"segments": [((z0,y0),(z1,y1)), ...], "n_z", "n_y"}`` in SI metres. The
+    grid matches :func:`section_fibers` (same n_z × n_y from the bounds); each
+    grid line is intersected with the (holed) polygon so only the parts inside
+    the section are returned."""
+    from shapely.geometry import LineString
+
+    case = build_case(spec)
+    poly = case.section.geometry.polygon
+    minz, miny, maxz, maxy = poly.bounds
+    w = max(maxz - minz, 1e-9)
+    h = max(maxy - miny, 1e-9)
+    n_z = max(6, int(round((target * w / h) ** 0.5)))
+    n_y = max(6, int(round((target * h / w) ** 0.5)))
+    dz, dy = w / n_z, h / n_y
+    segments = []
+
+    def _collect(inter):
+        geoms = getattr(inter, "geoms", None) or [inter]
+        for g in geoms:
+            cs = list(getattr(g, "coords", []))
+            for a, b in zip(cs[:-1], cs[1:]):
+                segments.append(((float(a[0]), float(a[1])),
+                                 (float(b[0]), float(b[1]))))
+
+    for i in range(n_z + 1):
+        zi = minz + i * dz
+        _collect(poly.intersection(LineString([(zi, miny), (zi, maxy)])))
+    for j in range(n_y + 1):
+        yj = miny + j * dy
+        _collect(poly.intersection(LineString([(minz, yj), (maxz, yj)])))
+    return {"segments": segments, "n_z": n_z, "n_y": n_y}
+
+
 def section_fibers(spec: "Spec", target: int = 1400,
                    eps0=None, kappa=None) -> dict:
     """Discretise the section the way the fibre analysis does and return the

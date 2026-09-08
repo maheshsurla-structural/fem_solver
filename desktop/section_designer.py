@@ -908,10 +908,17 @@ class SectionDesignerWindow(QMainWindow):
         self._dims_btn.toggled.connect(self.canvas.set_dims)
         vl.addWidget(self._dims_btn)
         self._fib_btn = _tbtn(
-            "Fibres", "Overlay the fibre discretisation on the section",
+            "Fibres", "Overlay the fibre discretisation mesh on the section",
             checkable=True)
         self._fib_btn.toggled.connect(self._on_fib_overlay)
         vl.addWidget(self._fib_btn)
+        self._fib_cent_btn = _tbtn(
+            "Centroids", "Show the fibre centroids on the mesh",
+            checkable=True)
+        self._fib_cent_btn.setEnabled(False)
+        self._fib_cent_btn.toggled.connect(
+            lambda *_: self._update_fiber_overlay())
+        vl.addWidget(self._fib_cent_btn)
         fitb = _tbtn("Fit", "Zoom to fit the section")
         fitb.clicked.connect(lambda: self.canvas.fit())
         vl.addWidget(fitb)
@@ -2104,23 +2111,28 @@ class SectionDesignerWindow(QMainWindow):
         self.canvas.start_void()
 
     def _on_fib_overlay(self, on: bool) -> None:
+        if hasattr(self, "_fib_cent_btn"):
+            self._fib_cent_btn.setEnabled(on)
         if on:
             self._update_fiber_overlay()
         else:
-            self.canvas.set_fibers(None)
+            self.canvas.set_fibers(None, None)
 
     def _update_fiber_overlay(self) -> None:
-        """Recompute + push the fibre-mesh overlay to the canvas (called
-        debounced, so live dragging stays smooth)."""
+        """Push the fibre discretisation mesh (+ optional centroids) to the
+        canvas (called debounced, so live dragging stays smooth)."""
         if not (hasattr(self, "_fib_btn") and self._fib_btn.isChecked()):
             return
         try:
             target = self.fib_target.value() if hasattr(self, "fib_target") \
                 else 1400
-            data = core.section_fibers(self._spec, target=target)
-            self.canvas.set_fibers(data["fibers"])
+            mesh = core.section_fiber_mesh(self._spec, target=target)["segments"]
+            rows = None
+            if self._fib_cent_btn.isChecked():
+                rows = core.section_fibers(self._spec, target=target)["fibers"]
+            self.canvas.set_fibers(rows, mesh)
         except Exception:                              # noqa: BLE001
-            self.canvas.set_fibers(None)
+            self.canvas.set_fibers(None, None)
 
     def _on_canvas_selection(self, payload) -> None:
         """Populate the floating point editor; None hides it."""
