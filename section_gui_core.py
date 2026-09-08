@@ -2011,6 +2011,60 @@ def items_data(case: SectionCase, code: str,
     } for (c, q, un, v, t) in rows]
 
 
+def section_fibers(spec: "Spec", target: int = 1400) -> dict:
+    """Discretise the section the way the fibre analysis does and return the
+    fibre list + fibre-derived properties, for a CSiBridge-style fibre view.
+
+    Returns ``{"fibers": [...], "n_z", "n_y", "fiber_props", "solid_props"}``.
+    Each fibre is ``{"area", "z", "y", "mat"}`` in SI (m², m). Concrete cells
+    come from grid-sampling the (holed) polygon; each rebar / tendon is one
+    point fibre. Properties (area, centroid, I_zz about the horizontal axis,
+    I_yy about the vertical) are integrated from the CONCRETE fibres and shown
+    beside the exact solid values so the user can gauge the discretisation.
+    ``target`` is the approximate concrete-cell count (density adapts to the
+    aspect ratio to keep cells ~square)."""
+    case = build_case(spec)
+    sec = case.section
+    poly = sec.geometry.polygon
+    minz, miny, maxz, maxy = poly.bounds
+    w = max(maxz - minz, 1e-9)
+    h = max(maxy - miny, 1e-9)
+    n_z = max(6, int(round((target * w / h) ** 0.5)))
+    n_y = max(6, int(round((target * h / w) ** 0.5)))
+    law = concrete_uniaxial_from(dict(
+        fc=spec.fc, conc_model="Kent-Park", eps_c0=spec.eps_c0,
+        eps_cu=spec.eps_cu, fcu_ratio=spec.fcu_ratio))
+    cfibers = _discretize_polygon_to_fibers(poly, law, n_z=n_z, n_y=n_y)
+    fibers = [{"area": float(f.area), "z": float(f.z), "y": float(f.y),
+               "mat": "Concrete"} for f in cfibers]
+    bars = sec.reinforcement.bars if sec.reinforcement else []
+    for b in bars:
+        fibers.append({"area": float(b.area), "z": float(b.z),
+                       "y": float(b.y), "mat": "Steel"})
+    tendons = (sec.prestress.tendons
+               if getattr(sec, "prestress", None) else [])
+    for t in tendons:
+        fibers.append({"area": float(t.area), "z": float(t.z),
+                       "y": float(t.y), "mat": "Tendon"})
+
+    A = sum(float(f.area) for f in cfibers)
+    if A > 0:
+        cz = sum(float(f.area) * float(f.z) for f in cfibers) / A
+        cy = sum(float(f.area) * float(f.y) for f in cfibers) / A
+        I_zz = sum(float(f.area) * (float(f.y) - cy) ** 2 for f in cfibers)
+        I_yy = sum(float(f.area) * (float(f.z) - cz) ** 2 for f in cfibers)
+    else:
+        cz = cy = I_zz = I_yy = 0.0
+    g = sec.geometry
+    gcz, gcy = g.centroid
+    return {
+        "fibers": fibers, "n_z": n_z, "n_y": n_y,
+        "fiber_props": {"A": A, "cz": cz, "cy": cy, "I_zz": I_zz, "I_yy": I_yy},
+        "solid_props": {"A": g.area, "cz": gcz, "cy": gcy,
+                        "I_zz": g.I_zz, "I_yy": g.I_yy},
+    }
+
+
 def props_of(case: SectionCase) -> dict:
     g = case.section.geometry
     cz, cy = g.centroid

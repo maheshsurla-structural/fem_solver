@@ -1125,6 +1125,9 @@ class SectionDesignerWindow(QMainWindow):
         self.inter_stack.addWidget(mm)          # 2: M-M contour
         iv.addWidget(self.inter_stack, 1)
 
+        # ---- Fibres (discretisation view + properties) ----
+        fib = self._build_fibers_tab()
+
         # ---- Report ----
         self.report = QTextBrowser()
 
@@ -1133,8 +1136,53 @@ class SectionDesignerWindow(QMainWindow):
         self.tabs.addTab(mp, "Moment-curvature")
         self.tabs.addTab(vt, "Verification")
         self.tabs.addTab(sf, "Stress field")
+        self.tabs.addTab(fib, "Fibres")
         self.tabs.addTab(self.report, "Report")
         return self.tabs
+
+    def _build_fibers_tab(self) -> QWidget:
+        """CSiBridge-style fibre view: the discretised section (concrete cells +
+        rebar/tendon fibres), the fibre-derived section properties beside the
+        exact solid values, and the full fibre table."""
+        w = QWidget()
+        v = QVBoxLayout(w)
+        top = QHBoxLayout()
+        top.addWidget(QLabel("Fibres ≈"))
+        self.fib_target = self._ispin(200, 8000)
+        self.fib_target.setValue(1400)
+        self.fib_target.setSingleStep(200)
+        self.fib_target.valueChanged.connect(lambda *_: self._queue())
+        top.addWidget(self.fib_target)
+        self.fib_info = QLabel("")
+        self.fib_info.setStyleSheet("color:#5a6b7b;")
+        top.addWidget(self.fib_info)
+        top.addStretch(1)
+        v.addLayout(top)
+
+        self.fib_fig = Figure(figsize=(4.4, 3.6), layout="constrained")
+        self.fib_canvas = Canvas(self.fib_fig)
+        v.addWidget(self.fib_canvas, 3)
+
+        self.fib_props = QTableWidget(0, 3)
+        self.fib_props.setHorizontalHeaderLabels(["Quantity", "Fibre", "Solid"])
+        self.fib_props.horizontalHeader().setStretchLastSection(True)
+        self.fib_props.verticalHeader().setVisible(False)
+        self.fib_props.setAlternatingRowColors(True)
+        self.fib_props.setShowGrid(False)
+        self.fib_props.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.fib_props.setMaximumHeight(180)
+        v.addWidget(self.fib_props)
+
+        self.fib_tbl = QTableWidget(0, 5)
+        self.fib_tbl.setHorizontalHeaderLabels(
+            ["#", "Area [mm²]", "Y [mm]", "Z [mm]", "Material"])
+        self.fib_tbl.horizontalHeader().setStretchLastSection(True)
+        self.fib_tbl.verticalHeader().setVisible(False)
+        self.fib_tbl.setAlternatingRowColors(True)
+        self.fib_tbl.setShowGrid(False)
+        self.fib_tbl.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        v.addWidget(self.fib_tbl, 2)
+        return w
 
     # -------------------------------------------------------------- helpers
     @staticmethod
@@ -2129,13 +2177,21 @@ class SectionDesignerWindow(QMainWindow):
         if idx == 0:
             self.statusBar().clearMessage()
             return
+        label = self.tabs.tabText(idx)
+        if label == "Fibres":               # fibre view needs no reinforcement
+            try:
+                self._draw_fibers()
+                self.statusBar().clearMessage()
+            except Exception as exc:                   # noqa: BLE001
+                self.statusBar().showMessage(f"Fibre error: {exc}")
+            return
         if not self._has_reinforcement(case):
             self.statusBar().showMessage(
                 "This section has no reinforcement yet — add bars/strands to "
                 "compute interaction, moment-curvature and verification.")
             return
         try:
-            if idx == 1:                    # P-M-M interaction (sub-view)
+            if label == "P-M-M interaction":
                 sub = self.inter_view.currentIndex()
                 if sub == 0:
                     self._draw_pm(case, code)
@@ -2143,13 +2199,13 @@ class SectionDesignerWindow(QMainWindow):
                     self._draw_surface(case, code)
                 else:
                     self._draw_mm_contour(case, code)
-            elif idx == 2:
+            elif label == "Moment-curvature":
                 self._draw_mphi(case)
-            elif idx == 3:
+            elif label == "Verification":
                 self._fill_verify(case, code)
-            elif idx == 4:
+            elif label == "Stress field":
                 self._draw_stress_field(case)
-            elif idx == 5:
+            elif label == "Report":
                 self._fill_report(case, code)
             self.statusBar().clearMessage()
         except Exception as exc:                       # noqa: BLE001
@@ -2499,6 +2555,70 @@ class SectionDesignerWindow(QMainWindow):
                                        it.get("units", ""), comp,
                                        it.get("note", ""))):
                 self.verify_tbl.setItem(r, col, QTableWidgetItem(str(val)))
+
+    def _draw_fibers(self) -> None:
+        """Render the fibre discretisation + fibre-vs-solid properties + table."""
+        data = core.section_fibers(self._spec, target=self.fib_target.value())
+        fibers = data["fibers"]
+        nconc = sum(1 for f in fibers if f["mat"] == "Concrete")
+        nsteel = sum(1 for f in fibers if f["mat"] == "Steel")
+        ntend = sum(1 for f in fibers if f["mat"] == "Tendon")
+        self.fib_info.setText(
+            f"{data['n_z']}×{data['n_y']} grid · {len(fibers)} fibres "
+            f"({nconc} concrete" + (f", {nsteel} rebar" if nsteel else "")
+            + (f", {ntend} tendon" if ntend else "") + ")")
+
+        # ---- plot (Y horizontal = engine z, Z vertical = engine y) ----
+        self.fib_fig.clear()
+        ax = self.fib_fig.add_subplot(111)
+        ax.set_aspect("equal")
+        colors = {"Concrete": "#e8c33a", "Steel": "#c0392b", "Tendon": "#2c6fb0"}
+        sizes = {"Concrete": 6, "Steel": 26, "Tendon": 22}
+        zorders = {"Concrete": 1, "Steel": 3, "Tendon": 3}
+        for mat in ("Concrete", "Steel", "Tendon"):
+            pts = [f for f in fibers if f["mat"] == mat]
+            if not pts:
+                continue
+            ax.scatter([f["z"] * 1e3 for f in pts], [f["y"] * 1e3 for f in pts],
+                       s=sizes[mat], c=colors[mat], edgecolors="none",
+                       zorder=zorders[mat], label=f"{mat} ({len(pts)})")
+        ax.set_xlabel("Y [mm]")
+        ax.set_ylabel("Z [mm]")
+        ax.set_title("Fibre discretisation")
+        ax.legend(loc="upper right", fontsize=8, framealpha=0.9)
+        style.beautify_axes(ax)
+        self.fib_canvas.draw_idle()
+
+        # ---- properties: fibre vs solid (Y/Z convention) ----
+        fp, sp = data["fiber_props"], data["solid_props"]
+        rows = [
+            ("Area [mm²]", fp["A"] * 1e6, sp["A"] * 1e6, 0),
+            ("Centroid Y [mm]", fp["cz"] * 1e3, sp["cz"] * 1e3, 2),
+            ("Centroid Z [mm]", fp["cy"] * 1e3, sp["cy"] * 1e3, 2),
+            ("I_yy [mm⁴]", fp["I_zz"] * 1e12, sp["I_zz"] * 1e12, 0),
+            ("I_zz [mm⁴]", fp["I_yy"] * 1e12, sp["I_yy"] * 1e12, 0),
+        ]
+        self.fib_props.setRowCount(len(rows))
+        for r, (q, fv, sv, dp) in enumerate(rows):
+            self.fib_props.setItem(r, 0, QTableWidgetItem(q))
+            for c, val in ((1, fv), (2, sv)):
+                v = 0.0 if abs(val) < 1e-9 else val
+                it = QTableWidgetItem(f"{v:,.{dp}f}")
+                it.setTextAlignment(Qt.AlignmentFlag.AlignRight
+                                    | Qt.AlignmentFlag.AlignVCenter)
+                self.fib_props.setItem(r, c, it)
+
+        # ---- fibre table ----
+        self.fib_tbl.setRowCount(len(fibers))
+        for r, f in enumerate(fibers):
+            vals = (str(r + 1), f"{f['area'] * 1e6:.2f}", f"{f['z'] * 1e3:.1f}",
+                    f"{f['y'] * 1e3:.1f}", f["mat"])
+            for c, val in enumerate(vals):
+                it = QTableWidgetItem(val)
+                if 0 < c < 4:
+                    it.setTextAlignment(Qt.AlignmentFlag.AlignRight
+                                        | Qt.AlignmentFlag.AlignVCenter)
+                self.fib_tbl.setItem(r, c, it)
 
     def _fill_report(self, case, code) -> None:
         try:
