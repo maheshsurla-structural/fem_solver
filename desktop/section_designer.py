@@ -60,7 +60,8 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox,
                                QDoubleSpinBox, QFileDialog, QFormLayout,
                                QGroupBox, QHBoxLayout, QLabel, QLineEdit,
                                QListWidget, QListWidgetItem, QMainWindow, QMenu,
-                               QMessageBox, QPushButton, QScrollArea, QSpinBox,
+                               QMessageBox, QProgressBar, QPushButton,
+                               QScrollArea, QSpinBox,
                                QSplitter, QStackedWidget, QStyledItemDelegate,
                                QTableWidget,
                                QTableWidgetItem, QTabWidget, QTextBrowser,
@@ -1001,6 +1002,7 @@ class SectionDesignerWindow(QMainWindow):
         # ---- P-M interaction + demand check ----
         pm = QWidget()
         pmv = QVBoxLayout(pm)
+        pmv.addWidget(self._build_verdict_strip())
         self.pm_fig = Figure(figsize=(4.4, 4.0), layout="constrained")
         self.pm_canvas = Canvas(self.pm_fig)
         pmv.addWidget(self.pm_canvas)
@@ -1021,9 +1023,6 @@ class SectionDesignerWindow(QMainWindow):
             w.valueChanged.connect(lambda *_: self._queue())
         self.design_chk.stateChanged.connect(lambda *_: self._queue())
         pmv.addLayout(d1)
-        self.dem_lbl = QLabel("—")
-        self.dem_lbl.setTextFormat(Qt.TextFormat.RichText)
-        pmv.addWidget(self.dem_lbl)
 
         # ---- Moment-curvature ----
         mp = QWidget()
@@ -2322,6 +2321,84 @@ class SectionDesignerWindow(QMainWindow):
             return None
         return [{"name": "Demand", "P": P, "Mz": Mz, "My": My}]
 
+    # ------------------------------------------------------ verdict strip
+    def _build_verdict_strip(self) -> QWidget:
+        """A result banner above the P-M chart: PASS/FAIL pill, the D/C number,
+        a governing-mode detail line and a utilisation bar. Filled by
+        :meth:`_set_verdict` when a demand is entered."""
+        strip = QWidget()
+        strip.setObjectName("verdictStrip")
+        h = QHBoxLayout(strip)
+        h.setContentsMargins(style.SP_LG, style.SP_MD, style.SP_LG, style.SP_MD)
+        h.setSpacing(style.SP_LG)
+
+        self._vd_pill = QLabel("—")
+        self._vd_pill.setObjectName("pillWarn")
+        self._vd_pill.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        h.addWidget(self._vd_pill)
+
+        dc = QVBoxLayout()
+        dc.setSpacing(0)
+        self._vd_dc = QLabel("—")
+        self._vd_dc.setObjectName("kpiValue")
+        self._vd_dc_lbl = QLabel("D/C UTILISATION")
+        self._vd_dc_lbl.setObjectName("kpiLabel")
+        dc.addWidget(self._vd_dc)
+        dc.addWidget(self._vd_dc_lbl)
+        h.addLayout(dc)
+
+        det = QVBoxLayout()
+        det.setSpacing(style.SP_XS + 1)
+        self._vd_detail = QLabel("")
+        self._vd_detail.setObjectName("caption")
+        det.addWidget(self._vd_detail)
+        self._vd_bar = QProgressBar()
+        self._vd_bar.setObjectName("utilBar")
+        self._vd_bar.setRange(0, 100)
+        self._vd_bar.setTextVisible(False)
+        self._vd_bar.setFixedHeight(6)
+        det.addWidget(self._vd_bar)
+        h.addLayout(det, 1)
+
+        self._set_verdict_empty()
+        return strip
+
+    def _set_pill(self, kind: str, text: str) -> None:
+        """Swap the pill's semantic style (``pass``/``fail``/``warn``). The
+        objectName drives QSS, so unpolish/polish to force a restyle."""
+        name = {"pass": "pillPass", "fail": "pillFail"}.get(kind, "pillWarn")
+        self.style().unpolish(self._vd_pill)
+        self._vd_pill.setObjectName(name)
+        self.style().polish(self._vd_pill)
+        self._vd_pill.setText(text)
+
+    def _set_verdict_empty(self, msg: str = "") -> None:
+        self._set_pill("warn", "NO DEMAND")
+        self._vd_dc.setText("—")
+        self._vd_dc.setStyleSheet("")
+        self._vd_detail.setText(
+            msg or "Enter a demand (P, Mz, My) below to run a capacity check.")
+        self._vd_bar.setValue(0)
+        self._vd_bar.setStyleSheet("")
+
+    def _set_verdict(self, res, u) -> None:
+        util = float(res["util"])
+        ok = res["status"] == "OK"
+        self._set_pill("pass" if ok else "fail", "PASS" if ok else "FAIL")
+        # amber when passing but within 15% of the envelope
+        color = style.WARN if (ok and util >= 0.85) else (
+            style.OK if ok else style.BAD)
+        self._vd_dc.setText(f"{util:.3f}")
+        self._vd_dc.setStyleSheet(f"color: {color};")
+        basis = "design φ" if self.design_chk.isChecked() else "nominal"
+        self._vd_detail.setText(
+            f"governs {res['govern']} · capacity {u.M_disp(res['M_cap']):.4g} "
+            f"{u.Ml} · β {res['beta_deg']:.1f}° · {basis}")
+        self._vd_bar.setValue(int(round(min(util, 1.0) * 100)))
+        self._vd_bar.setStyleSheet(
+            f"QProgressBar#utilBar::chunk {{ background: {color}; "
+            f"border-radius: 3px; }}")
+
     def _draw_pm(self, case, code) -> None:
         u = self._units
         if self._spec.kind == "Composite":
@@ -2332,8 +2409,8 @@ class SectionDesignerWindow(QMainWindow):
                     transform=ax.transAxes)
             ax.set_axis_off()
             self.pm_canvas.draw_idle()
-            self.dem_lbl.setText("Demand check is not available for composite "
-                                 "sections in this build.")
+            self._set_verdict_empty("Demand check runs on the 3-D "
+                                    "P-M-M surface for composite sections.")
             return
         curve, landmarks = core.pmm_slice(case, code)
         self.pm_fig.clear()
@@ -2356,14 +2433,9 @@ class SectionDesignerWindow(QMainWindow):
                                     spec=self._spec)[0]
             ax.plot([u.M_disp(res["M_res"])], [u.P_disp(res["P"])], "o",
                     color="#e3a008", ms=9, label="Demand", zorder=5)
-            col = "#1a7f37" if res["status"] == "OK" else "#cf222e"
-            self.dem_lbl.setText(
-                f"D/C = <b style='color:{col}'>{res['util']:.3f}</b> "
-                f"({res['status']}) · governs {res['govern']} · "
-                f"M_cap {u.M_disp(res['M_cap']):.4g} {u.Ml}, "
-                f"β {res['beta_deg']:.1f}°")
+            self._set_verdict(res, u)
         else:
-            self.dem_lbl.setText("Enter a demand (P, Mz, My) to run a check.")
+            self._set_verdict_empty()
         ax.axhline(0, color="#000", lw=0.5)
         ax.axvline(0, color="#000", lw=0.5)
         ax.set_xlabel(f"M  [{u.Ml}]")

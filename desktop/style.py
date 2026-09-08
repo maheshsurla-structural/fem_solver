@@ -268,6 +268,10 @@ QLabel#pillFail {{ background: {BAD_SOFT}; color: {BAD}; font-weight: 700;
                   border-radius: {R_SM}px; padding: 3px 12px; }}
 QLabel#pillWarn {{ background: {WARN_SOFT}; color: {WARN}; font-weight: 700;
                   border-radius: {R_SM}px; padding: 3px 12px; }}
+QWidget#verdictStrip {{ background: {ZEBRA}; border: 1px solid {BORDER};
+                       border-radius: {R_MD}px; }}
+QProgressBar#utilBar {{ background: {BORDER}; border: none; border-radius: 3px; }}
+QProgressBar#utilBar::chunk {{ border-radius: 3px; }}
 """
 
 
