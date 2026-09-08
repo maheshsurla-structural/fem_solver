@@ -32,7 +32,7 @@ Parity implemented here
 * Moment-curvature with **neutral-axis angle** and milestone metrics /table.
 * Verification table (``core.items_data`` with ``mphi_props``) and the full
   Report (``core.report_html`` with mphi + demand + meta).
-* Export: section JSON, verification CSV, report HTML.
+* Export: section JSON, verification CSV, fibres CSV, report HTML.
 
 Follow-ups (engine already supports these; tracked as T2.08 on the roadmap):
 Custom polygon + Composite editors, rebar/tendon *arrangement* generators, the
@@ -315,6 +315,7 @@ class SectionDesignerWindow(QMainWindow):
         m = self.menuBar().addMenu("&Export")
         m.addAction("Section as &JSON…", self._export_section_json)
         m.addAction("&Verification as CSV…", self._export_verify_csv)
+        m.addAction("&Fibres as CSV…", self._export_fibers_csv)
         m.addAction("&Report as HTML…", self._export_report_html)
 
     def _build_toolbar(self, code) -> None:
@@ -3090,6 +3091,48 @@ class SectionDesignerWindow(QMainWindow):
                                 it.get("computed", ""), it.get("tol_pct", ""),
                                 it.get("note", "")])
             self.statusBar().showMessage(f"Saved {path}")
+        except Exception as exc:                       # noqa: BLE001
+            QMessageBox.critical(self, "Export failed", str(exc))
+
+    def _export_fibers_csv(self) -> None:
+        """Export the fibre table as CSV — with strain/stress at the selected
+        milestone when the Fibres tab is in a Strain/Stress mode."""
+        try:
+            aspec = self._analysis_spec()
+            mode = self.fib_mode.currentText()
+            eps0 = kappa = None
+            if mode in ("Strain", "Stress"):
+                sel = self.fib_milestone.currentData()
+                if not sel:
+                    mils = self._fiber_milestones(aspec)
+                    sel = mils[-1] if mils else None
+                if sel:
+                    eps0, kappa = sel["eps0"], sel["kappa"]
+            data = core.section_fibers(aspec, target=self.fib_target.value(),
+                                       eps0=eps0, kappa=kappa)
+        except Exception as exc:                       # noqa: BLE001
+            QMessageBox.critical(self, "Export failed", str(exc))
+            return
+        fibers, state = data["fibers"], data.get("has_state")
+        path, _ = QFileDialog.getSaveFileName(self, "Export fibres",
+                                              "fibres.csv", "CSV (*.csv)")
+        if not path:
+            return
+        try:
+            with open(path, "w", newline="", encoding="utf-8") as fh:
+                w = csv.writer(fh)
+                hdr = ["#", "Area [mm^2]", "Y [mm]", "Z [mm]", "Material"]
+                if state:
+                    hdr += ["Strain [permil]", "Stress [MPa]"]
+                w.writerow(hdr)
+                for i, f in enumerate(fibers, 1):
+                    row = [i, f"{f['area'] * 1e6:.3f}", f"{f['z'] * 1e3:.2f}",
+                           f"{f['y'] * 1e3:.2f}", f["mat"]]
+                    if state:
+                        row += [f"{f['strain'] * 1e3:.4f}",
+                                f"{f['stress'] / 1e6:.3f}"]
+                    w.writerow(row)
+            self.statusBar().showMessage(f"Saved {len(fibers)} fibres → {path}")
         except Exception as exc:                       # noqa: BLE001
             QMessageBox.critical(self, "Export failed", str(exc))
 
