@@ -859,56 +859,70 @@ class SectionDesignerWindow(QMainWindow):
         self.canvas.cursorMoved.connect(self._on_canvas_cursor)
         self.canvas.selectionChanged.connect(self._on_canvas_selection)
         self.canvas.selPosChanged.connect(self._on_sel_pos)
-        tools = QHBoxLayout()
+        # tool ribbon: the canvas tools grouped into Draw / View tabs
+        tool_tabs = QTabWidget()
+        tool_tabs.setDocumentMode(True)
+
+        def _tbtn(text, tip="", *, checkable=False):
+            b = QToolButton()
+            b.setText(text)
+            if tip:
+                b.setToolTip(tip)
+            b.setCheckable(checkable)
+            return b
+
+        # -- Draw tab --
+        draw_page = QWidget()
+        dl = QHBoxLayout(draw_page)
+        dl.setContentsMargins(6, 3, 6, 3)
         self._canvas_mode_btns = {}
         for mode, label in (("select", "Select"), ("add_vertex", "＋ Point"),
                             ("add_bar", "＋ Rebar")):
-            b = QToolButton()
-            b.setText(label)
-            b.setCheckable(True)
+            b = _tbtn(label, checkable=True)
             b.clicked.connect(lambda _c=False, m=mode: self._set_canvas_mode(m))
-            tools.addWidget(b)
+            dl.addWidget(b)
             self._canvas_mode_btns[mode] = b
         self._canvas_mode_btns["select"].setChecked(True)
-        self._void_btn = QToolButton()
-        self._void_btn.setText("＋ Void")
-        self._void_btn.setToolTip("Draw a hole/void (click to add its corners)")
+        self._void_btn = _tbtn(
+            "＋ Void", "Draw a hole/void (click to add its corners)")
         self._void_btn.clicked.connect(self._start_void)
-        tools.addWidget(self._void_btn)
-        tools.addSpacing(8)
-        self._snap_btn = QToolButton()
-        self._snap_btn.setText("Snap")
-        self._snap_btn.setCheckable(True)
-        self._snap_btn.setToolTip("Snap points to a 5 mm grid (Shift = ortho)")
-        self._snap_btn.toggled.connect(self.canvas.set_snap)
-        tools.addWidget(self._snap_btn)
-        self._dims_btn = QToolButton()
-        self._dims_btn.setText("Dims")
-        self._dims_btn.setCheckable(True)
-        self._dims_btn.setToolTip("Show overall width/height dimensions")
-        self._dims_btn.toggled.connect(self.canvas.set_dims)
-        tools.addWidget(self._dims_btn)
-        self._fib_btn = QToolButton()
-        self._fib_btn.setText("Fibres")
-        self._fib_btn.setCheckable(True)
-        self._fib_btn.setToolTip("Overlay the fibre discretisation on the section")
-        self._fib_btn.toggled.connect(self._on_fib_overlay)
-        tools.addWidget(self._fib_btn)
-        fitb = QToolButton()
-        fitb.setText("Fit")
-        fitb.clicked.connect(lambda: self.canvas.fit())
-        tools.addWidget(fitb)
-        self._edit_free_btn = QToolButton()
-        self._edit_free_btn.setText("Edit freely →")
-        self._edit_free_btn.setToolTip(
+        dl.addWidget(self._void_btn)
+        self._edit_free_btn = _tbtn(
+            "Edit freely →",
             "Convert this parametric shape to an editable Custom polygon")
         self._edit_free_btn.clicked.connect(self._convert_to_custom)
-        tools.addWidget(self._edit_free_btn)
-        tools.addStretch(1)
+        dl.addWidget(self._edit_free_btn)
+        dl.addStretch(1)
+        tool_tabs.addTab(draw_page, "Draw")
+
+        # -- View tab --
+        view_page = QWidget()
+        vl = QHBoxLayout(view_page)
+        vl.setContentsMargins(6, 3, 6, 3)
+        self._snap_btn = _tbtn(
+            "Snap", "Snap points to a 5 mm grid (Shift = ortho)", checkable=True)
+        self._snap_btn.toggled.connect(self.canvas.set_snap)
+        vl.addWidget(self._snap_btn)
+        self._dims_btn = _tbtn(
+            "Dims", "Show overall width/height dimensions", checkable=True)
+        self._dims_btn.toggled.connect(self.canvas.set_dims)
+        vl.addWidget(self._dims_btn)
+        self._fib_btn = _tbtn(
+            "Fibres", "Overlay the fibre discretisation on the section",
+            checkable=True)
+        self._fib_btn.toggled.connect(self._on_fib_overlay)
+        vl.addWidget(self._fib_btn)
+        fitb = _tbtn("Fit", "Zoom to fit the section")
+        fitb.clicked.connect(lambda: self.canvas.fit())
+        vl.addWidget(fitb)
+        vl.addStretch(1)
+        tool_tabs.addTab(view_page, "View")
+
+        # cursor readout stays visible across tabs (corner of the ribbon)
         self.coord_lbl = QLabel("")
-        self.coord_lbl.setStyleSheet("color:#5a6b7b;")
-        tools.addWidget(self.coord_lbl)
-        cv.addLayout(tools)
+        self.coord_lbl.setStyleSheet("color:#5a6b7b; margin-right:6px;")
+        tool_tabs.setCornerWidget(self.coord_lbl, Qt.Corner.TopRightCorner)
+        cv.addWidget(tool_tabs)
         cv.addWidget(self.canvas)
         # selected-point coordinate editor — a small floating panel that sits
         # NEXT TO the picked point on the canvas, showing/editing its (Y, Z).
