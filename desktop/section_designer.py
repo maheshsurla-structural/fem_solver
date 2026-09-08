@@ -52,7 +52,7 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as Canvas
 from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  (registers 3-d proj.)
 from PySide6.QtCore import Qt, QByteArray, QTimer
-from PySide6.QtCore import QSize
+from PySide6.QtCore import QSize, QSettings
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import QToolButton
@@ -189,6 +189,12 @@ class SectionDesignerWindow(QMainWindow):
         super().__init__(parent)
         self.setWindowTitle("General Section Designer")
         self.resize(1240, 860)
+
+        # theme: restore the last choice and install it before any widget is
+        # built, so icons, the canvas and charts all come up in the right palette
+        self._settings = QSettings("MidasStructural", "SectionDesigner")
+        self._themed_icons: list = []    # (widget, icon_name, is_pixmap)
+        style.set_theme(str(self._settings.value("theme", "light")))
 
         self._fem = fem_window           # FEM MainWindow for the model bridge
         # default section: reinforcement comes from the AdSec GROUPS table, so
@@ -338,10 +344,11 @@ class SectionDesignerWindow(QMainWindow):
         h.setSpacing(style.SP_LG)
 
         # -- brand --
-        logo = QLabel()
-        logo.setPixmap(icons.icon("sectiondesigner", style.ACCENT).pixmap(
-            QSize(22, 22)))
-        h.addWidget(logo)
+        self._brand_logo = QLabel()
+        self._brand_logo.setPixmap(
+            icons.icon("sectiondesigner", style.ACCENT).pixmap(QSize(22, 22)))
+        self._themed_icons.append((self._brand_logo, "sectiondesigner", True))
+        h.addWidget(self._brand_logo)
         word = QLabel("Section Designer")
         word.setObjectName("brandWord")
         h.addWidget(word)
@@ -397,7 +404,49 @@ class SectionDesignerWindow(QMainWindow):
             cb.currentTextChanged.connect(lambda *_: self._on_units_changed())
         h.addWidget(self._chip("UNITS", self.force_combo, self.length_combo,
                                self.stress_combo))
+
+        # -- light / dark theme toggle --
+        h.addWidget(self._hdr_rule())
+        self._theme_btn = QToolButton()
+        self._theme_btn.setAutoRaise(True)
+        self._theme_btn.setIconSize(QSize(18, 18))
+        self._theme_btn.setFixedSize(32, 30)
+        self._theme_btn.clicked.connect(self._toggle_theme)
+        self._sync_theme_btn()
+        h.addWidget(self._theme_btn)
         return bar
+
+    def _sync_theme_btn(self) -> None:
+        """Show the icon for the theme the button switches TO, with a hint."""
+        dark = style.current_theme() == "dark"
+        nxt = "theme_light" if dark else "theme_dark"
+        self._theme_btn.setIcon(icons.icon(nxt, style.ICON))
+        self._theme_btn.setToolTip(
+            "Switch to light theme" if dark else "Switch to dark theme")
+
+    def _toggle_theme(self) -> None:
+        style.toggle_theme()
+        self._settings.setValue("theme", style.current_theme())
+        style.apply(self)                       # re-skin every widget
+        self._retint_icons()
+        self._style_sel_editor()
+        self._sync_theme_btn()
+        self.canvas.apply_theme()               # canvas bg/grid + re-render
+        self._refresh_geometry()                # props + header
+        self._recompute_analysis()              # redraw the active chart
+
+    def _retint_icons(self) -> None:
+        for w, name, is_pix in self._themed_icons:
+            if is_pix:
+                w.setPixmap(
+                    icons.icon(name, style.ACCENT).pixmap(QSize(22, 22)))
+            else:
+                w.setIcon(icons.icon(name, style.ICON))
+
+    def _style_sel_editor(self) -> None:
+        self.sel_editor.setStyleSheet(
+            f"#selEditor{{background:{style.PANEL}; border:1px solid "
+            f"{style.BORDER_STRONG}; border-radius:6px;}}")
 
     def _hdr_rule(self) -> QFrame:
         r = QFrame()
@@ -929,9 +978,7 @@ class SectionDesignerWindow(QMainWindow):
         self._sel_pos = None
         self.sel_editor = QWidget(self.canvas)
         self.sel_editor.setObjectName("selEditor")
-        self.sel_editor.setStyleSheet(
-            "#selEditor{background:#ffffff; border:1px solid #b9c6d2; "
-            "border-radius:6px;}")
+        self._style_sel_editor()
         sr = QHBoxLayout(self.sel_editor)
         sr.setContentsMargins(6, 3, 6, 3)
         sr.setSpacing(4)
@@ -967,11 +1014,12 @@ class SectionDesignerWindow(QMainWindow):
         h = QHBoxLayout(bar)
         h.setContentsMargins(6, 3, 6, 3)
         h.setSpacing(2)
-        ic = "#44506a"                       # neutral icon ink on the panel
+        ic = style.ICON                      # neutral icon ink (theme token)
 
         def tb(tip, icn, *, checkable=False):
             b = QToolButton()
             b.setIcon(icons.icon(icn, ic))
+            self._themed_icons.append((b, icn, False))
             b.setIconSize(QSize(18, 18))
             b.setToolTip(tip)
             b.setCheckable(checkable)
@@ -1032,6 +1080,7 @@ class SectionDesignerWindow(QMainWindow):
         self._props_btn = QToolButton()
         self._props_btn.setText(" Properties")
         self._props_btn.setIcon(icons.icon("sd_props", ic))
+        self._themed_icons.append((self._props_btn, "sd_props", False))
         self._props_btn.setIconSize(QSize(16, 16))
         self._props_btn.setToolButtonStyle(
             Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
@@ -2560,14 +2609,14 @@ class SectionDesignerWindow(QMainWindow):
         ax = self.pm_fig.add_subplot(111)
         M = [u.M_disp(v) for v in curve["M_nom"]]
         P = [u.P_disp(v) for v in curve["P_nom"]]
-        ax.plot(M, P, "-", color="#1f6feb", lw=1.8, label="Nominal P-M")
+        ax.plot(M, P, "-", color=style.C_PRIMARY, lw=1.8, label="Nominal P-M")
         if curve.get("has_design"):
             ax.plot([u.M_disp(v) for v in curve["M_des"]],
                     [u.P_disp(v) for v in curve["P_des"]], "--",
-                    color="#d1462f", lw=1.5, label="Design φ")
+                    color=style.C_SECONDARY, lw=1.5, label="Design φ")
         for _name, val, kind in (landmarks or []):
             if kind == "P":
-                ax.axhline(u.P_disp(val), color="#bbb", lw=0.6, ls=":")
+                ax.axhline(u.P_disp(val), color=style.AX_SPINE, lw=0.6, ls=":")
         # demand check
         dem = self._demands()
         if dem:
@@ -2575,12 +2624,12 @@ class SectionDesignerWindow(QMainWindow):
                                     design=self.design_chk.isChecked(),
                                     spec=self._spec)[0]
             ax.plot([u.M_disp(res["M_res"])], [u.P_disp(res["P"])], "o",
-                    color="#e3a008", ms=9, label="Demand", zorder=5)
+                    color=style.C_DEMAND, ms=9, label="Demand", zorder=5)
             self._set_verdict(res, u)
         else:
             self._set_verdict_empty()
-        ax.axhline(0, color="#000", lw=0.5)
-        ax.axvline(0, color="#000", lw=0.5)
+        ax.axhline(0, color=style.AX_TEXT, lw=0.5)
+        ax.axvline(0, color=style.AX_TEXT, lw=0.5)
         ax.set_xlabel(f"M  [{u.Ml}]")
         ax.set_ylabel(f"P  [{u.Fl}]  (+ compression)")
         ax.set_title(f"P-M interaction — {code}")
@@ -2614,7 +2663,7 @@ class SectionDesignerWindow(QMainWindow):
         self.mp_fig.clear()
         ax = self.mp_fig.add_subplot(111)
         ax.plot([u.curv_disp(k) for k in data["kappa"]],
-                [u.M_disp(v) for v in data["M"]], "-", color="#2ca25f", lw=1.8)
+                [u.M_disp(v) for v in data["M"]], "-", color=style.OK, lw=1.8)
         marks = list(data.get("milestones", []))
         if data.get("ideal"):
             marks.append({**data["ideal"], "label": "f",
@@ -2628,9 +2677,9 @@ class SectionDesignerWindow(QMainWindow):
             if abs(ms["M"]) > m_span:
                 continue
             kx, my = u.curv_disp(ms["kappa"]), u.M_disp(ms["M"])
-            ax.plot([kx], [my], "o", ms=6, color="crimson")
+            ax.plot([kx], [my], "o", ms=6, color=style.C_MILESTONE)
             ax.annotate(ms.get("label", ""), (kx, my), fontsize=8,
-                        fontweight="bold", color="crimson",
+                        fontweight="bold", color=style.C_MILESTONE,
                         textcoords="offset points", xytext=(4, 4))
             rows.append((ms.get("label", ""), ms.get("state", ""), kx, my))
         ax.set_xlabel(f"curvature κ  [{u.Kl}]")
@@ -2708,7 +2757,7 @@ class SectionDesignerWindow(QMainWindow):
         rys = data.get("rebar_ys", [])
         if rys:
             ax.plot([eps0 - ry * kap for ry in rys], [ry * 1e3 for ry in rys],
-                    "o", color="#1f3b6f", ms=5)
+                    "o", color=style.ACCENT, ms=5)
         ax.axvline(0, color=style.AX_SPINE, lw=0.8, ls="--")
         ax.set_xlabel("strain ε  (tension +)")
         ax.set_ylabel("y from centroid [mm]")
@@ -2842,7 +2891,7 @@ class SectionDesignerWindow(QMainWindow):
         bsig = [max(-clim, min(clim, v)) for v in bsig]
         # section outline
         ex, ey = poly.exterior.xy
-        ax.plot([z * 1e3 for z in ex], [y * 1e3 for y in ey], color="#5b7aa8",
+        ax.plot([z * 1e3 for z in ex], [y * 1e3 for y in ey], color=style.MUTED,
                 lw=1.5, zorder=1)
         sc = ax.scatter(Z, Y, c=S, cmap="RdBu_r", vmin=-clim, vmax=clim,
                         marker="s", s=16, linewidths=0, zorder=2)
@@ -2854,8 +2903,8 @@ class SectionDesignerWindow(QMainWindow):
         if (e_top > 0) != (e_bot > 0) and e_top != e_bot:
             y0 = (miny + (0.0 - e_bot) * span / (e_top - e_bot)) * 1e3
             if miny * 1e3 <= y0 <= maxy * 1e3:
-                ax.axhline(y0, color="#e5484d", lw=1.4, ls="--")
-                ax.annotate("N.A.", (maxz * 1e3, y0), color="#e5484d",
+                ax.axhline(y0, color=style.BAD, lw=1.4, ls="--")
+                ax.annotate("N.A.", (maxz * 1e3, y0), color=style.BAD,
                             fontsize=8, va="bottom", ha="right")
         self.sf_fig.colorbar(sc, ax=ax, label="σ  [MPa]", shrink=0.85)
         ax.set_aspect("equal", adjustable="datalim")

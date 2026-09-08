@@ -29,6 +29,8 @@ from PySide6.QtWidgets import (QGraphicsEllipseItem, QGraphicsItem,
                                QGraphicsScene, QGraphicsSimpleTextItem,
                                QGraphicsView, QToolTip)
 
+import style
+
 # primary (width, height) dimension key per parametric kind — the bounding-box
 # width equals the width dim and the bbox height the height dim, so a right/top
 # edge drag maps straight onto these.
@@ -69,7 +71,7 @@ class SectionCanvas(QGraphicsView):
         self.setScene(self._scene)
         self.setRenderHint(QPainter.RenderHint.Antialiasing)
         self.setMouseTracking(True)
-        self.setBackgroundBrush(QBrush(QColor("#ffffff")))
+        self.setBackgroundBrush(QBrush(QColor(style.CANVAS_BG)))
         self.setMinimumHeight(300)
         self.setTransformationAnchor(
             QGraphicsView.ViewportAnchor.AnchorUnderMouse)
@@ -116,6 +118,13 @@ class SectionCanvas(QGraphicsView):
     def set_dims(self, on: bool) -> None:
         self._dims_on = bool(on)
         self._rebuild_scene()
+
+    def apply_theme(self) -> None:
+        """Re-read the active palette (background + grid) and repaint. The
+        per-item colours are read from ``style`` at render time."""
+        self.setBackgroundBrush(QBrush(QColor(style.CANVAS_BG)))
+        self._rebuild_scene()
+        self.viewport().update()
 
     def set_fibers(self, rows=None, mesh=None) -> None:
         """Overlay the fibre discretisation: ``mesh`` = grid segments (the cell
@@ -344,7 +353,8 @@ class SectionCanvas(QGraphicsView):
         h.setData(0, data)
         self._scene.addItem(h)
 
-    def _label(self, z, y, text, color="#333"):
+    def _label(self, z, y, text, color=None):
+        color = color or style.TEXT
         t = QGraphicsSimpleTextItem(text)
         t.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations)
         t.setBrush(QBrush(QColor(color)))
@@ -365,8 +375,8 @@ class SectionCanvas(QGraphicsView):
             self._ring(path, h)
         path.setFillRule(Qt.FillRule.OddEvenFill)
         body = QGraphicsPathItem(path)
-        body.setBrush(QBrush(QColor("#cfe8ff")))
-        body.setPen(QPen(QColor("#1f4f73"), 0, Qt.PenStyle.SolidLine))
+        body.setBrush(QBrush(QColor(style.BODY_FILL)))
+        body.setPen(QPen(QColor(style.BODY_STROKE), 0, Qt.PenStyle.SolidLine))
         pen = body.pen()
         pen.setCosmetic(True)
         pen.setWidthF(1.5)
@@ -382,7 +392,7 @@ class SectionCanvas(QGraphicsView):
                 gp.moveTo(a[0], -a[1])
                 gp.lineTo(b[0], -b[1])
             item = QGraphicsPathItem(gp)
-            pen = QPen(QColor("#6b7683"))
+            pen = QPen(QColor(style.MUTED))
             pen.setCosmetic(True)
             pen.setWidthF(0.5)
             item.setPen(pen)
@@ -477,17 +487,18 @@ class SectionCanvas(QGraphicsView):
         ax = QGraphicsLineItem(r.left() - mx, 0.0, r.right() + mx, 0.0)
         ay = QGraphicsLineItem(0.0, r.top() - mx, 0.0, r.bottom() + mx)
         for a in (ax, ay):
-            p = QPen(QColor("#9aa7b2"), 0, Qt.PenStyle.DashLine)
+            p = QPen(QColor(style.MUTED), 0, Qt.PenStyle.DashLine)
             p.setCosmetic(True)
             a.setPen(p)
             a.setZValue(0)
             self._scene.addItem(a)
         # labels at the positive ends: +Y right, +Z up (scene top = -y)
-        self._label(r.right() + mx, 0.0, "Y", "#5a6b7b")
+        self._label(r.right() + mx, 0.0, "Y", style.MUTED)
         self._label(0.0, -(r.top() - mx) if r.top() < 0 else r.bottom() + mx,
-                    "Z", "#5a6b7b")
+                    "Z", style.MUTED)
 
-    def _dim_line(self, x1, y1, x2, y2, color="#8a97a2"):
+    def _dim_line(self, x1, y1, x2, y2, color=None):
+        color = color or style.MUTED
         ln = QGraphicsLineItem(x1, y1, x2, y2)
         p = QPen(QColor(color))
         p.setCosmetic(True)
@@ -495,7 +506,8 @@ class SectionCanvas(QGraphicsView):
         ln.setZValue(3)
         self._scene.addItem(ln)
 
-    def _scene_text(self, sx, sy, text, color="#556677"):
+    def _scene_text(self, sx, sy, text, color=None):
+        color = color or style.MUTED
         t = QGraphicsSimpleTextItem(text)
         t.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations)
         t.setBrush(QBrush(QColor(color)))
@@ -798,7 +810,7 @@ class SectionCanvas(QGraphicsView):
         px_per_m = self.transform().m11() or 1.0
         while g * px_per_m < 8 and g < 10:
             g *= 2
-        pen = QPen(QColor("#eef2f6"))
+        pen = QPen(QColor(style.CANVAS_GRID))
         pen.setCosmetic(True)
         painter.setPen(pen)
         left = math.floor(rect.left() / g) * g

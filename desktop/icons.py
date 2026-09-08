@@ -102,6 +102,11 @@ _ICONS = {
                    '<circle cx="15.5" cy="6.5" r="2.3" fill="{c}" stroke="none"/>',
     "sd_props": '<rect x="4" y="4" width="16" height="16" rx="1.5"/>'
                 '<path d="M8 9h8M8 13h8M8 17h5"/>',
+    "theme_dark": '<path d="M20 13.5A8 8 0 1 1 10.5 4a6.5 6.5 0 0 0 9.5 9.5z"/>',
+    "theme_light": '<circle cx="12" cy="12" r="4"/>'
+                   '<path d="M12 2v2M12 20v2M4 12H2M22 12h-2'
+                   'M5.6 5.6L4.2 4.2M19.8 19.8l-1.4-1.4'
+                   'M18.4 5.6l1.4-1.4M4.2 19.8l1.4-1.4"/>',
 }
 _LETTERS = {"axial": "N", "shear": "V", "moment": "M"}
 

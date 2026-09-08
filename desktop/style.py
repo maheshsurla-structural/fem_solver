@@ -8,33 +8,9 @@ grouping. Applied per-window with ``apply(widget)``; charts call
 """
 from __future__ import annotations
 
-# ---- palette ---------------------------------------------------------------
-BG = "#f4f6f9"          # window ground
-PANEL = "#ffffff"       # cards / inputs
-BORDER = "#d9dee6"      # hairlines
-BORDER_STRONG = "#c3cad4"
-TEXT = "#1e2430"        # primary text
-MUTED = "#6b7482"       # secondary text
-ACCENT = "#2563eb"      # primary blue
-ACCENT_HOVER = "#1d4ed8"
-ACCENT_SOFT = "#eaf1fe"  # tinted fills (selection, header)
-OK = "#1a7f37"
-BAD = "#cf222e"
-ZEBRA = "#f7f9fc"       # alternate table row
-
-# chart colors
-C_PRIMARY = ACCENT
-C_SECONDARY = "#d1462f"
-C_MILESTONE = "#d1462f"
-C_DEMAND = "#e3a008"
-GRID = "#e6eaf0"
-AX_SPINE = "#c3cad4"
-AX_TEXT = "#3a4150"
-
+# ---- design tokens (theme-independent) -------------------------------------
 FONT_STACK = "'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif"
 MONO_STACK = "'Cascadia Mono', 'Consolas', 'SF Mono', monospace"
-
-# ---- design tokens ---------------------------------------------------------
 # Spacing — a 4px base on an 8px rhythm. Reach for these, not ad-hoc pixels.
 SP_XS, SP_SM, SP_MD, SP_LG, SP_XL = 4, 8, 12, 16, 24
 # Corner radius by role: controls / cards / large surfaces.
@@ -44,14 +20,40 @@ FS_DISPLAY, FS_H1, FS_H2, FS_H3 = 26, 18, 15, 14
 FS_BODY, FS_SMALL, FS_MICRO = 13, 12, 11
 LS_LABEL = "0.06em"          # tracking for uppercase captions / eyebrows
 
-# semantic (result) colors — distinct from the blue accent
-WARN = "#9a6a12"
-WARN_SOFT = "#faf0da"
-OK_SOFT = "#e4f4e9"
-BAD_SOFT = "#fbe6e9"
+# ---- palettes (light / dark) -----------------------------------------------
+# Every colour token lives here so the whole app can swap themes at runtime.
+# The active palette is installed onto the module namespace (style.BG, …) so
+# call-time reads of ``style.X`` always see the current theme.
+_LIGHT = dict(
+    BG="#f4f6f9", PANEL="#ffffff", BORDER="#d9dee6", BORDER_STRONG="#c3cad4",
+    TEXT="#1e2430", MUTED="#6b7482", ACCENT="#2563eb", ACCENT_HOVER="#1d4ed8",
+    ACCENT_SOFT="#eaf1fe", OK="#1a7f37", BAD="#cf222e", ZEBRA="#f7f9fc",
+    WARN="#9a6a12", WARN_SOFT="#faf0da", OK_SOFT="#e4f4e9", BAD_SOFT="#fbe6e9",
+    ICON="#44506a",
+    # chart series + axes
+    C_PRIMARY="#2563eb", C_SECONDARY="#d1462f", C_MILESTONE="#d1462f",
+    C_DEMAND="#e3a008", GRID="#e6eaf0", AX_SPINE="#c3cad4", AX_TEXT="#3a4150",
+    # section canvas
+    CANVAS_BG="#ffffff", CANVAS_GRID="#eef2f6", BODY_FILL="#cfe8ff",
+    BODY_STROKE="#1f4f73",
+)
+_DARK = dict(
+    BG="#151922", PANEL="#1e232d", BORDER="#2c333f", BORDER_STRONG="#3b4553",
+    TEXT="#e7ecf3", MUTED="#93a0b2", ACCENT="#5b93f7", ACCENT_HOVER="#79a7ff",
+    ACCENT_SOFT="#243350", OK="#46b768", BAD="#f0616d", ZEBRA="#232936",
+    WARN="#d9a441", WARN_SOFT="#39301c", OK_SOFT="#1c3326", BAD_SOFT="#3a2329",
+    ICON="#aab4c2",
+    C_PRIMARY="#5b93f7", C_SECONDARY="#f2795f", C_MILESTONE="#f2795f",
+    C_DEMAND="#e3b341", GRID="#2a313d", AX_SPINE="#3b4553", AX_TEXT="#aab4c2",
+    CANVAS_BG="#1a1f28", CANVAS_GRID="#262d38", BODY_FILL="#26374f",
+    BODY_STROKE="#5b93f7",
+)
+_PALETTES = {"light": _LIGHT, "dark": _DARK}
+_theme = "light"
 
-
-QSS = f"""
+# The stylesheet is a str.format template: ``{{`` / ``}}`` are literal CSS
+# braces and ``{TOKEN}`` fields are filled from the active palette + tokens.
+_QSS_TEMPLATE = """
 * {{
     font-family: {FONT_STACK};
     font-size: {FS_BODY}px;
@@ -308,8 +310,33 @@ QFrame#propsDrawer {{ background: {PANEL}; border: 1px solid {BORDER};
 """
 
 
+def _install(theme: str) -> None:
+    """Copy the chosen palette onto the module namespace and rebuild QSS."""
+    global _theme, QSS
+    _theme = "dark" if theme == "dark" else "light"
+    globals().update(_PALETTES[_theme])
+    QSS = _QSS_TEMPLATE.format(**globals())
+
+
+def current_theme() -> str:
+    return _theme
+
+
+def set_theme(theme: str) -> str:
+    """Switch the active palette; returns the resolved theme name."""
+    _install(theme)
+    return _theme
+
+
+def toggle_theme() -> str:
+    return set_theme("light" if _theme == "dark" else "dark")
+
+
+_install("light")            # seed the module with the light palette + QSS
+
+
 def apply(widget) -> None:
-    """Apply the theme stylesheet to a top-level widget (cascades to children)."""
+    """Apply the current theme stylesheet to a top-level widget (cascades)."""
     widget.setStyleSheet(QSS)
 
 
