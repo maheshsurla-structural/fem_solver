@@ -1171,6 +1171,12 @@ class SectionDesignerWindow(QMainWindow):
         self.fib_milestone.currentIndexChanged.connect(
             lambda *_: (None if self._loading else self._queue()))
         top.addWidget(self.fib_milestone)
+        top.addSpacing(10)
+        top.addWidget(QLabel("View"))
+        self.fib_view = QComboBox()
+        self.fib_view.addItems(["Both", "Diagram", "Table"])
+        self.fib_view.currentIndexChanged.connect(lambda *_: self._apply_fib_view())
+        top.addWidget(self.fib_view)
         self.fib_info = QLabel("")
         self.fib_info.setStyleSheet("color:#5a6b7b;")
         top.addWidget(self.fib_info)
@@ -1201,6 +1207,14 @@ class SectionDesignerWindow(QMainWindow):
         self.fib_tbl.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         v.addWidget(self.fib_tbl, 2)
         return w
+
+    def _apply_fib_view(self) -> None:
+        """Show the diagram, the fibre table, or both (properties always on)."""
+        view = self.fib_view.currentText()
+        self.fib_canvas.setVisible(view != "Table")
+        self.fib_tbl.setVisible(view != "Diagram")
+        if not self._loading:
+            self._queue()            # refill the table / redraw the plot
 
     # -------------------------------------------------------------- helpers
     @staticmethod
@@ -2742,6 +2756,8 @@ class SectionDesignerWindow(QMainWindow):
                 self.fib_props.setItem(r, c, it)
 
         # ---- fibre table (add strain/stress columns in a state mode) ----
+        if self.fib_view.currentText() == "Diagram":
+            return                                       # table hidden — skip fill
         if state:
             self.fib_tbl.setColumnCount(7)
             self.fib_tbl.setHorizontalHeaderLabels(
