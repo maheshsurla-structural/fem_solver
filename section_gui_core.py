@@ -2011,18 +2011,66 @@ def items_data(case: SectionCase, code: str,
     } for (c, q, un, v, t) in rows]
 
 
+def _mat_label(matd: dict) -> str:
+    """Short material label for the fibre view, e.g. 'Concrete 30' / 'Steel 355'."""
+    kind = str(matd.get("kind", "concrete")).title()
+    strength = matd.get("fc") if kind == "Concrete" else matd.get("fy")
+    try:
+        return f"{kind} {float(strength) / 1e6:.0f}" if strength else kind
+    except (TypeError, ValueError):
+        return kind
+
+
+def _composite_cell_fibers(spec, csz_z, csz_y) -> list:
+    """Composite section cells, discretised per shape with each shape's own
+    material (z-order: later shapes displace earlier), recentred on the union
+    centroid — matching :func:`_composite_fiber_section`. Cell size ≈
+    ``csz_z × csz_y`` so all shapes share one grid. Returns fibre dicts labelled
+    by material."""
+    from shapely.geometry import Polygon as SPoly
+    from shapely.ops import unary_union
+    from shapely.affinity import translate
+
+    raw = [(SPoly([(float(z), float(y)) for (z, y) in o]), dict(m))
+           for (o, m) in spec.shapes if len(o) >= 3]
+    if not raw:
+        return []
+    union = unary_union([p for p, _ in raw])
+    cz, cy = union.centroid.x, union.centroid.y
+    polys = [(translate(p, xoff=-cz, yoff=-cy), m) for p, m in raw]
+    plist = [p for p, _ in polys]
+    law = concrete_uniaxial_from(dict(fc=spec.fc, conc_model="Kent-Park",
+                                      eps_c0=spec.eps_c0, eps_cu=spec.eps_cu,
+                                      fcu_ratio=spec.fcu_ratio))
+    rows = []
+    for i, (poly, matd) in enumerate(polys):
+        later = unary_union(plist[i + 1:]) if i + 1 < len(plist) else None
+        eff = (poly.difference(later)
+               if (later is not None and not later.is_empty) else poly)
+        if eff.is_empty:
+            continue
+        b = eff.bounds
+        nz_s = max(2, int(round((b[2] - b[0]) / max(csz_z, 1e-9))))
+        ny_s = max(2, int(round((b[3] - b[1]) / max(csz_y, 1e-9))))
+        label = _mat_label(matd)
+        for f in _discretize_polygon_to_fibers(eff, law, n_z=nz_s, n_y=ny_s):
+            rows.append({"area": float(f.area), "z": float(f.z),
+                         "y": float(f.y), "mat": label})
+    return rows
+
+
 def section_fibers(spec: "Spec", target: int = 1400) -> dict:
     """Discretise the section the way the fibre analysis does and return the
     fibre list + fibre-derived properties, for a CSiBridge-style fibre view.
 
     Returns ``{"fibers": [...], "n_z", "n_y", "fiber_props", "solid_props"}``.
-    Each fibre is ``{"area", "z", "y", "mat"}`` in SI (m², m). Concrete cells
-    come from grid-sampling the (holed) polygon; each rebar / tendon is one
-    point fibre. Properties (area, centroid, I_zz about the horizontal axis,
-    I_yy about the vertical) are integrated from the CONCRETE fibres and shown
-    beside the exact solid values so the user can gauge the discretisation.
-    ``target`` is the approximate concrete-cell count (density adapts to the
-    aspect ratio to keep cells ~square)."""
+    Each fibre is ``{"area", "z", "y", "mat"}`` in SI (m², m). Cells come from
+    grid-sampling the (holed) polygon — one material for a single-material
+    section, per-shape materials for Composite; each rebar / tendon is one point
+    fibre. Properties (area, centroid, I_zz about the horizontal axis, I_yy
+    about the vertical) are integrated from the CELL fibres and shown beside the
+    exact solid values. ``target`` is the approximate cell count (density adapts
+    to the aspect ratio to keep cells ~square)."""
     case = build_case(spec)
     sec = case.section
     poly = sec.geometry.polygon
@@ -2031,12 +2079,17 @@ def section_fibers(spec: "Spec", target: int = 1400) -> dict:
     h = max(maxy - miny, 1e-9)
     n_z = max(6, int(round((target * w / h) ** 0.5)))
     n_y = max(6, int(round((target * h / w) ** 0.5)))
-    law = concrete_uniaxial_from(dict(
-        fc=spec.fc, conc_model="Kent-Park", eps_c0=spec.eps_c0,
-        eps_cu=spec.eps_cu, fcu_ratio=spec.fcu_ratio))
-    cfibers = _discretize_polygon_to_fibers(poly, law, n_z=n_z, n_y=n_y)
-    fibers = [{"area": float(f.area), "z": float(f.z), "y": float(f.y),
-               "mat": "Concrete"} for f in cfibers]
+    if spec.kind == "Composite":
+        cells = _composite_cell_fibers(spec, w / n_z, h / n_y)
+    else:
+        law = concrete_uniaxial_from(dict(
+            fc=spec.fc, conc_model="Kent-Park", eps_c0=spec.eps_c0,
+            eps_cu=spec.eps_cu, fcu_ratio=spec.fcu_ratio))
+        cells = [{"area": float(f.area), "z": float(f.z), "y": float(f.y),
+                  "mat": "Concrete"}
+                 for f in _discretize_polygon_to_fibers(poly, law, n_z=n_z,
+                                                        n_y=n_y)]
+    fibers = list(cells)
     bars = sec.reinforcement.bars if sec.reinforcement else []
     for b in bars:
         fibers.append({"area": float(b.area), "z": float(b.z),
@@ -2047,12 +2100,12 @@ def section_fibers(spec: "Spec", target: int = 1400) -> dict:
         fibers.append({"area": float(t.area), "z": float(t.z),
                        "y": float(t.y), "mat": "Tendon"})
 
-    A = sum(float(f.area) for f in cfibers)
+    A = sum(f["area"] for f in cells)
     if A > 0:
-        cz = sum(float(f.area) * float(f.z) for f in cfibers) / A
-        cy = sum(float(f.area) * float(f.y) for f in cfibers) / A
-        I_zz = sum(float(f.area) * (float(f.y) - cy) ** 2 for f in cfibers)
-        I_yy = sum(float(f.area) * (float(f.z) - cz) ** 2 for f in cfibers)
+        cz = sum(f["area"] * f["z"] for f in cells) / A
+        cy = sum(f["area"] * f["y"] for f in cells) / A
+        I_zz = sum(f["area"] * (f["y"] - cy) ** 2 for f in cells)
+        I_yy = sum(f["area"] * (f["z"] - cz) ** 2 for f in cells)
     else:
         cz = cy = I_zz = I_yy = 0.0
     g = sec.geometry

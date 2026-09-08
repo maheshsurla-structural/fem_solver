@@ -2572,16 +2572,34 @@ class SectionDesignerWindow(QMainWindow):
         self.fib_fig.clear()
         ax = self.fib_fig.add_subplot(111)
         ax.set_aspect("equal")
-        colors = {"Concrete": "#e8c33a", "Steel": "#c0392b", "Tendon": "#2c6fb0"}
-        sizes = {"Concrete": 6, "Steel": 26, "Tendon": 22}
-        zorders = {"Concrete": 1, "Steel": 3, "Tendon": 3}
-        for mat in ("Concrete", "Steel", "Tendon"):
+        # distinct materials in first-seen order; steel/tendon fixed colours,
+        # concretes (and any others, e.g. per-shape composite mats) cycle a
+        # palette so each material reads distinctly.
+        mats = []
+        for f in fibers:
+            if f["mat"] not in mats:
+                mats.append(f["mat"])
+        palette = ["#e8c33a", "#7fb069", "#d98c5f", "#8e7cc3", "#5fa8a0",
+                   "#c9a227", "#6a9fb5"]
+        pi = 0
+
+        def _color(m):
+            nonlocal pi
+            if m == "Steel" or m.startswith("Steel"):
+                return "#c0392b"
+            if m == "Tendon" or m.startswith("Tendon"):
+                return "#2c6fb0"
+            col = palette[pi % len(palette)]
+            pi += 1
+            return col
+
+        for mat in mats:
             pts = [f for f in fibers if f["mat"] == mat]
-            if not pts:
-                continue
+            is_pt = mat in ("Steel", "Tendon")
             ax.scatter([f["z"] * 1e3 for f in pts], [f["y"] * 1e3 for f in pts],
-                       s=sizes[mat], c=colors[mat], edgecolors="none",
-                       zorder=zorders[mat], label=f"{mat} ({len(pts)})")
+                       s=(26 if is_pt else 6), c=_color(mat),
+                       edgecolors="none", zorder=(3 if is_pt else 1),
+                       label=f"{mat} ({len(pts)})")
         ax.set_xlabel("Y [mm]")
         ax.set_ylabel("Z [mm]")
         ax.set_title("Fibre discretisation")
