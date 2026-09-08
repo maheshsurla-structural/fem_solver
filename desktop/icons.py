@@ -100,6 +100,8 @@ _ICONS = {
                     '<circle cx="15.5" cy="15.5" r="1.3"/></g>',
     "sd_editfree": '<path d="M4 13l3.5-7.5 8 1 3.5 6.5-5.5 5.5z"/>'
                    '<circle cx="15.5" cy="6.5" r="2.3" fill="{c}" stroke="none"/>',
+    "sd_props": '<rect x="4" y="4" width="16" height="16" rx="1.5"/>'
+                '<path d="M8 9h8M8 13h8M8 17h5"/>',
 }
 _LETTERS = {"axial": "N", "shear": "V", "moment": "M"}
 

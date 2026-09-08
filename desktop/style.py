@@ -287,6 +287,18 @@ QFrame#chip QComboBox:hover {{ color: {ACCENT}; }}
 QFrame#chip QComboBox::drop-down {{ width: 16px; }}
 QLabel#chipLabel {{ color: {MUTED}; font-size: {FS_MICRO}px; font-weight: 600;
                    letter-spacing: {LS_LABEL}; }}
+
+/* ---- flattened canvas chrome (single toolbar + properties drawer) ---- */
+QFrame#canvasBar {{ background: {PANEL}; border: 1px solid {BORDER};
+                   border-radius: {R_MD}px; }}
+QFrame#canvasBar QToolButton {{ border: none; border-radius: {R_SM}px;
+                               padding: 2px; color: {TEXT}; }}
+QFrame#canvasBar QToolButton:hover {{ background: {ACCENT_SOFT}; }}
+QFrame#canvasBar QToolButton:checked {{ background: {ACCENT_SOFT};
+                                       color: {ACCENT}; }}
+QFrame#barSep {{ background: {BORDER}; }}
+QFrame#propsDrawer {{ background: {PANEL}; border: 1px solid {BORDER};
+                     border-radius: {R_MD}px; }}
 """
 
 

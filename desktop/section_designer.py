@@ -895,20 +895,10 @@ class SectionDesignerWindow(QMainWindow):
         w.setMinimumWidth(300)
         v = QVBoxLayout(w)
         v.setContentsMargins(6, 6, 6, 6)
-        v.setSpacing(8)
-
-        self.head_name = QLabel("Section")
-        self.head_name.setObjectName("h1")
-        v.addWidget(self.head_name)
-        self.head_sub = QLabel("")
-        self.head_sub.setObjectName("sub")
-        v.addWidget(self.head_sub)
+        v.setSpacing(6)
 
         # interactive cross-section canvas: drag-resize the built-in shapes,
         # draw/drag custom polygons, place rebars, over a mm grid + Y/Z axes.
-        canvas = QWidget()
-        cv = QVBoxLayout(canvas)
-        cv.setContentsMargins(0, 0, 0, 0)
         self.canvas = SectionCanvas()
         self.canvas.dimChanged.connect(self._on_canvas_dim)
         self.canvas.outlineChanged.connect(self._on_canvas_outline)
@@ -918,90 +908,20 @@ class SectionDesignerWindow(QMainWindow):
         self.canvas.cursorMoved.connect(self._on_canvas_cursor)
         self.canvas.selectionChanged.connect(self._on_canvas_selection)
         self.canvas.selPosChanged.connect(self._on_sel_pos)
-        # tool ribbon: the canvas tools grouped into Draw / View tabs
-        tool_tabs = QTabWidget()
-        tool_tabs.setDocumentMode(True)
 
-        ic = "#44506a"                       # neutral icon ink on the panel
+        # single flat icon toolbar (draw tools · view toggles · properties)
+        v.addWidget(self._build_canvas_toolbar())
 
-        def _tbtn(text, tip="", *, icon_name="", checkable=False):
-            b = QToolButton()
-            b.setText(text)
-            if icon_name:
-                b.setIcon(icons.icon(icon_name, ic))
-                b.setIconSize(QSize(16, 16))
-                b.setToolButtonStyle(
-                    Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-            if tip:
-                b.setToolTip(tip)
-            b.setCheckable(checkable)
-            return b
+        # body: the drawing fills the panel; the Properties drawer slides in
+        # from the right on demand instead of hiding the drawing behind a tab.
+        body = QWidget()
+        bl = QHBoxLayout(body)
+        bl.setContentsMargins(0, 0, 0, 0)
+        bl.setSpacing(6)
+        bl.addWidget(self.canvas, 1)
+        bl.addWidget(self._build_props_drawer())
+        v.addWidget(body, 1)
 
-        # -- Draw tab --
-        draw_page = QWidget()
-        dl = QHBoxLayout(draw_page)
-        dl.setContentsMargins(6, 3, 6, 3)
-        self._canvas_mode_btns = {}
-        for mode, label, icn in (("select", "Select", "sd_select"),
-                                 ("add_vertex", "Point", "sd_point"),
-                                 ("add_bar", "Rebar", "sd_rebar")):
-            b = _tbtn(label, icon_name=icn, checkable=True)
-            b.clicked.connect(lambda _c=False, m=mode: self._set_canvas_mode(m))
-            dl.addWidget(b)
-            self._canvas_mode_btns[mode] = b
-        self._canvas_mode_btns["select"].setChecked(True)
-        self._void_btn = _tbtn(
-            "Void", "Draw a hole/void (click to add its corners)",
-            icon_name="sd_void")
-        self._void_btn.clicked.connect(self._start_void)
-        dl.addWidget(self._void_btn)
-        self._edit_free_btn = _tbtn(
-            "Edit freely →", icon_name="sd_editfree",
-            tip="Convert this parametric shape to an editable Custom polygon")
-        self._edit_free_btn.clicked.connect(self._convert_to_custom)
-        dl.addWidget(self._edit_free_btn)
-        dl.addStretch(1)
-        tool_tabs.addTab(draw_page, "Draw")
-
-        # -- View tab --
-        view_page = QWidget()
-        vl = QHBoxLayout(view_page)
-        vl.setContentsMargins(6, 3, 6, 3)
-        self._snap_btn = _tbtn(
-            "Snap", "Snap points to a 5 mm grid (Shift = ortho)",
-            icon_name="snap", checkable=True)
-        self._snap_btn.toggled.connect(self.canvas.set_snap)
-        vl.addWidget(self._snap_btn)
-        self._dims_btn = _tbtn(
-            "Dims", "Show overall width/height dimensions",
-            icon_name="sd_dims", checkable=True)
-        self._dims_btn.toggled.connect(self.canvas.set_dims)
-        vl.addWidget(self._dims_btn)
-        self._fib_btn = _tbtn(
-            "Fibres", "Overlay the fibre discretisation mesh on the section",
-            icon_name="sd_fibres", checkable=True)
-        self._fib_btn.toggled.connect(self._on_fib_overlay)
-        vl.addWidget(self._fib_btn)
-        self._fib_cent_btn = _tbtn(
-            "Centroids", "Show the fibre centroids on the mesh",
-            icon_name="sd_centroids", checkable=True)
-        self._fib_cent_btn.setEnabled(False)
-        self._fib_cent_btn.toggled.connect(
-            lambda *_: self._update_fiber_overlay())
-        vl.addWidget(self._fib_cent_btn)
-        fitb = _tbtn("Fit", "Zoom to fit the section", icon_name="fit")
-        fitb.clicked.connect(lambda: self.canvas.fit())
-        vl.addWidget(fitb)
-        vl.addStretch(1)
-        tool_tabs.addTab(view_page, "View")
-
-        # cursor readout stays visible across tabs (corner of the ribbon)
-        self.coord_lbl = QLabel("")
-        self.coord_lbl.setObjectName("caption")
-        self.coord_lbl.setStyleSheet("margin-right:8px;")
-        tool_tabs.setCornerWidget(self.coord_lbl, Qt.Corner.TopRightCorner)
-        cv.addWidget(tool_tabs)
-        cv.addWidget(self.canvas)
         # selected-point coordinate editor — a small floating panel that sits
         # NEXT TO the picked point on the canvas, showing/editing its (Y, Z).
         self._sel_loading = False
@@ -1031,11 +951,115 @@ class SectionDesignerWindow(QMainWindow):
         for sp in (self.sel_Y, self.sel_Z, self.sel_D):
             sp.valueChanged.connect(lambda *_: self._on_sel_field())
         self.sel_editor.hide()
+        return w
 
-        # Drawing gets the full height; properties live behind a tab.
-        props_page = QWidget()
-        pv = QVBoxLayout(props_page)
-        pv.setContentsMargins(0, 0, 0, 0)
+    def _bar_sep(self) -> QFrame:
+        s = QFrame()
+        s.setObjectName("barSep")
+        s.setFixedSize(1, 20)
+        return s
+
+    def _build_canvas_toolbar(self) -> QWidget:
+        """One flat strip: draw modes · view toggles · cursor readout · the
+        Properties drawer toggle. Replaces the old two-tab Draw/View ribbon."""
+        bar = QFrame()
+        bar.setObjectName("canvasBar")
+        h = QHBoxLayout(bar)
+        h.setContentsMargins(6, 3, 6, 3)
+        h.setSpacing(2)
+        ic = "#44506a"                       # neutral icon ink on the panel
+
+        def tb(tip, icn, *, checkable=False):
+            b = QToolButton()
+            b.setIcon(icons.icon(icn, ic))
+            b.setIconSize(QSize(18, 18))
+            b.setToolTip(tip)
+            b.setCheckable(checkable)
+            b.setAutoRaise(True)
+            b.setFixedSize(30, 28)
+            return b
+
+        # -- draw modes (mutually exclusive) --
+        self._canvas_mode_btns = {}
+        for mode, tip, icn in (("select", "Select / move points", "sd_select"),
+                               ("add_vertex", "Add a point", "sd_point"),
+                               ("add_bar", "Place a rebar", "sd_rebar")):
+            b = tb(tip, icn, checkable=True)
+            b.clicked.connect(lambda _c=False, m=mode: self._set_canvas_mode(m))
+            h.addWidget(b)
+            self._canvas_mode_btns[mode] = b
+        self._canvas_mode_btns["select"].setChecked(True)
+        self._void_btn = tb("Draw a hole / void (click its corners)", "sd_void")
+        self._void_btn.clicked.connect(self._start_void)
+        h.addWidget(self._void_btn)
+        self._edit_free_btn = tb(
+            "Convert this parametric shape to an editable Custom polygon",
+            "sd_editfree")
+        self._edit_free_btn.clicked.connect(self._convert_to_custom)
+        h.addWidget(self._edit_free_btn)
+
+        h.addWidget(self._bar_sep())
+
+        # -- view toggles --
+        self._snap_btn = tb("Snap points to a 5 mm grid (Shift = ortho)",
+                            "snap", checkable=True)
+        self._snap_btn.toggled.connect(self.canvas.set_snap)
+        h.addWidget(self._snap_btn)
+        self._dims_btn = tb("Show overall width / height dimensions",
+                            "sd_dims", checkable=True)
+        self._dims_btn.toggled.connect(self.canvas.set_dims)
+        h.addWidget(self._dims_btn)
+        self._fib_btn = tb("Overlay the fibre discretisation mesh",
+                           "sd_fibres", checkable=True)
+        self._fib_btn.toggled.connect(self._on_fib_overlay)
+        h.addWidget(self._fib_btn)
+        self._fib_cent_btn = tb("Show the fibre centroids on the mesh",
+                                "sd_centroids", checkable=True)
+        self._fib_cent_btn.setEnabled(False)
+        self._fib_cent_btn.toggled.connect(
+            lambda *_: self._update_fiber_overlay())
+        h.addWidget(self._fib_cent_btn)
+        fitb = tb("Zoom to fit the section", "fit")
+        fitb.clicked.connect(lambda: self.canvas.fit())
+        h.addWidget(fitb)
+
+        h.addStretch(1)
+        self.coord_lbl = QLabel("")
+        self.coord_lbl.setObjectName("caption")
+        self.coord_lbl.setStyleSheet("margin-right:6px;")
+        h.addWidget(self.coord_lbl)
+        h.addWidget(self._bar_sep())
+        self._props_btn = QToolButton()
+        self._props_btn.setText(" Properties")
+        self._props_btn.setIcon(icons.icon("sd_props", ic))
+        self._props_btn.setIconSize(QSize(16, 16))
+        self._props_btn.setToolButtonStyle(
+            Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self._props_btn.setCheckable(True)
+        self._props_btn.setAutoRaise(True)
+        self._props_btn.setToolTip("Show the section properties panel")
+        self._props_btn.toggled.connect(
+            lambda on: self._props_drawer.setVisible(on))
+        h.addWidget(self._props_btn)
+        return bar
+
+    def _build_props_drawer(self) -> QWidget:
+        """Right-hand slide-in panel with the section name + dimensional
+        summary (kept in step by _update_header) and the properties table.
+        Hidden until the toolbar's Properties button is toggled on."""
+        d = QFrame()
+        d.setObjectName("propsDrawer")
+        d.setFixedWidth(250)
+        dv = QVBoxLayout(d)
+        dv.setContentsMargins(10, 8, 8, 8)
+        dv.setSpacing(2)
+        self.head_name = QLabel("Section")
+        self.head_name.setObjectName("h3")
+        dv.addWidget(self.head_name)
+        self.head_sub = QLabel("")
+        self.head_sub.setObjectName("sub")
+        self.head_sub.setWordWrap(True)
+        dv.addWidget(self.head_sub)
         self.props = QTableWidget(0, 2)
         self.props.setHorizontalHeaderLabels(["Quantity", "Value"])
         self.props.horizontalHeader().setStretchLastSection(True)
@@ -1043,13 +1067,10 @@ class SectionDesignerWindow(QMainWindow):
         self.props.setAlternatingRowColors(True)
         self.props.setShowGrid(False)
         self.props.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        pv.addWidget(self.props)
-
-        preview_tabs = QTabWidget()
-        preview_tabs.addTab(canvas, "Drawing")
-        preview_tabs.addTab(props_page, "Properties")
-        v.addWidget(preview_tabs, 1)
-        return w
+        dv.addWidget(self.props, 1)
+        d.hide()
+        self._props_drawer = d
+        return d
 
     def _build_analysis_panel(self) -> QWidget:
         self.tabs = QTabWidget()
