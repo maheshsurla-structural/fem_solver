@@ -111,6 +111,33 @@ _ICONS = {
 _LETTERS = {"axial": "N", "shear": "V", "moment": "M"}
 
 
+def monogram_svg(text: str = "ASA", fg: str = "#ffffff",
+                 bg: str = "#c0392b") -> str:
+    """A rounded-square monogram badge as raw SVG (the product mark)."""
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
+        f'<rect x="3" y="3" width="94" height="94" rx="22" fill="{bg}"/>'
+        f'<text x="50" y="54" font-family="Segoe UI, Arial, sans-serif" '
+        f'font-size="34" font-weight="700" fill="{fg}" text-anchor="middle" '
+        f'dominant-baseline="middle" letter-spacing="1">{text}</text></svg>')
+
+
+@lru_cache(maxsize=None)
+def monogram_icon(text: str = "ASA", fg: str = "#ffffff",
+                  bg: str = "#c0392b") -> QIcon:
+    """The product monogram rendered to a crisp QIcon (window / app icon)."""
+    renderer = QSvgRenderer(QByteArray(monogram_svg(text, fg, bg).encode()))
+    scale = 8
+    pm = QPixmap(64 * scale, 64 * scale)
+    pm.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(pm)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    renderer.render(painter)
+    painter.end()
+    pm.setDevicePixelRatio(scale)
+    return QIcon(pm)
+
+
 def svg_markup(name: str, color: str = "#3a3a3a") -> str:
     """The raw ``<svg>…</svg>`` string for an icon, for embedding in HTML
     (e.g. the calc report brand mark). Empty string for an unknown name."""

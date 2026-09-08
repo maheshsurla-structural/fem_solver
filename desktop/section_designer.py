@@ -87,6 +87,13 @@ import style
 from section_canvas import SectionCanvas
 from widgets import CollapsibleGroup
 
+# ---- product identity -------------------------------------------------------
+PRODUCT_NAME = "Advanced Section Analysis"
+PRODUCT_MONO = "ASA"
+PRODUCT_ACCENT = "#c0392b"        # stable brand colour (mark + report)
+PRODUCT_TAGLINE = "Fibre-section design — capacity, ductility & verification"
+PRODUCT_VERSION = "1.0"
+
 # section kinds this desktop front-end exposes (the engine also knows "Custom"
 # and "Composite" — deferred; they need dedicated geometry editors).
 _KINDS = ["Rectangular", "Circular", "L-shape", "T-shape", "Hollow box",
@@ -193,7 +200,8 @@ class SectionDesignerWindow(QMainWindow):
                  code: str | None = None, fem_window=None,
                  section_name: str | None = None):
         super().__init__(parent)
-        self.setWindowTitle("General Section Designer")
+        self.setWindowTitle(PRODUCT_NAME)
+        self.setWindowIcon(icons.monogram_icon(PRODUCT_MONO))
         self.resize(1240, 860)
 
         # theme: restore the last choice and install it before any widget is
@@ -373,6 +381,10 @@ class SectionDesignerWindow(QMainWindow):
         m.addAction("Section as &JSON…", self._export_section_json)
         m.addAction("&Verification as CSV…", self._export_verify_csv)
         m.addAction("&Fibres as CSV…", self._export_fibers_csv)
+        hm = self.menuBar().addMenu("&Help")
+        hm.addAction("Command palette…", self._open_command_palette)
+        hm.addSeparator()
+        hm.addAction(f"&About {PRODUCT_NAME}…", self._about)
 
     def _build_header(self, code) -> QWidget:
         """Application header: brand wordmark on the left, the active-section
@@ -385,13 +397,11 @@ class SectionDesignerWindow(QMainWindow):
         h.setContentsMargins(style.SP_LG, style.SP_SM, style.SP_LG, style.SP_SM)
         h.setSpacing(style.SP_LG)
 
-        # -- brand --
+        # -- brand (ASA monogram + product wordmark) --
         self._brand_logo = QLabel()
-        self._brand_logo.setPixmap(
-            icons.icon("sectiondesigner", style.ACCENT).pixmap(QSize(22, 22)))
-        self._themed_icons.append((self._brand_logo, "sectiondesigner", True))
+        self._set_brand_logo()
         h.addWidget(self._brand_logo)
-        word = QLabel("Section Designer")
+        word = QLabel(PRODUCT_NAME)
         word.setObjectName("brandWord")
         h.addWidget(word)
 
@@ -490,6 +500,30 @@ class SectionDesignerWindow(QMainWindow):
         self.sel_editor.setStyleSheet(
             f"#selEditor{{background:{style.PANEL}; border:1px solid "
             f"{style.BORDER_STRONG}; border-radius:6px;}}")
+
+    def _set_brand_logo(self) -> None:
+        """The ASA monogram mark (a stable brand colour, so it reads on both
+        the light and dark header)."""
+        self._brand_logo.setPixmap(
+            icons.monogram_icon(PRODUCT_MONO, "#ffffff",
+                                PRODUCT_ACCENT).pixmap(QSize(22, 22)))
+
+    def _about(self) -> None:
+        """Product identity / About dialog (monogram + name + capabilities)."""
+        box = QMessageBox(self)
+        box.setWindowTitle(f"About {PRODUCT_NAME}")
+        box.setIconPixmap(icons.monogram_icon(
+            PRODUCT_MONO, "#ffffff", PRODUCT_ACCENT).pixmap(QSize(64, 64)))
+        box.setTextFormat(Qt.TextFormat.RichText)
+        box.setText(f"<h2 style='margin:0'>{PRODUCT_NAME}</h2>"
+                    f"<div style='color:#888'>{PRODUCT_TAGLINE}</div>")
+        box.setInformativeText(
+            f"Version {PRODUCT_VERSION} · part of the femsolver desktop.<br><br>"
+            "<span style='color:#888'>Fibre-section biaxial P-M-M, "
+            "moment-curvature (Mander-confined), and code verification "
+            "(AASHTO LRFD · Eurocode 2 · IS 456). Engineering results to be "
+            "reviewed by a qualified engineer.</span>")
+        box.exec()
 
     # -------------------------------------------------- toasts & progress
     def _toast(self, text: str, kind: str = "ok", msecs: int = 2600) -> None:
@@ -3466,8 +3500,8 @@ class SectionDesignerWindow(QMainWindow):
         return core.report_html(
             case, code, self._units, mphi=mphi, demand_results=dres,
             axis_labels=self._AXIS_LABELS, meta=meta,
-            brand="Section Designer",
-            logo_svg=icons.svg_markup("sectiondesigner", "#c0392b"),
+            brand=PRODUCT_NAME,
+            logo_svg=icons.monogram_svg(PRODUCT_MONO, "#ffffff", PRODUCT_ACCENT),
             fiber_svg=fiber_svg)
 
     def _edit_report_details(self) -> None:
