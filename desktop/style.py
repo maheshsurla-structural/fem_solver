@@ -295,6 +295,9 @@ QProgressBar#utilBar {{ background: {BORDER}; border: none; border-radius: 3px; 
 QProgressBar#utilBar::chunk {{ border-radius: 3px; }}
 
 /* ---- application header (brand + active section + setting chips) ---- */
+QToolBar#hdrToolbar {{ background: {PANEL}; border: none; padding: 0;
+                      spacing: 0; }}
+QToolBar#hdrToolbar::separator {{ width: 0; }}
 QFrame#appHeader {{ background: {PANEL}; border-bottom: 1px solid {BORDER}; }}
 QLabel#brandWord {{ font-size: {FS_H2}px; font-weight: 700; color: {TEXT};
                    letter-spacing: -0.01em; }}
@@ -358,12 +361,38 @@ QListWidget#cmdList::item:selected {{ background: {ACCENT_SOFT}; color: {TEXT}; 
 """
 
 
+# Compact density: a thin QSS overlay that tightens paddings / heights. Plain
+# CSS (single braces) — appended after the themed base sheet, not formatted.
+_density = "comfortable"
+_COMPACT_QSS = """
+QComboBox, QDoubleSpinBox, QSpinBox, QLineEdit { padding: 2px 6px;
+    min-height: 17px; }
+QPushButton { padding: 3px 10px; min-height: 17px; }
+QToolButton#navNew { padding: 3px 9px; }
+QTableWidget::item { padding: 1px 5px; }
+QHeaderView::section { padding: 3px 6px; }
+QListWidget::item { padding: 2px 6px; }
+QTabBar::tab { padding: 5px 12px; }
+QGroupBox { margin-top: 13px; padding: 8px 8px 6px 8px; }
+"""
+
+
 def _install(theme: str) -> None:
     """Copy the chosen palette onto the module namespace and rebuild QSS."""
     global _theme, QSS
     _theme = "dark" if theme == "dark" else "light"
     globals().update(_PALETTES[_theme])
     QSS = _QSS_TEMPLATE.format(**globals())
+
+
+def set_density(mode: str) -> str:
+    global _density
+    _density = "compact" if mode == "compact" else "comfortable"
+    return _density
+
+
+def current_density() -> str:
+    return _density
 
 
 def current_theme() -> str:
@@ -384,8 +413,8 @@ _install("light")            # seed the module with the light palette + QSS
 
 
 def apply(widget) -> None:
-    """Apply the current theme stylesheet to a top-level widget (cascades)."""
-    widget.setStyleSheet(QSS)
+    """Apply the current theme + density stylesheet to a top-level widget."""
+    widget.setStyleSheet(QSS + (_COMPACT_QSS if _density == "compact" else ""))
 
 
 def beautify_axes(ax, *, title_color=None) -> None:

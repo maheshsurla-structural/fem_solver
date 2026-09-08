@@ -62,16 +62,17 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox,
                                QComboBox, QDialog,
                                QDialogButtonBox,
                                QDoubleSpinBox, QFileDialog, QFormLayout,
-                               QFrame, QGraphicsOpacityEffect, QGridLayout,
+                               QDockWidget, QFrame, QGraphicsOpacityEffect,
+                               QGridLayout,
                                QGroupBox,
                                QHBoxLayout, QLabel, QLineEdit,
                                QListWidget, QListWidgetItem, QMainWindow, QMenu,
                                QMessageBox, QProgressBar, QPushButton,
-                               QScrollArea, QSpinBox,
+                               QScrollArea, QSizePolicy, QSpinBox,
                                QSplitter, QStackedWidget, QStyledItemDelegate,
                                QTableWidget,
                                QTableWidgetItem, QTabWidget, QTextBrowser,
-                               QVBoxLayout, QWidget)
+                               QToolBar, QVBoxLayout, QWidget)
 
 # ``section_gui_core`` / ``streamlit_app`` live at the repo root, one level
 # above this ``desktop/`` package. Running ``python desktop/app.py`` only puts
@@ -247,8 +248,17 @@ class SectionDesignerWindow(QMainWindow):
         self._hist_timer.setInterval(500)
         self._hist_timer.timeout.connect(self._commit_history)
 
+        style.set_density(str(self._settings.value("density", "comfortable")))
         self._build_menu()
-        header = self._build_header(code)
+
+        # the header lives in a fixed, full-width top toolbar, so the dock area
+        # (navigator + workspace) sits cleanly beneath it
+        hdr_tb = QToolBar("Header")
+        hdr_tb.setObjectName("hdrToolbar")
+        hdr_tb.setMovable(False)
+        hdr_tb.setFloatable(False)
+        hdr_tb.addWidget(self._build_header(code))
+        self.addToolBar(Qt.ToolBarArea.TopToolBarArea, hdr_tb)
 
         # workspace tabs: [Section] then the analyses. _build_analysis_panel
         # creates self.tabs (P-M … Report); the Section tab (inputs + drawing)
@@ -256,22 +266,24 @@ class SectionDesignerWindow(QMainWindow):
         self._build_analysis_panel()
         self.tabs.insertTab(0, self._build_section_tab(), "Section")
         self.tabs.setCurrentIndex(0)
+        self.setCentralWidget(self.tabs)
 
-        split = QSplitter(Qt.Orientation.Horizontal)
-        split.addWidget(self._build_section_nav())     # left: section navigator
-        split.addWidget(self.tabs)                      # right: workspace tabs
-        split.setStretchFactor(0, 0)
-        split.setStretchFactor(1, 1)
-        split.setSizes([210, 1030])
-        split.setContentsMargins(10, 10, 10, 10)
-        split.setHandleWidth(10)
-        central = QWidget()
-        cv = QVBoxLayout(central)
-        cv.setContentsMargins(0, 0, 0, 0)
-        cv.setSpacing(0)
-        cv.addWidget(header)
-        cv.addWidget(split, 1)
-        self.setCentralWidget(central)
+        # the Sections navigator is a dockable panel (float / hide / move) whose
+        # placement is remembered across sessions
+        self._nav_dock = QDockWidget("Sections", self)
+        self._nav_dock.setObjectName("navDock")
+        self._nav_dock.setWidget(self._build_section_nav())
+        self._nav_dock.setFeatures(
+            QDockWidget.DockWidgetFeature.DockWidgetMovable
+            | QDockWidget.DockWidgetFeature.DockWidgetFloatable
+            | QDockWidget.DockWidgetFeature.DockWidgetClosable)
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self._nav_dock)
+        self.resizeDocks([self._nav_dock], [220], Qt.Orientation.Horizontal)
+        # "Show Sections" toggle at the top of the View menu
+        toggle = self._nav_dock.toggleViewAction()
+        toggle.setText("Show &Sections panel")
+        self._view_menu.insertAction(self._density_act, toggle)
+        self._view_menu.insertSeparator(self._density_act)
         style.apply(self)
 
         # indeterminate busy indicator, parked in the status bar (shown only
@@ -314,6 +326,32 @@ class SectionDesignerWindow(QMainWindow):
             QTimer.singleShot(700, lambda: self._toast(
                 "Tip: start from  ＋ New ▸ From a template,  or draw a Custom "
                 "section with the Point tool.", msecs=6000))
+
+        # restore the remembered dock/toolbar layout (and window size when the
+        # tool runs as its own top-level window, not embedded in the FEM shell)
+        st = self._settings.value("win_state")
+        if st is not None:
+            self.restoreState(st)
+        geo = self._settings.value("win_geometry")
+        if geo is not None and self._fem is None:
+            self.restoreGeometry(geo)
+
+    # ------------------------------------------------------ layout / density
+    def _toggle_density(self, compact: bool) -> None:
+        style.set_density("compact" if compact else "comfortable")
+        self._settings.setValue("density", style.current_density())
+        style.apply(self)
+
+    def _reset_layout(self) -> None:
+        self._nav_dock.setFloating(False)
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self._nav_dock)
+        self._nav_dock.show()
+        self.resizeDocks([self._nav_dock], [220], Qt.Orientation.Horizontal)
+
+    def closeEvent(self, e):
+        self._settings.setValue("win_geometry", self.saveGeometry())
+        self._settings.setValue("win_state", self.saveState())
+        super().closeEvent(e)
 
     # --------------------------------------------------------- undo / redo
     def _reset_history(self) -> None:
@@ -381,6 +419,14 @@ class SectionDesignerWindow(QMainWindow):
         m.addAction("Section as &JSON…", self._export_section_json)
         m.addAction("&Verification as CSV…", self._export_verify_csv)
         m.addAction("&Fibres as CSV…", self._export_fibers_csv)
+        vm = self.menuBar().addMenu("&View")
+        self._view_menu = vm                           # dock toggle added later
+        self._density_act = vm.addAction("&Compact density")
+        self._density_act.setCheckable(True)
+        self._density_act.setChecked(style.current_density() == "compact")
+        self._density_act.toggled.connect(self._toggle_density)
+        vm.addSeparator()
+        vm.addAction("&Reset layout", self._reset_layout)
         hm = self.menuBar().addMenu("&Help")
         hm.addAction("Command palette…", self._open_command_palette)
         hm.addSeparator()
@@ -393,6 +439,8 @@ class SectionDesignerWindow(QMainWindow):
         old label-and-combo toolbar row."""
         bar = QFrame()
         bar.setObjectName("appHeader")
+        bar.setSizePolicy(QSizePolicy.Policy.Expanding,
+                          QSizePolicy.Policy.Preferred)
         h = QHBoxLayout(bar)
         h.setContentsMargins(style.SP_LG, style.SP_SM, style.SP_LG, style.SP_SM)
         h.setSpacing(style.SP_LG)
@@ -612,13 +660,9 @@ class SectionDesignerWindow(QMainWindow):
         """Left sidebar: navigate the sections in the model (not inputs)."""
         w = QWidget()
         w.setMinimumWidth(170)
-        w.setMaximumWidth(280)
         v = QVBoxLayout(w)
         v.setContentsMargins(6, 8, 6, 8)
         v.setSpacing(6)
-        lbl = QLabel("SECTIONS")
-        lbl.setObjectName("sub")
-        v.addWidget(lbl)
         self.nav_list = QListWidget()
         self.nav_list.setSpacing(3)
         self.nav_list.currentRowChanged.connect(self._on_nav_changed)
