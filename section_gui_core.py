@@ -2306,6 +2306,56 @@ def _pm_diagram_svg(curve: dict, u: "Units", W: int = 470, H: int = 330) -> str:
     return "".join(parts)
 
 
+def fiber_mesh_svg(spec: "Spec", target: int = 1000,
+                   W: int = 300, H: int = 300) -> str:
+    """Inline-SVG of the fibre discretisation (mesh cell boundaries + the
+    section outline) for the calc report. Self-contained vector graphic."""
+    try:
+        mesh = section_fiber_mesh(spec, target)
+        case = build_case(spec)
+        poly = case.section.geometry.polygon
+        ext = list(poly.exterior.coords)
+        interiors = [list(r.coords) for r in poly.interiors]
+    except Exception:                                  # noqa: BLE001
+        return ""
+    segs = mesh.get("segments") or []
+    xs = [p[0] for p in ext] or [-0.2, 0.2]
+    ys = [p[1] for p in ext] or [-0.3, 0.3]
+    minz, maxz, miny, maxy = min(xs), max(xs), min(ys), max(ys)
+    w = max(maxz - minz, 1e-9)
+    h = max(maxy - miny, 1e-9)
+    pad = 10
+    sc = min((W - 2 * pad) / w, (H - 2 * pad) / h)
+    ox = (W - w * sc) / 2.0
+    oy = (H - h * sc) / 2.0
+
+    def X(z):
+        return ox + (z - minz) * sc
+
+    def Y(y):
+        return H - oy - (y - miny) * sc            # y up
+
+    def ring(pts):
+        d = "M" + " L".join(f"{X(z):.1f},{Y(y):.1f}" for z, y in pts) + " Z"
+        return d
+
+    mesh_d = "".join(
+        f"M{X(a[0]):.1f},{Y(a[1]):.1f} L{X(b[0]):.1f},{Y(b[1]):.1f}"
+        for a, b in segs)
+    parts = [f'<svg viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg">']
+    parts.append(f'<path d="{ring(ext)}" fill="#eef4fb" stroke="none"/>')
+    if mesh_d:
+        parts.append(f'<path d="{mesh_d}" fill="none" stroke="#9fb0c3" '
+                     'stroke-width="0.5"/>')
+    parts.append(f'<path d="{ring(ext)}" fill="none" stroke="#1f4f73" '
+                 'stroke-width="1.4"/>')
+    for r in interiors:
+        parts.append(f'<path d="{ring(r)}" fill="#ffffff" stroke="#1f4f73" '
+                     'stroke-width="1.2"/>')
+    parts.append('</svg>')
+    return "".join(parts)
+
+
 _REPORT_CSS = """
 * { box-sizing: border-box; }
 body { font-family: -apple-system, Segoe UI, Roboto, sans-serif;
@@ -2315,6 +2365,10 @@ body { font-family: -apple-system, Segoe UI, Roboto, sans-serif;
          border-bottom: 3px solid #c0392b; padding-bottom: 10px; }
 .rhead h1 { font-size: 20px; margin: 0 0 3px; }
 .rhead .sub { color: #666; font-size: 12px; }
+.brandmark { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
+.brandmark svg { width: 22px; height: 22px; }
+.brandmark span { font-size: 15px; font-weight: 700; letter-spacing: -0.01em;
+                  color: #c0392b; }
 .meta { text-align: right; font-size: 11px; color: #444; }
 .meta b { color: #111; }
 h2 { font-size: 14px; margin: 22px 0 8px; padding-bottom: 4px;
@@ -2344,7 +2398,10 @@ def report_html(case: SectionCase, code: str, u: "Units", *,
                 mphi: Optional[dict] = None,
                 demand_results: Optional[list] = None,
                 meta: Optional[dict] = None,
-                axis_labels: tuple = ("z", "y")) -> str:
+                axis_labels: tuple = ("z", "y"),
+                brand: str = "",
+                logo_svg: str = "",
+                fiber_svg: str = "") -> str:
     """A self-contained HTML calc sheet for one section: sketch, materials,
     reinforcement schedule, P-M interaction diagram + capacity landmarks,
     moment-curvature summary, and (if provided) the demand/utilization check.
@@ -2458,15 +2515,29 @@ def report_html(case: SectionCase, code: str, u: "Units", *,
     kv = lambda pairs: "".join(  # noqa: E731
         f'<tr><th>{k}</th><td class="n">{v}</td></tr>' for k, v in pairs)
     title = esc(meta.get("title") or "Section Design Report")
+    brand_html = ""
+    if brand or logo_svg:
+        brand_html = (f'<div class="brandmark">{logo_svg}'
+                      f'<span>{esc(brand)}</span></div>')
+    meta_rows = [("Company", meta.get("company")),
+                 ("Project", meta.get("project")),
+                 ("Engineer", meta.get("engineer")),
+                 ("Job no.", meta.get("job")),
+                 ("Date", meta.get("date"))]
+    meta_html = "".join(f"<b>{k}:</b> {esc(str(v))}<br>"
+                        for k, v in meta_rows if v)
+    fiber_html = ""
+    if fiber_svg:
+        fiber_html = (
+            f'<div class="col diagram"><h2>Fibre discretisation</h2>{fiber_svg}'
+            '<p style="color:#888;font-size:10.5px">Section fibres used for the '
+            'moment-curvature and biaxial capacity (cell mesh).</p></div>')
     return f"""<!doctype html><html><head><meta charset="utf-8">
 <title>{esc(case.name)} — report</title><style>{_REPORT_CSS}</style></head>
 <body><div class="sheet">
-<div class="rhead"><div><h1>{title}</h1>
+<div class="rhead"><div>{brand_html}<h1>{title}</h1>
 <div class="sub">{esc(case.name)} · design code <b>{esc(code)}</b></div></div>
-<div class="meta"><b>Project:</b> {esc(meta.get('project', '—'))}<br>
-<b>Engineer:</b> {esc(meta.get('engineer', '—'))}<br>
-<b>Job no.:</b> {esc(meta.get('job', '—'))}<br>
-<b>Date:</b> {esc(meta.get('date', '—'))}</div></div>
+<div class="meta">{meta_html or '—'}</div></div>
 
 <div class="cols"><div class="col sketch"><h2>Cross-section</h2>{svg_of(case)}</div>
 <div class="col"><h2>Geometry</h2><table class="kv">{kv(props)}</table>
@@ -2479,6 +2550,8 @@ def report_html(case: SectionCase, code: str, u: "Units", *,
 φ-reduced design (strong axis, θ=0).</p></div>
 <div class="col"><h2>Capacity landmarks</h2>{lm_html or '<p>—</p>'}
 <h2>Moment-curvature</h2>{mphi_html}</div></div>
+
+{f'<div class="cols">{fiber_html}<div class="col"></div></div>' if fiber_html else ''}
 
 {dem_html}
 

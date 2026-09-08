@@ -111,6 +111,15 @@ _ICONS = {
 _LETTERS = {"axial": "N", "shear": "V", "moment": "M"}
 
 
+def svg_markup(name: str, color: str = "#3a3a3a") -> str:
+    """The raw ``<svg>…</svg>`` string for an icon, for embedding in HTML
+    (e.g. the calc report brand mark). Empty string for an unknown name."""
+    inner = _ICONS.get(name)
+    if inner is None:
+        return ""
+    return _WRAP.format(c=color, inner=inner.replace("{c}", color))
+
+
 @lru_cache(maxsize=None)
 def icon(name: str, color: str = "#3a3a3a") -> QIcon:
     if name in _LETTERS:

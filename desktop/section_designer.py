@@ -53,7 +53,8 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as Canvas
 from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  (registers 3-d proj.)
 from PySide6.QtCore import Qt, QByteArray, QTimer
-from PySide6.QtCore import QSize, QSettings, QPropertyAnimation, QEasingCurve
+from PySide6.QtCore import (QSize, QSettings, QPropertyAnimation, QEasingCurve,
+                            QDate)
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import QToolButton
@@ -200,6 +201,10 @@ class SectionDesignerWindow(QMainWindow):
         self._settings = QSettings("MidasStructural", "SectionDesigner")
         self._themed_icons: list = []    # (widget, icon_name, is_pixmap)
         style.set_theme(str(self._settings.value("theme", "light")))
+        # calc-report title-block details (persisted; blank date → today)
+        self._report_meta = {
+            k: str(self._settings.value(f"rpt_{k}", "") or "")
+            for k in ("company", "project", "engineer", "job", "date")}
 
         self._fem = fem_window           # FEM MainWindow for the model bridge
         # default section: reinforcement comes from the AdSec GROUPS table, so
@@ -350,10 +355,14 @@ class SectionDesignerWindow(QMainWindow):
         mm = self.menuBar().addMenu("&Materials")
         mm.addAction("&Manage library…", self._open_materials)
         m = self.menuBar().addMenu("&Export")
+        m.addAction("&Report details…", self._edit_report_details)
+        m.addSeparator()
+        m.addAction("Report as &PDF…", self._export_report_pdf)
+        m.addAction("Report as &HTML…", self._export_report_html)
+        m.addSeparator()
         m.addAction("Section as &JSON…", self._export_section_json)
         m.addAction("&Verification as CSV…", self._export_verify_csv)
         m.addAction("&Fibres as CSV…", self._export_fibers_csv)
-        m.addAction("&Report as HTML…", self._export_report_html)
 
     def _build_header(self, code) -> QWidget:
         """Application header: brand wordmark on the left, the active-section
@@ -3375,9 +3384,75 @@ class SectionDesignerWindow(QMainWindow):
                                          spec=self._spec)
             except Exception:                          # noqa: BLE001
                 dres = None
-        return core.report_html(case, code, self._units, mphi=mphi,
-                                demand_results=dres, axis_labels=self._AXIS_LABELS,
-                                meta={"Kind": self._spec.kind, "Code": code})
+        meta = {k: v for k, v in self._report_meta.items() if v}
+        meta.setdefault("date", QDate.currentDate().toString("d MMM yyyy"))
+        fiber_svg = "" if self._spec.kind == "Composite" else \
+            core.fiber_mesh_svg(self._spec)
+        return core.report_html(
+            case, code, self._units, mphi=mphi, demand_results=dres,
+            axis_labels=self._AXIS_LABELS, meta=meta,
+            brand="Section Designer",
+            logo_svg=icons.svg_markup("sectiondesigner", "#c0392b"),
+            fiber_svg=fiber_svg)
+
+    def _edit_report_details(self) -> None:
+        dlg = ReportDetailsDialog(self, self._report_meta)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            self._report_meta = dlg.result_meta
+            for k, v in self._report_meta.items():
+                self._settings.setValue(f"rpt_{k}", v)
+            self._toast("Report details saved")
+
+    def _export_report_pdf(self) -> None:
+        code = self.code_combo.currentText()
+        try:
+            html = self._report_html_or_fallback(_case(self._spec), code)
+        except Exception as exc:                       # noqa: BLE001
+            QMessageBox.critical(self, "Export failed", str(exc))
+            return
+        path, _ = QFileDialog.getSaveFileName(self, "Export report (PDF)",
+                                              "report.pdf", "PDF (*.pdf)")
+        if not path:
+            return
+        self._render_pdf(html, path)
+
+    def _render_pdf(self, html: str, path: str) -> None:
+        """Render report HTML to a paginated PDF via the Chromium print engine
+        (full CSS + inline-SVG fidelity), driven synchronously here."""
+        from PySide6.QtWebEngineWidgets import QWebEngineView
+        from PySide6.QtCore import QEventLoop, QMarginsF, QUrl
+        from PySide6.QtGui import QPageLayout, QPageSize
+        view = QWebEngineView()
+        self._pdf_view = view                          # keep alive during render
+        layout = QPageLayout(QPageSize(QPageSize.PageSizeId.A4),
+                             QPageLayout.Orientation.Portrait,
+                             QMarginsF(12, 12, 12, 12))
+        loop = QEventLoop()
+        state = {"ok": False}
+
+        def _loaded(ok):
+            if ok:
+                view.page().printToPdf(path, layout)
+            else:
+                loop.quit()
+
+        def _printed(_p, ok):
+            state["ok"] = ok
+            loop.quit()
+
+        view.loadFinished.connect(_loaded)
+        view.page().pdfPrintingFinished.connect(_printed)
+        view.setHtml(html, QUrl("about:blank"))
+        with self._busy("Rendering the PDF report…"):
+            QTimer.singleShot(20000, loop.quit)        # safety timeout
+            loop.exec()
+        view.deleteLater()
+        self._pdf_view = None
+        if state["ok"] and os.path.exists(path):
+            self.statusBar().showMessage(f"Saved {path}")
+            self._toast(f"Report exported · {os.path.basename(path)}")
+        else:
+            self._toast("PDF export failed", kind="err")
 
     # -------------------------------------------------- sections / project
     def _load_active(self) -> None:
@@ -3694,9 +3769,17 @@ class SectionDesignerWindow(QMainWindow):
             QMessageBox.critical(self, "Export failed", str(exc))
             self._toast("Export failed", kind="err")
 
+    def _report_html_or_fallback(self, case, code) -> str:
+        """Full branded report, or the minimal fallback for kinds the full
+        report can't build (composite / no reinforcement) — mirrors the tab."""
+        try:
+            return self._report_html(case, code)
+        except Exception:                              # noqa: BLE001
+            return self._fallback_report(case, code)
+
     def _export_report_html(self) -> None:
         code = self.code_combo.currentText()
-        html = self._report_html(_case(self._spec), code)
+        html = self._report_html_or_fallback(_case(self._spec), code)
         self._write("report.html", "HTML (*.html)", html)
 
     def _write(self, default_name, flt, text) -> None:
@@ -3711,6 +3794,47 @@ class SectionDesignerWindow(QMainWindow):
         except Exception as exc:                       # noqa: BLE001
             QMessageBox.critical(self, "Export failed", str(exc))
             self._toast("Export failed", kind="err")
+
+
+class ReportDetailsDialog(QDialog):
+    """Title-block details for the calc report (project, engineer, company,
+    job no., date). ``result_meta`` holds the edited values on accept."""
+
+    _FIELDS = [("company", "Company"), ("project", "Project"),
+               ("engineer", "Engineer"), ("job", "Job no."), ("date", "Date")]
+
+    def __init__(self, parent, meta):
+        super().__init__(parent)
+        self.setWindowTitle("Report details")
+        self.setMinimumWidth(360)
+        self.result_meta = dict(meta)
+        v = QVBoxLayout(self)
+        head = QLabel("Calc-report title block")
+        head.setObjectName("h3")
+        v.addWidget(head)
+        cap = QLabel("Shown in every exported report. Leave the date blank "
+                     "to stamp today's date.")
+        cap.setObjectName("hintLabel")
+        cap.setWordWrap(True)
+        v.addWidget(cap)
+        form = QFormLayout()
+        self._edits = {}
+        for key, label in self._FIELDS:
+            le = QLineEdit(meta.get(key, ""))
+            if key == "date":
+                le.setPlaceholderText("today")
+            self._edits[key] = le
+            form.addRow(label, le)
+        v.addLayout(form)
+        bb = QDialogButtonBox(QDialogButtonBox.StandardButton.Save
+                              | QDialogButtonBox.StandardButton.Cancel)
+        bb.accepted.connect(self.accept)
+        bb.rejected.connect(self.reject)
+        v.addWidget(bb)
+
+    def accept(self) -> None:
+        self.result_meta = {k: w.text().strip() for k, w in self._edits.items()}
+        super().accept()
 
 
 class TemplateGalleryDialog(QDialog):
