@@ -125,6 +125,17 @@ QPushButton:hover {{ border-color: {ACCENT}; color: {ACCENT}; }}
 QPushButton:pressed {{ background: {ACCENT_SOFT}; }}
 QPushButton:disabled {{ color: {MUTED}; border-color: {BORDER}; }}
 
+/* a menu tool-button that should read like a push button (e.g. "＋ New") */
+QToolButton#navNew {{
+    background: {PANEL};
+    border: 1px solid {BORDER_STRONG};
+    border-radius: {R_SM}px;
+    padding: 5px 12px;
+    color: {TEXT};
+}}
+QToolButton#navNew:hover {{ border-color: {ACCENT}; color: {ACCENT}; }}
+QToolButton#navNew::menu-indicator {{ image: none; width: 0; }}
+
 /* ---- tabs ---- */
 QTabWidget::pane {{
     border: 1px solid {BORDER};
@@ -256,6 +267,8 @@ QLabel#h2 {{ font-size: {FS_H2}px; font-weight: 600; color: {TEXT}; }}
 QLabel#h3 {{ font-size: {FS_H3}px; font-weight: 600; color: {TEXT}; }}
 QLabel#sub {{ color: {MUTED}; font-size: {FS_SMALL}px; }}
 QLabel#caption {{ color: {MUTED}; font-size: {FS_SMALL}px; }}
+QLabel#hintLabel {{ color: {MUTED}; font-size: {FS_MICRO}px; }}
+QLabel#warnText {{ color: {BAD}; font-size: {FS_SMALL}px; }}
 QLabel#eyebrow {{ color: {MUTED}; font-size: {FS_MICRO}px; font-weight: 600;
                  letter-spacing: {LS_LABEL}; }}
 

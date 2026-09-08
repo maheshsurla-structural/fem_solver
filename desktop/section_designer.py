@@ -586,6 +586,7 @@ class SectionDesignerWindow(QMainWindow):
         # New: a menu of starter presets (plus a blank section)
         new_btn = QToolButton()
         new_btn.setText("＋ New")
+        new_btn.setObjectName("navNew")
         new_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         menu = QMenu(new_btn)
         menu.addAction("From a template…", self._new_from_gallery)
@@ -1564,7 +1565,7 @@ class SectionDesignerWindow(QMainWindow):
         self.fib_view.currentIndexChanged.connect(lambda *_: self._apply_fib_view())
         top.addWidget(self.fib_view)
         self.fib_info = QLabel("")
-        self.fib_info.setStyleSheet("color:#5a6b7b;")
+        self.fib_info.setObjectName("hintLabel")
         top.addWidget(self.fib_info)
         top.addStretch(1)
         v.addLayout(top)
@@ -1788,13 +1789,12 @@ class SectionDesignerWindow(QMainWindow):
         gpl.addLayout(row)
         self.group_warn = QLabel("")
         self.group_warn.setWordWrap(True)
-        self.group_warn.setStyleSheet("color:#c0392b;")
+        self.group_warn.setObjectName("warnText")
         self.group_warn.setVisible(False)
         gpl.addWidget(self.group_warn)
         self.groups_cap = QLabel("")
         self.groups_cap.setWordWrap(True)
         self.groups_cap.setObjectName("hintLabel")
-        self.groups_cap.setStyleSheet("color:#5a6b7b; font-size:11px;")
         gpl.addWidget(self.groups_cap)
         self._refresh_groups_caption()
         v.addWidget(self._groups_panel)
@@ -1845,7 +1845,6 @@ class SectionDesignerWindow(QMainWindow):
             "prestress.")
         cap.setWordWrap(True)
         cap.setObjectName("hintLabel")
-        cap.setStyleSheet("color:#5a6b7b; font-size:11px;")
         v.addWidget(cap)
         return w
 
@@ -3194,7 +3193,7 @@ class SectionDesignerWindow(QMainWindow):
                                                     for r in poly.interiors]
             for rc in rings:
                 ax.plot([z * 1e3 for z, _ in rc], [y * 1e3 for _, y in rc],
-                        color="#7a8a99", lw=1.0, zorder=0)
+                        color=style.MUTED, lw=1.0, zorder=0)
         except Exception:                              # noqa: BLE001
             pass
 
@@ -3822,7 +3821,7 @@ class AddGroupDialog(QDialog):
         root.addWidget(self._dyn)
 
         self.preview = QLabel("")
-        self.preview.setStyleSheet("color:#5a6b7b; font-size:11px;")
+        self.preview.setObjectName("hintLabel")
         root.addWidget(self.preview)
 
         bb = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok
