@@ -1528,18 +1528,8 @@ class SectionDesignerWindow(QMainWindow):
         bottom.addLayout(strain_box, 1)
         mpv.addLayout(bottom)
 
-        # ---- Verification ----
-        vt = QWidget()
-        vtv = QVBoxLayout(vt)
-        self.verify_tbl = QTableWidget(0, 4)
-        self.verify_tbl.setHorizontalHeaderLabels(
-            ["Quantity", "Units", "Computed", "Note"])
-        self.verify_tbl.horizontalHeader().setStretchLastSection(True)
-        self.verify_tbl.verticalHeader().setVisible(False)
-        self.verify_tbl.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.verify_tbl.setAlternatingRowColors(True)
-        self.verify_tbl.setShowGrid(False)
-        vtv.addWidget(self.verify_tbl)
+        # (Verification is not a GUI tab — a dev/QA artifact; it stays available
+        # as an Export ▸ Verification as CSV action via _verify_rows.)
 
         # ---- 3-D P-M-M surface ----
         s3 = QWidget()
@@ -1626,7 +1616,6 @@ class SectionDesignerWindow(QMainWindow):
         # assemble the workspace tabs (Section is inserted at 0 later)
         self.tabs.addTab(inter, "P-M-M interaction")
         self.tabs.addTab(mp, "Moment-curvature")
-        self.tabs.addTab(vt, "Verification")
         self.tabs.addTab(sf, "Stress field")
         self.tabs.addTab(fib, "Fibres")
         self.tabs.addTab(self.report, "Report")
@@ -2814,8 +2803,6 @@ class SectionDesignerWindow(QMainWindow):
                     self._draw_mm_contour(case, code)
             elif label == "Moment-curvature":
                 self._draw_mphi(case)
-            elif label == "Verification":
-                self._fill_verify(case, code)
             elif label == "Stress field":
                 self._draw_stress_field(case)
             elif label == "Report":
@@ -3307,17 +3294,6 @@ class SectionDesignerWindow(QMainWindow):
             return []                    # single-material verification n/a
         return core.items_data(case, code, core.mphi_props(self._spec),
                                axis_labels=self._AXIS_LABELS)
-
-    def _fill_verify(self, case, code) -> None:
-        rows = self._verify_rows(case, code)
-        self.verify_tbl.setRowCount(len(rows))
-        for r, it in enumerate(rows):
-            comp = it.get("computed")
-            comp = f"{comp:,.4g}" if isinstance(comp, (int, float)) else str(comp)
-            for col, val in enumerate((it.get("quantity", ""),
-                                       it.get("units", ""), comp,
-                                       it.get("note", ""))):
-                self.verify_tbl.setItem(r, col, QTableWidgetItem(str(val)))
 
     def _fiber_milestones(self, aspec):
         """M-φ milestones (na_angle=0) for the Strain/Stress colouring, each with
