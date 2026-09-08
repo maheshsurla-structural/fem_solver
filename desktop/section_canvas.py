@@ -96,6 +96,7 @@ class SectionCanvas(QGraphicsView):
         self._fitted_kind = None         # refit when the shape kind changes
         self._selected = None            # selected point handle (vertex/bar/hole)
         self._guides: list = []          # ('v'|'h', coord) alignment guides
+        self._fibers = None              # optional fibre-mesh overlay rows
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
     # -------------------------------------------------- public API
@@ -114,6 +115,25 @@ class SectionCanvas(QGraphicsView):
     def set_dims(self, on: bool) -> None:
         self._dims_on = bool(on)
         self._rebuild_scene()
+
+    def set_fibers(self, rows) -> None:
+        """Overlay the fibre discretisation (cell fibres) on the section, or
+        clear it with ``None``. No-op when there was and is nothing to show."""
+        if not rows and not self._fibers:
+            return
+        self._fibers = rows or None
+        self._rebuild_scene()
+
+    _FIB_COLORS = ["#e8c33a", "#7fb069", "#d98c5f", "#8e7cc3", "#5fa8a0",
+                   "#c9a227", "#6a9fb5"]
+
+    @staticmethod
+    def _fib_color(mat, idx):
+        if mat == "Steel" or mat.startswith("Steel"):
+            return QColor("#c0392b")
+        if mat == "Tendon" or mat.startswith("Tendon"):
+            return QColor("#2c6fb0")
+        return QColor(SectionCanvas._FIB_COLORS[idx % len(SectionCanvas._FIB_COLORS)])
 
     def start_void(self) -> None:
         """Begin a new void ring — the next add_hole clicks build it."""
@@ -350,6 +370,29 @@ class SectionCanvas(QGraphicsView):
         body.setPen(pen)
         body.setZValue(1)
         self._scene.addItem(body)
+
+        # fibre-mesh overlay (cell fibres, one path per material for speed)
+        if self._fibers:
+            cells = [f for f in self._fibers if f.get("cell")]
+            mats = []
+            for f in cells:
+                if f["mat"] not in mats:
+                    mats.append(f["mat"])
+            for i, mat in enumerate(mats):
+                mp = QPainterPath()
+                for f in cells:
+                    if f["mat"] != mat:
+                        continue
+                    # inset each cell so the fibres read as a distinct grid
+                    d = max(math.sqrt(max(f["area"], 1e-9)) * 0.62, 1e-4)
+                    mp.addRect(f["z"] - d / 2, -f["y"] - d / 2, d, d)
+                item = QGraphicsPathItem(mp)
+                col = self._fib_color(mat, i)
+                col.setAlpha(205)
+                item.setBrush(QBrush(col))
+                item.setPen(QPen(Qt.PenStyle.NoPen))
+                item.setZValue(2)
+                self._scene.addItem(item)
 
         # reference axes (Y horizontal = engine z, Z vertical = engine y)
         self._draw_axes()

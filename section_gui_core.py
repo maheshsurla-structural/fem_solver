@@ -2055,7 +2055,7 @@ def _composite_cell_fibers(spec, csz_z, csz_y) -> list:
         label = _mat_label(matd)
         for f in _discretize_polygon_to_fibers(eff, law, n_z=nz_s, n_y=ny_s):
             rows.append({"area": float(f.area), "z": float(f.z),
-                         "y": float(f.y), "mat": label})
+                         "y": float(f.y), "mat": label, "cell": True})
     return rows
 
 
@@ -2086,19 +2086,19 @@ def section_fibers(spec: "Spec", target: int = 1400) -> dict:
             fc=spec.fc, conc_model="Kent-Park", eps_c0=spec.eps_c0,
             eps_cu=spec.eps_cu, fcu_ratio=spec.fcu_ratio))
         cells = [{"area": float(f.area), "z": float(f.z), "y": float(f.y),
-                  "mat": "Concrete"}
+                  "mat": "Concrete", "cell": True}
                  for f in _discretize_polygon_to_fibers(poly, law, n_z=n_z,
                                                         n_y=n_y)]
     fibers = list(cells)
     bars = sec.reinforcement.bars if sec.reinforcement else []
     for b in bars:
         fibers.append({"area": float(b.area), "z": float(b.z),
-                       "y": float(b.y), "mat": "Steel"})
+                       "y": float(b.y), "mat": "Steel", "cell": False})
     tendons = (sec.prestress.tendons
                if getattr(sec, "prestress", None) else [])
     for t in tendons:
         fibers.append({"area": float(t.area), "z": float(t.z),
-                       "y": float(t.y), "mat": "Tendon"})
+                       "y": float(t.y), "mat": "Tendon", "cell": False})
 
     A = sum(f["area"] for f in cells)
     if A > 0:

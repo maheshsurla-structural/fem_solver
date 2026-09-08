@@ -887,6 +887,12 @@ class SectionDesignerWindow(QMainWindow):
         self._dims_btn.setToolTip("Show overall width/height dimensions")
         self._dims_btn.toggled.connect(self.canvas.set_dims)
         tools.addWidget(self._dims_btn)
+        self._fib_btn = QToolButton()
+        self._fib_btn.setText("Fibres")
+        self._fib_btn.setCheckable(True)
+        self._fib_btn.setToolTip("Overlay the fibre discretisation on the section")
+        self._fib_btn.toggled.connect(self._on_fib_overlay)
+        tools.addWidget(self._fib_btn)
         fitb = QToolButton()
         fitb.setText("Fit")
         fitb.clicked.connect(lambda: self.canvas.fit())
@@ -2056,6 +2062,25 @@ class SectionDesignerWindow(QMainWindow):
             b.setChecked(False)
         self.canvas.start_void()
 
+    def _on_fib_overlay(self, on: bool) -> None:
+        if on:
+            self._update_fiber_overlay()
+        else:
+            self.canvas.set_fibers(None)
+
+    def _update_fiber_overlay(self) -> None:
+        """Recompute + push the fibre-mesh overlay to the canvas (called
+        debounced, so live dragging stays smooth)."""
+        if not (hasattr(self, "_fib_btn") and self._fib_btn.isChecked()):
+            return
+        try:
+            target = self.fib_target.value() if hasattr(self, "fib_target") \
+                else 1400
+            data = core.section_fibers(self._spec, target=target)
+            self.canvas.set_fibers(data["fibers"])
+        except Exception:                              # noqa: BLE001
+            self.canvas.set_fibers(None)
+
     def _on_canvas_selection(self, payload) -> None:
         """Populate the floating point editor; None hides it."""
         self._sel_active = payload is not None
@@ -2171,6 +2196,9 @@ class SectionDesignerWindow(QMainWindow):
         # the confinement echo (Section tab) is an input readout — refresh it
         # every recompute regardless of the active analysis tab.
         self._refresh_confinement_echo()
+        # fibre overlay on the Section canvas (debounced here so dragging stays
+        # smooth); only computes when the toggle is on.
+        self._update_fiber_overlay()
         # tab 0 is the Section (inputs + drawing) — geometry is already live,
         # no analysis to run.
         idx = self.tabs.currentIndex()
