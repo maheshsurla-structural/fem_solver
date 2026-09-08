@@ -58,7 +58,7 @@ from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import QToolButton
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox,
                                QDoubleSpinBox, QFileDialog, QFormLayout,
-                               QGroupBox, QHBoxLayout, QLabel, QLineEdit,
+                               QFrame, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
                                QListWidget, QListWidgetItem, QMainWindow, QMenu,
                                QMessageBox, QProgressBar, QPushButton,
                                QScrollArea, QSpinBox,
@@ -224,7 +224,7 @@ class SectionDesignerWindow(QMainWindow):
         self._hist_timer.timeout.connect(self._commit_history)
 
         self._build_menu()
-        self._build_toolbar(code)
+        header = self._build_header(code)
 
         # workspace tabs: [Section] then the analyses. _build_analysis_panel
         # creates self.tabs (P-M … Report); the Section tab (inputs + drawing)
@@ -241,7 +241,13 @@ class SectionDesignerWindow(QMainWindow):
         split.setSizes([210, 1030])
         split.setContentsMargins(10, 10, 10, 10)
         split.setHandleWidth(10)
-        self.setCentralWidget(split)
+        central = QWidget()
+        cv = QVBoxLayout(central)
+        cv.setContentsMargins(0, 0, 0, 0)
+        cv.setSpacing(0)
+        cv.addWidget(header)
+        cv.addWidget(split, 1)
+        self.setCentralWidget(central)
         style.apply(self)
 
         self._reload_section_nav()
@@ -320,50 +326,101 @@ class SectionDesignerWindow(QMainWindow):
         m.addAction("&Fibres as CSV…", self._export_fibers_csv)
         m.addAction("&Report as HTML…", self._export_report_html)
 
-    def _build_toolbar(self, code) -> None:
-        tb = self.addToolBar("Section")
-        tb.setMovable(False)
-        tb.addWidget(QLabel("  Design code:  "))
+    def _build_header(self, code) -> QWidget:
+        """Application header: brand wordmark on the left, the active-section
+        title in the middle, and the workspace settings (design code, rebar
+        standard, units) as compact labelled chips on the right. Replaces the
+        old label-and-combo toolbar row."""
+        bar = QFrame()
+        bar.setObjectName("appHeader")
+        h = QHBoxLayout(bar)
+        h.setContentsMargins(style.SP_LG, style.SP_SM, style.SP_LG, style.SP_SM)
+        h.setSpacing(style.SP_LG)
+
+        # -- brand --
+        logo = QLabel()
+        logo.setPixmap(icons.icon("sectiondesigner", style.ACCENT).pixmap(
+            QSize(22, 22)))
+        h.addWidget(logo)
+        word = QLabel("Section Designer")
+        word.setObjectName("brandWord")
+        h.addWidget(word)
+
+        h.addWidget(self._hdr_rule())
+
+        # -- active-section title (kept in step by _update_header) --
+        tt = QVBoxLayout()
+        tt.setSpacing(0)
+        eb = QLabel("ACTIVE SECTION")
+        eb.setObjectName("eyebrow")
+        self.hdr_title = QLabel("Section")
+        self.hdr_title.setObjectName("hdrTitle")
+        tt.addWidget(eb)
+        tt.addWidget(self.hdr_title)
+        h.addLayout(tt)
+
+        h.addStretch(1)
+
+        # -- design code --
         self.code_combo = QComboBox()
         self.code_combo.addItems(core.CODES)
         if code and code in core.CODES:
             self.code_combo.setCurrentText(code)
         self.code_combo.currentTextChanged.connect(
             lambda *_: self._on_code_changed())
-        tb.addWidget(self.code_combo)
-        tb.addWidget(QLabel("  Rebar:  "))
-        # Reinforcement standard, decoupled from the design code — drives the
-        # Pattern notation (US #-sizes for ASTM, metric ⌀mm otherwise).
+        h.addWidget(self._chip("DESIGN CODE", self.code_combo))
+
+        # -- rebar standard (decoupled from the design code; drives the Pattern
+        #    notation — US #-sizes for ASTM, metric ⌀mm otherwise) --
         self.rebar_std_combo = QComboBox()
         for label, data in (("Follow design code", "auto"),
                             ("ASTM (US #)", "ACI"), ("EN (⌀ mm)", "EC2"),
                             ("IS (⌀ mm)", "IS")):
             self.rebar_std_combo.addItem(label, data)
-        # default to metric ⌀mm — the presets are metric, and the rebar standard
-        # is deliberately decoupled from the (US-default) design code.
         self.rebar_std_combo.setCurrentIndex(
             self.rebar_std_combo.findData("EC2"))
         self.rebar_std_combo.currentIndexChanged.connect(
             lambda *_: self._on_rebar_std_changed())
-        tb.addWidget(self.rebar_std_combo)
-        tb.addSeparator()
-        tb.addWidget(QLabel("  Units — force:"))
+        h.addWidget(self._chip("REBAR STANDARD", self.rebar_std_combo))
+
+        # -- units (force / length / stress in one chip) --
         self.force_combo = QComboBox()
         self.force_combo.addItems(list(core.FORCE_N))
         self.force_combo.setCurrentText("kN")
-        tb.addWidget(self.force_combo)
-        tb.addWidget(QLabel(" length:"))
         self.length_combo = QComboBox()
         self.length_combo.addItems(list(core.LENGTH_M))
         self.length_combo.setCurrentText("m")
-        tb.addWidget(self.length_combo)
-        tb.addWidget(QLabel(" stress:"))
         self.stress_combo = QComboBox()
         self.stress_combo.addItems(list(core.STRESS_PA))
         self.stress_combo.setCurrentText("MPa")
-        tb.addWidget(self.stress_combo)
         for cb in (self.force_combo, self.length_combo, self.stress_combo):
             cb.currentTextChanged.connect(lambda *_: self._on_units_changed())
+        h.addWidget(self._chip("UNITS", self.force_combo, self.length_combo,
+                               self.stress_combo))
+        return bar
+
+    def _hdr_rule(self) -> QFrame:
+        r = QFrame()
+        r.setObjectName("hdrRule")
+        r.setFixedSize(1, 26)
+        return r
+
+    def _chip(self, label: str, *widgets) -> QFrame:
+        chip = QFrame()
+        chip.setObjectName("chip")
+        v = QVBoxLayout(chip)
+        v.setContentsMargins(style.SP_MD, 4, style.SP_MD, 5)
+        v.setSpacing(1)
+        cl = QLabel(label)
+        cl.setObjectName("chipLabel")
+        v.addWidget(cl)
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(style.SP_SM)
+        for w in widgets:
+            row.addWidget(w)
+        v.addLayout(row)
+        return chip
 
     # ------------------------------------------------------ navigator / tab
     def _build_section_nav(self) -> QWidget:
@@ -2232,6 +2289,7 @@ class SectionDesignerWindow(QMainWindow):
         """Preview header: section name + a one-line dimensional summary."""
         s = self._spec
         self.head_name.setText(self._active)
+        self.hdr_title.setText(self._active)
         bits = [s.kind]
         if s.kind in ("Rectangular", "T-shape", "Hollow box", "PSC girder"):
             bits.append(f"{s.b * 1e3:.0f} × {s.h * 1e3:.0f} mm")

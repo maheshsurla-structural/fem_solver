@@ -272,6 +272,21 @@ QWidget#verdictStrip {{ background: {ZEBRA}; border: 1px solid {BORDER};
                        border-radius: {R_MD}px; }}
 QProgressBar#utilBar {{ background: {BORDER}; border: none; border-radius: 3px; }}
 QProgressBar#utilBar::chunk {{ border-radius: 3px; }}
+
+/* ---- application header (brand + active section + setting chips) ---- */
+QFrame#appHeader {{ background: {PANEL}; border-bottom: 1px solid {BORDER}; }}
+QLabel#brandWord {{ font-size: {FS_H2}px; font-weight: 700; color: {TEXT};
+                   letter-spacing: -0.01em; }}
+QLabel#brandDot {{ color: {ACCENT}; font-size: {FS_H1}px; font-weight: 700; }}
+QFrame#hdrRule {{ background: {BORDER}; }}
+QLabel#hdrTitle {{ font-size: {FS_H3}px; font-weight: 600; color: {TEXT}; }}
+QFrame#chip {{ background: {BG}; border: 1px solid {BORDER}; border-radius: {R_MD}px; }}
+QFrame#chip QComboBox {{ border: none; background: transparent; padding: 1px 4px;
+                        min-height: 18px; font-weight: 600; }}
+QFrame#chip QComboBox:hover {{ color: {ACCENT}; }}
+QFrame#chip QComboBox::drop-down {{ width: 16px; }}
+QLabel#chipLabel {{ color: {MUTED}; font-size: {FS_MICRO}px; font-weight: 600;
+                   letter-spacing: {LS_LABEL}; }}
 """
 
 
