@@ -1159,6 +1159,18 @@ class SectionDesignerWindow(QMainWindow):
         self.fib_target.setSingleStep(200)
         self.fib_target.valueChanged.connect(lambda *_: self._queue())
         top.addWidget(self.fib_target)
+        top.addSpacing(10)
+        top.addWidget(QLabel("Colour by"))
+        self.fib_mode = QComboBox()
+        self.fib_mode.addItems(["Material", "Strain", "Stress"])
+        self.fib_mode.currentIndexChanged.connect(lambda *_: self._queue())
+        top.addWidget(self.fib_mode)
+        top.addWidget(QLabel("at"))
+        self.fib_milestone = QComboBox()
+        self.fib_milestone.setMinimumWidth(180)
+        self.fib_milestone.currentIndexChanged.connect(
+            lambda *_: (None if self._loading else self._queue()))
+        top.addWidget(self.fib_milestone)
         self.fib_info = QLabel("")
         self.fib_info.setStyleSheet("color:#5a6b7b;")
         top.addWidget(self.fib_info)
@@ -2584,54 +2596,129 @@ class SectionDesignerWindow(QMainWindow):
                                        it.get("note", ""))):
                 self.verify_tbl.setItem(r, col, QTableWidgetItem(str(val)))
 
+    def _fiber_milestones(self, aspec):
+        """M-φ milestones (na_angle=0) for the Strain/Stress colouring, each with
+        eps0 + kappa. Empty if the section can't produce a curve."""
+        try:
+            u = self._units
+            P_kN = self.mphi_P.value() * u.fN / 1e3
+            if aspec.kind == "Composite":
+                m = core.composite_mphi(aspec, P_kN,
+                                        kappa_max=aspec.kappa_max,
+                                        materials=self._materials)
+            else:
+                m = core.mphi_data(_case(aspec), P_kN, na_angle=0.0,
+                                   **core.mphi_props(aspec))
+            return [x for x in m.get("milestones", []) if "eps0" in x]
+        except Exception:                              # noqa: BLE001
+            return []
+
+    def _populate_milestone_combo(self, mils) -> None:
+        self._fib_ms_loading = True
+        cur = self.fib_milestone.currentText()
+        self.fib_milestone.clear()
+        for x in mils:
+            self.fib_milestone.addItem(
+                f"{x.get('label', '')} · {x.get('state', '')}", x)
+        i = self.fib_milestone.findText(cur)
+        self.fib_milestone.setCurrentIndex(
+            i if i >= 0 else max(0, self.fib_milestone.count() - 1))
+        self._fib_ms_loading = False
+
+    def _fib_outline(self, ax) -> None:
+        """Draw the section outline (+ holes) on the fibre plot for context."""
+        try:
+            poly = _case(self._analysis_spec()).section.geometry.polygon
+            rings = [list(poly.exterior.coords)] + [list(r.coords)
+                                                    for r in poly.interiors]
+            for rc in rings:
+                ax.plot([z * 1e3 for z, _ in rc], [y * 1e3 for _, y in rc],
+                        color="#7a8a99", lw=1.0, zorder=0)
+        except Exception:                              # noqa: BLE001
+            pass
+
     def _draw_fibers(self) -> None:
-        """Render the fibre discretisation + fibre-vs-solid properties + table."""
-        data = core.section_fibers(self._spec, target=self.fib_target.value())
+        """Render the fibre discretisation coloured by material, or by strain /
+        stress at an M-φ milestone; plus fibre-vs-solid properties + table."""
+        mode = self.fib_mode.currentText()
+        aspec = self._analysis_spec()
+        eps0 = kappa = None
+        ms_state = ""
+        if mode in ("Strain", "Stress"):
+            self._populate_milestone_combo(self._fiber_milestones(aspec))
+            sel = self.fib_milestone.currentData()
+            if sel:
+                eps0, kappa, ms_state = sel["eps0"], sel["kappa"], \
+                    sel.get("state", "")
+        self.fib_milestone.setEnabled(mode != "Material")
+
+        data = core.section_fibers(aspec, target=self.fib_target.value(),
+                                   eps0=eps0, kappa=kappa)
         fibers = data["fibers"]
-        nconc = sum(1 for f in fibers if f["mat"] == "Concrete")
-        nsteel = sum(1 for f in fibers if f["mat"] == "Steel")
-        ntend = sum(1 for f in fibers if f["mat"] == "Tendon")
+        state = data.get("has_state")
+        nconc = sum(1 for f in fibers if f["cell"])
+        npt = len(fibers) - nconc
         self.fib_info.setText(
             f"{data['n_z']}×{data['n_y']} grid · {len(fibers)} fibres "
-            f"({nconc} concrete" + (f", {nsteel} rebar" if nsteel else "")
-            + (f", {ntend} tendon" if ntend else "") + ")")
+            f"({nconc} cells" + (f", {npt} rebar/tendon" if npt else "") + ")")
 
         # ---- plot (Y horizontal = engine z, Z vertical = engine y) ----
         self.fib_fig.clear()
         ax = self.fib_fig.add_subplot(111)
         ax.set_aspect("equal")
-        # distinct materials in first-seen order; steel/tendon fixed colours,
-        # concretes (and any others, e.g. per-shape composite mats) cycle a
-        # palette so each material reads distinctly.
-        mats = []
-        for f in fibers:
-            if f["mat"] not in mats:
-                mats.append(f["mat"])
-        palette = ["#e8c33a", "#7fb069", "#d98c5f", "#8e7cc3", "#5fa8a0",
-                   "#c9a227", "#6a9fb5"]
-        pi = 0
+        xs = [f["z"] * 1e3 for f in fibers]
+        ys = [f["y"] * 1e3 for f in fibers]
+        sizes = [26 if not f["cell"] else 6 for f in fibers]
+        if mode in ("Strain", "Stress") and state:
+            key = "strain" if mode == "Strain" else "stress"
+            scale = 1e3 if mode == "Strain" else 1e-6   # strain ‰, stress MPa
+            vv = [f[key] * scale for f in fibers]
+            # scale stress to the concrete-cell range (steel saturates) so the
+            # concrete gradient stays visible; strain uses the full range.
+            if mode == "Stress":
+                cellv = [f[key] * scale for f in fibers if f["cell"]]
+                vmax = max((abs(v) for v in (cellv or vv)), default=1.0) or 1.0
+            else:
+                vmax = max((abs(v) for v in vv), default=1.0) or 1.0
+            self._fib_outline(ax)
+            sc = ax.scatter(xs, ys, c=vv, s=sizes, cmap="RdBu_r",
+                            vmin=-vmax, vmax=vmax, edgecolors="none")
+            cb = self.fib_fig.colorbar(sc, ax=ax, fraction=0.046, pad=0.04)
+            cb.set_label("strain [‰]" if mode == "Strain" else "stress [MPa]")
+            ax.set_title(f"Fibre {mode.lower()} at {ms_state}")
+        else:
+            mats, palette, pi = [], ["#e8c33a", "#7fb069", "#d98c5f",
+                                     "#8e7cc3", "#5fa8a0", "#c9a227"], 0
+            for f in fibers:
+                if f["mat"] not in mats:
+                    mats.append(f["mat"])
 
-        def _color(m):
-            nonlocal pi
-            if m == "Steel" or m.startswith("Steel"):
-                return "#c0392b"
-            if m == "Tendon" or m.startswith("Tendon"):
-                return "#2c6fb0"
-            col = palette[pi % len(palette)]
-            pi += 1
-            return col
+            def _color(m):
+                nonlocal pi
+                if m == "Steel" or m.startswith("Steel"):
+                    return "#c0392b"
+                if m == "Tendon" or m.startswith("Tendon"):
+                    return "#2c6fb0"
+                col = palette[pi % len(palette)]
+                pi += 1
+                return col
 
-        for mat in mats:
-            pts = [f for f in fibers if f["mat"] == mat]
-            is_pt = mat in ("Steel", "Tendon")
-            ax.scatter([f["z"] * 1e3 for f in pts], [f["y"] * 1e3 for f in pts],
-                       s=(26 if is_pt else 6), c=_color(mat),
-                       edgecolors="none", zorder=(3 if is_pt else 1),
-                       label=f"{mat} ({len(pts)})")
+            for mat in mats:
+                pts = [f for f in fibers if f["mat"] == mat]
+                is_pt = mat in ("Steel", "Tendon")
+                ax.scatter([f["z"] * 1e3 for f in pts],
+                           [f["y"] * 1e3 for f in pts],
+                           s=(26 if is_pt else 6), c=_color(mat),
+                           edgecolors="none", zorder=(3 if is_pt else 1),
+                           label=f"{mat} ({len(pts)})")
+            ax.legend(loc="upper right", fontsize=8, framealpha=0.9)
+            ax.set_title("Fibre discretisation")
+            if mode != "Material":
+                ax.set_title("Fibre "
+                             + ("strain" if mode == "Strain" else "stress")
+                             + " — add reinforcement / M-φ first")
         ax.set_xlabel("Y [mm]")
         ax.set_ylabel("Z [mm]")
-        ax.set_title("Fibre discretisation")
-        ax.legend(loc="upper right", fontsize=8, framealpha=0.9)
         style.beautify_axes(ax)
         self.fib_canvas.draw_idle()
 
@@ -2654,14 +2741,25 @@ class SectionDesignerWindow(QMainWindow):
                                     | Qt.AlignmentFlag.AlignVCenter)
                 self.fib_props.setItem(r, c, it)
 
-        # ---- fibre table ----
+        # ---- fibre table (add strain/stress columns in a state mode) ----
+        if state:
+            self.fib_tbl.setColumnCount(7)
+            self.fib_tbl.setHorizontalHeaderLabels(
+                ["#", "Area [mm²]", "Y [mm]", "Z [mm]", "Material",
+                 "ε [‰]", "σ [MPa]"])
+        else:
+            self.fib_tbl.setColumnCount(5)
+            self.fib_tbl.setHorizontalHeaderLabels(
+                ["#", "Area [mm²]", "Y [mm]", "Z [mm]", "Material"])
         self.fib_tbl.setRowCount(len(fibers))
         for r, f in enumerate(fibers):
-            vals = (str(r + 1), f"{f['area'] * 1e6:.2f}", f"{f['z'] * 1e3:.1f}",
-                    f"{f['y'] * 1e3:.1f}", f["mat"])
+            vals = [str(r + 1), f"{f['area'] * 1e6:.2f}", f"{f['z'] * 1e3:.1f}",
+                    f"{f['y'] * 1e3:.1f}", f["mat"]]
+            if state:
+                vals += [f"{f['strain'] * 1e3:.3f}", f"{f['stress'] / 1e6:.1f}"]
             for c, val in enumerate(vals):
                 it = QTableWidgetItem(val)
-                if 0 < c < 4:
+                if c in (1, 2, 3, 5, 6):
                     it.setTextAlignment(Qt.AlignmentFlag.AlignRight
                                         | Qt.AlignmentFlag.AlignVCenter)
                 self.fib_tbl.setItem(r, c, it)

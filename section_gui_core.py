@@ -2021,12 +2021,13 @@ def _mat_label(matd: dict) -> str:
         return kind
 
 
-def _composite_cell_fibers(spec, csz_z, csz_y) -> list:
+def _composite_cell_fibers(spec, csz_z, csz_y, eps0=None, kappa=None) -> list:
     """Composite section cells, discretised per shape with each shape's own
     material (z-order: later shapes displace earlier), recentred on the union
     centroid — matching :func:`_composite_fiber_section`. Cell size ≈
     ``csz_z × csz_y`` so all shapes share one grid. Returns fibre dicts labelled
-    by material."""
+    by material; with ``eps0``/``kappa`` each also carries strain + stress from
+    its shape's constitutive law."""
     from shapely.geometry import Polygon as SPoly
     from shapely.ops import unary_union
     from shapely.affinity import translate
@@ -2039,9 +2040,10 @@ def _composite_cell_fibers(spec, csz_z, csz_y) -> list:
     cz, cy = union.centroid.x, union.centroid.y
     polys = [(translate(p, xoff=-cz, yoff=-cy), m) for p, m in raw]
     plist = [p for p, _ in polys]
-    law = concrete_uniaxial_from(dict(fc=spec.fc, conc_model="Kent-Park",
-                                      eps_c0=spec.eps_c0, eps_cu=spec.eps_cu,
-                                      fcu_ratio=spec.fcu_ratio))
+    dummy = concrete_uniaxial_from(dict(fc=spec.fc, conc_model="Kent-Park",
+                                        eps_c0=spec.eps_c0, eps_cu=spec.eps_cu,
+                                        fcu_ratio=spec.fcu_ratio))
+    do_state = eps0 is not None and kappa is not None
     rows = []
     for i, (poly, matd) in enumerate(polys):
         later = unary_union(plist[i + 1:]) if i + 1 < len(plist) else None
@@ -2053,24 +2055,32 @@ def _composite_cell_fibers(spec, csz_z, csz_y) -> list:
         nz_s = max(2, int(round((b[2] - b[0]) / max(csz_z, 1e-9))))
         ny_s = max(2, int(round((b[3] - b[1]) / max(csz_y, 1e-9))))
         label = _mat_label(matd)
-        for f in _discretize_polygon_to_fibers(eff, law, n_z=nz_s, n_y=ny_s):
-            rows.append({"area": float(f.area), "z": float(f.z),
-                         "y": float(f.y), "mat": label, "cell": True})
+        law = (concrete_uniaxial_from(matd) if matd.get("kind") == "concrete"
+               else steel_uniaxial_from(matd)) if do_state else dummy
+        for f in _discretize_polygon_to_fibers(eff, dummy, n_z=nz_s, n_y=ny_s):
+            row = {"area": float(f.area), "z": float(f.z),
+                   "y": float(f.y), "mat": label, "cell": True}
+            if do_state:
+                eps = eps0 - float(f.y) * kappa
+                row["strain"] = eps
+                row["stress"] = float(law.get_response(eps)[0])
+            rows.append(row)
     return rows
 
 
-def section_fibers(spec: "Spec", target: int = 1400) -> dict:
+def section_fibers(spec: "Spec", target: int = 1400,
+                   eps0=None, kappa=None) -> dict:
     """Discretise the section the way the fibre analysis does and return the
     fibre list + fibre-derived properties, for a CSiBridge-style fibre view.
 
-    Returns ``{"fibers": [...], "n_z", "n_y", "fiber_props", "solid_props"}``.
-    Each fibre is ``{"area", "z", "y", "mat"}`` in SI (m², m). Cells come from
-    grid-sampling the (holed) polygon — one material for a single-material
-    section, per-shape materials for Composite; each rebar / tendon is one point
-    fibre. Properties (area, centroid, I_zz about the horizontal axis, I_yy
-    about the vertical) are integrated from the CELL fibres and shown beside the
-    exact solid values. ``target`` is the approximate cell count (density adapts
-    to the aspect ratio to keep cells ~square)."""
+    Returns ``{"fibers": [...], "n_z", "n_y", "fiber_props", "solid_props",
+    "has_state"}``. Each fibre is ``{"area", "z", "y", "mat", "cell"}`` in SI
+    (m², m); with a strain plane ``eps0`` (axial) + ``kappa`` (curvature, about
+    the horizontal axis) each fibre also gets ``"strain"`` = eps0 − y·κ and
+    ``"stress"`` = its material's response (Pa). Cells come from grid-sampling
+    the (holed) polygon — one material for a single-material section, per-shape
+    for Composite; each rebar / tendon is one point fibre. Properties integrate
+    over the CELL fibres. ``target`` is the approximate cell count."""
     case = build_case(spec)
     sec = case.section
     poly = sec.geometry.polygon
@@ -2079,26 +2089,47 @@ def section_fibers(spec: "Spec", target: int = 1400) -> dict:
     h = max(maxy - miny, 1e-9)
     n_z = max(6, int(round((target * w / h) ** 0.5)))
     n_y = max(6, int(round((target * h / w) ** 0.5)))
+    do_state = eps0 is not None and kappa is not None
+
+    conc_law = concrete_uniaxial_from(dict(
+        fc=spec.fc, conc_model=spec.conc_model, eps_c0=spec.eps_c0,
+        eps_cu=spec.eps_cu, fcu_ratio=spec.fcu_ratio,
+        fr_model=spec.fr_model, fr_coeff=spec.fr_coeff,
+        eps_decay=spec.eps_decay, conc_f1_ratio=spec.conc_f1_ratio))
+    steel_law = steel_uniaxial_from(dict(
+        fy=spec.fy, Es=spec.Es, steel_model=spec.steel_model,
+        steel_b=spec.steel_b, steel_fu_ratio=spec.steel_fu_ratio,
+        steel_eps_sh=spec.steel_eps_sh, steel_eps_su=spec.steel_eps_su))
+
+    def _state(row, law):
+        if do_state:
+            eps = eps0 - row["y"] * kappa
+            row["strain"] = eps
+            row["stress"] = float(law.get_response(eps)[0])
+        return row
+
     if spec.kind == "Composite":
-        cells = _composite_cell_fibers(spec, w / n_z, h / n_y)
+        cells = _composite_cell_fibers(spec, w / n_z, h / n_y, eps0, kappa)
     else:
-        law = concrete_uniaxial_from(dict(
-            fc=spec.fc, conc_model="Kent-Park", eps_c0=spec.eps_c0,
-            eps_cu=spec.eps_cu, fcu_ratio=spec.fcu_ratio))
-        cells = [{"area": float(f.area), "z": float(f.z), "y": float(f.y),
-                  "mat": "Concrete", "cell": True}
-                 for f in _discretize_polygon_to_fibers(poly, law, n_z=n_z,
-                                                        n_y=n_y)]
+        cells = [_state({"area": float(f.area), "z": float(f.z),
+                         "y": float(f.y), "mat": "Concrete", "cell": True},
+                        conc_law)
+                 for f in _discretize_polygon_to_fibers(poly, conc_law,
+                                                        n_z=n_z, n_y=n_y)]
     fibers = list(cells)
     bars = sec.reinforcement.bars if sec.reinforcement else []
     for b in bars:
-        fibers.append({"area": float(b.area), "z": float(b.z),
-                       "y": float(b.y), "mat": "Steel", "cell": False})
+        fibers.append(_state(
+            {"area": float(b.area), "z": float(b.z), "y": float(b.y),
+             "mat": "Steel", "cell": False},
+            getattr(b, "material", None) or steel_law))
     tendons = (sec.prestress.tendons
                if getattr(sec, "prestress", None) else [])
     for t in tendons:
-        fibers.append({"area": float(t.area), "z": float(t.z),
-                       "y": float(t.y), "mat": "Tendon", "cell": False})
+        law = getattr(t, "material", None) or steel_law
+        fibers.append(_state(
+            {"area": float(t.area), "z": float(t.z), "y": float(t.y),
+             "mat": "Tendon", "cell": False}, law))
 
     A = sum(f["area"] for f in cells)
     if A > 0:
@@ -2111,7 +2142,7 @@ def section_fibers(spec: "Spec", target: int = 1400) -> dict:
     g = sec.geometry
     gcz, gcy = g.centroid
     return {
-        "fibers": fibers, "n_z": n_z, "n_y": n_y,
+        "fibers": fibers, "n_z": n_z, "n_y": n_y, "has_state": do_state,
         "fiber_props": {"A": A, "cz": cz, "cy": cy, "I_zz": I_zz, "I_yy": I_yy},
         "solid_props": {"A": g.area, "cz": gcz, "cy": gcy,
                         "I_zz": g.I_zz, "I_yy": g.I_yy},
