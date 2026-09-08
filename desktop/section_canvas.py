@@ -64,6 +64,7 @@ class SectionCanvas(QGraphicsView):
     cursorMoved = Signal(object)         # (z_mm, y_mm) or None
     selectionChanged = Signal(object)    # {t,Y_mm,Z_mm,dia_mm} or None
     selPosChanged = Signal(object)       # QPoint (viewport) of selection, or None
+    toolShortcut = Signal(str)           # a tool key was pressed on the canvas
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -727,9 +728,20 @@ class SectionCanvas(QGraphicsView):
         self._emit_selection()
         self._rebuild_scene()
 
+    # single-key canvas tools (fire only when the canvas has focus, so they
+    # never hijack typing in the input fields elsewhere)
+    _TOOL_KEYS = {Qt.Key.Key_S: "select", Qt.Key.Key_Escape: "select",
+                  Qt.Key.Key_P: "point", Qt.Key.Key_R: "rebar",
+                  Qt.Key.Key_V: "void", Qt.Key.Key_F: "fit",
+                  Qt.Key.Key_G: "snap"}
+
     def keyPressEvent(self, e):
-        """Arrow keys nudge the selected point by the snap step (else 1 mm);
-        Delete/Backspace removes it."""
+        """Tool keys (S/P/R/V/F/G, Esc) request a tool; arrow keys nudge the
+        selected point by the snap step (else 1 mm); Delete/Backspace removes
+        it."""
+        if not e.modifiers() and e.key() in self._TOOL_KEYS:
+            self.toolShortcut.emit(self._TOOL_KEYS[e.key()])
+            return
         s = self._selected
         if not s:
             return super().keyPressEvent(e)

@@ -274,7 +274,12 @@ class SectionDesignerWindow(QMainWindow):
         self._busy_bar.setTextVisible(False)
         self._busy_bar.setFixedWidth(120)
         self._busy_bar.hide()
+        # live cursor coordinate + unit readout, right-aligned in the status bar
+        self._status_coord = QLabel("")
+        self._status_coord.setObjectName("caption")
+        self.statusBar().addPermanentWidget(self._status_coord)
         self.statusBar().addPermanentWidget(self._busy_bar)
+        self._refresh_status_units()
         self._toast_lbl = None
 
         self._reload_section_nav()
@@ -289,6 +294,11 @@ class SectionDesignerWindow(QMainWindow):
         QShortcut(QKeySequence.StandardKey.Undo, self, self._undo)
         QShortcut(QKeySequence.StandardKey.Redo, self, self._redo)
         QShortcut(QKeySequence("Ctrl+Y"), self, self._redo)
+        # keyboard-first: command palette + workspace-tab switching
+        QShortcut(QKeySequence("Ctrl+K"), self, self._open_command_palette)
+        for _i in range(1, 10):
+            QShortcut(QKeySequence(f"Ctrl+{_i}"), self,
+                      lambda i=_i: self._goto_tab(i - 1))
 
         # quiet first-run hint (once ever), pointing at the starter templates
         if not self._settings.value("intro_seen", False, type=bool):
@@ -1187,6 +1197,7 @@ class SectionDesignerWindow(QMainWindow):
         self.canvas.cursorMoved.connect(self._on_canvas_cursor)
         self.canvas.selectionChanged.connect(self._on_canvas_selection)
         self.canvas.selPosChanged.connect(self._on_sel_pos)
+        self.canvas.toolShortcut.connect(self._on_tool_shortcut)
 
         # single flat icon toolbar (draw tools · view toggles · properties)
         v.addWidget(self._build_canvas_toolbar())
@@ -2384,6 +2395,7 @@ class SectionDesignerWindow(QMainWindow):
         self._units = core.Units(force=self.force_combo.currentText(),
                                  length=self.length_combo.currentText(),
                                  stress=self.stress_combo.currentText())
+        self._refresh_status_units()
         self._queue()
 
     def _on_value_changed(self) -> None:
@@ -2447,11 +2459,74 @@ class SectionDesignerWindow(QMainWindow):
             b.setChecked(m == mode)
         self.canvas.set_mode(mode)
 
+    def _on_tool_shortcut(self, action: str) -> None:
+        """Dispatch a single-key canvas tool (from the canvas keyPressEvent)."""
+        modes = {"select": "select", "point": "add_vertex", "rebar": "add_bar"}
+        if action in modes:
+            self._set_canvas_mode(modes[action])
+        elif action == "void":
+            self._start_void()
+        elif action == "fit":
+            self.canvas.fit()
+        elif action == "snap":
+            self._snap_btn.toggle()
+
     def _on_canvas_cursor(self, zy) -> None:
         if zy is None:
             self.coord_lbl.setText("")
+            self._refresh_status_units()
         else:
-            self.coord_lbl.setText(f"Y {zy[0]:.0f}, Z {zy[1]:.0f} mm")
+            txt = f"Y {zy[0]:.0f}, Z {zy[1]:.0f} mm"
+            self.coord_lbl.setText(txt)
+            u = self._units
+            self._status_coord.setText(
+                f"{txt}   ·   {u.Fl} · {u.Ll} · {u.Sl}")
+
+    def _refresh_status_units(self) -> None:
+        """Status-bar baseline: the active unit set (shown when not hovering)."""
+        u = self._units
+        self._status_coord.setText(f"units:  {u.Fl} · {u.Ll} · {u.Sl}")
+
+    def _goto_tab(self, idx: int) -> None:
+        if 0 <= idx < self.tabs.count():
+            self.tabs.setCurrentIndex(idx)
+
+    def _open_command_palette(self) -> None:
+        CommandPalette(self, self._command_list()).exec()
+
+    def _command_list(self):
+        """(title, callable) pairs for the Ctrl+K command palette."""
+        c = []
+        a = lambda t, fn: c.append((t, fn))            # noqa: E731
+        a("Tool: Select / move", lambda: self._set_canvas_mode("select"))
+        a("Tool: Add point", lambda: self._set_canvas_mode("add_vertex"))
+        a("Tool: Place rebar", lambda: self._set_canvas_mode("add_bar"))
+        a("Tool: Draw void", self._start_void)
+        a("Tool: Edit freely (convert to Custom)", self._convert_to_custom)
+        a("View: Fit to section", lambda: self.canvas.fit())
+        a("View: Toggle snap", lambda: self._snap_btn.toggle())
+        a("View: Toggle dimensions", lambda: self._dims_btn.toggle())
+        a("View: Toggle fibre overlay", lambda: self._fib_btn.toggle())
+        a("View: Toggle properties panel", lambda: self._props_btn.toggle())
+        for i in range(self.tabs.count()):
+            a(f"Go to: {self.tabs.tabText(i)}", lambda i=i: self._goto_tab(i))
+        a("Section: New (blank)", self._new_section)
+        a("Section: New from template…", self._new_from_gallery)
+        a("Section: Duplicate", self._dup_section)
+        a("Section: Mirror", self._mirror_section)
+        a("Section: Delete", self._del_section)
+        a("Project: Open…", self._open_project)
+        a("Project: Save…", self._save_project)
+        a("Import section (DXF / CSV)…", self._import_section)
+        a("Export: Report as PDF…", self._export_report_pdf)
+        a("Export: Report as HTML…", self._export_report_html)
+        a("Export: Report details…", self._edit_report_details)
+        a("Export: Section as JSON…", self._export_section_json)
+        a("Export: Verification as CSV…", self._export_verify_csv)
+        a("Export: Fibres as CSV…", self._export_fibers_csv)
+        a("Materials: Manage library…", self._open_materials)
+        a("Theme: Toggle light / dark", self._toggle_theme)
+        return c
 
     def _on_canvas_dim(self, key: str, value_m: float) -> None:
         """A drag-resize handle moved: push the new dimension into its spin box
@@ -3794,6 +3869,79 @@ class SectionDesignerWindow(QMainWindow):
         except Exception as exc:                       # noqa: BLE001
             QMessageBox.critical(self, "Export failed", str(exc))
             self._toast("Export failed", kind="err")
+
+
+class CommandPalette(QDialog):
+    """A Ctrl+K fuzzy command launcher: type to filter, ↑/↓ to move, Enter to
+    run, Esc to close. ``commands`` is a list of (title, callable)."""
+
+    def __init__(self, parent, commands):
+        super().__init__(parent)
+        self.setObjectName("cmdPalette")
+        self.setWindowFlags(Qt.WindowType.Dialog
+                            | Qt.WindowType.FramelessWindowHint)
+        self.setModal(True)
+        self._commands = commands
+        v = QVBoxLayout(self)
+        v.setContentsMargins(style.SP_MD, style.SP_MD, style.SP_MD, style.SP_MD)
+        v.setSpacing(style.SP_SM)
+        self.edit = QLineEdit()
+        self.edit.setObjectName("cmdEdit")
+        self.edit.setPlaceholderText("Type a command…   (↑↓ to move, Enter to run)")
+        self.edit.textChanged.connect(self._filter)
+        self.edit.returnPressed.connect(self._run)
+        self.edit.installEventFilter(self)
+        v.addWidget(self.edit)
+        self.list = QListWidget()
+        self.list.setObjectName("cmdList")
+        self.list.itemActivated.connect(lambda _it: self._run())
+        v.addWidget(self.list)
+        self.resize(520, 380)
+        self._filter("")
+
+    def showEvent(self, e):
+        super().showEvent(e)
+        p = self.parent()
+        if p is not None:
+            g = p.frameGeometry()
+            self.move(g.center().x() - self.width() // 2, g.top() + 90)
+        self.edit.setFocus()
+
+    def _filter(self, text) -> None:
+        words = text.lower().split()
+        self.list.clear()
+        for title, fn in self._commands:
+            low = title.lower()
+            if all(w in low for w in words):
+                it = QListWidgetItem(title)
+                it.setData(Qt.ItemDataRole.UserRole, fn)
+                self.list.addItem(it)
+        if self.list.count():
+            self.list.setCurrentRow(0)
+
+    def eventFilter(self, obj, ev):
+        if ev.type() == ev.Type.KeyPress:
+            k = ev.key()
+            n = self.list.count()
+            if k == Qt.Key.Key_Down and n:
+                self.list.setCurrentRow((self.list.currentRow() + 1) % n)
+                return True
+            if k == Qt.Key.Key_Up and n:
+                self.list.setCurrentRow((self.list.currentRow() - 1) % n)
+                return True
+            if k == Qt.Key.Key_Escape:
+                self.reject()
+                return True
+        return super().eventFilter(obj, ev)
+
+    def _run(self) -> None:
+        it = self.list.currentItem()
+        if it is None:
+            return
+        fn = it.data(Qt.ItemDataRole.UserRole)
+        self.accept()
+        if callable(fn):
+            fn()
 
 
 class ReportDetailsDialog(QDialog):

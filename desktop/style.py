@@ -347,6 +347,14 @@ QFrame#tplCard {{ background: {PANEL}; border: 1px solid {BORDER};
     border-radius: {R_MD}px; }}
 QFrame#tplCard:hover {{ border-color: {ACCENT}; }}
 QLabel#tplName {{ font-weight: 600; color: {TEXT}; background: transparent; }}
+
+/* ---- command palette (Ctrl+K) ---- */
+QDialog#cmdPalette {{ background: {PANEL}; border: 1px solid {BORDER_STRONG};
+    border-radius: {R_LG}px; }}
+QLineEdit#cmdEdit {{ font-size: {FS_H3}px; padding: 8px 10px; }}
+QListWidget#cmdList {{ border: none; background: transparent; }}
+QListWidget#cmdList::item {{ padding: 7px 10px; border-radius: {R_SM}px; }}
+QListWidget#cmdList::item:selected {{ background: {ACCENT_SOFT}; color: {TEXT}; }}
 """
 
 
