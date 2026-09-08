@@ -73,6 +73,7 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
+import icons
 import section_gui_core as core
 import section_import
 import style
@@ -863,9 +864,16 @@ class SectionDesignerWindow(QMainWindow):
         tool_tabs = QTabWidget()
         tool_tabs.setDocumentMode(True)
 
-        def _tbtn(text, tip="", *, checkable=False):
+        ic = "#44506a"                       # neutral icon ink on the panel
+
+        def _tbtn(text, tip="", *, icon_name="", checkable=False):
             b = QToolButton()
             b.setText(text)
+            if icon_name:
+                b.setIcon(icons.icon(icon_name, ic))
+                b.setIconSize(QSize(16, 16))
+                b.setToolButtonStyle(
+                    Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
             if tip:
                 b.setToolTip(tip)
             b.setCheckable(checkable)
@@ -876,20 +884,22 @@ class SectionDesignerWindow(QMainWindow):
         dl = QHBoxLayout(draw_page)
         dl.setContentsMargins(6, 3, 6, 3)
         self._canvas_mode_btns = {}
-        for mode, label in (("select", "Select"), ("add_vertex", "＋ Point"),
-                            ("add_bar", "＋ Rebar")):
-            b = _tbtn(label, checkable=True)
+        for mode, label, icn in (("select", "Select", "sd_select"),
+                                 ("add_vertex", "Point", "sd_point"),
+                                 ("add_bar", "Rebar", "sd_rebar")):
+            b = _tbtn(label, icon_name=icn, checkable=True)
             b.clicked.connect(lambda _c=False, m=mode: self._set_canvas_mode(m))
             dl.addWidget(b)
             self._canvas_mode_btns[mode] = b
         self._canvas_mode_btns["select"].setChecked(True)
         self._void_btn = _tbtn(
-            "＋ Void", "Draw a hole/void (click to add its corners)")
+            "Void", "Draw a hole/void (click to add its corners)",
+            icon_name="sd_void")
         self._void_btn.clicked.connect(self._start_void)
         dl.addWidget(self._void_btn)
         self._edit_free_btn = _tbtn(
-            "Edit freely →",
-            "Convert this parametric shape to an editable Custom polygon")
+            "Edit freely →", icon_name="sd_editfree",
+            tip="Convert this parametric shape to an editable Custom polygon")
         self._edit_free_btn.clicked.connect(self._convert_to_custom)
         dl.addWidget(self._edit_free_btn)
         dl.addStretch(1)
@@ -900,26 +910,28 @@ class SectionDesignerWindow(QMainWindow):
         vl = QHBoxLayout(view_page)
         vl.setContentsMargins(6, 3, 6, 3)
         self._snap_btn = _tbtn(
-            "Snap", "Snap points to a 5 mm grid (Shift = ortho)", checkable=True)
+            "Snap", "Snap points to a 5 mm grid (Shift = ortho)",
+            icon_name="snap", checkable=True)
         self._snap_btn.toggled.connect(self.canvas.set_snap)
         vl.addWidget(self._snap_btn)
         self._dims_btn = _tbtn(
-            "Dims", "Show overall width/height dimensions", checkable=True)
+            "Dims", "Show overall width/height dimensions",
+            icon_name="sd_dims", checkable=True)
         self._dims_btn.toggled.connect(self.canvas.set_dims)
         vl.addWidget(self._dims_btn)
         self._fib_btn = _tbtn(
             "Fibres", "Overlay the fibre discretisation mesh on the section",
-            checkable=True)
+            icon_name="sd_fibres", checkable=True)
         self._fib_btn.toggled.connect(self._on_fib_overlay)
         vl.addWidget(self._fib_btn)
         self._fib_cent_btn = _tbtn(
             "Centroids", "Show the fibre centroids on the mesh",
-            checkable=True)
+            icon_name="sd_centroids", checkable=True)
         self._fib_cent_btn.setEnabled(False)
         self._fib_cent_btn.toggled.connect(
             lambda *_: self._update_fiber_overlay())
         vl.addWidget(self._fib_cent_btn)
-        fitb = _tbtn("Fit", "Zoom to fit the section")
+        fitb = _tbtn("Fit", "Zoom to fit the section", icon_name="fit")
         fitb.clicked.connect(lambda: self.canvas.fit())
         vl.addWidget(fitb)
         vl.addStretch(1)
@@ -927,7 +939,8 @@ class SectionDesignerWindow(QMainWindow):
 
         # cursor readout stays visible across tabs (corner of the ribbon)
         self.coord_lbl = QLabel("")
-        self.coord_lbl.setStyleSheet("color:#5a6b7b; margin-right:6px;")
+        self.coord_lbl.setObjectName("caption")
+        self.coord_lbl.setStyleSheet("margin-right:8px;")
         tool_tabs.setCornerWidget(self.coord_lbl, Qt.Corner.TopRightCorner)
         cv.addWidget(tool_tabs)
         cv.addWidget(self.canvas)

@@ -75,6 +75,31 @@ _ICONS = {
                        '<circle cx="15" cy="9" r="1.4" fill="{c}" stroke="none"/>'
                        '<circle cx="9" cy="15" r="1.4" fill="{c}" stroke="none"/>'
                        '<circle cx="15" cy="15" r="1.4" fill="{c}" stroke="none"/>',
+    # --- Section Designer canvas tools ---
+    "sd_select": '<path d="M6 4l11 7-4.6 1.4 2.7 5.4-2 1-2.7-5.4L7 17z" '
+                 'fill="{c}" stroke="none"/>',
+    "sd_point": '<circle cx="9.5" cy="14" r="2.8" fill="{c}" stroke="none"/>'
+                '<path d="M17.5 5v5M15 7.5h5"/>',
+    "sd_rebar": '<circle cx="9.5" cy="14" r="4" fill="{c}" stroke="none"/>'
+                '<circle cx="9.5" cy="14" r="1.5" fill="#fff" stroke="none"/>'
+                '<path d="M17.5 5v5M15 7.5h5"/>',
+    "sd_void": '<path d="M3.5 6.5h11v11h-11z"/>'
+               '<path d="M6.5 9.5h5v5h-5z" stroke-dasharray="2 1.6"/>'
+               '<path d="M18 5v5M15.5 7.5h5"/>',
+    "sd_dims": '<path d="M4 7v10M20 7v10M4 12h16"/>'
+               '<path d="M4 12l3-2.4M4 12l3 2.4M20 12l-3-2.4M20 12l-3 2.4" '
+               'fill="none"/>',
+    "sd_fibres": '<rect x="4" y="4" width="16" height="16" rx="1"/>'
+                 '<path d="M4 9h16M4 14h16M9 4v16M14 4v16"/>',
+    "sd_centroids": '<rect x="4" y="4" width="16" height="16" rx="1" '
+                    'opacity=".55"/><g fill="{c}" stroke="none">'
+                    '<circle cx="8.5" cy="8.5" r="1.3"/>'
+                    '<circle cx="15.5" cy="8.5" r="1.3"/>'
+                    '<circle cx="12" cy="12" r="1.3"/>'
+                    '<circle cx="8.5" cy="15.5" r="1.3"/>'
+                    '<circle cx="15.5" cy="15.5" r="1.3"/></g>',
+    "sd_editfree": '<path d="M4 13l3.5-7.5 8 1 3.5 6.5-5.5 5.5z"/>'
+                   '<circle cx="15.5" cy="6.5" r="2.3" fill="{c}" stroke="none"/>',
 }
 _LETTERS = {"axial": "N", "shear": "V", "moment": "M"}
 
@@ -92,9 +117,12 @@ def icon(name: str, color: str = "#3a3a3a") -> QIcon:
             return QIcon()
         svg = _WRAP.format(c=color, inner=inner.replace("{c}", color))
     renderer = QSvgRenderer(QByteArray(svg.encode("utf-8")))
-    pm = QPixmap(24, 24)
+    scale = 4                                    # render hi-res for crisp icons
+    pm = QPixmap(24 * scale, 24 * scale)
     pm.fill(Qt.GlobalColor.transparent)
     painter = QPainter(pm)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
     renderer.render(painter)
     painter.end()
+    pm.setDevicePixelRatio(scale)
     return QIcon(pm)

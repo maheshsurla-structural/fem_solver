@@ -32,12 +32,29 @@ AX_SPINE = "#c3cad4"
 AX_TEXT = "#3a4150"
 
 FONT_STACK = "'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif"
+MONO_STACK = "'Cascadia Mono', 'Consolas', 'SF Mono', monospace"
+
+# ---- design tokens ---------------------------------------------------------
+# Spacing — a 4px base on an 8px rhythm. Reach for these, not ad-hoc pixels.
+SP_XS, SP_SM, SP_MD, SP_LG, SP_XL = 4, 8, 12, 16, 24
+# Corner radius by role: controls / cards / large surfaces.
+R_SM, R_MD, R_LG = 6, 8, 12
+# Type scale (px) — one ladder shared across every screen.
+FS_DISPLAY, FS_H1, FS_H2, FS_H3 = 26, 18, 15, 14
+FS_BODY, FS_SMALL, FS_MICRO = 13, 12, 11
+LS_LABEL = "0.06em"          # tracking for uppercase captions / eyebrows
+
+# semantic (result) colors — distinct from the blue accent
+WARN = "#9a6a12"
+WARN_SOFT = "#faf0da"
+OK_SOFT = "#e4f4e9"
+BAD_SOFT = "#fbe6e9"
 
 
 QSS = f"""
 * {{
     font-family: {FONT_STACK};
-    font-size: 13px;
+    font-size: {FS_BODY}px;
     color: {TEXT};
 }}
 QMainWindow, QDialog, QScrollArea, QWidget#sd_inner {{
@@ -228,10 +245,29 @@ QDockWidget::title {{
     text-align: left;
 }}
 
-/* ---- helper label classes (set via setObjectName) ---- */
-QLabel#h1 {{ font-size: 17px; font-weight: 700; color: {TEXT}; }}
-QLabel#sub {{ color: {MUTED}; font-size: 12px; }}
-QLabel#caption {{ color: {MUTED}; font-size: 12px; }}
+/* ---- type scale (set via setObjectName) ---- */
+QLabel#display {{ font-size: {FS_DISPLAY}px; font-weight: 700; color: {TEXT};
+                 letter-spacing: -0.02em; }}
+QLabel#h1 {{ font-size: {FS_H1}px; font-weight: 700; color: {TEXT};
+            letter-spacing: -0.01em; }}
+QLabel#h2 {{ font-size: {FS_H2}px; font-weight: 600; color: {TEXT}; }}
+QLabel#h3 {{ font-size: {FS_H3}px; font-weight: 600; color: {TEXT}; }}
+QLabel#sub {{ color: {MUTED}; font-size: {FS_SMALL}px; }}
+QLabel#caption {{ color: {MUTED}; font-size: {FS_SMALL}px; }}
+QLabel#eyebrow {{ color: {MUTED}; font-size: {FS_MICRO}px; font-weight: 600;
+                 letter-spacing: {LS_LABEL}; }}
+
+/* ---- KPI + verdict pills (for result headers) ---- */
+QLabel#kpiValue {{ font-size: 22px; font-weight: 700; color: {TEXT};
+                  font-family: {MONO_STACK}; }}
+QLabel#kpiLabel {{ color: {MUTED}; font-size: {FS_MICRO}px; font-weight: 600;
+                  letter-spacing: {LS_LABEL}; }}
+QLabel#pillPass {{ background: {OK_SOFT}; color: {OK}; font-weight: 700;
+                  border-radius: {R_SM}px; padding: 3px 12px; }}
+QLabel#pillFail {{ background: {BAD_SOFT}; color: {BAD}; font-weight: 700;
+                  border-radius: {R_SM}px; padding: 3px 12px; }}
+QLabel#pillWarn {{ background: {WARN_SOFT}; color: {WARN}; font-weight: 700;
+                  border-radius: {R_SM}px; padding: 3px 12px; }}
 """
 
 
