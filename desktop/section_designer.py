@@ -1080,6 +1080,10 @@ class SectionDesignerWindow(QMainWindow):
         # ---- P-M interaction + demand check ----
         pm = QWidget()
         pmv = QVBoxLayout(pm)
+        pm_kpi, self._pm_kpi, self._pm_kpi_cap = self._make_kpi_row(
+            [("Po", "Pₒ SQUASH"), ("Pnmax", "P n,max"),
+             ("M0", "M @ P=0"), ("Mbal", "M BALANCED")])
+        pmv.addWidget(pm_kpi)
         pmv.addWidget(self._build_verdict_strip())
         self.pm_fig = Figure(figsize=(4.4, 4.0), layout="constrained")
         self.pm_canvas = Canvas(self.pm_fig)
@@ -1119,9 +1123,10 @@ class SectionDesignerWindow(QMainWindow):
         pr.addWidget(self.mphi_ang)
         pr.addStretch(1)
         mpv.addLayout(pr)
-        self.mphi_metrics = QLabel("—")
-        self.mphi_metrics.setTextFormat(Qt.TextFormat.RichText)
-        mpv.addWidget(self.mphi_metrics)
+        mp_kpi, self._mp_kpi, self._mp_kpi_cap = self._make_kpi_row(
+            [("Mcr", "M_cr"), ("My", "M_y"), ("Mu", "M_u"),
+             ("mu", "μ_φ"), ("c", "N-A DEPTH")])
+        mpv.addWidget(mp_kpi)
         # milestone table (left) + strain-profile diagram (right)
         bottom = QHBoxLayout()
         self.mphi_tbl = QTableWidget(0, 4)
@@ -2442,6 +2447,43 @@ class SectionDesignerWindow(QMainWindow):
         self._set_verdict_empty()
         return strip
 
+    # ------------------------------------------------------------ KPI tiles
+    def _make_kpi_row(self, keys):
+        """A row of capacity tiles. ``keys`` is a list of (key, caption); the
+        big number and (unit-bearing) caption are set later via the returned
+        (row, {key: value QLabel}, {key: caption QLabel})."""
+        row = QWidget()
+        h = QHBoxLayout(row)
+        h.setContentsMargins(0, 0, 0, 0)
+        h.setSpacing(style.SP_SM)
+        vals, caps = {}, {}
+        for key, cap in keys:
+            tile = QFrame()
+            tile.setObjectName("kpiTile")
+            tv = QVBoxLayout(tile)
+            tv.setContentsMargins(style.SP_MD, style.SP_SM, style.SP_MD,
+                                  style.SP_SM)
+            tv.setSpacing(1)
+            num = QLabel("—")
+            num.setObjectName("kpiNum")
+            c = QLabel(cap)
+            c.setObjectName("kpiCap")
+            tv.addWidget(num)
+            tv.addWidget(c)
+            h.addWidget(tile, 1)
+            vals[key] = num
+            caps[key] = c
+        return row, vals, caps
+
+    @staticmethod
+    def _kpi_fmt(v) -> str:
+        if v is None:
+            return "—"
+        av = abs(v)
+        if av and (av >= 1e5 or av < 1e-2):
+            return f"{v:,.3g}"
+        return f"{v:,.4g}" if av >= 100 else f"{v:.3g}"
+
     def _set_pill(self, kind: str, text: str) -> None:
         """Swap the pill's semantic style (``pass``/``fail``/``warn``). The
         objectName drives QSS, so unpolish/polish to force a restyle."""
@@ -2478,6 +2520,26 @@ class SectionDesignerWindow(QMainWindow):
             f"QProgressBar#utilBar::chunk {{ background: {color}; "
             f"border-radius: 3px; }}")
 
+    def _set_pm_kpi(self, landmarks, has_design, u) -> None:
+        """Fill the P-M capacity tiles from the interaction landmarks."""
+        d = {name: val for name, val, _kind in (landmarks or [])}
+        po = d.get("P_o (squash)")
+        pnmax = d.get("P_n,max")
+        m0 = d.get("φM_n @ P=0") if has_design else d.get("M_n @ P=0")
+        mbal = d.get("Balanced M_b")
+        self._pm_kpi["Po"].setText(
+            self._kpi_fmt(u.P_disp(po) if po is not None else None))
+        self._pm_kpi["Pnmax"].setText(
+            self._kpi_fmt(u.P_disp(pnmax) if pnmax is not None else None))
+        self._pm_kpi["M0"].setText(
+            self._kpi_fmt(u.M_disp(m0) if m0 is not None else None))
+        self._pm_kpi["Mbal"].setText(
+            self._kpi_fmt(u.M_disp(mbal) if mbal is not None else None))
+        self._pm_kpi_cap["Po"].setText(f"Pₒ squash · {u.Fl}")
+        self._pm_kpi_cap["Pnmax"].setText(f"P n,max · {u.Fl}")
+        self._pm_kpi_cap["M0"].setText(f"M @ P=0 · {u.Ml}")
+        self._pm_kpi_cap["Mbal"].setText(f"M balanced · {u.Ml}")
+
     def _draw_pm(self, case, code) -> None:
         u = self._units
         if self._spec.kind == "Composite":
@@ -2488,10 +2550,12 @@ class SectionDesignerWindow(QMainWindow):
                     transform=ax.transAxes)
             ax.set_axis_off()
             self.pm_canvas.draw_idle()
+            self._set_pm_kpi(None, False, u)
             self._set_verdict_empty("Demand check runs on the 3-D "
                                     "P-M-M surface for composite sections.")
             return
         curve, landmarks = core.pmm_slice(case, code)
+        self._set_pm_kpi(landmarks, curve.get("has_design"), u)
         self.pm_fig.clear()
         ax = self.pm_fig.add_subplot(111)
         M = [u.M_disp(v) for v in curve["M_nom"]]
@@ -2576,13 +2640,31 @@ class SectionDesignerWindow(QMainWindow):
         style.beautify_axes(ax)
         self.mp_canvas.draw_idle()
 
-        def _m(v):
-            return f"{u.M_disp(v):.4g} {u.Ml}" if v else "—"
+        # KPI tiles: cracking / yield / ultimate moment, curvature ductility,
+        # and the neutral-axis depth at the ultimate strain state.
+        def _M(v):
+            return self._kpi_fmt(u.M_disp(v)) if v else "—"
         mu = data.get("mu_phi")
-        mu_txt = f"<b>{mu:.2f}</b>" if mu else "—"
-        self.mphi_metrics.setText(
-            f"M_cr {_m(data['M_cr'])} &nbsp;·&nbsp; M_y {_m(data['M_y'])} "
-            f"&nbsp;·&nbsp; M_u {_m(data['M_u'])} &nbsp;·&nbsp; μ_φ {mu_txt}")
+        c_na = None
+        yk = [ms for ms in data.get("milestones", [])
+              if "eps0" in ms and ms.get("kappa")]
+        if yk and "y_top" in data and "y_bot" in data:
+            ult = max(yk, key=lambda m: abs(m["kappa"]))
+            kap = ult["kappa"]
+            y_na = ult["eps0"] / kap                    # m, where strain = 0
+            c = ((data["y_top"] - y_na) if kap > 0
+                 else (y_na - data["y_bot"])) * 1e3     # mm from comp. fibre
+            h_mm = (data["y_top"] - data["y_bot"]) * 1e3
+            c_na = min(max(c, 0.0), h_mm)
+        self._mp_kpi["Mcr"].setText(_M(data.get("M_cr")))
+        self._mp_kpi["My"].setText(_M(data.get("M_y")))
+        self._mp_kpi["Mu"].setText(_M(data.get("M_u")))
+        self._mp_kpi["mu"].setText(f"{mu:.2f}" if mu else "—")
+        self._mp_kpi["c"].setText(self._kpi_fmt(c_na))
+        self._mp_kpi_cap["Mcr"].setText(f"M_cr · {u.Ml}")
+        self._mp_kpi_cap["My"].setText(f"M_y · {u.Ml}")
+        self._mp_kpi_cap["Mu"].setText(f"M_u · {u.Ml}")
+        self._mp_kpi_cap["c"].setText("N-A depth · mm")
         self.mphi_tbl.setRowCount(len(rows))
         for r, (lab, state, kx, my) in enumerate(rows):
             for col, val in enumerate((lab, state, f"{kx:.4g}", f"{my:.4g}")):

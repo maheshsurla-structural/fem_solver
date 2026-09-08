@@ -270,6 +270,12 @@ QLabel#pillWarn {{ background: {WARN_SOFT}; color: {WARN}; font-weight: 700;
                   border-radius: {R_SM}px; padding: 3px 12px; }}
 QWidget#verdictStrip {{ background: {ZEBRA}; border: 1px solid {BORDER};
                        border-radius: {R_MD}px; }}
+QFrame#kpiTile {{ background: {PANEL}; border: 1px solid {BORDER};
+                 border-radius: {R_MD}px; }}
+QFrame#kpiTile QLabel#kpiNum {{ font-size: 19px; font-weight: 700; color: {TEXT};
+                               font-family: {MONO_STACK}; }}
+QFrame#kpiTile QLabel#kpiCap {{ color: {MUTED}; font-size: {FS_MICRO}px;
+                               font-weight: 600; letter-spacing: {LS_LABEL}; }}
 QProgressBar#utilBar {{ background: {BORDER}; border: none; border-radius: 3px; }}
 QProgressBar#utilBar::chunk {{ border-radius: 3px; }}
 
