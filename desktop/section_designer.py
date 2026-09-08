@@ -44,6 +44,7 @@ import csv
 import os
 import re
 import sys
+from contextlib import contextmanager
 from dataclasses import replace
 from functools import lru_cache
 
@@ -52,13 +53,15 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as Canvas
 from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  (registers 3-d proj.)
 from PySide6.QtCore import Qt, QByteArray, QTimer
-from PySide6.QtCore import QSize, QSettings
+from PySide6.QtCore import QSize, QSettings, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import QToolButton
-from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox,
+from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog,
+                               QDialogButtonBox,
                                QDoubleSpinBox, QFileDialog, QFormLayout,
-                               QFrame, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
+                               QFrame, QGraphicsOpacityEffect, QGroupBox,
+                               QHBoxLayout, QLabel, QLineEdit,
                                QListWidget, QListWidgetItem, QMainWindow, QMenu,
                                QMessageBox, QProgressBar, QPushButton,
                                QScrollArea, QSpinBox,
@@ -256,6 +259,17 @@ class SectionDesignerWindow(QMainWindow):
         self.setCentralWidget(central)
         style.apply(self)
 
+        # indeterminate busy indicator, parked in the status bar (shown only
+        # while a slow compute runs); toast label is created on first use.
+        self._busy_bar = QProgressBar()
+        self._busy_bar.setObjectName("busyBar")
+        self._busy_bar.setRange(0, 0)
+        self._busy_bar.setTextVisible(False)
+        self._busy_bar.setFixedWidth(120)
+        self._busy_bar.hide()
+        self.statusBar().addPermanentWidget(self._busy_bar)
+        self._toast_lbl = None
+
         self._reload_section_nav()
         self._load_form_from_spec()
         self._refresh_comp_mat_combo()
@@ -447,6 +461,65 @@ class SectionDesignerWindow(QMainWindow):
         self.sel_editor.setStyleSheet(
             f"#selEditor{{background:{style.PANEL}; border:1px solid "
             f"{style.BORDER_STRONG}; border-radius:6px;}}")
+
+    # -------------------------------------------------- toasts & progress
+    def _toast(self, text: str, kind: str = "ok", msecs: int = 2600) -> None:
+        """Flash a transient bottom-centre notification that fades itself out.
+        ``kind`` is 'ok' (green) or 'err' (red)."""
+        t = self._toast_lbl
+        if t is None:
+            t = QLabel(self)
+            t.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self._toast_eff = QGraphicsOpacityEffect(t)
+            t.setGraphicsEffect(self._toast_eff)
+            self._toast_anim = QPropertyAnimation(self._toast_eff, b"opacity",
+                                                  self)
+            self._toast_anim.setEasingCurve(QEasingCurve.Type.InOutQuad)
+            self._toast_timer = QTimer(self)
+            self._toast_timer.setSingleShot(True)
+            self._toast_timer.timeout.connect(self._toast_fade_out)
+            self._toast_lbl = t
+        self.style().unpolish(t)
+        t.setObjectName("toastErr" if kind == "err" else "toastOk")
+        self.style().polish(t)
+        t.setText(text)
+        t.adjustSize()
+        t.move((self.width() - t.width()) // 2,
+               self.height() - t.height() - 34)
+        t.show()
+        t.raise_()
+        self._toast_anim.stop()
+        self._toast_anim.setDuration(140)
+        self._toast_anim.setStartValue(0.0)
+        self._toast_anim.setEndValue(1.0)
+        self._toast_anim.start()
+        self._toast_timer.start(msecs)
+
+    def _toast_fade_out(self) -> None:
+        self._toast_anim.stop()
+        self._toast_anim.setDuration(360)
+        self._toast_anim.setStartValue(1.0)
+        self._toast_anim.setEndValue(0.0)
+        try:
+            self._toast_anim.finished.disconnect()
+        except (RuntimeError, TypeError):
+            pass
+        self._toast_anim.finished.connect(self._toast_lbl.hide)
+        self._toast_anim.start()
+
+    @contextmanager
+    def _busy(self, msg: str):
+        """Show a wait cursor + status message + indeterminate bar around a
+        blocking compute. Paints the busy state before the work begins."""
+        self.statusBar().showMessage(msg)
+        self._busy_bar.show()
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        QApplication.processEvents()
+        try:
+            yield
+        finally:
+            QApplication.restoreOverrideCursor()
+            self._busy_bar.hide()
 
     def _hdr_rule(self) -> QFrame:
         r = QFrame()
@@ -2406,7 +2479,8 @@ class SectionDesignerWindow(QMainWindow):
         label = self.tabs.tabText(idx)
         if label == "Fibres":               # fibre view needs no reinforcement
             try:
-                self._draw_fibers()
+                with self._busy("Discretising the section into fibres…"):
+                    self._draw_fibers()
                 self.statusBar().clearMessage()
             except Exception as exc:                   # noqa: BLE001
                 self.statusBar().showMessage(f"Fibre error: {exc}")
@@ -2422,7 +2496,8 @@ class SectionDesignerWindow(QMainWindow):
                 if sub == 0:
                     self._draw_pm(case, code)
                 elif sub == 1:
-                    self._draw_surface(case, code)
+                    with self._busy("Building the 3-D P-M-M surface…"):
+                        self._draw_surface(case, code)
                 else:
                     self._draw_mm_contour(case, code)
             elif label == "Moment-curvature":
@@ -3357,8 +3432,10 @@ class SectionDesignerWindow(QMainWindow):
             with open(path, "w", encoding="utf-8") as fh:
                 fh.write(text)
             self.statusBar().showMessage(f"Saved {path}")
+            self._toast(f"Project saved · {os.path.basename(path)}")
         except Exception as exc:                       # noqa: BLE001
             QMessageBox.critical(self, "Save failed", str(exc))
+            self._toast("Save failed", kind="err")
 
     def _open_materials(self) -> None:
         dlg = MaterialsDialog(self, materials=self._materials,
@@ -3380,8 +3457,10 @@ class SectionDesignerWindow(QMainWindow):
                                         self.code_combo.currentText())
             self.statusBar().showMessage(
                 f"Applied '{self._active}' to the FEM model.")
+            self._toast(f"'{self._active}' applied to the FEM model")
         except Exception as exc:                       # noqa: BLE001
             QMessageBox.critical(self, "Apply failed", str(exc))
+            self._toast("Apply failed", kind="err")
 
     # -------------------------------------------------------------- export
     def _export_section_json(self) -> None:
@@ -3412,8 +3491,10 @@ class SectionDesignerWindow(QMainWindow):
                                 it.get("computed", ""), it.get("tol_pct", ""),
                                 it.get("note", "")])
             self.statusBar().showMessage(f"Saved {path}")
+            self._toast("Verification exported")
         except Exception as exc:                       # noqa: BLE001
             QMessageBox.critical(self, "Export failed", str(exc))
+            self._toast("Export failed", kind="err")
 
     def _export_fibers_csv(self) -> None:
         """Export the fibre table as CSV — with strain/stress at the selected
@@ -3454,8 +3535,10 @@ class SectionDesignerWindow(QMainWindow):
                                 f"{f['stress'] / 1e6:.3f}"]
                     w.writerow(row)
             self.statusBar().showMessage(f"Saved {len(fibers)} fibres → {path}")
+            self._toast(f"{len(fibers)} fibres exported")
         except Exception as exc:                       # noqa: BLE001
             QMessageBox.critical(self, "Export failed", str(exc))
+            self._toast("Export failed", kind="err")
 
     def _export_report_html(self) -> None:
         code = self.code_combo.currentText()
@@ -3470,8 +3553,10 @@ class SectionDesignerWindow(QMainWindow):
             with open(path, "w", encoding="utf-8") as fh:
                 fh.write(text)
             self.statusBar().showMessage(f"Saved {path}")
+            self._toast(f"Exported · {os.path.basename(path)}")
         except Exception as exc:                       # noqa: BLE001
             QMessageBox.critical(self, "Export failed", str(exc))
+            self._toast("Export failed", kind="err")
 
 
 class AddGroupDialog(QDialog):

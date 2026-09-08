@@ -307,6 +307,15 @@ QFrame#canvasBar QToolButton:checked {{ background: {ACCENT_SOFT};
 QFrame#barSep {{ background: {BORDER}; }}
 QFrame#propsDrawer {{ background: {PANEL}; border: 1px solid {BORDER};
                      border-radius: {R_MD}px; }}
+
+/* ---- transient toast notifications ---- */
+QLabel#toastOk, QLabel#toastErr {{ color: #ffffff; font-weight: 600;
+    padding: 9px 18px; border-radius: {R_LG}px; }}
+QLabel#toastOk {{ background: {OK}; }}
+QLabel#toastErr {{ background: {BAD}; }}
+QProgressBar#busyBar {{ background: {BORDER}; border: none; border-radius: 3px;
+    max-height: 6px; }}
+QProgressBar#busyBar::chunk {{ background: {ACCENT}; border-radius: 3px; }}
 """
 
 
