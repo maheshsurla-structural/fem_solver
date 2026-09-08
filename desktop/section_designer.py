@@ -609,14 +609,15 @@ class SectionDesignerWindow(QMainWindow):
     def _toast_fade_out(self) -> None:
         self._toast_anim.stop()
         self._toast_anim.setDuration(360)
-        self._toast_anim.setStartValue(1.0)
+        self._toast_anim.setStartValue(self._toast_eff.opacity())
         self._toast_anim.setEndValue(0.0)
-        try:
-            self._toast_anim.finished.disconnect()
-        except (RuntimeError, TypeError):
-            pass
-        self._toast_anim.finished.connect(self._toast_lbl.hide)
         self._toast_anim.start()
+        # hide after the fade, but only if a newer toast hasn't re-shown it
+        QTimer.singleShot(400, self._toast_hide_if_faded)
+
+    def _toast_hide_if_faded(self) -> None:
+        if self._toast_lbl is not None and self._toast_eff.opacity() <= 0.05:
+            self._toast_lbl.hide()
 
     @contextmanager
     def _busy(self, msg: str):
