@@ -1646,9 +1646,9 @@ class SectionDesignerWindow(QMainWindow):
         bottom.addWidget(self.mphi_tbl, 1)
 
         strain_box = QVBoxLayout()
-        self.strain_fig = Figure(figsize=(3.2, 2.2), layout="constrained")
+        self.strain_fig = Figure(figsize=(4.4, 2.6), layout="constrained")
         self.strain_canvas = Canvas(self.strain_fig)
-        self.strain_canvas.setMaximumHeight(190)
+        self.strain_canvas.setMaximumHeight(230)
         strain_box.addWidget(self.strain_canvas)
         self.strain_metrics = QLabel("—")
         self.strain_metrics.setObjectName("caption")
@@ -3519,10 +3519,15 @@ class SectionDesignerWindow(QMainWindow):
         self._draw_strain_profile()
 
     def _draw_strain_profile(self) -> None:
-        """Strain profile ε(y) = ε0 − y·κ at the selected M-φ milestone, with
-        the rebar strains and the neutral-axis depth (mirrors the Streamlit)."""
+        """CSi-style strain panel (M5): the section outline drawn in a frame
+        aligned to the neutral axis, the linear strain wedge ε(w) = ε0 − w·κ
+        beside it, the N-A line across both, and rebars coloured by strain sign
+        (compression cool / tension warm). ``w`` is the section coordinate ⟂ to
+        the N-A — the same frame the engine bends about."""
         self.strain_fig.clear()
+        self.strain_fig.set_facecolor(style.PANEL)
         ax = self.strain_fig.add_subplot(111)
+        ax.set_facecolor(style.PANEL)
         marks = getattr(self, "_strain_marks", [])
         data = getattr(self, "_mphi_data", None)
         i = self.strain_combo.currentIndex()
@@ -3534,23 +3539,101 @@ class SectionDesignerWindow(QMainWindow):
             return
         ms = marks[i]
         eps0, kap = ms["eps0"], ms["kappa"]
-        y_top, y_bot = data["y_top"], data["y_bot"]
-        # concrete strain profile (linear), y in mm
-        ys = [y_bot, y_top]
-        ax.plot([eps0 - y * kap for y in ys], [y * 1e3 for y in ys], "-",
-                color=style.C_SECONDARY, marker="o", lw=1.8)
-        # rebar strains
-        rys = data.get("rebar_ys", [])
-        if rys:
-            ax.plot([eps0 - ry * kap for ry in rys], [ry * 1e3 for ry in rys],
-                    "o", color=style.ACCENT, ms=5)
-        ax.axvline(0, color=style.AX_SPINE, lw=0.8, ls="--")
-        ax.set_xlabel("strain ε  (tension +)")
-        ax.set_ylabel("y from centroid [mm]")
-        style.beautify_axes(ax)
+        y_top, y_bot = data["y_top"], data["y_bot"]          # w-frame extremes (m)
+        th = np.radians(data.get("na_angle", 0.0))
+        cth, sth = float(np.cos(th)), float(np.sin(th))
+
+        def to_vw(z, y):        # true (z, y) -> (along-NA v, ⟂-NA w) [same as core]
+            return z * cth + y * sth, -z * sth + y * cth
+
+        # --- section outline in the NA-aligned frame (mm) ---
+        rings = []
+        try:
+            poly = _case(self._analysis_spec()).section.geometry.polygon
+            rings = [list(poly.exterior.coords)] + \
+                    [list(r.coords) for r in poly.interiors]
+        except Exception:                                    # noqa: BLE001
+            rings = []
+        for j, rc in enumerate(rings):
+            vw = [to_vw(z, y) for z, y in rc]
+            vs = [p[0] * 1e3 for p in vw]
+            ws = [p[1] * 1e3 for p in vw]
+            if j == 0:
+                ax.fill(vs, ws, facecolor=style.BODY_FILL, alpha=0.45,
+                        edgecolor=style.BODY_STROKE, lw=1.4, zorder=1)
+            else:                                            # punched hole
+                ax.fill(vs, ws, facecolor=style.PANEL,
+                        edgecolor=style.BODY_STROKE, lw=1.0, zorder=1.5)
+
+        if rings:
+            allv = [to_vw(z, y)[0] * 1e3 for rc in rings for z, y in rc]
+            v_min, v_max = min(allv), max(allv)
+        else:
+            v_min, v_max = 0.0, (y_top - y_bot) * 1e3
+        w_lo, w_hi = y_bot * 1e3, y_top * 1e3                 # mm
+        Wv = max(v_max - v_min, 1e-6)
+        Ww = max(w_hi - w_lo, 1e-6)
+
+        # --- strain wedge to the right (schematic, offsets scaled to mm) ---
+        x0 = v_max + 0.22 * Wv                                # ε = 0 reference line
+        eps_ref = max(abs(ms.get("eps_top", 0.0)),
+                      abs(eps0 - y_bot * kap), 1e-6)
+        span = 0.55 * Wv
+        ww = np.linspace(w_lo, w_hi, 80)                      # mm
+        eps = eps0 - (ww / 1e3) * kap                        # tension +
+        off = eps / eps_ref * span
+        ax.fill_betweenx(ww, x0, x0 + off, where=(eps >= 0), interpolate=True,
+                         facecolor=style.C_SECONDARY, alpha=0.22, zorder=2)
+        ax.fill_betweenx(ww, x0, x0 + off, where=(eps <= 0), interpolate=True,
+                         facecolor=style.C_PRIMARY, alpha=0.22, zorder=2)
+        ax.plot(x0 + off, ww, "-", color=style.AX_TEXT, lw=1.4, zorder=3)
+        ax.plot([x0, x0], [w_lo, w_hi], "-", color=style.AX_SPINE, lw=0.9)
+        for wv, ev in ((w_hi, float(eps[-1])), (w_lo, float(eps[0]))):
+            ax.annotate(f"{ev:+.4f}", (x0 + ev / eps_ref * span, wv),
+                        fontsize=7.5, color=style.AX_TEXT,
+                        textcoords="offset points", xytext=(4, 0),
+                        va="center", ha="left")
+
+        # --- neutral axis across section + wedge ---
+        if abs(kap) > 1e-9:
+            na_mm = (eps0 / kap) * 1e3
+            if w_lo - 0.05 * Ww <= na_mm <= w_hi + 0.05 * Ww:
+                ax.plot([v_min, x0 + 0.12 * span], [na_mm, na_mm], "--",
+                        color=style.BAD, lw=1.2, zorder=4)
+                ax.annotate("N.A.", (v_min, na_mm), fontsize=8, color=style.BAD,
+                            va="bottom", ha="left")
+
+        # --- rebars coloured by strain sign; ring the extreme tension bar ---
+        try:
+            bars = _case(self._analysis_spec()).section.reinforcement.bars
+        except Exception:                                    # noqa: BLE001
+            bars = []
+        if bars:
+            bv, bw, be = [], [], []
+            for b in bars:
+                v, w = to_vw(b.z, b.y)
+                bv.append(v * 1e3)
+                bw.append(w * 1e3)
+                be.append(eps0 - w * kap)
+            cols = [style.C_SECONDARY if e > 0 else style.C_PRIMARY for e in be]
+            ax.scatter(bv, bw, c=cols, s=26, edgecolors=style.PANEL,
+                       linewidths=0.6, zorder=5)
+            j = int(np.argmax(be))                           # extreme tension bar
+            ax.scatter([bv[j]], [bw[j]], s=72, facecolors="none",
+                       edgecolors=style.C_SECONDARY, linewidths=1.5, zorder=6)
+
+        ax.set_aspect("equal", adjustable="datalim")
+        ax.set_axis_off()
+        ang = data.get("na_angle", 0.0)
+        ttl = "Strain state"
+        if abs(ang) > 1e-6:
+            ttl += f"  ·  aligned to N.A. (θ={ang:.0f}°)"
+        ax.set_title(ttl, fontsize=9, color=style.TEXT)
         self.strain_canvas.draw_idle()
-        na = (y_top - eps0 / kap) if abs(kap) > 1e-9 else None
-        na_txt = f"{na * 1e3:.0f} mm from top" if na is not None else "—"
+
+        # numeric readout beside the panel
+        na_txt = (f"{(y_top - eps0 / kap) * 1e3:.0f} mm from comp. fibre"
+                  if abs(kap) > 1e-9 else "—")
         self.strain_metrics.setText(
             f"ε_c(top) <b>{ms.get('eps_top', 0):+.4f}</b> &nbsp;·&nbsp; "
             f"ε_s(max) <b>{ms.get('eps_steel', 0):+.4f}</b> &nbsp;·&nbsp; "
