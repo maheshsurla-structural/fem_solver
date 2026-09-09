@@ -209,6 +209,10 @@ class SectionDesignerWindow(QMainWindow):
         # built, so icons, the canvas and charts all come up in the right palette
         self._settings = QSettings("MidasStructural", "SectionDesigner")
         self._themed_icons: list = []    # (widget, icon_name, is_pixmap)
+        # the [controls | view] divider is shared across every workspace tab, so
+        # resizing one rail resizes them all (persisted)
+        self._ws_splitters: list = []
+        self._rail_w = int(self._settings.value("rail_w", self._CTRL_W))
         style.set_theme(str(self._settings.value("theme", "light")))
         # calc-report title-block details (persisted; blank date → today)
         self._report_meta = {
@@ -924,16 +928,11 @@ class SectionDesignerWindow(QMainWindow):
             thumb.load(QByteArray(b""))
 
     def _build_section_tab(self) -> QWidget:
-        """The 'Section' workspace tab: inputs (left) + cross-section drawing
-        and properties (right)."""
-        inner = QSplitter(Qt.Orientation.Horizontal)
-        inner.addWidget(self._build_definition_panel())
-        inner.addWidget(self._build_preview_panel())
-        inner.setStretchFactor(0, 1)
-        inner.setStretchFactor(1, 1)
-        inner.setSizes([520, 520])
-        inner.setHandleWidth(8)
-        return inner
+        """The 'Section' workspace tab on the same [controls | view] shell as
+        every other tab: definition inputs (left) + cross-section drawing and
+        properties (right). Shares the synchronised divider."""
+        return self._workspace(self._build_definition_panel(),
+                               self._build_preview_panel())
 
     # ---------------------------------------------------------- definition
     def _build_definition_panel(self) -> QWidget:
@@ -1443,23 +1442,44 @@ class SectionDesignerWindow(QMainWindow):
         self._props_drawer = d
         return d
 
-    _CTRL_W = 290                     # constant width of the left controls rail
+    _CTRL_W = 340                     # default width of the left controls rail
+    _RAIL_MIN, _RAIL_MAX = 240, 640   # shared range so every rail can match
 
     def _workspace(self, controls: QWidget, view: QWidget) -> QSplitter:
-        """The constant [ controls | view ] shell shared by every analysis tab:
-        a fixed-width left rail of inputs and a wide right view + results area.
-        Drag the handle to collapse the rail for a full-width view."""
+        """The constant [ controls | view ] shell shared by every tab: a left
+        rail of inputs and a wide right view + results area. The divider is
+        synchronised across all tabs, so resizing one rail resizes them all;
+        drag it fully in (or Ctrl+B) to collapse the rail for a full-width view."""
         controls.setObjectName("ctrlRail")
-        controls.setMinimumWidth(210)
-        controls.setMaximumWidth(430)
+        controls.setMinimumWidth(self._RAIL_MIN)
+        controls.setMaximumWidth(self._RAIL_MAX)
         sp = QSplitter(Qt.Orientation.Horizontal)
         sp.addWidget(controls)
         sp.addWidget(view)
         sp.setStretchFactor(0, 0)
         sp.setStretchFactor(1, 1)
-        sp.setSizes([self._CTRL_W, 900])
+        sp.setSizes([self._rail_w, 900])
         sp.setHandleWidth(6)
+        sp.splitterMoved.connect(
+            lambda _pos, _i, s=sp: self._sync_rail_width(s))
+        self._ws_splitters.append(sp)
         return sp
+
+    def _sync_rail_width(self, moved: QSplitter) -> None:
+        """Apply the rail width the user just dragged to every other workspace
+        splitter, so the divider stays put when switching tabs."""
+        sizes = moved.sizes()
+        if len(sizes) < 2:
+            return
+        w, total = sizes[0], sum(sizes)
+        self._rail_w = w
+        self._settings.setValue("rail_w", w)
+        for sp in self._ws_splitters:
+            if sp is moved or sp.sizes()[:1] == [w]:
+                continue
+            sp.blockSignals(True)
+            sp.setSizes([w, max(total - w, 1)])
+            sp.blockSignals(False)
 
     def _toggle_controls(self) -> None:
         """Collapse/restore the current analysis tab's left controls rail for a
