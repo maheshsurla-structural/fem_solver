@@ -64,7 +64,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox,
                                QDoubleSpinBox, QFileDialog, QFormLayout,
                                QDockWidget, QFrame, QGraphicsOpacityEffect,
                                QGridLayout,
-                               QGroupBox,
+                               QGroupBox, QHeaderView,
                                QHBoxLayout, QLabel, QLineEdit,
                                QListWidget, QListWidgetItem, QMainWindow, QMenu,
                                QMessageBox, QProgressBar, QPushButton,
@@ -1528,39 +1528,54 @@ class SectionDesignerWindow(QMainWindow):
         self.tabs.setMinimumWidth(420)
         self.tabs.currentChanged.connect(lambda *_: self._queue())
 
-        # ---- P-M curve view (KPI tiles + verdict + chart; controls in rail) --
-        pm = QWidget()
-        pmv = QVBoxLayout(pm)
-        pmv.setContentsMargins(0, 0, 0, 0)
+        # ---- P-M curve view: a GSD/CSiCol dashboard — KPI + verdict band on
+        # top, then a 3-pane [ interaction table | 2-D P-M curve | 3-D surface ]
+        # splitter (the 3-D pane is assembled with the surface widget below). --
+        # top band: capacity tiles + the demand verdict (full width)
+        self._pm_top = QWidget()
+        _ptv = QVBoxLayout(self._pm_top)
+        _ptv.setContentsMargins(0, 0, 0, 0)
+        _ptv.setSpacing(style.SP_SM)
         pm_kpi, self._pm_kpi, self._pm_kpi_cap = self._make_kpi_row(
             [("Po", "Pₒ SQUASH"), ("Pnmax", "P n,max"),
              ("M0", "M @ P=0"), ("Mbal", "M BALANCED")])
-        pmv.addWidget(pm_kpi)
-        pmv.addWidget(self._build_verdict_strip())
+        _ptv.addWidget(pm_kpi)
+        _ptv.addWidget(self._build_verdict_strip())
+
+        # left pane: the interaction-points table
+        self._pm_table_pane = QWidget()
+        _ptp = QVBoxLayout(self._pm_table_pane)
+        _ptp.setContentsMargins(0, 0, 0, 0)
+        _pmh = QLabel("INTERACTION POINTS")
+        _pmh.setObjectName("ctrlHead")
+        _ptp.addWidget(_pmh)
+        self.pm_tbl = QTableWidget(0, 2)
+        self.pm_tbl.setHorizontalHeaderLabels(["P", "M"])
+        # stretch every column to fill the pane — no horizontal scroll, all
+        # columns (P/M or P/M/φP/φM) always visible in the left pane
+        self.pm_tbl.horizontalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Stretch)
+        self.pm_tbl.verticalHeader().setVisible(False)
+        self.pm_tbl.setAlternatingRowColors(True)
+        self.pm_tbl.setShowGrid(False)
+        self.pm_tbl.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        _ptp.addWidget(self.pm_tbl, 1)
+
+        # middle pane: the 2-D P-M chart + live cursor readout
+        self._pm_chart_pane = QWidget()
+        _pcv = QVBoxLayout(self._pm_chart_pane)
+        _pcv.setContentsMargins(0, 0, 0, 0)
         self.pm_fig = Figure(figsize=(4.4, 4.0), layout="constrained")
         self.pm_canvas = Canvas(self.pm_fig)
-        pmv.addWidget(self.pm_canvas, 1)
+        _pcv.addWidget(self.pm_canvas, 1)
         self.pm_cursor = self._cursor_readout()
-        pmv.addWidget(self.pm_cursor)
+        _pcv.addWidget(self.pm_cursor)
         self._pm_marks_xy: list = []
         self._attach_chart_cursor(
             self.pm_canvas, self.pm_cursor,
             lambda x, y: (f"M {x:,.4g} {self._units.Ml}   ·   "
                           f"P {y:,.4g} {self._units.Fl}"),
             markers=lambda: self._pm_marks_xy)
-        _pmh = QLabel("INTERACTION POINTS")
-        _pmh.setObjectName("ctrlHead")
-        _pmh.setContentsMargins(0, style.SP_SM, 0, 0)
-        pmv.addWidget(_pmh)
-        self.pm_tbl = QTableWidget(0, 2)
-        self.pm_tbl.setHorizontalHeaderLabels(["P", "M"])
-        self.pm_tbl.horizontalHeader().setStretchLastSection(True)
-        self.pm_tbl.verticalHeader().setVisible(False)
-        self.pm_tbl.setAlternatingRowColors(True)
-        self.pm_tbl.setShowGrid(False)
-        self.pm_tbl.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.pm_tbl.setMaximumHeight(190)
-        pmv.addWidget(self.pm_tbl)
 
         # ---- Moment-curvature: constant [controls | view] shell ----
         # left rail — the load state + which milestone the strain diagram shows
@@ -1766,13 +1781,13 @@ class SectionDesignerWindow(QMainWindow):
         icv = QVBoxLayout(inter_ctrl)
         icv.setContentsMargins(12, 12, 12, 12)
         icv.setSpacing(8)
-        _vh = QLabel("SECONDARY VIEW")
+        _vh = QLabel("RIGHT PANE")
         _vh.setObjectName("ctrlHead")
         icv.addWidget(_vh)
-        # the 2-D P-M curve + interaction table is the always-on primary
-        # dashboard (P6); this picks an optional secondary panel beside it.
+        # the interaction table + 2-D P-M curve are always shown; this picks
+        # what fills the third pane (the 3-D surface by default, GSD-style).
         self.inter_view = QComboBox()
-        self.inter_view.addItems(["None", "3-D P-M-M surface", "M-M contour"])
+        self.inter_view.addItems(["3-D P-M-M surface", "M-M contour", "Hide"])
         self.inter_view.currentIndexChanged.connect(self._on_inter_view)
         icv.addWidget(self.inter_view)
         _ih = QLabel("INPUTS")
@@ -1880,27 +1895,36 @@ class SectionDesignerWindow(QMainWindow):
         mmf.addRow("Axial P (+comp)", self.mm_P)
         mmf.addRow("Demand Mz", self.mm_Mz)
         mmf.addRow("My", self.mm_My)
-        icv.addWidget(dpg)                       # primary demand controls
-        # secondary-view controls (P6) — shown only when a secondary is active
+        icv.addWidget(dpg)                       # demand controls (always shown)
+        # right-pane controls: mesh/camera for the 3-D surface, axial for M-M,
+        # nothing when hidden — follows the RIGHT PANE selector
         self.inter_sec_ctrl = QStackedWidget()
-        for pg in (QWidget(), spg, mpg):         # 0 blank, 1 mesh, 2 M-M axial
+        for pg in (spg, mpg, QWidget()):         # 0 3-D mesh, 1 M-M axial, 2 hide
             self.inter_sec_ctrl.addWidget(pg)
         icv.addWidget(self.inter_sec_ctrl)
         icv.addStretch(1)
 
-        # primary 2-D dashboard (P-M curve + interaction table) always visible;
-        # the 3-D surface / M-M contour appear as an optional secondary panel
-        # beside it (P6) — no longer an either/or that hides the dashboard.
+        # view: KPI + verdict band on top, then the 3-pane dashboard
+        # [ interaction table | 2-D P-M curve | 3-D surface / M-M contour ] —
+        # the GSD/CSiCol layout (P6 refined). The right pane is shown by default.
         self.inter_sec_stack = QStackedWidget()
         self.inter_sec_stack.addWidget(s3)      # 0: 3-D surface
         self.inter_sec_stack.addWidget(mm)      # 1: M-M contour
         self.inter_split = QSplitter(Qt.Orientation.Horizontal)
-        self.inter_split.addWidget(pm)
-        self.inter_split.addWidget(self.inter_sec_stack)
-        self.inter_split.setStretchFactor(0, 3)
-        self.inter_split.setStretchFactor(1, 2)
-        self.inter_sec_stack.setVisible(False)  # "None" by default
-        inter = self._workspace(inter_ctrl, self.inter_split)
+        self.inter_split.addWidget(self._pm_table_pane)   # left: table
+        self.inter_split.addWidget(self._pm_chart_pane)   # middle: 2-D curve
+        self.inter_split.addWidget(self.inter_sec_stack)  # right: 3-D / M-M
+        self.inter_split.setStretchFactor(0, 3)           # table (4 columns)
+        self.inter_split.setStretchFactor(1, 4)           # 2-D curve
+        self.inter_split.setStretchFactor(2, 4)           # 3-D / M-M
+        self._pm_table_pane.setMinimumWidth(240)
+        inter = QWidget()
+        _ivl = QVBoxLayout(inter)
+        _ivl.setContentsMargins(0, 0, 0, 0)
+        _ivl.setSpacing(style.SP_SM)
+        _ivl.addWidget(self._pm_top)
+        _ivl.addWidget(self.inter_split, 1)
+        inter = self._workspace(inter_ctrl, inter)
 
         # ---- Fibres (discretisation view + properties) ----
         fib = self._build_fibers_tab()
@@ -3085,17 +3109,19 @@ class SectionDesignerWindow(QMainWindow):
         self.head_sub.setText("  ·  ".join(bits))
 
     def _on_inter_view(self, i: int) -> None:
-        """Show/hide the optional secondary panel (3-D surface / M-M contour)
-        beside the always-on primary P-M dashboard (P6); the rail's secondary
-        controls follow, then recompute."""
-        show = i > 0
+        """Fill the dashboard's right pane: 0 = 3-D surface, 1 = M-M contour,
+        2 = hide it (wider table + 2-D). The rail's right-pane controls follow,
+        then recompute."""
+        show = i < 2
         self.inter_sec_stack.setVisible(show)
+        total = max(self.inter_split.width(), 1000)
         if show:
-            self.inter_sec_stack.setCurrentIndex(i - 1)   # 0:s3, 1:mm
-            # give the freshly-shown secondary a fair share of the splitter
-            total = max(self.inter_split.width(), 900)
-            self.inter_split.setSizes([int(total * 0.58), int(total * 0.42)])
-        self.inter_sec_ctrl.setCurrentIndex(i)            # 0 blank, 1 spg, 2 mpg
+            self.inter_sec_stack.setCurrentIndex(i)       # 0:s3, 1:mm
+            self.inter_split.setSizes([int(total * 0.28), int(total * 0.36),
+                                       int(total * 0.36)])
+        else:
+            self.inter_split.setSizes([int(total * 0.42), int(total * 0.58), 0])
+        self.inter_sec_ctrl.setCurrentIndex(i)            # 0 3-D, 1 M-M, 2 blank
         self._queue()
 
     def _recompute_analysis(self) -> None:
@@ -3133,12 +3159,12 @@ class SectionDesignerWindow(QMainWindow):
             return
         try:
             if label == "P-M-M interaction":
-                self._draw_pm(case, code)          # primary 2-D + table (P6)
+                self._draw_pm(case, code)          # table + 2-D curve
                 sec = self.inter_view.currentIndex()
-                if sec == 1:
+                if sec == 0:                       # 3-D surface (default)
                     with self._busy("Building the 3-D P-M-M surface…"):
                         self._draw_surface(case, code)
-                elif sec == 2:
+                elif sec == 1:                     # M-M contour
                     self._draw_mm_contour(case, code)
             elif label == "Moment-curvature":
                 self._draw_mphi(case)
