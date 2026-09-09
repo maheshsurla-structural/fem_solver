@@ -1477,28 +1477,42 @@ class SectionDesignerWindow(QMainWindow):
         self.pm_canvas = Canvas(self.pm_fig)
         pmv.addWidget(self.pm_canvas)
 
-        # ---- Moment-curvature ----
-        mp = QWidget()
-        mpv = QVBoxLayout(mp)
-        self.mp_fig = Figure(figsize=(4.4, 4.0), layout="constrained")
-        self.mp_canvas = Canvas(self.mp_fig)
-        mpv.addWidget(self.mp_canvas)
-        pr = QHBoxLayout()
-        pr.addWidget(QLabel("Axial P (+comp):"))
+        # ---- Moment-curvature: constant [controls | view] shell ----
+        # left rail — the load state + which milestone the strain diagram shows
+        mp_ctrl = QWidget()
+        mcv = QVBoxLayout(mp_ctrl)
+        mcv.setContentsMargins(12, 12, 12, 12)
+        mcv.setSpacing(8)
+        _mh = QLabel("INPUTS")
+        _mh.setObjectName("ctrlHead")
+        mcv.addWidget(_mh)
+        mcf = QFormLayout()
+        mcf.setContentsMargins(0, 0, 0, 0)
         self.mphi_P = self._dspin(-1e6, 1e6, 50, "", 1)
         self.mphi_P.valueChanged.connect(lambda *_: self._queue())
-        pr.addWidget(self.mphi_P)
-        pr.addWidget(QLabel("N-axis angle θ [deg]:"))
+        mcf.addRow("Axial P (+comp)", self.mphi_P)
         self.mphi_ang = self._dspin(-180, 180, 5, "", 1)
         self.mphi_ang.valueChanged.connect(lambda *_: self._queue())
-        pr.addWidget(self.mphi_ang)
-        pr.addStretch(1)
-        mpv.addLayout(pr)
+        mcf.addRow("N-axis angle θ [deg]", self.mphi_ang)
+        self.strain_combo = QComboBox()
+        self.strain_combo.currentIndexChanged.connect(
+            lambda *_: self._draw_strain_profile())
+        mcf.addRow("Strain diagram at", self.strain_combo)
+        mcv.addLayout(mcf)
+        mcv.addStretch(1)
+
+        # right view — KPI tiles, the M-φ chart, and the milestone table +
+        # strain-profile diagram
+        mp_view = QWidget()
+        mpv = QVBoxLayout(mp_view)
+        mpv.setContentsMargins(0, 0, 0, 0)
         mp_kpi, self._mp_kpi, self._mp_kpi_cap = self._make_kpi_row(
             [("Mcr", "M_cr"), ("My", "M_y"), ("Mu", "M_u"),
              ("mu", "μ_φ"), ("c", "N-A DEPTH")])
         mpv.addWidget(mp_kpi)
-        # milestone table (left) + strain-profile diagram (right)
+        self.mp_fig = Figure(figsize=(4.4, 4.0), layout="constrained")
+        self.mp_canvas = Canvas(self.mp_fig)
+        mpv.addWidget(self.mp_canvas)
         bottom = QHBoxLayout()
         self.mphi_tbl = QTableWidget(0, 4)
         self.mphi_tbl.setHorizontalHeaderLabels(
@@ -1512,13 +1526,6 @@ class SectionDesignerWindow(QMainWindow):
         bottom.addWidget(self.mphi_tbl, 1)
 
         strain_box = QVBoxLayout()
-        srow = QHBoxLayout()
-        srow.addWidget(QLabel("Strain diagram at:"))
-        self.strain_combo = QComboBox()
-        self.strain_combo.currentIndexChanged.connect(
-            lambda *_: self._draw_strain_profile())
-        srow.addWidget(self.strain_combo, 1)
-        strain_box.addLayout(srow)
         self.strain_fig = Figure(figsize=(3.2, 2.2), layout="constrained")
         self.strain_canvas = Canvas(self.strain_fig)
         self.strain_canvas.setMaximumHeight(190)
@@ -1529,6 +1536,7 @@ class SectionDesignerWindow(QMainWindow):
         strain_box.addWidget(self.strain_metrics)
         bottom.addLayout(strain_box, 1)
         mpv.addLayout(bottom)
+        mp = self._workspace(mp_ctrl, mp_view)
 
         # (Verification is not a GUI tab — a dev/QA artifact; it stays available
         # as an Export ▸ Verification as CSV action via _verify_rows.)
