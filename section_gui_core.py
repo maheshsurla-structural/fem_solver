@@ -1080,8 +1080,14 @@ def build_case(spec: Spec) -> SectionCase:
     return case
 
 
-def pmm_slice(case: SectionCase, code: str, n: int = 44):
-    """Strong-axis (theta=0) interaction curve + landmarks for one code."""
+def pmm_slice(case: SectionCase, code: str, n: int = 44,
+              theta_deg: float = 0.0):
+    """Interaction curve + landmarks for one code, at neutral-axis angle
+    ``theta_deg`` (0 = strong-axis P-Mz). The section is rigidly rotated so the
+    inclined axis lands on z, then the strong-axis slice is taken — the same
+    convention the moment-curvature view uses for its N-axis angle."""
+    if abs(theta_deg) > 1e-9:
+        case = _rotate_case(case, theta_deg)
     sec = case.section
     bnd = sec.geometry.polygon.bounds
     depth_y = bnd[3] - bnd[1]

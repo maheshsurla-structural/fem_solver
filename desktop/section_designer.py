@@ -1707,6 +1707,26 @@ class SectionDesignerWindow(QMainWindow):
             ["Design (φ)", "Nominal (no φ)", "Nominal + 1.25·f_y"])
         self.design_mode.currentIndexChanged.connect(lambda *_: self._queue())
         df.addRow("Basis", self.design_mode)
+        # slice angle (P3): walk the interaction surface at different neutral-
+        # axis angles, like the reference "Curve Angle" stepper. ◀ / ▶ step by
+        # the spin's increment and wrap around 360°.
+        angw = QWidget()
+        angh = QHBoxLayout(angw)
+        angh.setContentsMargins(0, 0, 0, 0)
+        angh.setSpacing(style.SP_XS)
+        self.pm_ang = self._dspin(-180, 180, 15, "", 0)
+        self.pm_ang.setWrapping(True)
+        self.pm_ang.valueChanged.connect(lambda *_: self._queue())
+        _prev = QToolButton()
+        _prev.setText("◀")
+        _prev.clicked.connect(lambda: self._step_pm_angle(-1))
+        _next = QToolButton()
+        _next.setText("▶")
+        _next.clicked.connect(lambda: self._step_pm_angle(+1))
+        angh.addWidget(_prev)
+        angh.addWidget(self.pm_ang, 1)
+        angh.addWidget(_next)
+        df.addRow("Slice angle θ°", angw)
         for w in (self.dem_P, self.dem_Mz, self.dem_My):
             w.valueChanged.connect(lambda *_: self._queue())
         # page 1 — 3-D surface mesh density
@@ -3114,6 +3134,11 @@ class SectionDesignerWindow(QMainWindow):
             f"QProgressBar#utilBar::chunk {{ background: {color}; "
             f"border-radius: 3px; }}")
 
+    def _step_pm_angle(self, sign: int) -> None:
+        """Step the P-M slice angle by the spin's increment, wrapped to ±180°."""
+        v = self.pm_ang.value() + sign * self.pm_ang.singleStep()
+        self.pm_ang.setValue(((v + 180) % 360) - 180)   # triggers a redraw
+
     def _design_basis(self):
         """The active P-M design option as (use_phi, fy_factor, label): φ-reduced
         design, plain nominal, or nominal with the 1.25·f_y overstrength."""
@@ -3282,7 +3307,8 @@ class SectionDesignerWindow(QMainWindow):
         if fy_fac != 1.0:
             aspec = self._analysis_spec()
             case = _case(replace(aspec, fy=aspec.fy * fy_fac))
-        curve, landmarks = core.pmm_slice(case, code)
+        theta = self.pm_ang.value()
+        curve, landmarks = core.pmm_slice(case, code, theta_deg=theta)
         self._set_pm_kpi(landmarks, use_phi and curve.get("has_design"), u)
         self._fill_pm_table(curve, u)
         self.pm_fig.clear()
@@ -3323,7 +3349,8 @@ class SectionDesignerWindow(QMainWindow):
         ax.axvline(0, color=style.AX_TEXT, lw=0.5)
         ax.set_xlabel(f"M  [{u.Ml}]")
         ax.set_ylabel(f"P  [{u.Fl}]  (+ compression)")
-        ax.set_title(f"P-M interaction — {code}")
+        ang_txt = f"  ·  θ = {theta:g}°" if abs(theta) > 1e-9 else ""
+        ax.set_title(f"P-M interaction — {code}{ang_txt}")
         style.beautify_axes(ax)
         ax.legend(fontsize=8, loc="best", frameon=False)
         self.pm_canvas.draw_idle()
