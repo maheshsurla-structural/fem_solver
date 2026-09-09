@@ -444,6 +444,7 @@ class SectionDesignerWindow(QMainWindow):
         m.addSeparator()
         m.addAction("Section as &JSON…", self._export_section_json)
         m.addAction("&Verification as CSV…", self._export_verify_csv)
+        m.addAction("&Curve points as CSV…", self._export_curve_csv)
         m.addAction("&Fibres as CSV…", self._export_fibers_csv)
         vm = self.menuBar().addMenu("&View")
         self._view_menu = vm                           # dock toggle added later
@@ -2853,6 +2854,7 @@ class SectionDesignerWindow(QMainWindow):
         a("Export: Report details…", self._edit_report_details)
         a("Export: Section as JSON…", self._export_section_json)
         a("Export: Verification as CSV…", self._export_verify_csv)
+        a("Export: Curve points as CSV…", self._export_curve_csv)
         a("Export: Fibres as CSV…", self._export_fibers_csv)
         a("Materials: Manage library…", self._open_materials)
         a("Theme: Toggle light / dark", self._toggle_theme)
@@ -3380,6 +3382,9 @@ class SectionDesignerWindow(QMainWindow):
             case = _case(replace(aspec, fy=aspec.fy * fy_fac))
         theta = self.pm_ang.value()
         curve, landmarks = core.pmm_slice(case, code, theta_deg=theta)
+        # keep the plotted slice for CSV export (C3)
+        self._pm_curve = curve
+        self._pm_curve_has_des = bool(use_phi and curve.get("has_design"))
         self._set_pm_kpi(landmarks, use_phi and curve.get("has_design"), u)
         self._fill_pm_table(curve, u)
         self.pm_fig.clear()
@@ -4446,6 +4451,61 @@ class SectionDesignerWindow(QMainWindow):
                                 it.get("note", "")])
             self.statusBar().showMessage(f"Saved {path}")
             self._toast("Verification exported")
+        except Exception as exc:                       # noqa: BLE001
+            QMessageBox.critical(self, "Export failed", str(exc))
+            self._toast("Export failed", kind="err")
+
+    def _export_curve_csv(self) -> None:
+        """Export the currently-plotted analysis curve as CSV (C3): the M-φ
+        curve or the P-M interaction slice, in the current display units —
+        matching the numeric tables the tabs already show."""
+        u = self._units
+        label = self.tabs.tabText(self.tabs.currentIndex())
+        headers: list = []
+        rows: list = []
+        default = "curve.csv"
+        if label == "Moment-curvature":
+            d = getattr(self, "_mphi_data", None)
+            if not d or not d.get("kappa"):
+                self._toast("No moment-curvature curve to export yet", kind="err")
+                return
+            headers = [f"Curvature [{u.Kl}]", f"Moment [{u.Ml}]"]
+            rows = [[f"{u.curv_disp(k):.6g}", f"{u.M_disp(m):.6g}"]
+                    for k, m in zip(d["kappa"], d["M"])]
+            default = "moment_curvature.csv"
+        elif label == "P-M-M interaction":
+            c = getattr(self, "_pm_curve", None)
+            if not c or not c.get("P_nom"):
+                self._toast("No P-M curve to export — select the P-M curve view",
+                            kind="err")
+                return
+            has_d = getattr(self, "_pm_curve_has_des", False)
+            headers = [f"P [{u.Fl}]", f"M [{u.Ml}]"]
+            if has_d:
+                headers += [f"phiP [{u.Fl}]", f"phiM [{u.Ml}]"]
+            Pn, Mn = c["P_nom"], c["M_nom"]
+            Pd, Md = c.get("P_des"), c.get("M_des")
+            for i in range(len(Pn)):
+                r = [f"{u.P_disp(Pn[i]):.6g}", f"{u.M_disp(Mn[i]):.6g}"]
+                if has_d and Pd and Md:
+                    r += [f"{u.P_disp(Pd[i]):.6g}", f"{u.M_disp(Md[i]):.6g}"]
+                rows.append(r)
+            default = "pm_interaction.csv"
+        else:
+            self._toast("Open the Moment-curvature or P-M-M tab to export its "
+                        "curve", kind="err")
+            return
+        path, _ = QFileDialog.getSaveFileName(self, "Export curve points",
+                                              default, "CSV (*.csv)")
+        if not path:
+            return
+        try:
+            with open(path, "w", newline="", encoding="utf-8") as fh:
+                w = csv.writer(fh)
+                w.writerow(headers)
+                w.writerows(rows)
+            self.statusBar().showMessage(f"Saved {path}")
+            self._toast("Curve exported")
         except Exception as exc:                       # noqa: BLE001
             QMessageBox.critical(self, "Export failed", str(exc))
             self._toast("Export failed", kind="err")
