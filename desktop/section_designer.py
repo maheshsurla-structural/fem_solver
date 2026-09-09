@@ -146,6 +146,15 @@ _FY_OVERSTRENGTH = 1.25
 _CURVE_COLORS = ["#2563eb", "#8b5cf6", "#0891b2", "#db2777",
                  "#0d9488", "#ea580c", "#4f46e5", "#b45309"]
 
+# Preset (elevation, azimuth) view angles for the 3-D P-M-M surface (P4).
+# Mz is the plot x-axis, My the y-axis, P the vertical z-axis.
+_S3_PRESETS = {
+    "3D": (22, -60),       # isometric
+    "M-M": (89, -90),      # look down P → the Mz-My plane
+    "P-M3": (2, -90),      # look along My → P vs Mz
+    "P-M2": (2, 0),        # look along Mz → P vs My
+}
+
 
 def _rebar_arr_label(arr) -> str:
     typ, dia, mat, p = arr
@@ -1659,6 +1668,12 @@ class SectionDesignerWindow(QMainWindow):
         self.s3_fig = Figure(figsize=(4.6, 4.2), layout="constrained")
         self.s3_canvas = Canvas(self.s3_fig)
         s3v.addWidget(self.s3_canvas)
+        # interactive view state (P4): the surface is draggable (matplotlib 3-D
+        # rotation); the elev/azim spins + presets drive the same view_init and
+        # a drag syncs the spins back. Changing the view never recomputes.
+        self._s3_elev, self._s3_azim = _S3_PRESETS["3D"]
+        self._s3_ax = None
+        self.s3_canvas.mpl_connect("button_release_event", self._sync_s3_spins)
 
         # ---- M-M contour (view) ----
         mm = QWidget()
@@ -1738,6 +1753,26 @@ class SectionDesignerWindow(QMainWindow):
         self.mesh_combo.setCurrentText("Coarse")
         self.mesh_combo.currentTextChanged.connect(lambda *_: self._queue())
         sfm.addRow("Mesh density", self.mesh_combo)
+        # view controls (P4): drive view_init without recomputing the mesh
+        self.s3_elev = self._dspin(-90, 90, 5, "", 0)
+        self.s3_elev.setValue(self._s3_elev)
+        self.s3_elev.valueChanged.connect(lambda *_: self._apply_s3_view())
+        sfm.addRow("Elevation°", self.s3_elev)
+        self.s3_azim = self._dspin(-180, 180, 5, "", 0)
+        self.s3_azim.setWrapping(True)
+        self.s3_azim.setValue(self._s3_azim)
+        self.s3_azim.valueChanged.connect(lambda *_: self._apply_s3_view())
+        sfm.addRow("Azimuth°", self.s3_azim)
+        pv = QWidget()
+        pvh = QHBoxLayout(pv)
+        pvh.setContentsMargins(0, 0, 0, 0)
+        pvh.setSpacing(style.SP_XS)
+        for name in _S3_PRESETS:
+            b = QToolButton()
+            b.setText(name)
+            b.clicked.connect(lambda _c=False, n=name: self._s3_preset(n))
+            pvh.addWidget(b)
+        sfm.addRow("View", pv)
         # page 2 — M-M contour axial + demand
         mpg = QWidget()
         mmf = QFormLayout(mpg)
@@ -3555,7 +3590,40 @@ class SectionDesignerWindow(QMainWindow):
         ax.set_zlabel(f"P [{u.Fl}]")
         ax.set_title(f"P-Mz-My interaction surface — {code}", color=style.TEXT,
                      fontsize=11, fontweight="bold")
+        ax.view_init(elev=self._s3_elev, azim=self._s3_azim)   # keep view (P4)
+        self._s3_ax = ax
         self.s3_canvas.draw_idle()
+
+    # -------------------------------------------- 3-D surface view (P4)
+    def _apply_s3_view(self) -> None:
+        """Re-aim the 3-D surface from the elev/azim spins — no recompute."""
+        self._s3_elev = self.s3_elev.value()
+        self._s3_azim = self.s3_azim.value()
+        if self._s3_ax is not None:
+            self._s3_ax.view_init(elev=self._s3_elev, azim=self._s3_azim)
+            self.s3_canvas.draw_idle()
+
+    def _s3_preset(self, name: str) -> None:
+        """Snap to a named view (isometric / M-M / P-M3 / P-M2)."""
+        elev, azim = _S3_PRESETS[name]
+        for spin, val in ((self.s3_elev, elev), (self.s3_azim, azim)):
+            spin.blockSignals(True)
+            spin.setValue(val)
+            spin.blockSignals(False)
+        self._apply_s3_view()
+
+    def _sync_s3_spins(self, _ev=None) -> None:
+        """After a drag-rotate, write the axes' view back into the spins."""
+        ax = self._s3_ax
+        if ax is None:
+            return
+        self._s3_elev = ax.elev
+        self._s3_azim = ((ax.azim + 180) % 360) - 180
+        for spin, val in ((self.s3_elev, self._s3_elev),
+                          (self.s3_azim, self._s3_azim)):
+            spin.blockSignals(True)
+            spin.setValue(round(val))
+            spin.blockSignals(False)
 
     # ------------------------------------------------------ M-M contour
     def _draw_mm_contour(self, case, code) -> None:
