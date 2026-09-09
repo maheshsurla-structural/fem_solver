@@ -312,6 +312,11 @@ QFrame#chip QComboBox::drop-down {{ width: 16px; }}
 QLabel#chipLabel {{ color: {MUTED}; font-size: {FS_MICRO}px; font-weight: 600;
                    letter-spacing: {LS_LABEL}; }}
 
+/* ---- constant [ controls | view ] workspace shell ---- */
+QWidget#ctrlRail {{ background: {BG}; border-right: 1px solid {BORDER}; }}
+QLabel#ctrlHead {{ color: {MUTED}; font-size: {FS_MICRO}px; font-weight: 600;
+                  letter-spacing: {LS_LABEL}; }}
+
 /* ---- flattened canvas chrome (single toolbar + properties drawer) ---- */
 QFrame#canvasBar {{ background: {PANEL}; border: 1px solid {BORDER};
                    border-radius: {R_MD}px; }}

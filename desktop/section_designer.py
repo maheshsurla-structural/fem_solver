@@ -1441,14 +1441,33 @@ class SectionDesignerWindow(QMainWindow):
         self._props_drawer = d
         return d
 
+    _CTRL_W = 290                     # constant width of the left controls rail
+
+    def _workspace(self, controls: QWidget, view: QWidget) -> QSplitter:
+        """The constant [ controls | view ] shell shared by every analysis tab:
+        a fixed-width left rail of inputs and a wide right view + results area.
+        Drag the handle to collapse the rail for a full-width view."""
+        controls.setObjectName("ctrlRail")
+        controls.setMinimumWidth(210)
+        controls.setMaximumWidth(430)
+        sp = QSplitter(Qt.Orientation.Horizontal)
+        sp.addWidget(controls)
+        sp.addWidget(view)
+        sp.setStretchFactor(0, 0)
+        sp.setStretchFactor(1, 1)
+        sp.setSizes([self._CTRL_W, 900])
+        sp.setHandleWidth(6)
+        return sp
+
     def _build_analysis_panel(self) -> QWidget:
         self.tabs = QTabWidget()
         self.tabs.setMinimumWidth(420)
         self.tabs.currentChanged.connect(lambda *_: self._queue())
 
-        # ---- P-M interaction + demand check ----
+        # ---- P-M curve view (KPI tiles + verdict + chart; controls in rail) --
         pm = QWidget()
         pmv = QVBoxLayout(pm)
+        pmv.setContentsMargins(0, 0, 0, 0)
         pm_kpi, self._pm_kpi, self._pm_kpi_cap = self._make_kpi_row(
             [("Po", "Pₒ SQUASH"), ("Pnmax", "P n,max"),
              ("M0", "M @ P=0"), ("Mbal", "M BALANCED")])
@@ -1457,23 +1476,6 @@ class SectionDesignerWindow(QMainWindow):
         self.pm_fig = Figure(figsize=(4.4, 4.0), layout="constrained")
         self.pm_canvas = Canvas(self.pm_fig)
         pmv.addWidget(self.pm_canvas)
-        d1 = QHBoxLayout()
-        d1.addWidget(QLabel("Demand P:"))
-        self.dem_P = self._dspin(-1e6, 1e6, 50, "", 1)
-        d1.addWidget(self.dem_P)
-        d1.addWidget(QLabel("Mz:"))
-        self.dem_Mz = self._dspin(-1e6, 1e6, 25, "", 1)
-        d1.addWidget(self.dem_Mz)
-        d1.addWidget(QLabel("My:"))
-        self.dem_My = self._dspin(-1e6, 1e6, 25, "", 1)
-        d1.addWidget(self.dem_My)
-        self.design_chk = QCheckBox("Design (φ)")
-        self.design_chk.setChecked(True)
-        d1.addWidget(self.design_chk)
-        for w in (self.dem_P, self.dem_Mz, self.dem_My):
-            w.valueChanged.connect(lambda *_: self._queue())
-        self.design_chk.stateChanged.connect(lambda *_: self._queue())
-        pmv.addLayout(d1)
 
         # ---- Moment-curvature ----
         mp = QWidget()
@@ -1531,43 +1533,21 @@ class SectionDesignerWindow(QMainWindow):
         # (Verification is not a GUI tab — a dev/QA artifact; it stays available
         # as an Export ▸ Verification as CSV action via _verify_rows.)
 
-        # ---- 3-D P-M-M surface ----
+        # ---- 3-D P-M-M surface (view) ----
         s3 = QWidget()
         s3v = QVBoxLayout(s3)
+        s3v.setContentsMargins(0, 0, 0, 0)
         self.s3_fig = Figure(figsize=(4.6, 4.2), layout="constrained")
         self.s3_canvas = Canvas(self.s3_fig)
         s3v.addWidget(self.s3_canvas)
-        srow = QHBoxLayout()
-        srow.addWidget(QLabel("Mesh:"))
-        self.mesh_combo = QComboBox()
-        self.mesh_combo.addItems(list(_ARR_MESH))
-        self.mesh_combo.setCurrentText("Coarse")
-        self.mesh_combo.currentTextChanged.connect(lambda *_: self._queue())
-        srow.addWidget(self.mesh_combo)
-        srow.addStretch(1)
-        s3v.addLayout(srow)
 
-        # ---- M-M contour (biaxial slice at a chosen P) ----
+        # ---- M-M contour (view) ----
         mm = QWidget()
         mmv = QVBoxLayout(mm)
+        mmv.setContentsMargins(0, 0, 0, 0)
         self.mm_fig = Figure(figsize=(4.2, 4.0), layout="constrained")
         self.mm_canvas = Canvas(self.mm_fig)
         mmv.addWidget(self.mm_canvas)
-        mrow = QHBoxLayout()
-        mrow.addWidget(QLabel("Axial P (+comp):"))
-        self.mm_P = self._dspin(-1e6, 1e6, 50, "", 1)
-        self.mm_P.valueChanged.connect(lambda *_: self._queue())
-        mrow.addWidget(self.mm_P)
-        mrow.addWidget(QLabel("Demand Mz:"))
-        self.mm_Mz = self._dspin(-1e6, 1e6, 25, "", 1)
-        self.mm_Mz.valueChanged.connect(lambda *_: self._queue())
-        mrow.addWidget(self.mm_Mz)
-        mrow.addWidget(QLabel("My:"))
-        self.mm_My = self._dspin(-1e6, 1e6, 25, "", 1)
-        self.mm_My.valueChanged.connect(lambda *_: self._queue())
-        mrow.addWidget(self.mm_My)
-        mrow.addStretch(1)
-        mmv.addLayout(mrow)
 
         # ---- Stress field (fibre stresses under a plane-sections strain) ----
         sf = QWidget()
@@ -1589,23 +1569,72 @@ class SectionDesignerWindow(QMainWindow):
         sfr.addStretch(1)
         sfv.addLayout(sfr)
 
-        # ---- combined P-M-M interaction tab (P-M curve | 3-D surface | M-M) --
-        inter = QWidget()
-        iv = QVBoxLayout(inter)
-        selrow = QHBoxLayout()
-        selrow.addWidget(QLabel("View:"))
+        # ---- combined P-M-M interaction tab: constant [controls | view] shell
+        # left rail: the view selector + the active sub-view's inputs
+        inter_ctrl = QWidget()
+        icv = QVBoxLayout(inter_ctrl)
+        icv.setContentsMargins(12, 12, 12, 12)
+        icv.setSpacing(8)
+        _vh = QLabel("VIEW")
+        _vh.setObjectName("ctrlHead")
+        icv.addWidget(_vh)
         self.inter_view = QComboBox()
         self.inter_view.addItems(["P-M curve", "3-D P-M-M surface",
                                   "M-M contour"])
         self.inter_view.currentIndexChanged.connect(self._on_inter_view)
-        selrow.addWidget(self.inter_view)
-        selrow.addStretch(1)
-        iv.addLayout(selrow)
+        icv.addWidget(self.inter_view)
+        _ih = QLabel("INPUTS")
+        _ih.setObjectName("ctrlHead")
+        _ih.setContentsMargins(0, 8, 0, 0)
+        icv.addWidget(_ih)
+        self.inter_ctrl_stack = QStackedWidget()
+        # page 0 — demand for the P-M curve check
+        dpg = QWidget()
+        df = QFormLayout(dpg)
+        df.setContentsMargins(0, 0, 0, 0)
+        self.dem_P = self._dspin(-1e6, 1e6, 50, "", 1)
+        self.dem_Mz = self._dspin(-1e6, 1e6, 25, "", 1)
+        self.dem_My = self._dspin(-1e6, 1e6, 25, "", 1)
+        df.addRow("Demand P", self.dem_P)
+        df.addRow("Mz", self.dem_Mz)
+        df.addRow("My", self.dem_My)
+        self.design_chk = QCheckBox("Design (φ)")
+        self.design_chk.setChecked(True)
+        df.addRow("", self.design_chk)
+        for w in (self.dem_P, self.dem_Mz, self.dem_My):
+            w.valueChanged.connect(lambda *_: self._queue())
+        self.design_chk.stateChanged.connect(lambda *_: self._queue())
+        # page 1 — 3-D surface mesh density
+        spg = QWidget()
+        sfm = QFormLayout(spg)
+        sfm.setContentsMargins(0, 0, 0, 0)
+        self.mesh_combo = QComboBox()
+        self.mesh_combo.addItems(list(_ARR_MESH))
+        self.mesh_combo.setCurrentText("Coarse")
+        self.mesh_combo.currentTextChanged.connect(lambda *_: self._queue())
+        sfm.addRow("Mesh density", self.mesh_combo)
+        # page 2 — M-M contour axial + demand
+        mpg = QWidget()
+        mmf = QFormLayout(mpg)
+        mmf.setContentsMargins(0, 0, 0, 0)
+        self.mm_P = self._dspin(-1e6, 1e6, 50, "", 1)
+        self.mm_Mz = self._dspin(-1e6, 1e6, 25, "", 1)
+        self.mm_My = self._dspin(-1e6, 1e6, 25, "", 1)
+        for w in (self.mm_P, self.mm_Mz, self.mm_My):
+            w.valueChanged.connect(lambda *_: self._queue())
+        mmf.addRow("Axial P (+comp)", self.mm_P)
+        mmf.addRow("Demand Mz", self.mm_Mz)
+        mmf.addRow("My", self.mm_My)
+        for pg in (dpg, spg, mpg):
+            self.inter_ctrl_stack.addWidget(pg)
+        icv.addWidget(self.inter_ctrl_stack)
+        icv.addStretch(1)
+
         self.inter_stack = QStackedWidget()
         self.inter_stack.addWidget(pm)          # 0: P-M curve
         self.inter_stack.addWidget(s3)          # 1: 3-D surface
         self.inter_stack.addWidget(mm)          # 2: M-M contour
-        iv.addWidget(self.inter_stack, 1)
+        inter = self._workspace(inter_ctrl, self.inter_stack)
 
         # ---- Fibres (discretisation view + properties) ----
         fib = self._build_fibers_tab()
@@ -2754,8 +2783,10 @@ class SectionDesignerWindow(QMainWindow):
         self.head_sub.setText("  ·  ".join(bits))
 
     def _on_inter_view(self, i: int) -> None:
-        """Switch the P-M-M interaction sub-view (P-M / 3-D / M-M) and recompute."""
+        """Switch the P-M-M interaction sub-view (P-M / 3-D / M-M) and recompute;
+        the left rail's inputs follow the view."""
         self.inter_stack.setCurrentIndex(i)
+        self.inter_ctrl_stack.setCurrentIndex(i)
         self._queue()
 
     def _recompute_analysis(self) -> None:
