@@ -1512,7 +1512,20 @@ class SectionDesignerWindow(QMainWindow):
         pmv.addWidget(self._build_verdict_strip())
         self.pm_fig = Figure(figsize=(4.4, 4.0), layout="constrained")
         self.pm_canvas = Canvas(self.pm_fig)
-        pmv.addWidget(self.pm_canvas)
+        pmv.addWidget(self.pm_canvas, 1)
+        _pmh = QLabel("INTERACTION POINTS")
+        _pmh.setObjectName("ctrlHead")
+        _pmh.setContentsMargins(0, style.SP_SM, 0, 0)
+        pmv.addWidget(_pmh)
+        self.pm_tbl = QTableWidget(0, 2)
+        self.pm_tbl.setHorizontalHeaderLabels(["P", "M"])
+        self.pm_tbl.horizontalHeader().setStretchLastSection(True)
+        self.pm_tbl.verticalHeader().setVisible(False)
+        self.pm_tbl.setAlternatingRowColors(True)
+        self.pm_tbl.setShowGrid(False)
+        self.pm_tbl.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.pm_tbl.setMaximumHeight(190)
+        pmv.addWidget(self.pm_tbl)
 
         # ---- Moment-curvature: constant [controls | view] shell ----
         # left rail — the load state + which milestone the strain diagram shows
@@ -3067,12 +3080,14 @@ class SectionDesignerWindow(QMainWindow):
                     transform=ax.transAxes)
             ax.set_axis_off()
             self.pm_canvas.draw_idle()
+            self.pm_tbl.setRowCount(0)
             self._set_pm_kpi(None, False, u)
             self._set_verdict_empty("Demand check runs on the 3-D "
                                     "P-M-M surface for composite sections.")
             return
         curve, landmarks = core.pmm_slice(case, code)
         self._set_pm_kpi(landmarks, curve.get("has_design"), u)
+        self._fill_pm_table(curve, u)
         self.pm_fig.clear()
         ax = self.pm_fig.add_subplot(111)
         M = [u.M_disp(v) for v in curve["M_nom"]]
@@ -3104,6 +3119,28 @@ class SectionDesignerWindow(QMainWindow):
         style.beautify_axes(ax)
         ax.legend(fontsize=8, loc="best", frameon=False)
         self.pm_canvas.draw_idle()
+
+    def _fill_pm_table(self, curve, u) -> None:
+        """Tabulate the plotted interaction slice (nominal P-M, plus the design
+        φP-φM columns where the code provides a design curve)."""
+        P, M = curve["P_nom"], curve["M_nom"]
+        has_d = curve.get("has_design")
+        heads = [f"P [{u.Fl}]", f"M [{u.Ml}]"]
+        if has_d:
+            heads += [f"φP [{u.Fl}]", f"φM [{u.Ml}]"]
+        self.pm_tbl.setColumnCount(len(heads))
+        self.pm_tbl.setHorizontalHeaderLabels(heads)
+        self.pm_tbl.setRowCount(len(P))
+        Pd, Md = curve.get("P_des"), curve.get("M_des")
+        for r in range(len(P)):
+            vals = [u.P_disp(P[r]), u.M_disp(M[r])]
+            if has_d:
+                vals += [u.P_disp(Pd[r]), u.M_disp(Md[r])]
+            for c, v in enumerate(vals):
+                it = QTableWidgetItem(f"{v:,.4g}")
+                it.setTextAlignment(Qt.AlignmentFlag.AlignRight
+                                    | Qt.AlignmentFlag.AlignVCenter)
+                self.pm_tbl.setItem(r, c, it)
 
     # ----------------------------------------------------------- M-φ tab
     def _draw_mphi(self, case) -> None:
