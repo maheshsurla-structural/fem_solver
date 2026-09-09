@@ -744,19 +744,47 @@ def _composite_fiber_section(spec, na_angle=0.0, n_z=26, n_y=52,
     return fs, geo, conc.f_ct, conc.E_ct, float(matd.get("eps_cu", 0.0035))
 
 
+def _mphi_kappas(kcr, kappa_max, n_points=65):
+    """Curvature sweep shared by every M-φ path (M4 'No. of points'): resolve
+    the steep uncracked branch finely through the cracking region, then step
+    coarsely out to ``kappa_max``. ``n_points`` sets the total sample count;
+    the default (65) reproduces the historical 10-fine + 55-coarse array."""
+    n = max(12, int(n_points))
+    n_fine = max(4, n // 6)
+    n_coarse = max(6, n - n_fine)
+    return np.unique(np.concatenate([
+        np.linspace(0.0, 3.0 * kcr, n_fine), [kcr],
+        np.linspace(3.0 * kcr, kappa_max, n_coarse)]))
+
+
+def _mphi_stop(stop, *, crush, eps_steel, eps_su=0.05):
+    """Failure-criterion gate for the inline M-φ loops (M4). Returns the
+    failure-mode string when the sweep should terminate at this step, else "".
+    ``crush`` is True when the governing concrete fibre has reached ε_cu.
+    ``stop``: 'concrete' ends on crushing or steel rupture (default), 'steel'
+    ends on steel rupture only (concrete allowed to soften past ε_cu), 'peak'
+    never ends early (ultimate falls out as the moment peak at κ_max)."""
+    if stop == "peak":
+        return ""
+    if stop != "steel" and crush:
+        return "concrete_crushing"
+    if eps_steel >= eps_su:
+        return "steel_rupture"
+    return ""
+
+
 def composite_mphi(spec, P_target_kN, *, na_angle=0.0, kappa_max=0.06,
-                   materials=None, **_ignored):
+                   materials=None, n_points=65, stop="concrete", **_ignored):
     """Multi-material moment-curvature for a Composite section, returning the
-    same dict shape as :func:`mphi_data`."""
+    same dict shape as :func:`mphi_data`. ``n_points`` / ``stop`` are the M4
+    analysis controls (curvature resolution / failure criterion)."""
     fs, geo, f_r, E_c, eps_cu = _composite_fiber_section(
         spec, na_angle, materials=materials)
     y_top, y_bot, rebar_ys = geo["y_top"], geo["y_bot"], geo["rebar_ys"]
     N_target = -P_target_kN * 1e3
     eps_y = spec.fy / spec.Es
     kcr = f_r / max(E_c * abs(y_bot), 1e-9)
-    kappas = np.unique(np.concatenate([
-        np.linspace(0.0, 3.0 * kcr, 10), [kcr],
-        np.linspace(3.0 * kcr, kappa_max, 55)]))
+    kappas = _mphi_kappas(kcr, kappa_max, n_points)
     eps0 = 0.0
     pts = []
     M_y = kappa_y = None
@@ -779,11 +807,9 @@ def composite_mphi(spec, P_target_kN, *, na_angle=0.0, kappa_max=0.06,
         fs.commit_state()
         if M_y is None and eps_steel >= eps_y and kappa > 0:
             M_y, kappa_y = float(s[1]), float(kappa)
-        if -eps_top >= eps_cu:
-            failure = "concrete_crushing"
-            break
-        if eps_steel >= 0.05:
-            failure = "steel_rupture"
+        failure = _mphi_stop(stop, crush=(-eps_top >= eps_cu),
+                             eps_steel=eps_steel)
+        if failure:
             break
 
     kap = [p["kappa"] for p in pts]
@@ -1513,7 +1539,8 @@ def mphi_data(case: SectionCase, P_target_kN: float, *,
               kappa_max: float = 0.06, conc_model: str = "Kent-Park",
               conc_f1_ratio: float = 0.4,
               steel_model: str = "Bilinear", steel_fu_ratio: float = 1.5,
-              steel_eps_sh: float = 0.008, steel_eps_su: float = 0.10):
+              steel_eps_sh: float = 0.008, steel_eps_su: float = 0.10,
+              n_points: int = 65, stop: str = "concrete"):
     # Neutral-axis angle: rotate the section so the inclined bending axis
     # aligns with the engine's z-axis, then everything downstream (crack
     # point, milestones, strain profile) is in that rotated frame.
@@ -1533,14 +1560,17 @@ def mphi_data(case: SectionCase, P_target_kN: float, *,
     # steep uncracked branch is resolved, then coarsely to kappa_max.
     y_top = case.section.geometry.polygon.bounds[3]
     kcr_est = f_r / max(E_c * y_top, 1e-9)
-    kappas = np.unique(np.concatenate([
-        np.linspace(0.0, 3.0 * kcr_est, 10), [kcr_est],
-        np.linspace(3.0 * kcr_est, kappa_max, 55)]))
+    kappas = _mphi_kappas(kcr_est, kappa_max, n_points)
+    # M4 failure criterion -> steer the engine's crush / rupture stops. Concrete
+    # crushing at ε_cu (default); 'steel' lets the concrete soften past ε_cu and
+    # ends at rebar rupture; 'peak' disables both so the sweep runs to κ_max.
+    eff_cu = eps_cu if stop == "concrete" else 1.0
+    eff_su = 1.0 if stop == "peak" else 0.05
     res = moment_curvature(
         case.section, P_target=P_target_kN * 1e3,
         concrete_uniaxial=concrete, steel_uniaxial=steel,
         kappas=kappas, f_y=case.f_y, E_s=E_s, f_rupture=f_r,
-        eps_cu_crush=eps_cu)
+        eps_cu_crush=eff_cu, eps_steel_rupture=eff_su)
     pts = res.points
 
     def _nearest(kap):
@@ -1682,7 +1712,7 @@ def _confined_fiber_section(spec, conf, na_angle=0.0, n_z=28, n_y=56):
 
 
 def confined_mphi(spec, conf, P_target_kN, *, na_angle=0.0, kappa_max=0.06,
-                  **_ignored):
+                  n_points=65, stop="concrete", **_ignored):
     """Moment-curvature for a confined Circular / Rectangular column on a
     two-zone (confined core + unconfined cover) fibre section — the Midas-GSD
     model. Same return shape as :func:`mphi_data`. Crushing is judged at the
@@ -1695,9 +1725,7 @@ def confined_mphi(spec, conf, P_target_kN, *, na_angle=0.0, kappa_max=0.06,
     eps_y = spec.fy / spec.Es
     A = max(geo.get("A", 0.0), 1e-6)
     kcr = f_r / max(E_c * abs(y_bot), 1e-9)
-    kappas = np.unique(np.concatenate([
-        np.linspace(0.0, 3.0 * kcr, 10), [kcr],
-        np.linspace(3.0 * kcr, kappa_max, 55)]))
+    kappas = _mphi_kappas(kcr, kappa_max, n_points)
     eps0 = N_target / max(E_c * A, 1e6)          # elastic axial warm start
     pts = []
     M_y = kappa_y = None
@@ -1724,12 +1752,13 @@ def confined_mphi(spec, conf, P_target_kN, *, na_angle=0.0, kappa_max=0.06,
         fs.commit_state()
         if M_y is None and eps_steel >= eps_y and kappa > 0:
             M_y, kappa_y = float(s[1]), float(kappa)
-        if -eps_core >= eps_cu:
-            failure = "core_crushing"
-            break
-        if eps_steel >= 0.05:
-            failure = "steel_rupture"
-            break
+        if stop != "peak":
+            if stop != "steel" and -eps_core >= eps_cu:
+                failure = "core_crushing"
+                break
+            if eps_steel >= 0.05:
+                failure = "steel_rupture"
+                break
 
     kap = [p["kappa"] for p in pts]
     Ms = [p["M"] for p in pts]

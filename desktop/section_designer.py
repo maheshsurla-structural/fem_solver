@@ -146,6 +146,9 @@ _FY_OVERSTRENGTH = 1.25
 _CURVE_COLORS = ["#2563eb", "#8b5cf6", "#0891b2", "#db2777",
                  "#0d9488", "#ea580c", "#4f46e5", "#b45309"]
 
+# M-φ failure-criterion keys, indexed by the "Failure criterion" combo (M4).
+_MPHI_STOP = ("concrete", "steel", "peak")
+
 # Preset (elevation, azimuth) view angles for the 3-D P-M-M surface (P4).
 # Mz is the plot x-axis, My the y-axis, P the vertical z-axis.
 _S3_PRESETS = {
@@ -1580,6 +1583,34 @@ class SectionDesignerWindow(QMainWindow):
         mcf.addRow("Overlay", self.mphi_ideal_chk)
         mcv.addLayout(mcf)
 
+        # ---- analysis controls (M4): curvature resolution, sweep limit and the
+        # failure criterion that defines the ultimate point. κ_max lives here now
+        # (it is an M-φ analysis parameter) and still feeds spec.kappa_max via
+        # the form; No. of points and the criterion are M-φ-view settings. ----
+        _ah = QLabel("ANALYSIS")
+        _ah.setObjectName("ctrlHead")
+        _ah.setContentsMargins(0, 8, 0, 0)
+        mcv.addWidget(_ah)
+        acf = QFormLayout()
+        acf.setContentsMargins(0, 0, 0, 0)
+        self.mphi_npts = QSpinBox()
+        self.mphi_npts.setRange(20, 400)
+        self.mphi_npts.setSingleStep(5)
+        self.mphi_npts.setValue(65)
+        self.mphi_npts.valueChanged.connect(lambda *_: self._queue())
+        acf.addRow("No. of points", self.mphi_npts)
+        self.kappa_max_spin = self._dspin(0.005, 0.5, 0.01, " 1/m", 3)
+        self.kappa_max_spin.valueChanged.connect(
+            lambda *_: self._on_value_changed())
+        acf.addRow("Max curvature κ_max", self.kappa_max_spin)
+        self.mphi_stop = QComboBox()
+        self.mphi_stop.addItems(
+            ["Concrete crushing (ε_cu)", "Steel rupture (ε_su)",
+             "Peak moment (κ_max)"])
+        self.mphi_stop.currentIndexChanged.connect(lambda *_: self._queue())
+        acf.addRow("Failure criterion", self.mphi_stop)
+        mcv.addLayout(acf)
+
         # ---- saved-curve comparison (M1) ----
         # "Add current" freezes the live M-φ result as a named, coloured overlay
         # so several runs (axial levels, confined/unconfined, angles) compare on
@@ -2185,14 +2216,12 @@ class SectionDesignerWindow(QMainWindow):
         self.eps_c0_spin = self._dspin(0.001, 0.02, 0.0002, "", 4)
         self.eps_cu_spin = self._dspin(0.002, 0.05, 0.0005, "", 4)
         self.fcu_ratio_spin = self._dspin(0.0, 1.0, 0.05, "", 2)
-        self.kappa_max_spin = self._dspin(0.005, 0.5, 0.01, " 1/m", 3)
-        for wgt in (self.eps_c0_spin, self.eps_cu_spin, self.fcu_ratio_spin,
-                    self.kappa_max_spin):
+        for wgt in (self.eps_c0_spin, self.eps_cu_spin, self.fcu_ratio_spin):
             wgt.valueChanged.connect(lambda *_: self._on_value_changed())
         f.addRow("ε_c0 (peak, unconfined)", self.eps_c0_spin)
         f.addRow("ε_cu (crush, unconfined)", self.eps_cu_spin)
         f.addRow("f_cu / f'c (residual)", self.fcu_ratio_spin)
-        f.addRow("κ_max sweep", self.kappa_max_spin)
+        # (κ_max sweep moved to the Moment-curvature tab's ANALYSIS group — M4.)
         v.addWidget(pbox)
         v.addStretch(1)
         return w
@@ -3418,11 +3447,15 @@ class SectionDesignerWindow(QMainWindow):
         P = self.mphi_P.value()          # in the current force unit
         P_kN = P * u.fN / 1e3            # -> kN (engine base)
         ang = self.mphi_ang.value()
+        # M4 analysis controls: curvature resolution + failure criterion
+        n_pts = self.mphi_npts.value()
+        stop = _MPHI_STOP[max(0, self.mphi_stop.currentIndex())]
         confined = False
         if self._spec.kind == "Composite":
             data = core.composite_mphi(self._spec, P_kN, na_angle=ang,
                                        kappa_max=self._spec.kappa_max,
-                                       materials=self._materials)
+                                       materials=self._materials,
+                                       n_points=n_pts, stop=stop)
         else:
             conf, _info = _section_confinement(self._spec, self._materials)
             if conf is not None and self._spec.kind in ("Rectangular",
@@ -3430,11 +3463,13 @@ class SectionDesignerWindow(QMainWindow):
                 # Mander two-zone (confined core + unconfined cover) from the
                 # section's Link tie group.
                 data = core.confined_mphi(self._spec, conf, P_kN, na_angle=ang,
-                                          kappa_max=self._spec.kappa_max)
+                                          kappa_max=self._spec.kappa_max,
+                                          n_points=n_pts, stop=stop)
                 confined = True
             else:
                 data = core.mphi_data(case, P_kN, na_angle=ang,
-                                      **core.mphi_props(self._spec))
+                                      **core.mphi_props(self._spec),
+                                      n_points=n_pts, stop=stop)
         self.mp_fig.clear()
         ax = self.mp_fig.add_subplot(111)
         self._draw_saved_curves(ax, u)          # frozen comparison overlays (M1)
