@@ -1689,6 +1689,202 @@ def mphi_data(case: SectionCase, P_target_kN: float, *,
     }
 
 
+# Gauss-Legendre nodes/weights for the exact concrete integration (M3).
+_GL = np.polynomial.legendre.leggauss(10)
+
+
+def _width_bands(poly):
+    """Section width profile b(w) (the horizontal extent at height ``w``) as a
+    list of bands ``(w_lo, w_hi, w_ref, W_ref, slope)`` between consecutive
+    vertex w-levels; within a band ``b(w) = W_ref + slope·(w − w_ref)``. The
+    boundary is linear inside a vertex-free band, so width is exactly linear
+    there — but it can *step* across a hole edge, so each band is sampled at two
+    INTERIOR points (never at the vertex levels, which graze hole/apex edges)
+    and the line is fitted. Returns ``(w_lo, w_hi, bands)``."""
+    from shapely.geometry import LineString
+    minz, _miny, maxz, _maxy = poly.bounds
+    pad = (maxz - minz) + 1.0
+
+    def width_at(w):
+        inter = poly.intersection(
+            LineString([(minz - pad, w), (maxz + pad, w)]))
+        total = 0.0
+        for g in (getattr(inter, "geoms", None) or [inter]):
+            cs = list(getattr(g, "coords", []))
+            if len(cs) >= 2:
+                total += abs(cs[-1][0] - cs[0][0])
+        return total
+
+    ws = {y for _, y in poly.exterior.coords}
+    for ring in poly.interiors:
+        ws.update(y for _, y in ring.coords)
+    wl = sorted(ws)
+    bands = []
+    for a, b in zip(wl[:-1], wl[1:]):
+        if b - a < 1e-12:
+            continue
+        wa, wb = a + 0.25 * (b - a), a + 0.75 * (b - a)
+        Wa, Wb = width_at(wa), width_at(wb)
+        slope = (Wb - Wa) / (wb - wa) if (wb - wa) > 1e-12 else 0.0
+        bands.append((a, b, wa, Wa, slope))
+    return wl[0], wl[-1], bands
+
+
+def exact_mphi(case, P_target_kN, *, na_angle=0.0,
+               eps_c0=0.002, eps_cu=0.0035, fcu_ratio=0.4, fr_coeff=0.62,
+               fr_model="sqrt", eps_decay=1.0e-3, E_s=E_S, steel_b=0.01,
+               kappa_max=0.06, conc_model="Kent-Park", conc_f1_ratio=0.4,
+               steel_model="Bilinear", steel_fu_ratio=1.5,
+               steel_eps_sh=0.008, steel_eps_su=0.10,
+               n_points=65, stop="concrete"):
+    """Exact-integration moment-curvature (M3). Integrates the *same*
+    constitutive laws :func:`mphi_data` uses over the true section — strain-
+    banded Gauss-Legendre quadrature across a piecewise-linear width profile,
+    with rebars as discrete points and no concrete subtracted at the bars
+    (matching the fibre model) — so the result differs from the fibre curve
+    only by discretisation. Band edges sit at the section's vertex levels and
+    at the strains where the concrete law bends (0, ε_c0, ε_cu, cracking), so
+    the integrand is smooth within each band and the quadrature is effectively
+    exact. Returns the same dict shape as :func:`mphi_data`."""
+    if abs(na_angle) > 1e-9:
+        case = _rotate_case(case, na_angle)
+    concrete = concrete_uniaxial_from(dict(
+        fc=case.f_c_prime, conc_model=conc_model, eps_c0=eps_c0, eps_cu=eps_cu,
+        fcu_ratio=fcu_ratio, fr_model=fr_model, fr_coeff=fr_coeff,
+        eps_decay=eps_decay, conc_f1_ratio=conc_f1_ratio))
+    steel = steel_uniaxial_from(dict(
+        fy=case.f_y, Es=E_s, steel_model=steel_model, steel_b=steel_b,
+        steel_fu_ratio=steel_fu_ratio, steel_eps_sh=steel_eps_sh,
+        steel_eps_su=steel_eps_su))
+    f_r, E_c = concrete.f_ct, concrete.E_ct
+
+    poly = case.section.geometry.polygon
+    w_lo, w_hi, width_bands = _width_bands(poly)
+    bars = [(float(b.y), float(b.area)) for b in
+            (case.section.reinforcement.bars if case.section.reinforcement
+             else [])]
+    xg, wg = _GL
+    eps_cr = f_r / E_c
+    breaks = (eps_cr, 0.0, -eps_c0, -eps_cu)
+
+    def resultants(eps0, kappa):
+        """(N, M, EA) at the given reference strain + curvature, tension-
+        positive N and M = -∫σ·w (mirrors FiberSection2D). Integrates each
+        geometry band, split further at the concrete-law strain breakpoints so
+        the integrand is smooth within every Gauss panel."""
+        N = M = EA = 0.0
+        for wa0, wb0, w_ref, W_ref, slope in width_bands:
+            edges = [wa0, wb0]
+            if abs(kappa) > 1e-12:                   # add the strain breakpoints
+                for e_bp in breaks:
+                    wb = (eps0 - e_bp) / kappa
+                    if wa0 < wb < wb0:
+                        edges.append(wb)
+                edges.sort()
+            for a, b in zip(edges[:-1], edges[1:]):
+                half = 0.5 * (b - a)
+                if half <= 1e-12:
+                    continue
+                mid = 0.5 * (a + b)
+                for xi, wi in zip(xg, wg):
+                    w = mid + half * xi
+                    bwid = W_ref + slope * (w - w_ref)
+                    if bwid <= 0.0:
+                        continue
+                    sig, Et = concrete.get_response(eps0 - w * kappa)
+                    gwt = bwid * half * wi
+                    N += sig * gwt
+                    M -= sig * gwt * w
+                    EA += Et * gwt
+        for wy, area in bars:                        # rebars (discrete, exact)
+            sig, Et = steel.get_response(eps0 - wy * kappa)
+            N += sig * area
+            M -= sig * area * wy
+            EA += Et * area
+        return N, M, EA
+
+    N_target = -P_target_kN * 1e3
+    kcr = f_r / max(E_c * abs(w_lo), 1e-9)
+    kappas = _mphi_kappas(kcr, kappa_max, n_points)
+    eps_y = case.f_y / E_s
+    eps0 = 0.0
+    pts = []
+    M_y = kappa_y = None
+    failure = ""
+    for kappa in kappas:
+        for _ in range(60):                          # Newton on eps0 -> N=N_tgt
+            N, M, EA = resultants(eps0, kappa)
+            resid = N - N_target
+            tol = max(1.0, abs(N_target) * 1e-8, 100.0)
+            if abs(resid) < tol:
+                break
+            eps0 -= resid / (EA if abs(EA) >= 1e3 else 1e6)
+        N, M, _ = resultants(eps0, kappa)
+        eps_top = eps0 - w_hi * kappa                # extreme compression fibre
+        eps_steel = max((eps0 - wy * kappa for wy, _a in bars), default=0.0)
+        pts.append({"kappa": float(kappa), "M": float(M), "P": float(-N),
+                    "axial_strain": float(eps0), "eps_top": float(eps_top),
+                    "eps_steel": float(eps_steel)})
+        if M_y is None and eps_steel >= eps_y and kappa > 0:
+            M_y, kappa_y = float(M), float(kappa)
+        failure = _mphi_stop(stop, crush=(-eps_top >= eps_cu),
+                             eps_steel=eps_steel)
+        if failure:
+            break
+
+    kap = [p["kappa"] for p in pts]
+    Ms = [p["M"] for p in pts]
+    ipk = int(np.argmax(Ms)) if Ms else 0
+    M_u, kappa_u = (Ms[ipk], kap[ipk]) if pts else (0.0, 0.0)
+    if not failure:
+        failure = "kappa_max_reached" if ipk == len(pts) - 1 else "M_peak"
+    # on-curve cracking point (extreme tension fibre reaches eps_cr)
+    kappa_cr = M_cr = None
+    prev = None
+    for p in pts:
+        eb = p["axial_strain"] - w_lo * p["kappa"]
+        if p["kappa"] > 0 and eb >= eps_cr:
+            if prev is not None:
+                eb0 = prev["axial_strain"] - w_lo * prev["kappa"]
+                t = min(1.0, max(0.0, (eps_cr - eb0) / (eb - eb0)
+                                 if eb > eb0 else 1.0))
+                kappa_cr = prev["kappa"] + t * (p["kappa"] - prev["kappa"])
+                M_cr = prev["M"] + t * (p["M"] - prev["M"])
+            else:
+                kappa_cr, M_cr = p["kappa"], p["M"]
+            break
+        prev = p
+
+    def near(k):
+        return min(pts, key=lambda p: abs(p["kappa"] - k)) if k and pts else None
+
+    milestones = []
+    for lab, state, k, m in (("a", "Cracking", kappa_cr, M_cr),
+                             ("b", "First yield (tension steel)", kappa_y, M_y),
+                             ("d", f"Ultimate ({failure})", kappa_u, M_u)):
+        if k is None or m is None:
+            continue
+        p = near(k)
+        milestones.append({
+            "label": lab, "state": state, "kappa": float(k), "M": m / 1e3,
+            "eps0": float(p["axial_strain"]) if p else 0.0,
+            "eps_top": float(p["eps_top"]) if p else 0.0,
+            "eps_steel": float(p["eps_steel"]) if p else 0.0})
+    mu = (kappa_u / kappa_y) if kappa_y else None
+    MkNm = [m / 1e3 for m in Ms]
+    ctrl = _mphi_ctrl(kap, MkNm, [-p["eps_top"] for p in pts],
+                      [p["eps_steel"] for p in pts], eps_cu)
+    return {
+        "kappa": kap, "M": MkNm,
+        "M_cr": (M_cr or 0) / 1e3, "kappa_cr": kappa_cr,
+        "M_y": (M_y / 1e3) if M_y else None, "kappa_y": kappa_y,
+        "M_u": M_u / 1e3, "kappa_u": kappa_u, "mu_phi": mu,
+        "failure_mode": failure, "milestones": milestones, "ideal": None,
+        "y_top": w_hi, "y_bot": w_lo, "rebar_ys": [wy for wy, _a in bars],
+        "na_angle": float(na_angle), "ctrl": ctrl,
+        "conc_model": conc_model, "steel_model": steel_model}
+
+
 def _confined_fiber_section(spec, conf, na_angle=0.0, n_z=28, n_y=56):
     """Two-zone fibre section for a confined Circular / Rectangular column: an
     unconfined COVER ring plus a confined Mander CORE (the outline inset by the

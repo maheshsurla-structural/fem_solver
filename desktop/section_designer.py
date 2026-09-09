@@ -1582,6 +1582,26 @@ class SectionDesignerWindow(QMainWindow):
         self.mphi_ideal_chk.setChecked(True)
         self.mphi_ideal_chk.stateChanged.connect(lambda *_: self._queue())
         mcf.addRow("Overlay", self.mphi_ideal_chk)
+        # fibre model vs exact-integration curves — independent toggles (M3).
+        # Exact integrates the same laws over the true section (no discretisation
+        # error); shown green, fibre red, per the reference green/red convention.
+        self.mphi_fib_chk = QCheckBox("Fibre")
+        self.mphi_fib_chk.setChecked(True)
+        self.mphi_fib_chk.stateChanged.connect(lambda *_: self._queue())
+        self.mphi_exact_chk = QCheckBox("Exact")
+        self.mphi_exact_chk.setChecked(False)
+        self.mphi_exact_chk.setToolTip(
+            "Overlay the exact-integration curve (Gauss quadrature over the true "
+            "section). Applies to non-composite, unconfined sections.")
+        self.mphi_exact_chk.stateChanged.connect(lambda *_: self._queue())
+        cw = QWidget()
+        chl = QHBoxLayout(cw)
+        chl.setContentsMargins(0, 0, 0, 0)
+        chl.setSpacing(style.SP_SM)
+        chl.addWidget(self.mphi_fib_chk)
+        chl.addWidget(self.mphi_exact_chk)
+        chl.addStretch(1)
+        mcf.addRow("Curves", cw)
         mcv.addLayout(mcf)
 
         # ---- analysis controls (M4): curvature resolution, sweep limit and the
@@ -3485,9 +3505,27 @@ class SectionDesignerWindow(QMainWindow):
         self.mp_fig.clear()
         ax = self.mp_fig.add_subplot(111)
         self._draw_saved_curves(ax, u)          # frozen comparison overlays (M1)
-        ax.plot([u.curv_disp(k) for k in data["kappa"]],
-                [u.M_disp(v) for v in data["M"]], "-", color=style.OK, lw=1.8,
-                label="Section response", zorder=3)
+        # fibre vs exact-integration curves (M3). Exact applies to plain
+        # (non-composite, unconfined) sections; when shown, fibre reads red and
+        # exact green per the reference convention.
+        show_exact = (self.mphi_exact_chk.isChecked()
+                      and self._spec.kind != "Composite" and not confined)
+        if self.mphi_fib_chk.isChecked():
+            fib_color = style.BAD if show_exact else style.OK
+            fib_label = "Fibre model" if show_exact else "Section response"
+            ax.plot([u.curv_disp(k) for k in data["kappa"]],
+                    [u.M_disp(v) for v in data["M"]], "-", color=fib_color,
+                    lw=1.8, label=fib_label, zorder=3)
+        if show_exact:
+            try:
+                ex = core.exact_mphi(case, P_kN, na_angle=ang,
+                                     **core.mphi_props(self._spec),
+                                     n_points=n_pts, stop=stop)
+                ax.plot([u.curv_disp(k) for k in ex["kappa"]],
+                        [u.M_disp(v) for v in ex["M"]], "-", color=style.OK,
+                        lw=1.8, label="Exact integration", zorder=4)
+            except Exception:                              # noqa: BLE001
+                pass
         # equal-energy bilinear idealization (origin -> yield -> ultimate)
         ideal = data.get("ideal")
         if ideal and self.mphi_ideal_chk.isChecked():
