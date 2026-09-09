@@ -316,6 +316,7 @@ class SectionDesignerWindow(QMainWindow):
         QShortcut(QKeySequence("Ctrl+Y"), self, self._redo)
         # keyboard-first: command palette + workspace-tab switching
         QShortcut(QKeySequence("Ctrl+K"), self, self._open_command_palette)
+        QShortcut(QKeySequence("Ctrl+B"), self, self._toggle_controls)
         for _i in range(1, 10):
             QShortcut(QKeySequence(f"Ctrl+{_i}"), self,
                       lambda i=_i: self._goto_tab(i - 1))
@@ -425,6 +426,7 @@ class SectionDesignerWindow(QMainWindow):
         self._density_act.setCheckable(True)
         self._density_act.setChecked(style.current_density() == "compact")
         self._density_act.toggled.connect(self._toggle_density)
+        vm.addAction("Toggle &controls rail\tCtrl+B", self._toggle_controls)
         vm.addSeparator()
         vm.addAction("&Reset layout", self._reset_layout)
         hm = self.menuBar().addMenu("&Help")
@@ -1458,6 +1460,21 @@ class SectionDesignerWindow(QMainWindow):
         sp.setSizes([self._CTRL_W, 900])
         sp.setHandleWidth(6)
         return sp
+
+    def _toggle_controls(self) -> None:
+        """Collapse/restore the current analysis tab's left controls rail for a
+        full-width view (Ctrl+B). No-op on tabs without a rail."""
+        w = self.tabs.currentWidget()
+        if isinstance(w, QSplitter) and w.count() >= 2:
+            rail = w.widget(0)
+            if rail is not None and rail.objectName() == "ctrlRail":
+                if rail.isVisible():
+                    self._ctrl_sizes = w.sizes()
+                    rail.hide()
+                else:
+                    rail.show()
+                    if getattr(self, "_ctrl_sizes", None):
+                        w.setSizes(self._ctrl_sizes)
 
     def _build_analysis_panel(self) -> QWidget:
         self.tabs = QTabWidget()
