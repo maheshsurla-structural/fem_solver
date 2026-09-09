@@ -36,6 +36,8 @@ _LIGHT = dict(
     # named curve roles (C2): exact=green · fibre=red · nominal=blue ·
     # design=neutral · demand=amber (C_DEMAND above) — legible on both grounds
     C_EXACT="#1a7f37", C_FIBRE="#d1462f", C_NOMINAL="#2563eb", C_DESIGN="#64748b",
+    # 3-D interaction surface: green wireframe + magenta current-slice highlight
+    C_WIRE="#16a34a", C_SLICE="#c026d3",
     # section canvas
     CANVAS_BG="#ffffff", CANVAS_GRID="#eef2f6", BODY_FILL="#cfe8ff",
     BODY_STROKE="#1f4f73",
@@ -50,6 +52,7 @@ _DARK = dict(
     C_DEMAND="#e3b341", GRID="#2a313d", AX_SPINE="#3b4553", AX_TEXT="#aab4c2",
     # named curve roles (C2) — brightened for the dark ground
     C_EXACT="#46b768", C_FIBRE="#f2795f", C_NOMINAL="#5b93f7", C_DESIGN="#94a3b8",
+    C_WIRE="#4ade80", C_SLICE="#e879f9",
     CANVAS_BG="#1a1f28", CANVAS_GRID="#262d38", BODY_FILL="#26374f",
     BODY_STROKE="#5b93f7",
 )

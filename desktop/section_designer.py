@@ -3823,14 +3823,28 @@ class SectionDesignerWindow(QMainWindow):
             f"NA {na_txt}")
 
     # ------------------------------------------------------ 3-D surface
-    def _draw_surface(self, case, code) -> None:
-        u = self._units
-        na, npl = _ARR_MESH[self.mesh_combo.currentText()]
+    def _surface_mesh(self, case, code, na, npl):
+        """The P-Mz-My surface mesh, cached by (section, code, density) so
+        moving the slice angle just re-highlights it without recomputing."""
+        mat_fp = (tuple(sorted((k, tuple(sorted(md.items()))))
+                        for k, md in self._materials.items())
+                  if self._spec.kind == "Composite" else None)
+        key = (self._spec, code, na, npl, mat_fp)
+        if getattr(self, "_s3_mesh_key", None) == key and \
+                getattr(self, "_s3_mesh", None) is not None:
+            return self._s3_mesh
         if self._spec.kind == "Composite":
             mesh = core.composite_pmm_mesh(self._spec, na, npl,
                                            materials=self._materials)
         else:
             mesh = core.pmm_surface_mesh(case, code, na, npl)
+        self._s3_mesh_key, self._s3_mesh = key, mesh
+        return mesh
+
+    def _draw_surface(self, case, code) -> None:
+        u = self._units
+        na, npl = _ARR_MESH[self.mesh_combo.currentText()]
+        mesh = self._surface_mesh(case, code, na, npl)
         Mz, My, Pl = mesh["Mz"], mesh["My"], mesh["Plevels"]
         # structured grid: rows = P-levels, cols = angles; close each ring
         X, Y, Z = [], [], []
@@ -3840,13 +3854,27 @@ class SectionDesignerWindow(QMainWindow):
             X.append([u.M_disp(v) for v in row_mz])
             Y.append([u.M_disp(v) for v in row_my])
             Z.append([u.P_disp(Pl[i])] * len(row_mz))
+        Xa, Ya, Za = np.array(X), np.array(Y), np.array(Z)
         self.s3_fig.clear()
         self.s3_fig.set_facecolor(style.PANEL)
         ax = self.s3_fig.add_subplot(111, projection="3d")
         ax.set_facecolor(style.PANEL)
-        ax.plot_surface(np.array(X), np.array(Y), np.array(Z),
-                        cmap="viridis", alpha=0.9, linewidth=0,
-                        rstride=1, cstride=1)
+        # green wireframe (GSD/CSiCol style) — see-through, so the surface's
+        # shape and the highlighted slice both read clearly
+        ax.plot_wireframe(Xa, Ya, Za, rstride=1, cstride=1,
+                          color=style.C_WIRE, linewidth=0.4, alpha=0.55)
+        # highlight where the current 2-D slice lives in the surface: the θ
+        # meridian and its opposite together trace the full slice loop (magenta)
+        thetas = list(mesh.get("thetas") or [])
+        if thetas:
+            ang = self.pm_ang.value() % 360.0
+
+            def _near(a):
+                return min(range(len(thetas)),
+                           key=lambda j: abs(((thetas[j] - a + 180) % 360) - 180))
+            for jj in {_near(ang), _near((ang + 180) % 360)}:
+                ax.plot(Xa[:, jj], Ya[:, jj], Za[:, jj],
+                        color=style.C_SLICE, lw=2.6, zorder=12)
         ax.tick_params(colors=style.AX_TEXT, labelsize=8)
         for a in (ax.xaxis, ax.yaxis, ax.zaxis):
             a.label.set_color(style.AX_TEXT)
@@ -3854,8 +3882,8 @@ class SectionDesignerWindow(QMainWindow):
         ax.set_xlabel(f"Mz [{u.Ml}]")
         ax.set_ylabel(f"My [{u.Ml}]")
         ax.set_zlabel(f"P [{u.Fl}]")
-        ax.set_title(f"P-Mz-My interaction surface — {code}", color=style.TEXT,
-                     fontsize=11, fontweight="bold")
+        ax.set_title(f"P-Mz-My surface — slice θ = {self.pm_ang.value():g}°",
+                     color=style.TEXT, fontsize=10, fontweight="bold")
         ax.view_init(elev=self._s3_elev, azim=self._s3_azim)   # keep view (P4)
         self._s3_ax = ax
         self.s3_canvas.draw_idle()
