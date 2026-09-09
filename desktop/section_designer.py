@@ -1801,6 +1801,27 @@ class SectionDesignerWindow(QMainWindow):
         angh.addWidget(self.pm_ang, 1)
         angh.addWidget(_next)
         df.addRow("Slice angle θ°", angw)
+        # independent curve toggles (P5): the code nominal + design curves and
+        # the integrated fibre-model curve (exact quadrature over the section).
+        self.pm_show_nom = QCheckBox("Nominal")
+        self.pm_show_nom.setChecked(True)
+        self.pm_show_des = QCheckBox("Design")
+        self.pm_show_des.setChecked(True)
+        self.pm_show_fib = QCheckBox("Fibre")
+        self.pm_show_fib.setChecked(False)
+        self.pm_show_fib.setToolTip(
+            "Overlay the integrated (fibre-model) interaction curve — the actual "
+            "section vs the code's simplified curve. Non-composite sections.")
+        for cb in (self.pm_show_nom, self.pm_show_des, self.pm_show_fib):
+            cb.stateChanged.connect(lambda *_: self._queue())
+        pcw = QWidget()
+        pch = QHBoxLayout(pcw)
+        pch.setContentsMargins(0, 0, 0, 0)
+        pch.setSpacing(style.SP_SM)
+        for cb in (self.pm_show_nom, self.pm_show_des, self.pm_show_fib):
+            pch.addWidget(cb)
+        pch.addStretch(1)
+        df.addRow("Curves", pcw)
         for w in (self.dem_P, self.dem_Mz, self.dem_My):
             w.valueChanged.connect(lambda *_: self._queue())
         # page 1 — 3-D surface mesh density
@@ -3409,14 +3430,26 @@ class SectionDesignerWindow(QMainWindow):
         self._fill_pm_table(curve, u)
         self.pm_fig.clear()
         ax = self.pm_fig.add_subplot(111)
+        # independent curve toggles (P5): nominal (code), design (φ), fibre
         M = [u.M_disp(v) for v in curve["M_nom"]]
         P = [u.P_disp(v) for v in curve["P_nom"]]
-        nom_lbl = "Nominal · 1.25·f_y" if fy_fac != 1.0 else "Nominal P-M"
-        ax.plot(M, P, "-", color=style.C_PRIMARY, lw=1.8, label=nom_lbl)
-        if use_phi and curve.get("has_design"):
+        if self.pm_show_nom.isChecked():
+            nom_lbl = "Nominal · 1.25·f_y" if fy_fac != 1.0 else "Nominal P-M"
+            ax.plot(M, P, "-", color=style.C_PRIMARY, lw=1.8, label=nom_lbl)
+        if (self.pm_show_des.isChecked() and use_phi
+                and curve.get("has_design")):
             ax.plot([u.M_disp(v) for v in curve["M_des"]],
                     [u.P_disp(v) for v in curve["P_des"]], "--",
                     color=style.C_SECONDARY, lw=1.5, label="Design φ")
+        if self.pm_show_fib.isChecked() and self._spec.kind != "Composite":
+            try:
+                fib = core.section_pm_slice(case, theta_deg=theta,
+                                            **core.mphi_props(self._spec))
+                ax.plot([u.M_disp(v) for v in fib["M"]],
+                        [u.P_disp(v) for v in fib["P"]], "-", color=style.OK,
+                        lw=1.6, label="Fibre model", zorder=4)
+            except Exception:                              # noqa: BLE001
+                pass
         # landmark reference lines + hover markers (genuine on-axis points;
         # the balanced point isn't at M=0 or P=0, so leave it off the markers)
         marks = []

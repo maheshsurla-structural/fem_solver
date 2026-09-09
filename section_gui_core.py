@@ -1885,6 +1885,89 @@ def exact_mphi(case, P_target_kN, *, na_angle=0.0,
         "conc_model": conc_model, "steel_model": steel_model}
 
 
+def section_pm_slice(case, *, theta_deg=0.0, n_points=40,
+                     eps_c0=0.002, eps_cu=0.0035, fcu_ratio=0.4, fr_coeff=0.62,
+                     fr_model="sqrt", eps_decay=1.0e-3, E_s=E_S, steel_b=0.01,
+                     conc_model="Kent-Park", conc_f1_ratio=0.4,
+                     steel_model="Bilinear", steel_fu_ratio=1.5,
+                     steel_eps_sh=0.008, steel_eps_su=0.10, **_ignored):
+    """Integrated (fibre-model) P-M interaction slice at neutral-axis angle
+    ``theta_deg`` (P5): pin the extreme compression fibre at −ε_cu, sweep the
+    N-A depth, and integrate the *actual* constitutive laws over the true
+    section with the same exact quadrature as :func:`exact_mphi` — the fibre-
+    model counterpart to the code's simplified :func:`pmm_slice`. Returns
+    ``{"P": [...], "M": [...]}`` in kN / kN·m (nominal strength, φ = 1)."""
+    if abs(theta_deg) > 1e-9:
+        case = _rotate_case(case, theta_deg)
+    concrete = concrete_uniaxial_from(dict(
+        fc=case.f_c_prime, conc_model=conc_model, eps_c0=eps_c0, eps_cu=eps_cu,
+        fcu_ratio=fcu_ratio, fr_model=fr_model, fr_coeff=fr_coeff,
+        eps_decay=eps_decay, conc_f1_ratio=conc_f1_ratio))
+    steel = steel_uniaxial_from(dict(
+        fy=case.f_y, Es=E_s, steel_model=steel_model, steel_b=steel_b,
+        steel_fu_ratio=steel_fu_ratio, steel_eps_sh=steel_eps_sh,
+        steel_eps_su=steel_eps_su))
+    w_lo, w_hi, width_bands = _width_bands(case.section.geometry.polygon)
+    bars = [(float(b.y), float(b.area)) for b in
+            (case.section.reinforcement.bars if case.section.reinforcement
+             else [])]
+    xg, wg = _GL
+    eps_cr = concrete.f_ct / concrete.E_ct
+    breaks = (eps_cr, 0.0, -eps_c0, -eps_cu)
+
+    def resultants(a, s):
+        """(N, M) for a strain field ε(w) = a + s·w (tension-positive N,
+        M = -∫σ·w), by strain-banded Gauss quadrature over the width profile."""
+        N = M = 0.0
+        for wa0, wb0, w_ref, W_ref, slope in width_bands:
+            edges = [wa0, wb0]
+            if abs(s) > 1e-12:
+                for e_bp in breaks:
+                    wb = (e_bp - a) / s
+                    if wa0 < wb < wb0:
+                        edges.append(wb)
+                edges.sort()
+            for lo, hi in zip(edges[:-1], edges[1:]):
+                half = 0.5 * (hi - lo)
+                if half <= 1e-12:
+                    continue
+                mid = 0.5 * (lo + hi)
+                for xi, wi in zip(xg, wg):
+                    w = mid + half * xi
+                    bwid = W_ref + slope * (w - w_ref)
+                    if bwid <= 0.0:
+                        continue
+                    sig, _Et = concrete.get_response(a + s * w)
+                    gwt = bwid * half * wi
+                    N += sig * gwt
+                    M -= sig * gwt * w
+        for wy, area in bars:
+            sig, _Et = steel.get_response(a + s * wy)
+            N += sig * area
+            M -= sig * area * wy
+        return N, M
+
+    depth = max(w_hi - w_lo, 1e-6)
+    cs = np.geomspace(0.03 * depth, 8.0 * depth, n_points)
+    P, M = [], []
+    for c in cs:                                      # tension end -> compression
+        kappa = eps_cu / c                            # extreme comp fibre = −ε_cu
+        a = -eps_cu + w_hi * kappa
+        N, Mv = resultants(a, -kappa)
+        P.append(-N / 1e3)
+        M.append(Mv / 1e3)
+    # truncate the post-peak softening tail: keep the tension end up to peak
+    # axial, then drop any trailing negative-M points so the envelope ends
+    # cleanly at the compression apex (M ≈ 0).
+    if not P:
+        return {"P": [], "M": []}
+    i_max = max(range(len(P)), key=lambda i: P[i])
+    keep = list(range(i_max + 1))
+    while len(keep) > 1 and M[keep[-1]] < 0.0:
+        keep.pop()
+    return {"P": [P[i] for i in keep], "M": [M[i] for i in keep]}
+
+
 def _confined_fiber_section(spec, conf, na_angle=0.0, n_z=28, n_y=56):
     """Two-zone fibre section for a confined Circular / Rectangular column: an
     unconfined COVER ring plus a confined Mander CORE (the outline inset by the
