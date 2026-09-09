@@ -55,11 +55,11 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  (registers 3-d proj.)
 from PySide6.QtCore import Qt, QByteArray, QTimer
 from PySide6.QtCore import (QSize, QSettings, QPropertyAnimation, QEasingCurve,
                             QDate)
-from PySide6.QtGui import QKeySequence, QShortcut
+from PySide6.QtGui import QColor, QIcon, QKeySequence, QPixmap, QShortcut
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import QToolButton
 from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox,
-                               QComboBox, QDialog,
+                               QColorDialog, QComboBox, QDialog,
                                QDialogButtonBox,
                                QDoubleSpinBox, QFileDialog, QFormLayout,
                                QDockWidget, QFrame, QGraphicsOpacityEffect,
@@ -139,6 +139,12 @@ _ARR_MESH = {"Coarse": (16, 17), "GSD default": (24, 29), "Fine": (36, 41)}
 # ACI 318 probable-strength overstrength on f_y (M_pr basis) for the P-M
 # "Nominal + 1.25·f_y" design option.
 _FY_OVERSTRENGTH = 1.25
+
+# Distinct, mid-saturation series colours for the saved M-φ comparison curves
+# (M1). Chosen to read on both the light and dark chart grounds and to stay
+# clear of the live-curve green and the idealized amber.
+_CURVE_COLORS = ["#2563eb", "#8b5cf6", "#0891b2", "#db2777",
+                 "#0d9488", "#ea580c", "#4f46e5", "#b45309"]
 
 
 def _rebar_arr_label(arr) -> str:
@@ -1564,6 +1570,38 @@ class SectionDesignerWindow(QMainWindow):
         self.mphi_ideal_chk.stateChanged.connect(lambda *_: self._queue())
         mcf.addRow("Overlay", self.mphi_ideal_chk)
         mcv.addLayout(mcf)
+
+        # ---- saved-curve comparison (M1) ----
+        # "Add current" freezes the live M-φ result as a named, coloured overlay
+        # so several runs (axial levels, confined/unconfined, angles) compare on
+        # one chart. Saved curves are snapshots — they survive section edits and
+        # unit changes; the results panels always describe the live curve.
+        self._mphi_curves: list = []
+        _ch = QLabel("CURVES")
+        _ch.setObjectName("ctrlHead")
+        _ch.setContentsMargins(0, 8, 0, 0)
+        mcv.addWidget(_ch)
+        self.curves_list = QListWidget()
+        self.curves_list.setMaximumHeight(120)
+        self.curves_list.itemChanged.connect(self._on_curve_renamed)
+        self.curves_list.itemDoubleClicked.connect(
+            lambda it: self.curves_list.editItem(it))
+        mcv.addWidget(self.curves_list)
+        crow = QHBoxLayout()
+        crow.setSpacing(style.SP_XS)
+        _addc = QPushButton("＋ Add current")
+        _addc.clicked.connect(self._add_mphi_curve)
+        _colc = QPushButton("Colour…")
+        _colc.clicked.connect(self._recolour_mphi_curve)
+        _remc = QPushButton("Remove")
+        _remc.clicked.connect(self._remove_mphi_curve)
+        for b in (_addc, _colc, _remc):
+            crow.addWidget(b)
+        mcv.addLayout(crow)
+        self.curves_hint = QLabel("Add the current curve to compare runs.")
+        self.curves_hint.setObjectName("hintLabel")
+        self.curves_hint.setWordWrap(True)
+        mcv.addWidget(self.curves_hint)
         mcv.addStretch(1)
 
         # right view — KPI tiles, the M-φ chart, and the milestone table +
@@ -3148,6 +3186,80 @@ class SectionDesignerWindow(QMainWindow):
                 best_d, best = d, lab
         return best
 
+    # -------------------------------------------- saved M-φ curves (M1)
+    @staticmethod
+    def _swatch_icon(hex_color: str) -> QIcon:
+        """A small filled square for the curve's colour in the list."""
+        pm = QPixmap(14, 14)
+        pm.fill(QColor(hex_color))
+        return QIcon(pm)
+
+    def _refresh_curves_list(self) -> None:
+        """Rebuild the saved-curve list (colour swatch + editable name)."""
+        self.curves_list.blockSignals(True)
+        self.curves_list.clear()
+        for c in self._mphi_curves:
+            it = QListWidgetItem(self._swatch_icon(c["color"]), c["name"])
+            it.setFlags(it.flags() | Qt.ItemFlag.ItemIsEditable)
+            self.curves_list.addItem(it)
+        self.curves_list.blockSignals(False)
+        n = len(self._mphi_curves)
+        self.curves_hint.setText(
+            "Add the current curve to compare runs." if not n
+            else f"{n} saved curve{'' if n == 1 else 's'} overlaid · "
+                 "double-click to rename")
+
+    def _add_mphi_curve(self) -> None:
+        """Freeze the live M-φ result as a named, coloured comparison overlay."""
+        data = getattr(self, "_mphi_data", None)
+        if not data or not data.get("kappa"):
+            self._toast("Compute a moment-curvature curve first", kind="err")
+            return
+        u = self._units
+        P, ang = self.mphi_P.value(), self.mphi_ang.value()
+        name = f"P {P:.4g} {u.Fl}"
+        if abs(ang) > 1e-9:
+            name += f", θ {ang:g}°"
+        color = _CURVE_COLORS[len(self._mphi_curves) % len(_CURVE_COLORS)]
+        self._mphi_curves.append({
+            "name": name, "color": color,
+            "kappa": list(data["kappa"]), "M": list(data["M"])})
+        self._refresh_curves_list()
+        self.curves_list.setCurrentRow(len(self._mphi_curves) - 1)
+        self._queue()
+
+    def _remove_mphi_curve(self) -> None:
+        row = self.curves_list.currentRow()
+        if 0 <= row < len(self._mphi_curves):
+            self._mphi_curves.pop(row)
+            self._refresh_curves_list()
+            self._queue()
+
+    def _recolour_mphi_curve(self) -> None:
+        row = self.curves_list.currentRow()
+        if not (0 <= row < len(self._mphi_curves)):
+            return
+        cur = QColor(self._mphi_curves[row]["color"])
+        chosen = QColorDialog.getColor(cur, self, "Curve colour")
+        if chosen.isValid():
+            self._mphi_curves[row]["color"] = chosen.name()
+            self._refresh_curves_list()
+            self.curves_list.setCurrentRow(row)
+            self._queue()
+
+    def _on_curve_renamed(self, item) -> None:
+        row = self.curves_list.row(item)
+        if 0 <= row < len(self._mphi_curves):
+            self._mphi_curves[row]["name"] = item.text()
+            self._queue()
+
+    def _draw_saved_curves(self, ax, u) -> None:
+        """Overlay the frozen comparison curves (response line only)."""
+        for c in self._mphi_curves:
+            ax.plot([u.curv_disp(k) for k in c["kappa"]],
+                    [u.M_disp(v) for v in c["M"]], "-", color=c["color"],
+                    lw=1.3, alpha=0.95, zorder=1, label=c["name"])
+
     def _draw_pm(self, case, code) -> None:
         u = self._units
         if self._spec.kind == "Composite":
@@ -3263,9 +3375,10 @@ class SectionDesignerWindow(QMainWindow):
                                       **core.mphi_props(self._spec))
         self.mp_fig.clear()
         ax = self.mp_fig.add_subplot(111)
+        self._draw_saved_curves(ax, u)          # frozen comparison overlays (M1)
         ax.plot([u.curv_disp(k) for k in data["kappa"]],
                 [u.M_disp(v) for v in data["M"]], "-", color=style.OK, lw=1.8,
-                label="Section response")
+                label="Section response", zorder=3)
         # equal-energy bilinear idealization (origin -> yield -> ultimate)
         ideal = data.get("ideal")
         if ideal and self.mphi_ideal_chk.isChecked():
