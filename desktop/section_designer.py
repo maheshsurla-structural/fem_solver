@@ -136,6 +136,9 @@ _REBAR_LABEL = {
 _ARR_CODE = {"Point": "point", "Line": "line", "Arc": "arc",
              "Rectangle": "rect", "Perimeter": "perim"}
 _ARR_MESH = {"Coarse": (16, 17), "GSD default": (24, 29), "Fine": (36, 41)}
+# ACI 318 probable-strength overstrength on f_y (M_pr basis) for the P-M
+# "Nominal + 1.25·f_y" design option.
+_FY_OVERSTRENGTH = 1.25
 
 
 def _rebar_arr_label(arr) -> str:
@@ -1659,12 +1662,15 @@ class SectionDesignerWindow(QMainWindow):
         df.addRow("Demand P", self.dem_P)
         df.addRow("Mz", self.dem_Mz)
         df.addRow("My", self.dem_My)
-        self.design_chk = QCheckBox("Design (φ)")
-        self.design_chk.setChecked(True)
-        df.addRow("", self.design_chk)
+        # design basis (mirrors the reference "Design Options" radios):
+        # φ-reduced · nominal · nominal with the 1.25·f_y overstrength increase
+        self.design_mode = QComboBox()
+        self.design_mode.addItems(
+            ["Design (φ)", "Nominal (no φ)", "Nominal + 1.25·f_y"])
+        self.design_mode.currentIndexChanged.connect(lambda *_: self._queue())
+        df.addRow("Basis", self.design_mode)
         for w in (self.dem_P, self.dem_Mz, self.dem_My):
             w.valueChanged.connect(lambda *_: self._queue())
-        self.design_chk.stateChanged.connect(lambda *_: self._queue())
         # page 1 — 3-D surface mesh density
         spg = QWidget()
         sfm = QFormLayout(spg)
@@ -3061,7 +3067,7 @@ class SectionDesignerWindow(QMainWindow):
             style.OK if ok else style.BAD)
         self._vd_dc.setText(f"{util:.3f}")
         self._vd_dc.setStyleSheet(f"color: {color};")
-        basis = "design φ" if self.design_chk.isChecked() else "nominal"
+        basis = self._design_basis()[2]
         self._vd_detail.setText(
             f"governs {res['govern']} · capacity {u.M_disp(res['M_cap']):.4g} "
             f"{u.Ml} · β {res['beta_deg']:.1f}° · {basis}")
@@ -3069,6 +3075,16 @@ class SectionDesignerWindow(QMainWindow):
         self._vd_bar.setStyleSheet(
             f"QProgressBar#utilBar::chunk {{ background: {color}; "
             f"border-radius: 3px; }}")
+
+    def _design_basis(self):
+        """The active P-M design option as (use_phi, fy_factor, label): φ-reduced
+        design, plain nominal, or nominal with the 1.25·f_y overstrength."""
+        i = self.design_mode.currentIndex()
+        if i == 2:
+            return False, _FY_OVERSTRENGTH, "nominal · 1.25·f_y"
+        if i == 1:
+            return False, 1.0, "nominal"
+        return True, 1.0, "design φ"
 
     def _set_pm_kpi(self, landmarks, has_design, u) -> None:
         """Fill the P-M capacity tiles from the interaction landmarks."""
@@ -3148,15 +3164,22 @@ class SectionDesignerWindow(QMainWindow):
             self._set_verdict_empty("Demand check runs on the 3-D "
                                     "P-M-M surface for composite sections.")
             return
+        # design basis (P2): φ-reduced, plain nominal, or nominal with a
+        # 1.25·f_y overstrength — the last rebuilds the case on the raised f_y.
+        use_phi, fy_fac, _basis = self._design_basis()
+        if fy_fac != 1.0:
+            aspec = self._analysis_spec()
+            case = _case(replace(aspec, fy=aspec.fy * fy_fac))
         curve, landmarks = core.pmm_slice(case, code)
-        self._set_pm_kpi(landmarks, curve.get("has_design"), u)
+        self._set_pm_kpi(landmarks, use_phi and curve.get("has_design"), u)
         self._fill_pm_table(curve, u)
         self.pm_fig.clear()
         ax = self.pm_fig.add_subplot(111)
         M = [u.M_disp(v) for v in curve["M_nom"]]
         P = [u.P_disp(v) for v in curve["P_nom"]]
-        ax.plot(M, P, "-", color=style.C_PRIMARY, lw=1.8, label="Nominal P-M")
-        if curve.get("has_design"):
+        nom_lbl = "Nominal · 1.25·f_y" if fy_fac != 1.0 else "Nominal P-M"
+        ax.plot(M, P, "-", color=style.C_PRIMARY, lw=1.8, label=nom_lbl)
+        if use_phi and curve.get("has_design"):
             ax.plot([u.M_disp(v) for v in curve["M_des"]],
                     [u.P_disp(v) for v in curve["P_des"]], "--",
                     color=style.C_SECONDARY, lw=1.5, label="Design φ")
@@ -3174,7 +3197,7 @@ class SectionDesignerWindow(QMainWindow):
         dem = self._demands()
         if dem:
             res = core.demand_check(case, code, dem,
-                                    design=self.design_chk.isChecked(),
+                                    design=use_phi,
                                     spec=self._spec)[0]
             dx, dy = u.M_disp(res["M_res"]), u.P_disp(res["P"])
             ax.plot([dx], [dy], "o",
@@ -3722,7 +3745,7 @@ class SectionDesignerWindow(QMainWindow):
         if dem:
             try:
                 dres = core.demand_check(case, code, dem,
-                                         design=self.design_chk.isChecked(),
+                                         design=self._design_basis()[0],
                                          spec=self._spec)
             except Exception:                          # noqa: BLE001
                 dres = None
