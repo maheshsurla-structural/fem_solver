@@ -149,6 +149,11 @@ _CURVE_COLORS = ["#2563eb", "#8b5cf6", "#0891b2", "#db2777",
 # M-φ failure-criterion keys, indexed by the "Failure criterion" combo (M4).
 _MPHI_STOP = ("concrete", "steel", "peak")
 
+# Fibre-discretisation presets (label, n_z, n_y) for the M-φ fibre curve — a
+# coarse grid opens a visible convergence gap against the exact overlay (M3).
+_MPHI_GRID = (("Coarse (4×6)", 4, 6), ("Medium (8×16)", 8, 16),
+              ("Fine (16×40)", 16, 40))
+
 # Preset (elevation, azimuth) view angles for the 3-D P-M-M surface (P4).
 # Mz is the plot x-axis, My the y-axis, P the vertical z-axis.
 _S3_PRESETS = {
@@ -1630,6 +1635,16 @@ class SectionDesignerWindow(QMainWindow):
              "Peak moment (κ_max)"])
         self.mphi_stop.currentIndexChanged.connect(lambda *_: self._queue())
         acf.addRow("Failure criterion", self.mphi_stop)
+        # fibre discretisation for the fibre curve — coarse shows the
+        # convergence gap against the exact-integration overlay (M3)
+        self.mphi_grid = QComboBox()
+        self.mphi_grid.addItems([g[0] for g in _MPHI_GRID])
+        self.mphi_grid.setCurrentIndex(len(_MPHI_GRID) - 1)   # default Fine
+        self.mphi_grid.setToolTip(
+            "Concrete-fibre grid (n_z × n_y) for the fibre M-φ curve. A coarse "
+            "grid deviates visibly from the exact overlay; fine converges to it.")
+        self.mphi_grid.currentIndexChanged.connect(lambda *_: self._queue())
+        acf.addRow("Fibre grid", self.mphi_grid)
         mcv.addLayout(acf)
 
         # ---- saved-curve comparison (M1) ----
@@ -3534,6 +3549,8 @@ class SectionDesignerWindow(QMainWindow):
         # M4 analysis controls: curvature resolution + failure criterion
         n_pts = self.mphi_npts.value()
         stop = _MPHI_STOP[max(0, self.mphi_stop.currentIndex())]
+        _grid = _MPHI_GRID[max(0, self.mphi_grid.currentIndex())]
+        grid_nz, grid_ny = _grid[1], _grid[2]      # fibre grid (M3 convergence)
         confined = False
         if self._spec.kind == "Composite":
             data = core.composite_mphi(self._spec, P_kN, na_angle=ang,
@@ -3553,7 +3570,8 @@ class SectionDesignerWindow(QMainWindow):
             else:
                 data = core.mphi_data(case, P_kN, na_angle=ang,
                                       **core.mphi_props(self._spec),
-                                      n_points=n_pts, stop=stop)
+                                      n_points=n_pts, stop=stop,
+                                      n_z=grid_nz, n_y=grid_ny)
         self.mp_fig.clear()
         ax = self.mp_fig.add_subplot(111)
         self._draw_saved_curves(ax, u)          # frozen comparison overlays (M1)
@@ -3564,7 +3582,8 @@ class SectionDesignerWindow(QMainWindow):
                       and self._spec.kind != "Composite" and not confined)
         if self.mphi_fib_chk.isChecked():
             fib_color = style.C_FIBRE if show_exact else style.C_EXACT
-            fib_label = "Fibre model" if show_exact else "Section response"
+            fib_label = (f"Fibre model ({grid_nz}×{grid_ny})" if show_exact
+                         else "Section response")
             ax.plot([u.curv_disp(k) for k in data["kappa"]],
                     [u.M_disp(v) for v in data["M"]], "-", color=fib_color,
                     lw=1.8, label=fib_label, zorder=3)

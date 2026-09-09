@@ -1579,7 +1579,8 @@ def mphi_data(case: SectionCase, P_target_kN: float, *,
               conc_f1_ratio: float = 0.4,
               steel_model: str = "Bilinear", steel_fu_ratio: float = 1.5,
               steel_eps_sh: float = 0.008, steel_eps_su: float = 0.10,
-              n_points: int = 65, stop: str = "concrete"):
+              n_points: int = 65, stop: str = "concrete",
+              n_z: int = 16, n_y: int = 40):
     # Neutral-axis angle: rotate the section so the inclined bending axis
     # aligns with the engine's z-axis, then everything downstream (crack
     # point, milestones, strain profile) is in that rotated frame.
@@ -1609,7 +1610,7 @@ def mphi_data(case: SectionCase, P_target_kN: float, *,
         case.section, P_target=P_target_kN * 1e3,
         concrete_uniaxial=concrete, steel_uniaxial=steel,
         kappas=kappas, f_y=case.f_y, E_s=E_s, f_rupture=f_r,
-        eps_cu_crush=eff_cu, eps_steel_rupture=eff_su)
+        eps_cu_crush=eff_cu, eps_steel_rupture=eff_su, n_z=n_z, n_y=n_y)
     pts = res.points
 
     def _nearest(kap):
