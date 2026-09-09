@@ -1751,20 +1751,20 @@ class SectionDesignerWindow(QMainWindow):
         icv = QVBoxLayout(inter_ctrl)
         icv.setContentsMargins(12, 12, 12, 12)
         icv.setSpacing(8)
-        _vh = QLabel("VIEW")
+        _vh = QLabel("SECONDARY VIEW")
         _vh.setObjectName("ctrlHead")
         icv.addWidget(_vh)
+        # the 2-D P-M curve + interaction table is the always-on primary
+        # dashboard (P6); this picks an optional secondary panel beside it.
         self.inter_view = QComboBox()
-        self.inter_view.addItems(["P-M curve", "3-D P-M-M surface",
-                                  "M-M contour"])
+        self.inter_view.addItems(["None", "3-D P-M-M surface", "M-M contour"])
         self.inter_view.currentIndexChanged.connect(self._on_inter_view)
         icv.addWidget(self.inter_view)
         _ih = QLabel("INPUTS")
         _ih.setObjectName("ctrlHead")
         _ih.setContentsMargins(0, 8, 0, 0)
         icv.addWidget(_ih)
-        self.inter_ctrl_stack = QStackedWidget()
-        # page 0 — demand for the P-M curve check
+        # page 0 — demand for the P-M curve check (always shown: the primary)
         dpg = QWidget()
         df = QFormLayout(dpg)
         df.setContentsMargins(0, 0, 0, 0)
@@ -1865,16 +1865,27 @@ class SectionDesignerWindow(QMainWindow):
         mmf.addRow("Axial P (+comp)", self.mm_P)
         mmf.addRow("Demand Mz", self.mm_Mz)
         mmf.addRow("My", self.mm_My)
-        for pg in (dpg, spg, mpg):
-            self.inter_ctrl_stack.addWidget(pg)
-        icv.addWidget(self.inter_ctrl_stack)
+        icv.addWidget(dpg)                       # primary demand controls
+        # secondary-view controls (P6) — shown only when a secondary is active
+        self.inter_sec_ctrl = QStackedWidget()
+        for pg in (QWidget(), spg, mpg):         # 0 blank, 1 mesh, 2 M-M axial
+            self.inter_sec_ctrl.addWidget(pg)
+        icv.addWidget(self.inter_sec_ctrl)
         icv.addStretch(1)
 
-        self.inter_stack = QStackedWidget()
-        self.inter_stack.addWidget(pm)          # 0: P-M curve
-        self.inter_stack.addWidget(s3)          # 1: 3-D surface
-        self.inter_stack.addWidget(mm)          # 2: M-M contour
-        inter = self._workspace(inter_ctrl, self.inter_stack)
+        # primary 2-D dashboard (P-M curve + interaction table) always visible;
+        # the 3-D surface / M-M contour appear as an optional secondary panel
+        # beside it (P6) — no longer an either/or that hides the dashboard.
+        self.inter_sec_stack = QStackedWidget()
+        self.inter_sec_stack.addWidget(s3)      # 0: 3-D surface
+        self.inter_sec_stack.addWidget(mm)      # 1: M-M contour
+        self.inter_split = QSplitter(Qt.Orientation.Horizontal)
+        self.inter_split.addWidget(pm)
+        self.inter_split.addWidget(self.inter_sec_stack)
+        self.inter_split.setStretchFactor(0, 3)
+        self.inter_split.setStretchFactor(1, 2)
+        self.inter_sec_stack.setVisible(False)  # "None" by default
+        inter = self._workspace(inter_ctrl, self.inter_split)
 
         # ---- Fibres (discretisation view + properties) ----
         fib = self._build_fibers_tab()
@@ -3059,10 +3070,17 @@ class SectionDesignerWindow(QMainWindow):
         self.head_sub.setText("  ·  ".join(bits))
 
     def _on_inter_view(self, i: int) -> None:
-        """Switch the P-M-M interaction sub-view (P-M / 3-D / M-M) and recompute;
-        the left rail's inputs follow the view."""
-        self.inter_stack.setCurrentIndex(i)
-        self.inter_ctrl_stack.setCurrentIndex(i)
+        """Show/hide the optional secondary panel (3-D surface / M-M contour)
+        beside the always-on primary P-M dashboard (P6); the rail's secondary
+        controls follow, then recompute."""
+        show = i > 0
+        self.inter_sec_stack.setVisible(show)
+        if show:
+            self.inter_sec_stack.setCurrentIndex(i - 1)   # 0:s3, 1:mm
+            # give the freshly-shown secondary a fair share of the splitter
+            total = max(self.inter_split.width(), 900)
+            self.inter_split.setSizes([int(total * 0.58), int(total * 0.42)])
+        self.inter_sec_ctrl.setCurrentIndex(i)            # 0 blank, 1 spg, 2 mpg
         self._queue()
 
     def _recompute_analysis(self) -> None:
@@ -3100,13 +3118,12 @@ class SectionDesignerWindow(QMainWindow):
             return
         try:
             if label == "P-M-M interaction":
-                sub = self.inter_view.currentIndex()
-                if sub == 0:
-                    self._draw_pm(case, code)
-                elif sub == 1:
+                self._draw_pm(case, code)          # primary 2-D + table (P6)
+                sec = self.inter_view.currentIndex()
+                if sec == 1:
                     with self._busy("Building the 3-D P-M-M surface…"):
                         self._draw_surface(case, code)
-                else:
+                elif sec == 2:
                     self._draw_mm_contour(case, code)
             elif label == "Moment-curvature":
                 self._draw_mphi(case)
@@ -3163,6 +3180,7 @@ class SectionDesignerWindow(QMainWindow):
         det.setSpacing(style.SP_XS + 1)
         self._vd_detail = QLabel("")
         self._vd_detail.setObjectName("caption")
+        self._vd_detail.setWordWrap(True)      # let the strip shrink (P6 splitter)
         det.addWidget(self._vd_detail)
         self._vd_bar = QProgressBar()
         self._vd_bar.setObjectName("utilBar")
@@ -3404,8 +3422,9 @@ class SectionDesignerWindow(QMainWindow):
         if self._spec.kind == "Composite":
             self.pm_fig.clear()
             ax = self.pm_fig.add_subplot(111)
-            ax.text(0.5, 0.5, "Composite section — see the\n"
-                    "3-D P-M-M surface tab.", ha="center", va="center",
+            ax.text(0.5, 0.5, "Composite section — open the 3-D P-M-M\n"
+                    "surface from the secondary-view selector.",
+                    ha="center", va="center",
                     transform=ax.transAxes)
             ax.set_axis_off()
             self.pm_canvas.draw_idle()
