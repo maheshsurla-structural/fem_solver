@@ -773,6 +773,42 @@ def _mphi_stop(stop, *, crush, eps_steel, eps_su=0.05):
     return ""
 
 
+def _mphi_crossing(kaps, Ms, strains, limit):
+    """First (kappa, M) where ``strains`` reaches ``limit``, linearly
+    interpolated between the two straddling points; None if never reached
+    within the computed sweep."""
+    prev = None
+    for k, m, e in zip(kaps, Ms, strains):
+        if e >= limit:
+            if prev is not None and e > prev[2]:
+                t = min(1.0, max(0.0, (limit - prev[2]) / (e - prev[2])))
+                return (prev[0] + t * (k - prev[0]),
+                        prev[1] + t * (m - prev[1]))
+            return (k, m)
+        prev = (k, m, e)
+    return None
+
+
+def _mphi_ctrl(kaps, Ms, conc_strains, steel_strains, eps_cu, eps_su=0.05):
+    """Concrete- vs steel-controlled crossing points (M6): the (κ, M) where the
+    governing concrete fibre first reaches ε_cu and where the extreme bar first
+    reaches ε_su. ``controls`` names whichever governs (the lower curvature);
+    either crossing is None when the sweep never reaches that limit."""
+    conc = _mphi_crossing(kaps, Ms, conc_strains, eps_cu)
+    steel = _mphi_crossing(kaps, Ms, steel_strains, eps_su)
+    if conc and (steel is None or conc[0] <= steel[0]):
+        controls = "concrete"
+    elif steel:
+        controls = "steel"
+    else:
+        controls = None
+    return {"conc_kappa": conc[0] if conc else None,
+            "conc_M": conc[1] if conc else None,
+            "steel_kappa": steel[0] if steel else None,
+            "steel_M": steel[1] if steel else None,
+            "controls": controls}
+
+
 def composite_mphi(spec, P_target_kN, *, na_angle=0.0, kappa_max=0.06,
                    materials=None, n_points=65, stop="concrete", **_ignored):
     """Multi-material moment-curvature for a Composite section, returning the
@@ -816,6 +852,9 @@ def composite_mphi(spec, P_target_kN, *, na_angle=0.0, kappa_max=0.06,
     Ms = [p["M"] for p in pts]
     ipk = int(np.argmax(Ms))
     M_u, kappa_u = Ms[ipk], kap[ipk]
+    ctrl = _mphi_ctrl(kap, [m / 1e3 for m in Ms],
+                      [-p["eps_top"] for p in pts],
+                      [p["eps_steel"] for p in pts], eps_cu)
     if not failure:
         failure = "kappa_max_reached" if ipk == len(pts) - 1 else "M_peak"
     # on-curve cracking point (extreme tension fibre reaches eps_cr)
@@ -859,7 +898,7 @@ def composite_mphi(spec, P_target_kN, *, na_angle=0.0, kappa_max=0.06,
         "M_u": M_u / 1e3, "kappa_u": kappa_u, "mu_phi": mu,
         "failure_mode": failure, "milestones": milestones, "ideal": None,
         "y_top": y_top, "y_bot": y_bot, "rebar_ys": rebar_ys,
-        "na_angle": float(na_angle),
+        "na_angle": float(na_angle), "ctrl": ctrl,
         "conc_model": spec.conc_model, "steel_model": spec.steel_model}
 
 
@@ -1632,6 +1671,9 @@ def mphi_data(case: SectionCase, P_target_kN: float, *,
     bnd = case.section.geometry.polygon.bounds
     rebar_ys = ([b.y for b in case.section.reinforcement.bars]
                 if case.section.reinforcement else [])
+    ctrl = _mphi_ctrl([p.kappa for p in pts], [p.M / 1e3 for p in pts],
+                      [-p.eps_top_concrete for p in pts],
+                      [p.eps_max_steel for p in pts], eps_cu)
 
     return {
         "kappa": [p.kappa for p in pts],
@@ -1642,7 +1684,7 @@ def mphi_data(case: SectionCase, P_target_kN: float, *,
         "mu_phi": res.mu_phi, "failure_mode": res.failure_mode,
         "milestones": milestones, "ideal": ideal,
         "y_top": bnd[3], "y_bot": bnd[1], "rebar_ys": rebar_ys,
-        "na_angle": float(na_angle),
+        "na_angle": float(na_angle), "ctrl": ctrl,
         "conc_model": conc_model, "steel_model": steel_model,
     }
 
@@ -1748,7 +1790,7 @@ def confined_mphi(spec, conf, P_target_kN, *, na_angle=0.0, kappa_max=0.06,
         eps_steel = max((eps0 - ry * kappa for ry in rebar_ys), default=0.0)
         pts.append({"kappa": float(kappa), "M": float(s[1]), "P": float(-s[0]),
                     "axial_strain": float(eps0), "eps_top": float(eps_top),
-                    "eps_steel": float(eps_steel)})
+                    "eps_core": float(eps_core), "eps_steel": float(eps_steel)})
         fs.commit_state()
         if M_y is None and eps_steel >= eps_y and kappa > 0:
             M_y, kappa_y = float(s[1]), float(kappa)
@@ -1764,6 +1806,9 @@ def confined_mphi(spec, conf, P_target_kN, *, na_angle=0.0, kappa_max=0.06,
     Ms = [p["M"] for p in pts]
     ipk = int(np.argmax(Ms)) if Ms else 0
     M_u, kappa_u = (Ms[ipk], kap[ipk]) if pts else (0.0, 0.0)
+    ctrl = _mphi_ctrl(kap, [m / 1e3 for m in Ms],
+                      [-p["eps_core"] for p in pts],
+                      [p["eps_steel"] for p in pts], eps_cu)
     if not failure:
         failure = "kappa_max_reached" if ipk == len(pts) - 1 else "M_peak"
     eps_cr = f_r / E_c
@@ -1806,7 +1851,7 @@ def confined_mphi(spec, conf, P_target_kN, *, na_angle=0.0, kappa_max=0.06,
         "M_u": M_u / 1e3, "kappa_u": kappa_u, "mu_phi": mu,
         "failure_mode": failure, "milestones": milestones, "ideal": None,
         "y_top": y_top, "y_bot": y_bot, "rebar_ys": rebar_ys,
-        "na_angle": float(na_angle),
+        "na_angle": float(na_angle), "ctrl": ctrl,
         "conc_model": spec.conc_model, "steel_model": spec.steel_model}
 
 

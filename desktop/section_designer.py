@@ -1664,6 +1664,13 @@ class SectionDesignerWindow(QMainWindow):
             lambda x, y: (f"κ {x:,.4g} {self._units.Kl}   ·   "
                           f"M {y:,.4g} {self._units.Ml}"),
             markers=lambda: self._mphi_marks_xy)
+        # controlling-material readout (M6): which material governs the ultimate,
+        # and each material's crossing point (φ, M).
+        self.mphi_ctrl_lbl = QLabel("—")
+        self.mphi_ctrl_lbl.setObjectName("caption")
+        self.mphi_ctrl_lbl.setTextFormat(Qt.TextFormat.RichText)
+        self.mphi_ctrl_lbl.setWordWrap(True)
+        mpv.addWidget(self.mphi_ctrl_lbl)
         bottom = QHBoxLayout()
         self.mphi_tbl = QTableWidget(0, 4)
         self.mphi_tbl.setHorizontalHeaderLabels(
@@ -3501,6 +3508,18 @@ class SectionDesignerWindow(QMainWindow):
             rows.append((ms.get("label", ""), ms.get("state", ""), kx, my))
         self._mphi_marks_xy = [(kx, my, f"{lab} · {state}".strip(" ·"))
                                for lab, state, kx, my in rows]
+        # controlling-material crossings (M6): mark where concrete crushing and
+        # steel rupture cross the curve (hollow square = concrete, triangle =
+        # steel); the readout below names whichever governs.
+        ctrl = data.get("ctrl") or {}
+        ck, cm = ctrl.get("conc_kappa"), ctrl.get("conc_M")
+        sk, sm = ctrl.get("steel_kappa"), ctrl.get("steel_M")
+        if ck is not None and abs(cm) <= m_span:
+            ax.plot([u.curv_disp(ck)], [u.M_disp(cm)], "s", ms=7, mfc="none",
+                    mec=style.C_PRIMARY, mew=1.6, label="Concrete control")
+        if sk is not None and abs(sm) <= m_span:
+            ax.plot([u.curv_disp(sk)], [u.M_disp(sm)], "^", ms=8, mfc="none",
+                    mec=style.C_SECONDARY, mew=1.6, label="Steel control")
         ax.set_xlabel(f"curvature κ  [{u.Kl}]")
         ax.set_ylabel(f"moment M  [{u.Ml}]")
         suffix = "  ·  Mander confined core" if confined else ""
@@ -3539,6 +3558,21 @@ class SectionDesignerWindow(QMainWindow):
         for r, (lab, state, kx, my) in enumerate(rows):
             for col, val in enumerate((lab, state, f"{kx:.4g}", f"{my:.4g}")):
                 self.mphi_tbl.setItem(r, col, QTableWidgetItem(str(val)))
+
+        # controlling-material readout (M6): concrete- vs steel-controlled
+        # crossing (φ, M) and which governs the ultimate.
+        def _cx(kap, mom):
+            if kap is None or mom is None:
+                return "not reached"
+            return (f"φ {u.curv_disp(kap):,.4g} {u.Kl} · "
+                    f"M {u.M_disp(mom):,.4g} {u.Ml}")
+        who = {"concrete": "concrete crushing",
+               "steel": "steel rupture"}.get(ctrl.get("controls"), "—")
+        self.mphi_ctrl_lbl.setText(
+            f"Controlled by <b>{who}</b> &nbsp;·&nbsp; "
+            f"Concrete <b>{_cx(ctrl.get('conc_kappa'), ctrl.get('conc_M'))}</b>"
+            f" &nbsp;·&nbsp; "
+            f"Steel <b>{_cx(ctrl.get('steel_kappa'), ctrl.get('steel_M'))}</b>")
 
         # strain-profile milestones (real ones carry eps0/eps_top/eps_steel)
         self._mphi_data = data
