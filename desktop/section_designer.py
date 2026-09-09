@@ -4214,6 +4214,14 @@ class SectionDesignerWindow(QMainWindow):
                 mphi = core.mphi_data(case, 0.0, **core.mphi_props(self._spec))
         except Exception:                              # noqa: BLE001
             mphi = None
+        # exact-integration cross-check for the M-φ summary (non-composite)
+        mphi_exact = None
+        if mphi is not None and self._spec.kind != "Composite":
+            try:
+                mphi_exact = core.exact_mphi(case, 0.0,
+                                             **core.mphi_props(self._spec))
+            except Exception:                          # noqa: BLE001
+                mphi_exact = None
         dem = None if self._spec.kind == "Composite" else self._demands()
         dres = None
         if dem:
@@ -4228,7 +4236,8 @@ class SectionDesignerWindow(QMainWindow):
         fiber_svg = "" if self._spec.kind == "Composite" else \
             core.fiber_mesh_svg(self._spec)
         return core.report_html(
-            case, code, self._units, mphi=mphi, demand_results=dres,
+            case, code, self._units, mphi=mphi, mphi_exact=mphi_exact,
+            demand_results=dres,
             axis_labels=self._AXIS_LABELS, meta=meta,
             brand=PRODUCT_NAME,
             logo_svg=icons.monogram_svg(PRODUCT_MONO, "#ffffff", PRODUCT_ACCENT),

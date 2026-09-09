@@ -2759,6 +2759,7 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
 
 def report_html(case: SectionCase, code: str, u: "Units", *,
                 mphi: Optional[dict] = None,
+                mphi_exact: Optional[dict] = None,
                 demand_results: Optional[list] = None,
                 meta: Optional[dict] = None,
                 axis_labels: tuple = ("z", "y"),
@@ -2828,20 +2829,47 @@ def report_html(case: SectionCase, code: str, u: "Units", *,
             for name, val, kind in lm)
         lm_html = f'<table class="kv">{lm_rows}</table>'
 
-    # ---- moment-curvature summary ----
+    # ---- moment-curvature summary (fibre; + exact-integration column when
+    # provided — the two agree as the fibre grid refines, so it doubles as a
+    # convergence cross-check on the calc sheet) ----
     if mphi is None:
         mphi = mphi_data(case, 0.0)
-    mphi_rows = "".join(
-        f'<tr><th>{lab}</th><td class="n">{val}</td></tr>' for lab, val in (
-            (f"Cracking M_cr [{u.Ml}]", f"{u.M_disp(mphi['M_cr']):.4g}"),
-            (f"First-yield M_y [{u.Ml}]",
-             f"{u.M_disp(mphi['M_y']):.4g}" if mphi.get("M_y") else "—"),
-            (f"Ultimate M_u [{u.Ml}]", f"{u.M_disp(mphi['M_u']):.4g}"),
-            ("Curvature ductility μ_φ",
-             f"{mphi['mu_phi']:.2f}" if mphi.get("mu_phi") else "—"),
-            ("Failure mode", esc(mphi.get("failure_mode", ""))),
-        ))
-    mphi_html = f'<table class="kv">{mphi_rows}</table>'
+
+    def _mphi_vals(m):
+        return {
+            "M_cr": f"{u.M_disp(m.get('M_cr') or 0):.4g}",
+            "M_y": f"{u.M_disp(m['M_y']):.4g}" if m.get("M_y") else "—",
+            "M_u": f"{u.M_disp(m.get('M_u') or 0):.4g}",
+            "mu": f"{m['mu_phi']:.2f}" if m.get("mu_phi") else "—",
+            "fail": esc(m.get("failure_mode", "")),
+        }
+
+    _mphi_labels = (
+        (f"Cracking M_cr [{u.Ml}]", "M_cr"),
+        (f"First-yield M_y [{u.Ml}]", "M_y"),
+        (f"Ultimate M_u [{u.Ml}]", "M_u"),
+        ("Curvature ductility μ_φ", "mu"),
+        ("Failure mode", "fail"),
+    )
+    fv = _mphi_vals(mphi)
+    if mphi_exact:
+        ev = _mphi_vals(mphi_exact)
+        cmp_rows = "".join(
+            f'<tr><td>{lab}</td><td class="n">{fv[k]}</td>'
+            f'<td class="n">{ev[k]}</td></tr>' for lab, k in _mphi_labels)
+        mphi_html = (
+            f'<table><thead><tr><th>Quantity</th>'
+            f'<th class="n">Fibre model</th><th class="n">Exact integ.</th>'
+            f'</tr></thead><tbody>{cmp_rows}</tbody></table>'
+            '<p style="color:#888;font-size:10.5px">Fibre = discretised '
+            'fibre grid; Exact = Gauss-quadrature integration over the true '
+            'section (no discretisation error). Agreement confirms the fibre '
+            'mesh has converged.</p>')
+    else:
+        mphi_rows = "".join(
+            f'<tr><th>{lab}</th><td class="n">{fv[k]}</td></tr>'
+            for lab, k in _mphi_labels)
+        mphi_html = f'<table class="kv">{mphi_rows}</table>'
 
     # ---- demand check ----
     dem_html = ""
