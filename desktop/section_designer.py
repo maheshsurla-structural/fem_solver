@@ -1513,6 +1513,14 @@ class SectionDesignerWindow(QMainWindow):
         self.pm_fig = Figure(figsize=(4.4, 4.0), layout="constrained")
         self.pm_canvas = Canvas(self.pm_fig)
         pmv.addWidget(self.pm_canvas, 1)
+        self.pm_cursor = self._cursor_readout()
+        pmv.addWidget(self.pm_cursor)
+        self._pm_marks_xy: list = []
+        self._attach_chart_cursor(
+            self.pm_canvas, self.pm_cursor,
+            lambda x, y: (f"M {x:,.4g} {self._units.Ml}   ·   "
+                          f"P {y:,.4g} {self._units.Fl}"),
+            markers=lambda: self._pm_marks_xy)
         _pmh = QLabel("INTERACTION POINTS")
         _pmh.setObjectName("ctrlHead")
         _pmh.setContentsMargins(0, style.SP_SM, 0, 0)
@@ -1567,6 +1575,14 @@ class SectionDesignerWindow(QMainWindow):
         self.mp_fig = Figure(figsize=(4.4, 4.0), layout="constrained")
         self.mp_canvas = Canvas(self.mp_fig)
         mpv.addWidget(self.mp_canvas)
+        self.mp_cursor = self._cursor_readout()
+        mpv.addWidget(self.mp_cursor)
+        self._mphi_marks_xy: list = []
+        self._attach_chart_cursor(
+            self.mp_canvas, self.mp_cursor,
+            lambda x, y: (f"κ {x:,.4g} {self._units.Kl}   ·   "
+                          f"M {y:,.4g} {self._units.Ml}"),
+            markers=lambda: self._mphi_marks_xy)
         bottom = QHBoxLayout()
         self.mphi_tbl = QTableWidget(0, 4)
         self.mphi_tbl.setHorizontalHeaderLabels(
@@ -3074,6 +3090,48 @@ class SectionDesignerWindow(QMainWindow):
         self._pm_kpi_cap["M0"].setText(f"M @ P=0 · {u.Ml}")
         self._pm_kpi_cap["Mbal"].setText(f"M balanced · {u.Ml}")
 
+    # ----------------------------------------------- live chart cursor (C1)
+    def _cursor_readout(self) -> QLabel:
+        """A thin, right-aligned coordinate readout that sits under a chart."""
+        lbl = QLabel("—")
+        lbl.setObjectName("chartCursor")
+        lbl.setAlignment(Qt.AlignmentFlag.AlignRight
+                         | Qt.AlignmentFlag.AlignVCenter)
+        lbl.setContentsMargins(0, 2, 4, 2)
+        return lbl
+
+    def _attach_chart_cursor(self, canvas, readout, fmt, markers=None) -> None:
+        """Wire a live x/y coordinate readout to a matplotlib canvas, plus an
+        optional marker-hover label. ``fmt(x, y)`` renders the coordinate in the
+        current units; ``markers()`` returns [(x, y, label), …] in data space."""
+        def on_move(ev):
+            ax = ev.inaxes
+            if ax is None or ev.xdata is None or ev.ydata is None:
+                readout.setText("—")
+                return
+            text = fmt(ev.xdata, ev.ydata)
+            if markers is not None:
+                hit = self._marker_hit(ev, ax, markers())
+                if hit:
+                    text = f"◆ {hit}      {text}"
+            readout.setText(text)
+        canvas.mpl_connect("motion_notify_event", on_move)
+        canvas.mpl_connect("figure_leave_event", lambda _e: readout.setText("—"))
+
+    @staticmethod
+    def _marker_hit(ev, ax, marks, tol: float = 12.0):
+        """Label of the nearest marker within ``tol`` pixels of the cursor."""
+        best, best_d = None, tol
+        for x, y, lab in marks:
+            try:
+                px, py = ax.transData.transform((x, y))
+            except Exception:                              # noqa: BLE001
+                continue
+            d = ((px - ev.x) ** 2 + (py - ev.y) ** 2) ** 0.5
+            if d < best_d:
+                best_d, best = d, lab
+        return best
+
     def _draw_pm(self, case, code) -> None:
         u = self._units
         if self._spec.kind == "Composite":
@@ -3085,6 +3143,7 @@ class SectionDesignerWindow(QMainWindow):
             ax.set_axis_off()
             self.pm_canvas.draw_idle()
             self.pm_tbl.setRowCount(0)
+            self._pm_marks_xy = []
             self._set_pm_kpi(None, False, u)
             self._set_verdict_empty("Demand check runs on the 3-D "
                                     "P-M-M surface for composite sections.")
@@ -3101,20 +3160,30 @@ class SectionDesignerWindow(QMainWindow):
             ax.plot([u.M_disp(v) for v in curve["M_des"]],
                     [u.P_disp(v) for v in curve["P_des"]], "--",
                     color=style.C_SECONDARY, lw=1.5, label="Design φ")
-        for _name, val, kind in (landmarks or []):
+        # landmark reference lines + hover markers (genuine on-axis points;
+        # the balanced point isn't at M=0 or P=0, so leave it off the markers)
+        marks = []
+        for name, val, kind in (landmarks or []):
             if kind == "P":
                 ax.axhline(u.P_disp(val), color=style.AX_SPINE, lw=0.6, ls=":")
+            if name.startswith("Balanced"):
+                continue
+            marks.append((0.0, u.P_disp(val), name) if kind == "P"
+                         else (u.M_disp(val), 0.0, name))
         # demand check
         dem = self._demands()
         if dem:
             res = core.demand_check(case, code, dem,
                                     design=self.design_chk.isChecked(),
                                     spec=self._spec)[0]
-            ax.plot([u.M_disp(res["M_res"])], [u.P_disp(res["P"])], "o",
+            dx, dy = u.M_disp(res["M_res"]), u.P_disp(res["P"])
+            ax.plot([dx], [dy], "o",
                     color=style.C_DEMAND, ms=9, label="Demand", zorder=5)
+            marks.append((dx, dy, "Demand"))
             self._set_verdict(res, u)
         else:
             self._set_verdict_empty()
+        self._pm_marks_xy = marks
         ax.axhline(0, color=style.AX_TEXT, lw=0.5)
         ax.axvline(0, color=style.AX_TEXT, lw=0.5)
         ax.set_xlabel(f"M  [{u.Ml}]")
@@ -3197,6 +3266,8 @@ class SectionDesignerWindow(QMainWindow):
                         fontweight="bold", color=style.C_MILESTONE,
                         textcoords="offset points", xytext=(4, 4))
             rows.append((ms.get("label", ""), ms.get("state", ""), kx, my))
+        self._mphi_marks_xy = [(kx, my, f"{lab} · {state}".strip(" ·"))
+                               for lab, state, kx, my in rows]
         ax.set_xlabel(f"curvature κ  [{u.Kl}]")
         ax.set_ylabel(f"moment M  [{u.Ml}]")
         suffix = "  ·  Mander confined core" if confined else ""
