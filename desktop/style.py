@@ -323,6 +323,9 @@ QLabel#chipLabel {{ color: {MUTED}; font-size: {FS_MICRO}px; font-weight: 600;
 /* live cursor coordinate readout under an analysis chart */
 QLabel#chartCursor {{ color: {MUTED}; font-family: {MONO_STACK};
                      font-size: {FS_MICRO}px; }}
+/* control bar beneath the P-M-M graphs (CSi-style) */
+QFrame#chartCtrlBar {{ background: {PANEL}; border: 1px solid {BORDER};
+                      border-radius: 8px; }}
 
 /* ---- constant [ controls | view ] workspace shell ---- */
 QWidget#ctrlRail {{ background: {BG}; border-right: 1px solid {BORDER}; }}

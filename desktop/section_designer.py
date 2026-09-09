@@ -1831,8 +1831,17 @@ class SectionDesignerWindow(QMainWindow):
         angh.addWidget(self.pm_ang, 1)
         angh.addWidget(_next)
         df.addRow("Slice angle θ°", angw)
-        # independent curve toggles (P5): the code nominal + design curves and
-        # the integrated fibre-model curve (exact quadrature over the section).
+        for w in (self.dem_P, self.dem_Mz, self.dem_My):
+            w.valueChanged.connect(lambda *_: self._queue())
+
+        # ---- chart controls: these live in a bar UNDER the graphs (CSi-style),
+        # not in the rail, so the rail's interaction table gets full height ----
+        def _bar_label(text):
+            _l = QLabel(text)
+            _l.setObjectName("caption")
+            return _l
+
+        # curve toggles (P5) — under the 2-D graph
         self.pm_show_nom = QCheckBox("Nominal")
         self.pm_show_nom.setChecked(True)
         self.pm_show_des = QCheckBox("Design")
@@ -1844,67 +1853,70 @@ class SectionDesignerWindow(QMainWindow):
             "section vs the code's simplified curve. Non-composite sections.")
         for cb in (self.pm_show_nom, self.pm_show_des, self.pm_show_fib):
             cb.stateChanged.connect(lambda *_: self._queue())
-        pcw = QWidget()
-        pch = QHBoxLayout(pcw)
-        pch.setContentsMargins(0, 0, 0, 0)
-        pch.setSpacing(style.SP_SM)
+        self._pm_curves_bar = QWidget()
+        _cbl = QHBoxLayout(self._pm_curves_bar)
+        _cbl.setContentsMargins(0, 0, 0, 0)
+        _cbl.setSpacing(style.SP_SM)
+        _cbl.addWidget(_bar_label("Curves"))
         for cb in (self.pm_show_nom, self.pm_show_des, self.pm_show_fib):
-            pch.addWidget(cb)
-        pch.addStretch(1)
-        df.addRow("Curves", pcw)
-        for w in (self.dem_P, self.dem_Mz, self.dem_My):
-            w.valueChanged.connect(lambda *_: self._queue())
-        # page 1 — 3-D surface mesh density
+            _cbl.addWidget(cb)
+        _cbl.addStretch(1)
+
+        # 3-D surface controls (mesh density + camera) — under the 3-D graph
         spg = QWidget()
-        sfm = QFormLayout(spg)
+        sfm = QHBoxLayout(spg)
         sfm.setContentsMargins(0, 0, 0, 0)
+        sfm.setSpacing(style.SP_SM)
         self.mesh_combo = QComboBox()
         self.mesh_combo.addItems(list(_ARR_MESH))
         self.mesh_combo.setCurrentText("Coarse")
         self.mesh_combo.currentTextChanged.connect(lambda *_: self._queue())
-        sfm.addRow("Mesh density", self.mesh_combo)
+        sfm.addWidget(_bar_label("Mesh"))
+        sfm.addWidget(self.mesh_combo)
         # view controls (P4): drive view_init without recomputing the mesh
         self.s3_elev = self._dspin(-90, 90, 5, "", 0)
         self.s3_elev.setValue(self._s3_elev)
         self.s3_elev.valueChanged.connect(lambda *_: self._apply_s3_view())
-        sfm.addRow("Elevation°", self.s3_elev)
+        sfm.addWidget(_bar_label("Elev°"))
+        sfm.addWidget(self.s3_elev)
         self.s3_azim = self._dspin(-180, 180, 5, "", 0)
         self.s3_azim.setWrapping(True)
         self.s3_azim.setValue(self._s3_azim)
         self.s3_azim.valueChanged.connect(lambda *_: self._apply_s3_view())
-        sfm.addRow("Azimuth°", self.s3_azim)
-        pv = QWidget()
-        pvh = QHBoxLayout(pv)
-        pvh.setContentsMargins(0, 0, 0, 0)
-        pvh.setSpacing(style.SP_XS)
+        sfm.addWidget(_bar_label("Azim°"))
+        sfm.addWidget(self.s3_azim)
+        sfm.addWidget(_bar_label("View"))
         for name in _S3_PRESETS:
             b = QToolButton()
             b.setText(name)
             b.clicked.connect(lambda _c=False, n=name: self._s3_preset(n))
-            pvh.addWidget(b)
-        sfm.addRow("View", pv)
-        # page 2 — M-M contour axial + demand
+            sfm.addWidget(b)
+        sfm.addStretch(1)
+        # M-M contour controls (axial + demand) — under the M-M graph
         mpg = QWidget()
-        mmf = QFormLayout(mpg)
+        mmf = QHBoxLayout(mpg)
         mmf.setContentsMargins(0, 0, 0, 0)
+        mmf.setSpacing(style.SP_SM)
         self.mm_P = self._dspin(-1e6, 1e6, 50, "", 1)
         self.mm_Mz = self._dspin(-1e6, 1e6, 25, "", 1)
         self.mm_My = self._dspin(-1e6, 1e6, 25, "", 1)
         for w in (self.mm_P, self.mm_Mz, self.mm_My):
             w.valueChanged.connect(lambda *_: self._queue())
-        mmf.addRow("Axial P (+comp)", self.mm_P)
-        mmf.addRow("Demand Mz", self.mm_Mz)
-        mmf.addRow("My", self.mm_My)
-        icv.addWidget(dpg)                       # demand controls (always shown)
-        # right-pane controls: mesh/camera for the 3-D surface, axial for M-M,
-        # nothing when hidden — follows the RIGHT PANE selector
+        mmf.addWidget(_bar_label("Axial P"))
+        mmf.addWidget(self.mm_P)
+        mmf.addWidget(_bar_label("Mz"))
+        mmf.addWidget(self.mm_Mz)
+        mmf.addWidget(_bar_label("My"))
+        mmf.addWidget(self.mm_My)
+        mmf.addStretch(1)
+        # right-pane controls (3-D mesh/camera · M-M axial · blank) live in the
+        # control bar under the graphs, driven by the RIGHT PANE selector
         self.inter_sec_ctrl = QStackedWidget()
         for pg in (spg, mpg, QWidget()):         # 0 3-D mesh, 1 M-M axial, 2 hide
             self.inter_sec_ctrl.addWidget(pg)
-        icv.addWidget(self.inter_sec_ctrl)
-        # the interaction-points table lives in the rail, filling the space
-        # below the inputs — the view then keeps just the 2-D + 3-D graphs, so
-        # both plot larger
+        icv.addWidget(dpg)                       # demand + slice controls
+        # the interaction-points table fills the rail below the inputs, so the
+        # results read well; the chart controls sit under the graphs instead
         icv.addWidget(self._pm_table_pane, 1)
 
         # view: KPI + verdict band on top, then the two graphs side by side
@@ -1918,12 +1930,24 @@ class SectionDesignerWindow(QMainWindow):
         self.inter_split.addWidget(self.inter_sec_stack)  # right: 3-D / M-M
         self.inter_split.setStretchFactor(0, 1)           # 2-D curve
         self.inter_split.setStretchFactor(1, 1)           # 3-D / M-M
+        # control bar under the graphs (CSi-style): 2-D curve toggles on the
+        # left (under the 2-D graph), the right-pane's controls on the right
+        # (under the 3-D / M-M graph)
+        ctrl_bar = QFrame()
+        ctrl_bar.setObjectName("chartCtrlBar")
+        _cbh = QHBoxLayout(ctrl_bar)
+        _cbh.setContentsMargins(style.SP_SM, style.SP_XS, style.SP_SM,
+                                style.SP_XS)
+        _cbh.setSpacing(style.SP_LG)
+        _cbh.addWidget(self._pm_curves_bar, 1)
+        _cbh.addWidget(self.inter_sec_ctrl, 1)
         inter = QWidget()
         _ivl = QVBoxLayout(inter)
         _ivl.setContentsMargins(0, 0, 0, 0)
         _ivl.setSpacing(style.SP_SM)
         _ivl.addWidget(self._pm_top)
         _ivl.addWidget(self.inter_split, 1)
+        _ivl.addWidget(ctrl_bar)
         inter = self._workspace(inter_ctrl, inter)
 
         # ---- Fibres (discretisation view + properties) ----
