@@ -1574,33 +1574,8 @@ class SectionDesignerWindow(QMainWindow):
         self.mm_canvas = Canvas(self.mm_fig)
         mmv.addWidget(self.mm_canvas)
 
-        # ---- Stress field: constant [controls | view] shell ----
-        sf_ctrl = QWidget()
-        scv = QVBoxLayout(sf_ctrl)
-        scv.setContentsMargins(12, 12, 12, 12)
-        scv.setSpacing(8)
-        _sh = QLabel("STRAIN STATE")
-        _sh.setObjectName("ctrlHead")
-        scv.addWidget(_sh)
-        scf = QFormLayout()
-        scf.setContentsMargins(0, 0, 0, 0)
-        self.sf_etop = self._dspin(-20, 20, 0.1, "", 2)
-        self.sf_etop.setValue(-1.5)
-        self.sf_etop.valueChanged.connect(lambda *_: self._queue())
-        scf.addRow("ε top-fibre [‰]", self.sf_etop)
-        self.sf_ebot = self._dspin(-20, 20, 0.1, "", 2)
-        self.sf_ebot.setValue(1.0)
-        self.sf_ebot.valueChanged.connect(lambda *_: self._queue())
-        scf.addRow("ε bottom-fibre [‰]", self.sf_ebot)
-        scv.addLayout(scf)
-        scv.addStretch(1)
-        sf_view = QWidget()
-        sfv = QVBoxLayout(sf_view)
-        sfv.setContentsMargins(0, 0, 0, 0)
-        self.sf_fig = Figure(figsize=(4.2, 4.2), layout="constrained")
-        self.sf_canvas = Canvas(self.sf_fig)
-        sfv.addWidget(self.sf_canvas)
-        sf = self._workspace(sf_ctrl, sf_view)
+        # (The stress field is folded into the Fibres tab as the
+        # "Stress field (ε)" colour-by mode — see _build_fibers_tab.)
 
         # ---- combined P-M-M interaction tab: constant [controls | view] shell
         # left rail: the view selector + the active sub-view's inputs
@@ -1678,7 +1653,6 @@ class SectionDesignerWindow(QMainWindow):
         # assemble the workspace tabs (Section is inserted at 0 later)
         self.tabs.addTab(inter, "P-M-M interaction")
         self.tabs.addTab(mp, "Moment-curvature")
-        self.tabs.addTab(sf, "Stress field")
         self.tabs.addTab(fib, "Fibres")
         self.tabs.addTab(self.report, "Report")
         return self.tabs
@@ -1697,24 +1671,39 @@ class SectionDesignerWindow(QMainWindow):
         cv.addWidget(_fh)
         f = QFormLayout()
         f.setContentsMargins(0, 0, 0, 0)
+        self._fib_form = f
         self.fib_target = self._ispin(200, 8000)
         self.fib_target.setValue(1400)
         self.fib_target.setSingleStep(200)
         self.fib_target.valueChanged.connect(lambda *_: self._queue())
         f.addRow("Fibres ≈", self.fib_target)
         self.fib_mode = QComboBox()
-        self.fib_mode.addItems(["Material", "Strain", "Stress"])
-        self.fib_mode.currentIndexChanged.connect(lambda *_: self._queue())
+        # Material · Strain/Stress at an M-φ milestone · the manual-strain
+        # stress field (folded in from the old Stress field tab)
+        self.fib_mode.addItems(["Material", "Strain", "Stress",
+                                "Stress field (ε)"])
+        self.fib_mode.currentIndexChanged.connect(lambda *_: self._on_fib_mode())
         f.addRow("Colour by", self.fib_mode)
         self.fib_milestone = QComboBox()
         self.fib_milestone.currentIndexChanged.connect(
             lambda *_: (None if self._loading else self._queue()))
         f.addRow("At milestone", self.fib_milestone)
+        self.sf_etop = self._dspin(-20, 20, 0.1, "", 2)
+        self.sf_etop.setValue(-1.5)
+        self.sf_etop.valueChanged.connect(lambda *_: self._queue())
+        f.addRow("ε top-fibre [‰]", self.sf_etop)
+        self.sf_ebot = self._dspin(-20, 20, 0.1, "", 2)
+        self.sf_ebot.setValue(1.0)
+        self.sf_ebot.valueChanged.connect(lambda *_: self._queue())
+        f.addRow("ε bottom-fibre [‰]", self.sf_ebot)
         self.fib_view = QComboBox()
         self.fib_view.addItems(["Both", "Diagram", "Table"])
         self.fib_view.currentIndexChanged.connect(lambda *_: self._apply_fib_view())
         f.addRow("Show", self.fib_view)
         cv.addLayout(f)
+        # only the inputs relevant to the current colour-by mode are shown
+        for w in (self.fib_milestone, self.sf_etop, self.sf_ebot):
+            self._fib_row_vis(w, False)
         self.fib_info = QLabel("")
         self.fib_info.setObjectName("hintLabel")
         self.fib_info.setWordWrap(True)
@@ -1757,6 +1746,24 @@ class SectionDesignerWindow(QMainWindow):
         self.fib_tbl.setVisible(view != "Diagram")
         if not self._loading:
             self._queue()            # refill the table / redraw the plot
+
+    def _fib_row_vis(self, widget, vis: bool) -> None:
+        """Show/hide a Fibres-rail form row (field + its label)."""
+        widget.setVisible(vis)
+        lbl = self._fib_form.labelForField(widget)
+        if lbl is not None:
+            lbl.setVisible(vis)
+
+    def _on_fib_mode(self) -> None:
+        """Reveal only the inputs the current colour-by mode needs, then redraw:
+        the milestone picker for Strain/Stress, the ε inputs for the stress
+        field."""
+        mode = self.fib_mode.currentText()
+        self._fib_row_vis(self.fib_milestone, mode in ("Strain", "Stress"))
+        self._fib_row_vis(self.sf_etop, mode == "Stress field (ε)")
+        self._fib_row_vis(self.sf_ebot, mode == "Stress field (ε)")
+        if not self._loading:
+            self._queue()
 
     # -------------------------------------------------------------- helpers
     @staticmethod
@@ -2872,8 +2879,6 @@ class SectionDesignerWindow(QMainWindow):
                     self._draw_mm_contour(case, code)
             elif label == "Moment-curvature":
                 self._draw_mphi(case)
-            elif label == "Stress field":
-                self._draw_stress_field(case)
             elif label == "Report":
                 self._fill_report(case, code)
             self.statusBar().clearMessage()
@@ -3285,19 +3290,17 @@ class SectionDesignerWindow(QMainWindow):
         self.mm_canvas.draw_idle()
 
     # ------------------------------------------------------ stress field
-    def _draw_stress_field(self, case) -> None:
+    def _render_stress_field(self, ax, case) -> None:
         """Fibre-stress field under a plane-sections strain state (ε linear in
         y, tension +): concrete fibres + rebar coloured by the section's own
-        material laws, with the neutral axis. Mirrors the Streamlit view."""
-        self.sf_fig.clear()
-        ax = self.sf_fig.add_subplot(111)
+        material laws, with the neutral axis. Drawn into ``ax`` (the Fibres
+        canvas) — the manual-strain 'Stress field (ε)' colour-by mode."""
         s = self._spec
         if s.kind == "Composite":
             ax.text(0.5, 0.5, "Stress field is single-material —\n"
                     "not available for composite.", ha="center", va="center",
                     transform=ax.transAxes)
             ax.set_axis_off()
-            self.sf_canvas.draw_idle()
             return
         e_top = self.sf_etop.value() / 1000.0
         e_bot = self.sf_ebot.value() / 1000.0
@@ -3349,13 +3352,12 @@ class SectionDesignerWindow(QMainWindow):
                 ax.axhline(y0, color=style.BAD, lw=1.4, ls="--")
                 ax.annotate("N.A.", (maxz * 1e3, y0), color=style.BAD,
                             fontsize=8, va="bottom", ha="right")
-        self.sf_fig.colorbar(sc, ax=ax, label="σ  [MPa]", shrink=0.85)
+        self.fib_fig.colorbar(sc, ax=ax, label="σ  [MPa]", shrink=0.85)
         ax.set_aspect("equal", adjustable="datalim")
-        ax.set_xlabel("z [mm]")
-        ax.set_ylabel("y [mm]")
+        ax.set_xlabel("Y [mm]")
+        ax.set_ylabel("Z [mm]")
         ax.set_title("Fibre-stress field (tension +)")
         style.beautify_axes(ax)
-        self.sf_canvas.draw_idle()
 
     # ------------------------------------------------------ verify / report
     def _verify_rows(self, case, code):
@@ -3418,8 +3420,6 @@ class SectionDesignerWindow(QMainWindow):
             if sel:
                 eps0, kappa, ms_state = sel["eps0"], sel["kappa"], \
                     sel.get("state", "")
-        self.fib_milestone.setEnabled(mode != "Material")
-
         data = core.section_fibers(aspec, target=self.fib_target.value(),
                                    eps0=eps0, kappa=kappa)
         fibers = data["fibers"]
@@ -3437,7 +3437,9 @@ class SectionDesignerWindow(QMainWindow):
         xs = [f["z"] * 1e3 for f in fibers]
         ys = [f["y"] * 1e3 for f in fibers]
         sizes = [26 if not f["cell"] else 6 for f in fibers]
-        if mode in ("Strain", "Stress") and state:
+        if mode == "Stress field (ε)":
+            self._render_stress_field(ax, _case(aspec))
+        elif mode in ("Strain", "Stress") and state:
             key = "strain" if mode == "Strain" else "stress"
             scale = 1e3 if mode == "Strain" else 1e-6   # strain ‰, stress MPa
             vv = [f[key] * scale for f in fibers]
@@ -3485,9 +3487,10 @@ class SectionDesignerWindow(QMainWindow):
                 ax.set_title("Fibre "
                              + ("strain" if mode == "Strain" else "stress")
                              + " — add reinforcement / M-φ first")
-        ax.set_xlabel("Y [mm]")
-        ax.set_ylabel("Z [mm]")
-        style.beautify_axes(ax)
+        if mode != "Stress field (ε)":       # the stress field sets its own axes
+            ax.set_xlabel("Y [mm]")
+            ax.set_ylabel("Z [mm]")
+            style.beautify_axes(ax)
         self.fib_canvas.draw_idle()
 
         # ---- properties: fibre vs solid (Y/Z convention) ----
