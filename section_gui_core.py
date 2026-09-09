@@ -1583,10 +1583,13 @@ def mphi_data(case: SectionCase, P_target_kN: float, *,
             "eps_top": float(p.eps_top_concrete) if p else 0.0,
             "eps_steel": float(p.eps_max_steel) if p else 0.0,
         })
+    # Full equal-energy bilinear idealization (origin -> yield -> ultimate),
+    # in display units (kN.m). The GUI draws it as an overlay polyline.
     ideal = None
     try:
-        (ky, My), (_ku, _Mu) = res.bilinear()
-        ideal = {"kappa": float(ky), "M": My / 1e3}
+        (ky, My), (ku, Mu) = res.bilinear()
+        ideal = {"kappa_y": float(ky), "M_y": My / 1e3,
+                 "kappa_u": float(ku), "M_u": Mu / 1e3}
     except Exception:
         pass
 

@@ -1548,6 +1548,10 @@ class SectionDesignerWindow(QMainWindow):
         self.strain_combo.currentIndexChanged.connect(
             lambda *_: self._draw_strain_profile())
         mcf.addRow("Strain diagram at", self.strain_combo)
+        self.mphi_ideal_chk = QCheckBox("Idealized (bilinear)")
+        self.mphi_ideal_chk.setChecked(True)
+        self.mphi_ideal_chk.stateChanged.connect(lambda *_: self._queue())
+        mcf.addRow("Overlay", self.mphi_ideal_chk)
         mcv.addLayout(mcf)
         mcv.addStretch(1)
 
@@ -3168,11 +3172,17 @@ class SectionDesignerWindow(QMainWindow):
         self.mp_fig.clear()
         ax = self.mp_fig.add_subplot(111)
         ax.plot([u.curv_disp(k) for k in data["kappa"]],
-                [u.M_disp(v) for v in data["M"]], "-", color=style.OK, lw=1.8)
+                [u.M_disp(v) for v in data["M"]], "-", color=style.OK, lw=1.8,
+                label="Section response")
+        # equal-energy bilinear idealization (origin -> yield -> ultimate)
+        ideal = data.get("ideal")
+        if ideal and self.mphi_ideal_chk.isChecked():
+            ikx = [0.0, u.curv_disp(ideal["kappa_y"]),
+                   u.curv_disp(ideal["kappa_u"])]
+            iky = [0.0, u.M_disp(ideal["M_y"]), u.M_disp(ideal["M_u"])]
+            ax.plot(ikx, iky, "--", color=style.C_DEMAND, lw=1.6,
+                    label="Idealized (bilinear)")
         marks = list(data.get("milestones", []))
-        if data.get("ideal"):
-            marks.append({**data["ideal"], "label": "f",
-                          "state": "Idealized yield"})
         # guard: core.composite_mphi returns the 'd' milestone M in N·m while
         # the M array / M_u are kN·m — drop milestones whose M is wildly out of
         # the curve's range so a unit glitch can't blow up the axes.
@@ -3192,6 +3202,8 @@ class SectionDesignerWindow(QMainWindow):
         suffix = "  ·  Mander confined core" if confined else ""
         ax.set_title(f"Moment-curvature at P = {P:.4g} {u.Fl}{suffix}")
         style.beautify_axes(ax)
+        if ax.get_legend_handles_labels()[0]:
+            ax.legend(fontsize=8, loc="lower right", frameon=False)
         self.mp_canvas.draw_idle()
 
         # KPI tiles: cracking / yield / ultimate moment, curvature ductility,
