@@ -3454,18 +3454,18 @@ class SectionDesignerWindow(QMainWindow):
         P = [u.P_disp(v) for v in curve["P_nom"]]
         if self.pm_show_nom.isChecked():
             nom_lbl = "Nominal · 1.25·f_y" if fy_fac != 1.0 else "Nominal P-M"
-            ax.plot(M, P, "-", color=style.C_PRIMARY, lw=1.8, label=nom_lbl)
+            ax.plot(M, P, "-", color=style.C_NOMINAL, lw=1.8, label=nom_lbl)
         if (self.pm_show_des.isChecked() and use_phi
                 and curve.get("has_design")):
             ax.plot([u.M_disp(v) for v in curve["M_des"]],
                     [u.P_disp(v) for v in curve["P_des"]], "--",
-                    color=style.C_SECONDARY, lw=1.5, label="Design φ")
+                    color=style.C_DESIGN, lw=1.5, label="Design φ")
         if self.pm_show_fib.isChecked() and self._spec.kind != "Composite":
             try:
                 fib = core.section_pm_slice(case, theta_deg=theta,
                                             **core.mphi_props(self._spec))
                 ax.plot([u.M_disp(v) for v in fib["M"]],
-                        [u.P_disp(v) for v in fib["P"]], "-", color=style.OK,
+                        [u.P_disp(v) for v in fib["P"]], "-", color=style.C_FIBRE,
                         lw=1.6, label="Fibre model", zorder=4)
             except Exception:                              # noqa: BLE001
                 pass
@@ -3563,7 +3563,7 @@ class SectionDesignerWindow(QMainWindow):
         show_exact = (self.mphi_exact_chk.isChecked()
                       and self._spec.kind != "Composite" and not confined)
         if self.mphi_fib_chk.isChecked():
-            fib_color = style.BAD if show_exact else style.OK
+            fib_color = style.C_FIBRE if show_exact else style.C_EXACT
             fib_label = "Fibre model" if show_exact else "Section response"
             ax.plot([u.curv_disp(k) for k in data["kappa"]],
                     [u.M_disp(v) for v in data["M"]], "-", color=fib_color,
@@ -3574,7 +3574,7 @@ class SectionDesignerWindow(QMainWindow):
                                      **core.mphi_props(self._spec),
                                      n_points=n_pts, stop=stop)
                 ax.plot([u.curv_disp(k) for k in ex["kappa"]],
-                        [u.M_disp(v) for v in ex["M"]], "-", color=style.OK,
+                        [u.M_disp(v) for v in ex["M"]], "-", color=style.C_EXACT,
                         lw=1.8, label="Exact integration", zorder=4)
             except Exception:                              # noqa: BLE001
                 pass

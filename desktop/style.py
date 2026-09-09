@@ -33,6 +33,9 @@ _LIGHT = dict(
     # chart series + axes
     C_PRIMARY="#2563eb", C_SECONDARY="#d1462f", C_MILESTONE="#d1462f",
     C_DEMAND="#e3a008", GRID="#e6eaf0", AX_SPINE="#c3cad4", AX_TEXT="#3a4150",
+    # named curve roles (C2): exact=green · fibre=red · nominal=blue ·
+    # design=neutral · demand=amber (C_DEMAND above) — legible on both grounds
+    C_EXACT="#1a7f37", C_FIBRE="#d1462f", C_NOMINAL="#2563eb", C_DESIGN="#64748b",
     # section canvas
     CANVAS_BG="#ffffff", CANVAS_GRID="#eef2f6", BODY_FILL="#cfe8ff",
     BODY_STROKE="#1f4f73",
@@ -45,6 +48,8 @@ _DARK = dict(
     ICON="#aab4c2",
     C_PRIMARY="#5b93f7", C_SECONDARY="#f2795f", C_MILESTONE="#f2795f",
     C_DEMAND="#e3b341", GRID="#2a313d", AX_SPINE="#3b4553", AX_TEXT="#aab4c2",
+    # named curve roles (C2) — brightened for the dark ground
+    C_EXACT="#46b768", C_FIBRE="#f2795f", C_NOMINAL="#5b93f7", C_DESIGN="#94a3b8",
     CANVAS_BG="#1a1f28", CANVAS_GRID="#262d38", BODY_FILL="#26374f",
     BODY_STROKE="#5b93f7",
 )
