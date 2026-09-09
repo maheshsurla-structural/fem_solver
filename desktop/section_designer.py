@@ -1902,22 +1902,22 @@ class SectionDesignerWindow(QMainWindow):
         for pg in (spg, mpg, QWidget()):         # 0 3-D mesh, 1 M-M axial, 2 hide
             self.inter_sec_ctrl.addWidget(pg)
         icv.addWidget(self.inter_sec_ctrl)
-        icv.addStretch(1)
+        # the interaction-points table lives in the rail, filling the space
+        # below the inputs — the view then keeps just the 2-D + 3-D graphs, so
+        # both plot larger
+        icv.addWidget(self._pm_table_pane, 1)
 
-        # view: KPI + verdict band on top, then the 3-pane dashboard
-        # [ interaction table | 2-D P-M curve | 3-D surface / M-M contour ] —
-        # the GSD/CSiCol layout (P6 refined). The right pane is shown by default.
+        # view: KPI + verdict band on top, then the two graphs side by side
+        # [ 2-D P-M curve | 3-D surface / M-M contour ] (GSD/CSiCol layout).
+        # The right pane is shown by default; the table is in the rail.
         self.inter_sec_stack = QStackedWidget()
         self.inter_sec_stack.addWidget(s3)      # 0: 3-D surface
         self.inter_sec_stack.addWidget(mm)      # 1: M-M contour
         self.inter_split = QSplitter(Qt.Orientation.Horizontal)
-        self.inter_split.addWidget(self._pm_table_pane)   # left: table
-        self.inter_split.addWidget(self._pm_chart_pane)   # middle: 2-D curve
+        self.inter_split.addWidget(self._pm_chart_pane)   # left: 2-D curve
         self.inter_split.addWidget(self.inter_sec_stack)  # right: 3-D / M-M
-        self.inter_split.setStretchFactor(0, 3)           # table (4 columns)
-        self.inter_split.setStretchFactor(1, 4)           # 2-D curve
-        self.inter_split.setStretchFactor(2, 4)           # 3-D / M-M
-        self._pm_table_pane.setMinimumWidth(240)
+        self.inter_split.setStretchFactor(0, 1)           # 2-D curve
+        self.inter_split.setStretchFactor(1, 1)           # 3-D / M-M
         inter = QWidget()
         _ivl = QVBoxLayout(inter)
         _ivl.setContentsMargins(0, 0, 0, 0)
@@ -3114,13 +3114,12 @@ class SectionDesignerWindow(QMainWindow):
         then recompute."""
         show = i < 2
         self.inter_sec_stack.setVisible(show)
-        total = max(self.inter_split.width(), 1000)
+        total = max(self.inter_split.width(), 900)
         if show:
             self.inter_sec_stack.setCurrentIndex(i)       # 0:s3, 1:mm
-            self.inter_split.setSizes([int(total * 0.28), int(total * 0.36),
-                                       int(total * 0.36)])
+            self.inter_split.setSizes([int(total * 0.5), int(total * 0.5)])
         else:
-            self.inter_split.setSizes([int(total * 0.42), int(total * 0.58), 0])
+            self.inter_split.setSizes([total, 0])         # 2-D fills the view
         self.inter_sec_ctrl.setCurrentIndex(i)            # 0 3-D, 1 M-M, 2 blank
         self._queue()
 
