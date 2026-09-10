@@ -1026,9 +1026,52 @@ class SectionDesignerWindow(QMainWindow):
         # table), Tendons (arrangement table), Confinement (M-φ / Mander).
         v.addWidget(self._build_reinforcement_group())
 
+        # Load combinations — batch-checked against the P-M-M surface
+        v.addWidget(self._build_combos_group())
+
         v.addStretch(1)
         host.setWidget(inner)
         return host
+
+    # ---------------------------------------------------- load combinations
+    def _build_combos_group(self) -> "CollapsibleGroup":
+        """A table of applied load combinations (P, Mz, My). All rows are batch-
+        checked against the interaction surface on every recompute; the D/C and
+        Status columns report each one, and the P-M-M charts plot every point
+        coloured by pass/fail. Replaces the single-demand inputs."""
+        box = CollapsibleGroup("Load combinations")
+        v = QVBoxLayout(box.body)
+        v.setSpacing(style.SP_SM)
+        self.combo_tbl = QTableWidget(0, 6)
+        self.combo_tbl.setHorizontalHeaderLabels(
+            ["Combo", "P", "Mz", "My", "D/C", "Status"])
+        self.combo_tbl.verticalHeader().setVisible(False)
+        self.combo_tbl.setAlternatingRowColors(True)
+        self.combo_tbl.setShowGrid(False)
+        self.combo_tbl.horizontalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Stretch)
+        self.combo_tbl.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows)
+        self.combo_tbl.setMinimumHeight(150)
+        self.combo_tbl.itemChanged.connect(self._on_combo_edited)
+        v.addWidget(self.combo_tbl)
+        row = QHBoxLayout()
+        row.setSpacing(style.SP_XS)
+        _add = QPushButton("＋ Add combination")
+        _add.clicked.connect(self._add_combo)
+        _rem = QPushButton("Remove")
+        _rem.clicked.connect(self._remove_combo)
+        row.addWidget(_add)
+        row.addWidget(_rem)
+        row.addStretch(1)
+        v.addLayout(row)
+        self.combo_summary = QLabel(
+            "Add load combinations (P, Mz, My) to batch-check them against the "
+            "P-M-M interaction surface; results show on the P-M-M tab.")
+        self.combo_summary.setObjectName("hintLabel")
+        self.combo_summary.setWordWrap(True)
+        v.addWidget(self.combo_summary)
+        return box
 
     # ---- Custom (polygon) editor -------------------------------------
     def _build_custom_box(self) -> QGroupBox:
@@ -1786,12 +1829,8 @@ class SectionDesignerWindow(QMainWindow):
         dpg = QWidget()
         df = QFormLayout(dpg)
         df.setContentsMargins(0, 0, 0, 0)
-        self.dem_P = self._dspin(-1e6, 1e6, 50, "", 1)
-        self.dem_Mz = self._dspin(-1e6, 1e6, 25, "", 1)
-        self.dem_My = self._dspin(-1e6, 1e6, 25, "", 1)
-        df.addRow("Demand P", self.dem_P)
-        df.addRow("Mz", self.dem_Mz)
-        df.addRow("My", self.dem_My)
+        # (Demand P/Mz/My moved to the Load-combinations table on the Section
+        # tab — batch-checked; results show in the verdict strip + charts here.)
         # design basis (mirrors the reference "Design Options" radios):
         # φ-reduced · nominal · nominal with the 1.25·f_y overstrength increase
         self.design_mode = QComboBox()
@@ -1819,8 +1858,6 @@ class SectionDesignerWindow(QMainWindow):
         angh.addWidget(self.pm_ang, 1)
         angh.addWidget(_next)
         df.addRow("Slice angle θ°", angw)
-        for w in (self.dem_P, self.dem_Mz, self.dem_My):
-            w.valueChanged.connect(lambda *_: self._queue())
 
         # ---- chart controls: these live in a bar UNDER the graphs (CSi-style),
         # not in the rail, so the rail's interaction table gets full height ----
@@ -3108,13 +3145,18 @@ class SectionDesignerWindow(QMainWindow):
         # fibre overlay on the Section canvas (debounced here so dragging stays
         # smooth); only computes when the toggle is on.
         self._update_fiber_overlay()
-        # tab 0 is the Section (inputs + drawing) — geometry is already live,
-        # no analysis to run.
         idx = self.tabs.currentIndex()
+        label = self.tabs.tabText(idx)
+        # keep the load-combination batch check live on the Section tab (where
+        # the table is edited) and the P-M-M tab (where the points plot); the
+        # surface build is skipped on the other tabs to stay responsive
+        if label in ("Section", "P-M-M interaction"):
+            self._run_combo_check(case, code)
+        # tab 0 is the Section (inputs + drawing) — geometry is already live,
+        # no further analysis to run.
         if idx == 0:
             self.statusBar().clearMessage()
             return
-        label = self.tabs.tabText(idx)
         if label == "Fibres":               # fibre view needs no reinforcement
             try:
                 with self._busy("Discretising the section into fibres…"):
@@ -3150,12 +3192,148 @@ class SectionDesignerWindow(QMainWindow):
                     or (getattr(sec, "prestress", None)
                         and sec.prestress.tendons))
 
-    # -------------------------------------------------------------- P-M tab
+    # ----------------------------------------------------- load combinations
+    def _active_combos(self) -> list:
+        """The active section's load combinations (list of dicts with display-
+        unit name/P/Mz/My); created empty on first use."""
+        return self._sections[self._active].setdefault("combos", [])
+
     def _demands(self):
-        P, Mz, My = self.dem_P.value(), self.dem_Mz.value(), self.dem_My.value()
-        if not (P or Mz or My):
-            return None
-        return [{"name": "Demand", "P": P, "Mz": Mz, "My": My}]
+        """Load combinations as demand dicts in canonical units (kN, kN·m) for
+        :func:`core.demand_check` — one per combination row, in table order."""
+        u = self._units
+        out = []
+        for c in self._active_combos():
+            out.append({
+                "name": c.get("name", ""),
+                "P": float(c.get("P", 0.0)) * u.fN / 1e3,
+                "Mz": float(c.get("Mz", 0.0)) * u.fN * u.lM / 1e3,
+                "My": float(c.get("My", 0.0)) * u.fN * u.lM / 1e3})
+        return out or None
+
+    @staticmethod
+    def _combo_nonzero(c) -> bool:
+        return bool(c.get("P") or c.get("Mz") or c.get("My"))
+
+    def _load_combos_table(self) -> None:
+        """Populate the combos table from the active section (guarded)."""
+        self._loading = True
+        combos = self._active_combos()
+        self.combo_tbl.setRowCount(len(combos))
+        for r, c in enumerate(combos):
+            self._set_combo_cells(r, c)
+        self._loading = False
+
+    def _set_combo_cells(self, r, c) -> None:
+        vals = [c.get("name", ""), self._fmt_combo(c.get("P", 0.0)),
+                self._fmt_combo(c.get("Mz", 0.0)), self._fmt_combo(c.get("My", 0.0))]
+        for col, val in enumerate(vals):
+            it = QTableWidgetItem(str(val))
+            if col:
+                it.setTextAlignment(Qt.AlignmentFlag.AlignRight
+                                    | Qt.AlignmentFlag.AlignVCenter)
+            self.combo_tbl.setItem(r, col, it)
+        for col in (4, 5):                       # D/C + Status (read-only)
+            it = QTableWidgetItem("—")
+            it.setFlags(it.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            it.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.combo_tbl.setItem(r, col, it)
+
+    @staticmethod
+    def _fmt_combo(v) -> str:
+        return "" if not v else f"{v:g}"
+
+    def _on_combo_edited(self, item) -> None:
+        if self._loading:
+            return
+        r, col = item.row(), item.column()
+        combos = self._active_combos()
+        if not (0 <= r < len(combos)) or col > 3:
+            return
+        if col == 0:
+            combos[r]["name"] = item.text().strip()
+        else:
+            key = ("P", "Mz", "My")[col - 1]
+            txt = item.text().strip()
+            try:
+                combos[r][key] = float(txt) if txt else 0.0
+            except ValueError:                   # revert bad input
+                self._loading = True
+                item.setText(self._fmt_combo(combos[r][key]))
+                self._loading = False
+                return
+        self._queue()
+
+    def _add_combo(self) -> None:
+        combos = self._active_combos()
+        combos.append({"name": f"Combo {len(combos) + 1}",
+                       "P": 0.0, "Mz": 0.0, "My": 0.0})
+        self._load_combos_table()
+        self.combo_tbl.selectRow(len(combos) - 1)
+        self._queue()
+
+    def _remove_combo(self) -> None:
+        r = self.combo_tbl.currentRow()
+        combos = self._active_combos()
+        if 0 <= r < len(combos):
+            combos.pop(r)
+            self._load_combos_table()
+            self._queue()
+
+    def _run_combo_check(self, case, code):
+        """Batch-check every combination; fill the D/C + Status columns and the
+        summary, and return the results list (aligned with the table rows)."""
+        u = self._units
+        # refresh unit-bearing headers
+        self.combo_tbl.setHorizontalHeaderLabels(
+            ["Combo", f"P [{u.Fl}]", f"Mz [{u.Ml}]", f"My [{u.Ml}]",
+             "D/C", "Status"])
+        combos = self._active_combos()
+        dems = self._demands()
+        results = []
+        if (dems and self._spec.kind != "Composite"
+                and self._has_reinforcement(case)):
+            try:
+                use_phi = self._design_basis()[0]
+                results = core.demand_check(case, code, dems, design=use_phi,
+                                            spec=self._spec)
+            except Exception:                              # noqa: BLE001
+                results = []
+        self._combo_results = results
+        self._loading = True
+        for r in range(self.combo_tbl.rowCount()):
+            dc = self.combo_tbl.item(r, 4)
+            st = self.combo_tbl.item(r, 5)
+            if not (dc and st):
+                continue
+            res = results[r] if r < len(results) else None
+            active = r < len(combos) and self._combo_nonzero(combos[r])
+            if res and active:
+                dc.setText(f"{res['util']:.3f}")
+                ok = res["status"] == "OK"
+                st.setText("PASS" if ok else "FAIL")
+                st.setForeground(QColor(style.OK if ok else style.BAD))
+            else:
+                dc.setText("—")
+                st.setText("—")
+                st.setForeground(QColor(style.MUTED))
+        self._loading = False
+        checked = [res for r, res in enumerate(results)
+                   if r < len(combos) and self._combo_nonzero(combos[r])]
+        if checked:
+            npass = sum(1 for res in checked if res["status"] == "OK")
+            gov = max(checked, key=lambda res: res["util"])
+            self.combo_summary.setText(
+                f"<b>{npass}/{len(checked)}</b> combinations pass · governing "
+                f"<b>{gov['name'] or '—'}</b> at D/C {gov['util']:.3f}")
+        elif self._spec.kind == "Composite":
+            self.combo_summary.setText("Composite — batch check runs on the "
+                                       "fibre surface (3-D view).")
+        else:
+            self.combo_summary.setText(
+                "Add load combinations (P, Mz, My) to batch-check them against "
+                "the P-M-M interaction surface.")
+        return results
 
     # ------------------------------------------------------ verdict strip
     def _build_verdict_strip(self) -> QWidget:
@@ -3268,6 +3446,33 @@ class SectionDesignerWindow(QMainWindow):
         self._vd_detail.setText(
             f"governs {res['govern']} · capacity {u.M_disp(res['M_cap']):.4g} "
             f"{u.Ml} · β {res['beta_deg']:.1f}° · {basis}")
+        self._vd_bar.setValue(int(round(min(util, 1.0) * 100)))
+        self._vd_bar.setStyleSheet(
+            f"QProgressBar#utilBar::chunk {{ background: {color}; "
+            f"border-radius: 3px; }}")
+
+    def _set_verdict_combos(self, results, u) -> None:
+        """Overall verdict for a batch of load combinations: FAIL if any fails,
+        the governing (worst) D/C, and the pass count."""
+        if not results:
+            self._set_verdict_empty(
+                "Add load combinations on the Section tab to run a batch "
+                "capacity check.")
+            return
+        gov = max(results, key=lambda r: r["util"])
+        npass = sum(1 for r in results if r["status"] == "OK")
+        n = len(results)
+        ok = npass == n
+        util = float(gov["util"])
+        self._set_pill("pass" if ok else "fail", "PASS" if ok else "FAIL")
+        color = style.WARN if (ok and util >= 0.85) else (
+            style.OK if ok else style.BAD)
+        self._vd_dc.setText(f"{util:.3f}")
+        self._vd_dc.setStyleSheet(f"color: {color};")
+        basis = self._design_basis()[2]
+        self._vd_detail.setText(
+            f"{npass}/{n} pass · governing {gov['name'] or '—'} "
+            f"(D/C {util:.3f}, governs {gov['govern']}) · {basis}")
         self._vd_bar.setValue(int(round(min(util, 1.0) * 100)))
         self._vd_bar.setStyleSheet(
             f"QProgressBar#utilBar::chunk {{ background: {color}; "
@@ -3486,19 +3691,26 @@ class SectionDesignerWindow(QMainWindow):
                 continue
             marks.append((0.0, u.P_disp(val), name) if kind == "P"
                          else (u.M_disp(val), 0.0, name))
-        # demand check
-        dem = self._demands()
-        if dem:
-            res = core.demand_check(case, code, dem,
-                                    design=use_phi,
-                                    spec=self._spec)[0]
+        # batch demand check (run in _recompute_analysis): plot every load
+        # combination coloured by pass/fail
+        results = getattr(self, "_combo_results", None) or []
+        combos = self._active_combos()
+        checked = [(r, res) for r, res in enumerate(results)
+                   if r < len(combos) and self._combo_nonzero(combos[r])]
+        _pass_done = _fail_done = False
+        for _r, res in checked:
             dx, dy = u.M_disp(res["M_res"]), u.P_disp(res["P"])
-            ax.plot([dx], [dy], "o",
-                    color=style.C_DEMAND, ms=9, label="Demand", zorder=5)
-            marks.append((dx, dy, "Demand"))
-            self._set_verdict(res, u)
-        else:
-            self._set_verdict_empty()
+            ok = res["status"] == "OK"
+            lbl = None
+            if ok and not _pass_done:
+                lbl, _pass_done = "Demand · pass", True
+            elif not ok and not _fail_done:
+                lbl, _fail_done = "Demand · fail", True
+            ax.plot([dx], [dy], "o", color=style.OK if ok else style.BAD,
+                    ms=8, mec=style.PANEL, mew=0.8, label=lbl, zorder=5)
+            marks.append((dx, dy, f"{res['name'] or 'combo'} · D/C "
+                          f"{res['util']:.2f}"))
+        self._set_verdict_combos([res for _r, res in checked], u)
         self._pm_marks_xy = marks
         ax.axhline(0, color=style.AX_TEXT, lw=0.5)
         ax.axvline(0, color=style.AX_TEXT, lw=0.5)
@@ -3945,9 +4157,25 @@ class SectionDesignerWindow(QMainWindow):
         if fy_fac != 1.0:
             aspec = self._analysis_spec()
             cse = _case(replace(aspec, fy=aspec.fy * fy_fac))
-        dem = self._demands()
-        dP = self.dem_P.value()
+        results = getattr(self, "_combo_results", None) or []
+        combos = self._active_combos()
+        checked = [res for r, res in enumerate(results)
+                   if r < len(combos) and self._combo_nonzero(combos[r])]
+        gov = max(checked, key=lambda r: r["util"]) if checked else None
+
+        def _pt(m_disp, p_disp, res, done):
+            ok = res["status"] == "OK"
+            lbl = None
+            tag = "pass" if ok else "fail"
+            if tag not in done:
+                lbl, _ = f"Demand · {tag}", done.add(tag)
+            ax.plot([m_disp], [p_disp], "o", color=style.OK if ok else style.BAD,
+                    ms=8, mec=style.PANEL, mew=0.8, label=lbl, zorder=5)
+
         if mode == "M-M":
+            # envelope at the governing combination's axial force
+            dP_kN = gov["P"] if gov else 0.0
+            dP_disp = u.P_disp(dP_kN)
             key = (self._spec, code, round(fy_fac, 3))
             if getattr(self, "_mm_grid_key", None) == key and \
                     getattr(self, "_mm_grid", None) is not None:
@@ -3955,9 +4183,9 @@ class SectionDesignerWindow(QMainWindow):
             else:
                 grid = core.pmm_surface_grid(cse, code)
                 self._mm_grid_key, self._mm_grid = key, grid
-            mz, my = core.mm_contour(grid, dP * u.fN / 1e3)
+            mz, my = core.mm_contour(grid, dP_kN)
             if not mz:
-                ax.text(0.5, 0.5, f"No M-M envelope at P = {dP:.4g} {u.Fl}\n"
+                ax.text(0.5, 0.5, f"No M-M envelope at P = {dP_disp:.4g} {u.Fl}\n"
                         "(outside the section's axial range).", ha="center",
                         va="center", transform=ax.transAxes, color=style.MUTED)
                 ax.set_axis_off()
@@ -3965,23 +4193,25 @@ class SectionDesignerWindow(QMainWindow):
                 return
             X = [u.M_disp(v) for v in mz]
             Y = [u.M_disp(v) for v in my]
-            ax.plot(X, Y, "-", color=style.C_NOMINAL, lw=1.8,
-                    label=f"Envelope @ P = {dP:.4g} {u.Fl}")
+            ax.plot(X, Y, "-", color=style.C_NOMINAL, lw=1.8, label="Envelope")
             ax.fill(X, Y, color=style.C_NOMINAL, alpha=0.10)
-            if dem:
-                ax.plot([self.dem_Mz.value()], [self.dem_My.value()], "o",
-                        color=style.C_DEMAND, ms=9, label="Demand", zorder=5)
+            if gov:
+                ok = gov["status"] == "OK"
+                ax.plot([u.M_disp(gov["Mz"])], [u.M_disp(gov["My"])], "o",
+                        color=style.OK if ok else style.BAD, ms=9,
+                        mec=style.PANEL, mew=0.8,
+                        label=f"{gov['name'] or 'governing'}", zorder=5)
             ax.axhline(0, color=style.AX_SPINE, lw=0.6)
             ax.axvline(0, color=style.AX_SPINE, lw=0.6)
             ax.set_aspect("equal", adjustable="datalim")
             ax.set_xlabel(f"Mz  [{u.Ml}]")
             ax.set_ylabel(f"My  [{u.Ml}]")
-            ax.set_title(f"M-M envelope @ P = {dP:.4g} {u.Fl}", color=style.TEXT,
-                         fontsize=10, fontweight="bold")
+            gname = f" · {gov['name']}" if gov and gov.get("name") else ""
+            ax.set_title(f"M-M envelope @ P = {dP_disp:.4g} {u.Fl}{gname}",
+                         color=style.TEXT, fontsize=10, fontweight="bold")
         else:
-            theta, mlab, dM = ((0.0, "Mz", self.dem_Mz.value())
-                               if mode == "P-M3"
-                               else (90.0, "My", self.dem_My.value()))
+            theta, mlab, mkey = ((0.0, "Mz", "Mz") if mode == "P-M3"
+                                 else (90.0, "My", "My"))
             curve, _lm = core.pmm_slice(cse, code, theta_deg=theta)
             ax.plot([u.M_disp(v) for v in curve["M_nom"]],
                     [u.P_disp(v) for v in curve["P_nom"]], "-",
@@ -3990,9 +4220,9 @@ class SectionDesignerWindow(QMainWindow):
                 ax.plot([u.M_disp(v) for v in curve["M_des"]],
                         [u.P_disp(v) for v in curve["P_des"]], "--",
                         color=style.C_DESIGN, lw=1.5, label="Design φ")
-            if dem:
-                ax.plot([dM], [dP], "o", color=style.C_DEMAND, ms=9,
-                        label="Demand", zorder=5)
+            done: set = set()
+            for res in checked:                  # every combo, at its own P
+                _pt(u.M_disp(res[mkey]), u.P_disp(res["P"]), res, done)
             ax.axhline(0, color=style.AX_TEXT, lw=0.5)
             ax.axvline(0, color=style.AX_TEXT, lw=0.5)
             ax.set_xlabel(f"{mlab}  [{u.Ml}]")
@@ -4403,6 +4633,7 @@ class SectionDesignerWindow(QMainWindow):
         self.code_combo.setCurrentText(rec.get("code", core.CODES[0]))
         self._loading = False
         self._load_form_from_spec()
+        self._load_combos_table()      # per-section load combinations
         self._refresh_geometry()
         self._recompute_analysis()
         self._reset_history()          # undo history is per active section
@@ -4575,12 +4806,16 @@ class SectionDesignerWindow(QMainWindow):
             return
         try:
             text = open(path, encoding="utf-8").read()
-            sections, active, _demands, materials = core.project_from_json(text)
+            sections, active, demands, materials = core.project_from_json(text)
         except Exception as exc:                       # noqa: BLE001
             QMessageBox.critical(self, "Open failed", str(exc))
             return
         self._sections = sections
         self._active = active
+        # restore each section's load combinations (name, P, Mz, My)
+        for nm, rec in self._sections.items():
+            rec["combos"] = [{"name": c[0], "P": c[1], "Mz": c[2], "My": c[3]}
+                             for c in (demands.get(nm) or []) if len(c) >= 4]
         self._materials = materials
         self._reload_section_nav()
         self._load_active()
@@ -4596,8 +4831,12 @@ class SectionDesignerWindow(QMainWindow):
         if not path:
             return
         try:
+            combos = {
+                name: [(c.get("name", ""), c.get("P", 0.0), c.get("Mz", 0.0),
+                        c.get("My", 0.0)) for c in rec.get("combos", [])]
+                for name, rec in self._sections.items()}
             text = core.project_to_json(self._sections, self._active,
-                                        {}, self._materials)
+                                        combos, self._materials)
             with open(path, "w", encoding="utf-8") as fh:
                 fh.write(text)
             self.statusBar().showMessage(f"Saved {path}")
