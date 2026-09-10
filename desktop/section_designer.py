@@ -4066,7 +4066,7 @@ class SectionDesignerWindow(QMainWindow):
         # green wireframe (GSD/CSiCol style) — see-through, so the surface's
         # shape and the highlighted slice both read clearly
         ax.plot_wireframe(Xa, Ya, Za, rstride=1, cstride=1,
-                          color=style.C_WIRE, linewidth=0.4, alpha=0.55)
+                          color=style.C_WIRE, linewidth=0.35, alpha=0.35)
         # highlight where the current 2-D slice lives in the surface: the θ
         # meridian and its opposite together trace the full slice loop (magenta)
         thetas = list(mesh.get("thetas") or [])
