@@ -4079,13 +4079,15 @@ class SectionDesignerWindow(QMainWindow):
             for jj in {_near(ang), _near((ang + 180) % 360)}:
                 ax.plot(Xa[:, jj], Ya[:, jj], Za[:, jj],
                         color=style.C_SLICE, lw=2.6, zorder=12)
-        ax.tick_params(colors=style.AX_TEXT, labelsize=8)
         ax.grid(False)                         # no gridlines on the panes
+        ax.set_xticks([])                       # drop ticks + tick labels
+        ax.set_yticks([])
+        ax.set_zticks([])
         for a in (ax.xaxis, ax.yaxis, ax.zaxis):
             a.label.set_color(style.AX_TEXT)
             a.label.set_fontsize(9)
-            a.pane.fill = False                # drop the grey background walls
-            a.pane.set_edgecolor((0, 0, 0, 0))
+            a.pane.set_visible(False)          # drop the grey walls + box edges
+            a.line.set_color((0, 0, 0, 0))     # drop the axis lines
         ax.set_xlabel(f"Mz [{u.Ml}]")
         ax.set_ylabel(f"My [{u.Ml}]")
         ax.set_zlabel(f"P [{u.Fl}]")
