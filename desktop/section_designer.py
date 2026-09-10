@@ -4079,18 +4079,14 @@ class SectionDesignerWindow(QMainWindow):
             for jj in {_near(ang), _near((ang + 180) % 360)}:
                 ax.plot(Xa[:, jj], Ya[:, jj], Za[:, jj],
                         color=style.C_SLICE, lw=2.6, zorder=12)
-        ax.grid(False)                         # no gridlines on the panes
-        ax.set_xticks([])                       # drop ticks + tick labels
+        # bare surface: no panes, box edges, axis lines, ticks or axis labels
+        ax.grid(False)
+        ax.set_xticks([])
         ax.set_yticks([])
         ax.set_zticks([])
         for a in (ax.xaxis, ax.yaxis, ax.zaxis):
-            a.label.set_color(style.AX_TEXT)
-            a.label.set_fontsize(9)
             a.pane.set_visible(False)          # drop the grey walls + box edges
             a.line.set_color((0, 0, 0, 0))     # drop the axis lines
-        ax.set_xlabel(f"Mz [{u.Ml}]")
-        ax.set_ylabel(f"My [{u.Ml}]")
-        ax.set_zlabel(f"P [{u.Fl}]")
         ax.set_title(f"P-Mz-My surface — slice θ = {self.pm_ang.value():g}°",
                      color=style.TEXT, fontsize=10, fontweight="bold")
         ax.view_init(elev=self._s3_elev, azim=self._s3_azim)   # keep view (P4)
