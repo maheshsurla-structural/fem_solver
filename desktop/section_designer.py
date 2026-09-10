@@ -1764,13 +1764,8 @@ class SectionDesignerWindow(QMainWindow):
         self._s3_ax = None
         self.s3_canvas.mpl_connect("button_release_event", self._sync_s3_spins)
 
-        # ---- M-M contour (view) ----
-        mm = QWidget()
-        mmv = QVBoxLayout(mm)
-        mmv.setContentsMargins(0, 0, 0, 0)
-        self.mm_fig = Figure(figsize=(4.2, 4.0), layout="constrained")
-        self.mm_canvas = Canvas(self.mm_fig)
-        mmv.addWidget(self.mm_canvas)
+        # (The M-M / P-M plane views are camera presets on the 3-D surface —
+        # see the View buttons in the control bar, driven by _S3_PRESETS.)
 
         # (The stress field is folded into the Fibres tab as the
         # "Stress field (ε)" colour-by mode — see _build_fibers_tab.)
@@ -1781,18 +1776,8 @@ class SectionDesignerWindow(QMainWindow):
         icv = QVBoxLayout(inter_ctrl)
         icv.setContentsMargins(12, 12, 12, 12)
         icv.setSpacing(8)
-        _vh = QLabel("RIGHT PANE")
-        _vh.setObjectName("ctrlHead")
-        icv.addWidget(_vh)
-        # the interaction table + 2-D P-M curve are always shown; this picks
-        # what fills the third pane (the 3-D surface by default, GSD-style).
-        self.inter_view = QComboBox()
-        self.inter_view.addItems(["3-D P-M-M surface", "M-M contour", "Hide"])
-        self.inter_view.currentIndexChanged.connect(self._on_inter_view)
-        icv.addWidget(self.inter_view)
         _ih = QLabel("INPUTS")
         _ih.setObjectName("ctrlHead")
-        _ih.setContentsMargins(0, 8, 0, 0)
         icv.addWidget(_ih)
         # page 0 — demand for the P-M curve check (always shown: the primary)
         dpg = QWidget()
@@ -1892,47 +1877,21 @@ class SectionDesignerWindow(QMainWindow):
             b.clicked.connect(lambda _c=False, n=name: self._s3_preset(n))
             sfm.addWidget(b)
         sfm.addStretch(1)
-        # M-M contour controls (axial + demand) — under the M-M graph
-        mpg = QWidget()
-        mmf = QHBoxLayout(mpg)
-        mmf.setContentsMargins(0, 0, 0, 0)
-        mmf.setSpacing(style.SP_SM)
-        self.mm_P = self._dspin(-1e6, 1e6, 50, "", 1)
-        self.mm_Mz = self._dspin(-1e6, 1e6, 25, "", 1)
-        self.mm_My = self._dspin(-1e6, 1e6, 25, "", 1)
-        for w in (self.mm_P, self.mm_Mz, self.mm_My):
-            w.valueChanged.connect(lambda *_: self._queue())
-        mmf.addWidget(_bar_label("Axial P"))
-        mmf.addWidget(self.mm_P)
-        mmf.addWidget(_bar_label("Mz"))
-        mmf.addWidget(self.mm_Mz)
-        mmf.addWidget(_bar_label("My"))
-        mmf.addWidget(self.mm_My)
-        mmf.addStretch(1)
-        # right-pane controls (3-D mesh/camera · M-M axial · blank) live in the
-        # control bar under the graphs, driven by the RIGHT PANE selector
-        self.inter_sec_ctrl = QStackedWidget()
-        for pg in (spg, mpg, QWidget()):         # 0 3-D mesh, 1 M-M axial, 2 hide
-            self.inter_sec_ctrl.addWidget(pg)
         icv.addWidget(dpg)                       # demand + slice controls
         # the interaction-points table fills the rail below the inputs, so the
         # results read well; the chart controls sit under the graphs instead
         icv.addWidget(self._pm_table_pane, 1)
 
-        # view: KPI + verdict band on top, then the two graphs side by side
-        # [ 2-D P-M curve | 3-D surface / M-M contour ] (GSD/CSiCol layout).
-        # The right pane is shown by default; the table is in the rail.
-        self.inter_sec_stack = QStackedWidget()
-        self.inter_sec_stack.addWidget(s3)      # 0: 3-D surface
-        self.inter_sec_stack.addWidget(mm)      # 1: M-M contour
+        # view: KPI + verdict band on top, then the two graphs side by side —
+        # the 2-D P-M curve and the always-shown 3-D surface. The M-M / P-M
+        # plane views are camera presets (View buttons) on that surface.
         self.inter_split = QSplitter(Qt.Orientation.Horizontal)
         self.inter_split.addWidget(self._pm_chart_pane)   # left: 2-D curve
-        self.inter_split.addWidget(self.inter_sec_stack)  # right: 3-D / M-M
+        self.inter_split.addWidget(s3)                    # right: 3-D surface
         self.inter_split.setStretchFactor(0, 1)           # 2-D curve
-        self.inter_split.setStretchFactor(1, 1)           # 3-D / M-M
-        # control bar under the graphs (CSi-style): 2-D curve toggles on the
-        # left (under the 2-D graph), the right-pane's controls on the right
-        # (under the 3-D / M-M graph)
+        self.inter_split.setStretchFactor(1, 1)           # 3-D surface
+        # control bar under the graphs (CSi-style): curve toggles under the 2-D
+        # graph, the 3-D mesh/camera controls under the 3-D surface
         ctrl_bar = QFrame()
         ctrl_bar.setObjectName("chartCtrlBar")
         _cbh = QHBoxLayout(ctrl_bar)
@@ -1940,7 +1899,7 @@ class SectionDesignerWindow(QMainWindow):
                                 style.SP_XS)
         _cbh.setSpacing(style.SP_LG)
         _cbh.addWidget(self._pm_curves_bar, 1)
-        _cbh.addWidget(self.inter_sec_ctrl, 1)
+        _cbh.addWidget(spg, 1)
         inter = QWidget()
         _ivl = QVBoxLayout(inter)
         _ivl.setContentsMargins(0, 0, 0, 0)
@@ -3132,21 +3091,6 @@ class SectionDesignerWindow(QMainWindow):
             pass
         self.head_sub.setText("  ·  ".join(bits))
 
-    def _on_inter_view(self, i: int) -> None:
-        """Fill the dashboard's right pane: 0 = 3-D surface, 1 = M-M contour,
-        2 = hide it (wider table + 2-D). The rail's right-pane controls follow,
-        then recompute."""
-        show = i < 2
-        self.inter_sec_stack.setVisible(show)
-        total = max(self.inter_split.width(), 900)
-        if show:
-            self.inter_sec_stack.setCurrentIndex(i)       # 0:s3, 1:mm
-            self.inter_split.setSizes([int(total * 0.5), int(total * 0.5)])
-        else:
-            self.inter_split.setSizes([total, 0])         # 2-D fills the view
-        self.inter_sec_ctrl.setCurrentIndex(i)            # 0 3-D, 1 M-M, 2 blank
-        self._queue()
-
     def _recompute_analysis(self) -> None:
         code = self.code_combo.currentText()
         try:
@@ -3183,12 +3127,8 @@ class SectionDesignerWindow(QMainWindow):
         try:
             if label == "P-M-M interaction":
                 self._draw_pm(case, code)          # table + 2-D curve
-                sec = self.inter_view.currentIndex()
-                if sec == 0:                       # 3-D surface (default)
-                    with self._busy("Building the 3-D P-M-M surface…"):
-                        self._draw_surface(case, code)
-                elif sec == 1:                     # M-M contour
-                    self._draw_mm_contour(case, code)
+                with self._busy("Building the 3-D P-M-M surface…"):
+                    self._draw_surface(case, code)   # always shown; View = camera
             elif label == "Moment-curvature":
                 self._draw_mphi(case)
             elif label == "Report":
@@ -3969,40 +3909,6 @@ class SectionDesignerWindow(QMainWindow):
             spin.blockSignals(False)
 
     # ------------------------------------------------------ M-M contour
-    def _draw_mm_contour(self, case, code) -> None:
-        u = self._units
-        self.mm_fig.clear()
-        ax = self.mm_fig.add_subplot(111)
-        if self._spec.kind == "Composite":
-            ax.text(0.5, 0.5, "Composite section —\nsee the 3-D surface tab.",
-                    ha="center", va="center", transform=ax.transAxes)
-            ax.set_axis_off()
-            self.mm_canvas.draw_idle()
-            return
-        P = self.mm_P.value()
-        P_kN = P * u.fN / 1e3
-        grid = core.pmm_surface_grid(case, code)
-        Mz, My = core.mm_contour(grid, P_kN)
-        # close the ring
-        mz = [u.M_disp(v) for v in list(Mz) + [Mz[0]]]
-        my = [u.M_disp(v) for v in list(My) + [My[0]]]
-        ax.plot(mz, my, "-", color=style.C_PRIMARY, lw=1.8,
-                label=f"Capacity @ P={P:.0f} {u.Fl}")
-        ax.fill(mz, my, color=style.ACCENT_SOFT, alpha=0.5)
-        dMz, dMy = self.mm_Mz.value(), self.mm_My.value()
-        if dMz or dMy:
-            ax.plot([dMz], [dMy], "o", color=style.C_DEMAND, ms=9,
-                    label="Demand", zorder=5)
-        ax.axhline(0, color=style.AX_SPINE, lw=0.6)
-        ax.axvline(0, color=style.AX_SPINE, lw=0.6)
-        ax.set_aspect("equal", adjustable="datalim")
-        ax.set_xlabel(f"Mz  [{u.Ml}]")
-        ax.set_ylabel(f"My  [{u.Ml}]")
-        ax.set_title(f"M-M interaction @ P = {P:.4g} {u.Fl} — {code}")
-        style.beautify_axes(ax)
-        ax.legend(fontsize=8, loc="best", frameon=False)
-        self.mm_canvas.draw_idle()
-
     # ------------------------------------------------------ stress field
     def _render_stress_field(self, ax, case) -> None:
         """Fibre-stress field under a plane-sections strain state (ε linear in
