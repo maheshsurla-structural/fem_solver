@@ -4080,9 +4080,12 @@ class SectionDesignerWindow(QMainWindow):
                 ax.plot(Xa[:, jj], Ya[:, jj], Za[:, jj],
                         color=style.C_SLICE, lw=2.6, zorder=12)
         ax.tick_params(colors=style.AX_TEXT, labelsize=8)
+        ax.grid(False)                         # no gridlines on the panes
         for a in (ax.xaxis, ax.yaxis, ax.zaxis):
             a.label.set_color(style.AX_TEXT)
             a.label.set_fontsize(9)
+            a.pane.fill = False                # drop the grey background walls
+            a.pane.set_edgecolor((0, 0, 0, 0))
         ax.set_xlabel(f"Mz [{u.Ml}]")
         ax.set_ylabel(f"My [{u.Ml}]")
         ax.set_zlabel(f"P [{u.Fl}]")
