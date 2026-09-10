@@ -1762,6 +1762,9 @@ class SectionDesignerWindow(QMainWindow):
         # a drag syncs the spins back. Changing the view never recomputes.
         self._s3_elev, self._s3_azim = _S3_PRESETS["3D"]
         self._s3_ax = None
+        # right-pane view: "3D" surface, or a 2-D cross-section (M-M / P-M3 /
+        # P-M2) — the View buttons switch between them
+        self._s3_view_mode = "3D"
         self.s3_canvas.mpl_connect("button_release_event", self._sync_s3_spins)
 
         # (The M-M / P-M plane views are camera presets on the 3-D surface —
@@ -1871,10 +1874,11 @@ class SectionDesignerWindow(QMainWindow):
         sfm.addWidget(_bar_label("Azim°"))
         sfm.addWidget(self.s3_azim)
         sfm.addWidget(_bar_label("View"))
-        for name in _S3_PRESETS:
+        # 3D = the surface (isometric); M-M / P-M3 / P-M2 = 2-D cross-sections
+        for name in ("3D", "M-M", "P-M3", "P-M2"):
             b = QToolButton()
             b.setText(name)
-            b.clicked.connect(lambda _c=False, n=name: self._s3_preset(n))
+            b.clicked.connect(lambda _c=False, n=name: self._set_s3_view(n))
             sfm.addWidget(b)
         sfm.addStretch(1)
         icv.addWidget(dpg)                       # demand + slice controls
@@ -3127,8 +3131,7 @@ class SectionDesignerWindow(QMainWindow):
         try:
             if label == "P-M-M interaction":
                 self._draw_pm(case, code)          # table + 2-D curve
-                with self._busy("Building the 3-D P-M-M surface…"):
-                    self._draw_surface(case, code)   # always shown; View = camera
+                self._draw_right_pane(case, code)  # 3-D surface or a 2-D cut
             elif label == "Moment-curvature":
                 self._draw_mphi(case)
             elif label == "Report":
@@ -3887,13 +3890,119 @@ class SectionDesignerWindow(QMainWindow):
             self.s3_canvas.draw_idle()
 
     def _s3_preset(self, name: str) -> None:
-        """Snap to a named view (isometric / M-M / P-M3 / P-M2)."""
-        elev, azim = _S3_PRESETS[name]
+        """Snap the 3-D camera to a named isometric view."""
+        elev, azim = _S3_PRESETS.get(name, _S3_PRESETS["3D"])
         for spin, val in ((self.s3_elev, elev), (self.s3_azim, azim)):
             spin.blockSignals(True)
             spin.setValue(val)
             spin.blockSignals(False)
         self._apply_s3_view()
+
+    def _set_s3_view(self, name: str) -> None:
+        """View button: '3D' shows the interaction surface (reset to isometric);
+        'M-M' / 'P-M3' / 'P-M2' show that 2-D cross-section of the surface."""
+        self._s3_view_mode = name
+        if name == "3D":                       # back to the isometric surface
+            self._s3_elev, self._s3_azim = _S3_PRESETS["3D"]
+            for spin, val in ((self.s3_elev, self._s3_elev),
+                              (self.s3_azim, self._s3_azim)):
+                spin.blockSignals(True)
+                spin.setValue(val)
+                spin.blockSignals(False)
+        try:
+            case = _case(self._analysis_spec())
+        except Exception:                              # noqa: BLE001
+            return
+        self._draw_right_pane(case, self.code_combo.currentText())
+
+    def _draw_right_pane(self, case, code) -> None:
+        """Draw the right graph: the 3-D surface, or a 2-D cross-section."""
+        if self._s3_view_mode == "3D":
+            with self._busy("Building the 3-D P-M-M surface…"):
+                self._draw_surface(case, code)
+        else:
+            self._draw_cross_section(case, code, self._s3_view_mode)
+
+    def _draw_cross_section(self, case, code, mode: str) -> None:
+        """A 2-D cut of the P-M-M surface on the right canvas: 'M-M' = the
+        biaxial Mz-My envelope at the demand axial force; 'P-M3' / 'P-M2' = the
+        uniaxial P-Mz / P-My interaction. The demand point is marked."""
+        u = self._units
+        self._s3_ax = None                     # not a 3-D axes → view spins idle
+        self.s3_fig.clear()
+        self.s3_fig.set_facecolor(style.PANEL)
+        ax = self.s3_fig.add_subplot(111)
+        ax.set_facecolor(style.PANEL)
+        if self._spec.kind == "Composite":
+            ax.text(0.5, 0.5, "Composite section —\n3-D surface only.",
+                    ha="center", va="center", transform=ax.transAxes,
+                    color=style.MUTED)
+            ax.set_axis_off()
+            self.s3_canvas.draw_idle()
+            return
+        use_phi, fy_fac, _basis = self._design_basis()
+        cse = case
+        if fy_fac != 1.0:
+            aspec = self._analysis_spec()
+            cse = _case(replace(aspec, fy=aspec.fy * fy_fac))
+        dem = self._demands()
+        dP = self.dem_P.value()
+        if mode == "M-M":
+            key = (self._spec, code, round(fy_fac, 3))
+            if getattr(self, "_mm_grid_key", None) == key and \
+                    getattr(self, "_mm_grid", None) is not None:
+                grid = self._mm_grid
+            else:
+                grid = core.pmm_surface_grid(cse, code)
+                self._mm_grid_key, self._mm_grid = key, grid
+            mz, my = core.mm_contour(grid, dP * u.fN / 1e3)
+            if not mz:
+                ax.text(0.5, 0.5, f"No M-M envelope at P = {dP:.4g} {u.Fl}\n"
+                        "(outside the section's axial range).", ha="center",
+                        va="center", transform=ax.transAxes, color=style.MUTED)
+                ax.set_axis_off()
+                self.s3_canvas.draw_idle()
+                return
+            X = [u.M_disp(v) for v in mz]
+            Y = [u.M_disp(v) for v in my]
+            ax.plot(X, Y, "-", color=style.C_NOMINAL, lw=1.8,
+                    label=f"Envelope @ P = {dP:.4g} {u.Fl}")
+            ax.fill(X, Y, color=style.C_NOMINAL, alpha=0.10)
+            if dem:
+                ax.plot([self.dem_Mz.value()], [self.dem_My.value()], "o",
+                        color=style.C_DEMAND, ms=9, label="Demand", zorder=5)
+            ax.axhline(0, color=style.AX_SPINE, lw=0.6)
+            ax.axvline(0, color=style.AX_SPINE, lw=0.6)
+            ax.set_aspect("equal", adjustable="datalim")
+            ax.set_xlabel(f"Mz  [{u.Ml}]")
+            ax.set_ylabel(f"My  [{u.Ml}]")
+            ax.set_title(f"M-M envelope @ P = {dP:.4g} {u.Fl}", color=style.TEXT,
+                         fontsize=10, fontweight="bold")
+        else:
+            theta, mlab, dM = ((0.0, "Mz", self.dem_Mz.value())
+                               if mode == "P-M3"
+                               else (90.0, "My", self.dem_My.value()))
+            curve, _lm = core.pmm_slice(cse, code, theta_deg=theta)
+            ax.plot([u.M_disp(v) for v in curve["M_nom"]],
+                    [u.P_disp(v) for v in curve["P_nom"]], "-",
+                    color=style.C_NOMINAL, lw=1.8, label="Nominal")
+            if use_phi and curve.get("has_design"):
+                ax.plot([u.M_disp(v) for v in curve["M_des"]],
+                        [u.P_disp(v) for v in curve["P_des"]], "--",
+                        color=style.C_DESIGN, lw=1.5, label="Design φ")
+            if dem:
+                ax.plot([dM], [dP], "o", color=style.C_DEMAND, ms=9,
+                        label="Demand", zorder=5)
+            ax.axhline(0, color=style.AX_TEXT, lw=0.5)
+            ax.axvline(0, color=style.AX_TEXT, lw=0.5)
+            ax.set_xlabel(f"{mlab}  [{u.Ml}]")
+            ax.set_ylabel(f"P  [{u.Fl}]  (+ compression)")
+            ax.set_title(f"P-{mlab} interaction — {code}", color=style.TEXT,
+                         fontsize=10, fontweight="bold")
+        style.beautify_axes(ax)
+        if ax.get_legend_handles_labels()[0]:
+            ax.legend(fontsize=8, loc="best", frameon=False)
+        self.s3_canvas.draw_idle()
 
     def _sync_s3_spins(self, _ev=None) -> None:
         """After a drag-rotate, write the axes' view back into the spins."""
