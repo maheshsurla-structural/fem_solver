@@ -58,7 +58,8 @@ from PySide6.QtCore import (QSize, QSettings, QPropertyAnimation, QEasingCurve,
 from PySide6.QtGui import QColor, QIcon, QKeySequence, QPixmap, QShortcut
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import QToolButton
-from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox,
+from PySide6.QtWidgets import (QAbstractItemView, QApplication, QBoxLayout,
+                               QCheckBox,
                                QColorDialog, QComboBox, QDialog,
                                QDialogButtonBox,
                                QDoubleSpinBox, QFileDialog, QFormLayout,
@@ -218,6 +219,36 @@ class ComboBoxDelegate(QStyledItemDelegate):
 
     def setModelData(self, editor, model, index):
         model.setData(index, editor.currentText(), Qt.ItemDataRole.EditRole)
+
+
+class _ReflowBar(QFrame):
+    """The P-M-M control bar: its two groups sit side by side when there is
+    room and stack vertically when the window is too narrow. A ``QBoxLayout``
+    whose direction flips on resize does the reflow without rebuilding."""
+
+    def __init__(self, left, sep, right, parent=None):
+        super().__init__(parent)
+        self.setObjectName("chartCtrlBar")
+        self._left, self._sep, self._right = left, sep, right
+        self._lay = QBoxLayout(QBoxLayout.Direction.LeftToRight, self)
+        self._lay.setContentsMargins(style.SP_MD, style.SP_SM,
+                                     style.SP_MD, style.SP_SM)
+        self._lay.setSpacing(style.SP_LG)
+        self._lay.addWidget(left, 1)
+        self._lay.addWidget(sep)
+        self._lay.addWidget(right, 1)
+
+    def resizeEvent(self, ev):
+        super().resizeEvent(ev)
+        need = (self._left.sizeHint().width()
+                + self._right.sizeHint().width() + 60)
+        horizontal = self.width() >= need
+        want = (QBoxLayout.Direction.LeftToRight if horizontal
+                else QBoxLayout.Direction.TopToBottom)
+        if self._lay.direction() != want:
+            self._lay.setDirection(want)
+            self._lay.setSpacing(style.SP_LG if horizontal else style.SP_SM)
+            self._sep.setVisible(horizontal)   # vline only makes sense in a row
 
 
 class SectionDesignerWindow(QMainWindow):
@@ -1838,7 +1869,10 @@ class SectionDesignerWindow(QMainWindow):
         # design basis (φ / nominal / nominal + 1.25·f_y)
         self.design_mode = QComboBox()
         self.design_mode.addItems(
-            ["Design (φ)", "Nominal (no φ)", "Nominal + 1.25·f_y"])
+            ["Design φ", "Nominal", "Nom + 1.25f_y"])
+        self.design_mode.setToolTip(
+            "Design basis: φ-reduced design · nominal (no φ) · nominal with the "
+            "1.25·f_y overstrength increase")
         self.design_mode.currentIndexChanged.connect(lambda *_: self._queue())
         # slice angle (P3): walk the surface at different neutral-axis angles,
         # ◀ / ▶ step by the spin's increment and wrap around 360°
@@ -1936,15 +1970,8 @@ class SectionDesignerWindow(QMainWindow):
         self.inter_split.setStretchFactor(1, 1)           # 3-D surface
         # control bar under the graphs (CSi-style): curve toggles under the 2-D
         # graph, the 3-D mesh/camera controls under the 3-D surface
-        ctrl_bar = QFrame()
-        ctrl_bar.setObjectName("chartCtrlBar")
-        _cbh = QHBoxLayout(ctrl_bar)
-        _cbh.setContentsMargins(style.SP_MD, style.SP_SM, style.SP_MD,
-                                style.SP_SM)
-        _cbh.setSpacing(style.SP_LG)
-        _cbh.addWidget(left_ctrl, 1)
-        _cbh.addWidget(_vsep())
-        _cbh.addWidget(right_ctrl, 1)
+        # groups side by side when wide, stacked when the window is narrow
+        ctrl_bar = _ReflowBar(left_ctrl, _vsep(), right_ctrl)
         inter = QWidget()
         _ivl = QVBoxLayout(inter)
         _ivl.setContentsMargins(0, 0, 0, 0)
