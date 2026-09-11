@@ -240,8 +240,10 @@ class _ReflowBar(QFrame):
 
     def resizeEvent(self, ev):
         super().resizeEvent(ev)
-        need = (self._left.sizeHint().width()
-                + self._right.sizeHint().width() + 60)
+        # stay side by side down to the groups' tight minimum widths (lenient);
+        # only stack once they genuinely can't fit in a row
+        need = (self._left.minimumSizeHint().width()
+                + self._right.minimumSizeHint().width() + 24)
         horizontal = self.width() >= need
         want = (QBoxLayout.Direction.LeftToRight if horizontal
                 else QBoxLayout.Direction.TopToBottom)
