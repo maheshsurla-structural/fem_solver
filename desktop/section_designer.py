@@ -1822,31 +1822,33 @@ class SectionDesignerWindow(QMainWindow):
         icv = QVBoxLayout(inter_ctrl)
         icv.setContentsMargins(12, 12, 12, 12)
         icv.setSpacing(8)
-        _ih = QLabel("INPUTS")
-        _ih.setObjectName("ctrlHead")
-        icv.addWidget(_ih)
-        # page 0 — demand for the P-M curve check (always shown: the primary)
-        dpg = QWidget()
-        df = QFormLayout(dpg)
-        df.setContentsMargins(0, 0, 0, 0)
-        # (Demand P/Mz/My moved to the Load-combinations table on the Section
-        # tab — batch-checked; results show in the verdict strip + charts here.)
-        # design basis (mirrors the reference "Design Options" radios):
-        # φ-reduced · nominal · nominal with the 1.25·f_y overstrength increase
+        # the rail holds only the interaction table now — every input lives in
+        # the control bar UNDER the graphs (CSi-style), grouped by section.
+        def _bar_label(text):
+            _l = QLabel(text)
+            _l.setObjectName("caption")
+            return _l
+
+        def _vsep():                             # thin group separator
+            ln = QFrame()
+            ln.setObjectName("ctrlSep")
+            ln.setFixedWidth(1)
+            return ln
+
+        # design basis (φ / nominal / nominal + 1.25·f_y)
         self.design_mode = QComboBox()
         self.design_mode.addItems(
             ["Design (φ)", "Nominal (no φ)", "Nominal + 1.25·f_y"])
         self.design_mode.currentIndexChanged.connect(lambda *_: self._queue())
-        df.addRow("Basis", self.design_mode)
-        # slice angle (P3): walk the interaction surface at different neutral-
-        # axis angles, like the reference "Curve Angle" stepper. ◀ / ▶ step by
-        # the spin's increment and wrap around 360°.
+        # slice angle (P3): walk the surface at different neutral-axis angles,
+        # ◀ / ▶ step by the spin's increment and wrap around 360°
         angw = QWidget()
         angh = QHBoxLayout(angw)
         angh.setContentsMargins(0, 0, 0, 0)
         angh.setSpacing(style.SP_XS)
         self.pm_ang = self._dspin(-180, 180, 15, "", 0)
         self.pm_ang.setWrapping(True)
+        self.pm_ang.setMaximumWidth(72)
         self.pm_ang.valueChanged.connect(lambda *_: self._queue())
         _prev = QToolButton()
         _prev.setText("◀")
@@ -1857,14 +1859,6 @@ class SectionDesignerWindow(QMainWindow):
         angh.addWidget(_prev)
         angh.addWidget(self.pm_ang, 1)
         angh.addWidget(_next)
-        df.addRow("Slice angle θ°", angw)
-
-        # ---- chart controls: these live in a bar UNDER the graphs (CSi-style),
-        # not in the rail, so the rail's interaction table gets full height ----
-        def _bar_label(text):
-            _l = QLabel(text)
-            _l.setObjectName("caption")
-            return _l
 
         # curve toggles (P5) — under the 2-D graph
         self.pm_show_nom = QCheckBox("Nominal")
@@ -1878,18 +1872,25 @@ class SectionDesignerWindow(QMainWindow):
             "section vs the code's simplified curve. Non-composite sections.")
         for cb in (self.pm_show_nom, self.pm_show_des, self.pm_show_fib):
             cb.stateChanged.connect(lambda *_: self._queue())
-        self._pm_curves_bar = QWidget()
-        _cbl = QHBoxLayout(self._pm_curves_bar)
-        _cbl.setContentsMargins(0, 0, 0, 0)
-        _cbl.setSpacing(style.SP_SM)
-        _cbl.addWidget(_bar_label("Curves"))
+        # left section of the bar (under the 2-D graph): Basis · Slice · Curves
+        left_ctrl = QWidget()
+        _lcl = QHBoxLayout(left_ctrl)
+        _lcl.setContentsMargins(0, 0, 0, 0)
+        _lcl.setSpacing(style.SP_SM)
+        _lcl.addWidget(_bar_label("Basis"))
+        _lcl.addWidget(self.design_mode)
+        _lcl.addWidget(_vsep())
+        _lcl.addWidget(_bar_label("Slice θ°"))
+        _lcl.addWidget(angw)
+        _lcl.addWidget(_vsep())
+        _lcl.addWidget(_bar_label("Curves"))
         for cb in (self.pm_show_nom, self.pm_show_des, self.pm_show_fib):
-            _cbl.addWidget(cb)
-        _cbl.addStretch(1)
+            _lcl.addWidget(cb)
+        _lcl.addStretch(1)
 
-        # 3-D surface controls (mesh density + camera) — under the 3-D graph
-        spg = QWidget()
-        sfm = QHBoxLayout(spg)
+        # right section of the bar (under the 3-D surface): Mesh · camera · View
+        right_ctrl = QWidget()
+        sfm = QHBoxLayout(right_ctrl)
         sfm.setContentsMargins(0, 0, 0, 0)
         sfm.setSpacing(style.SP_SM)
         self.mesh_combo = QComboBox()
@@ -1898,18 +1899,22 @@ class SectionDesignerWindow(QMainWindow):
         self.mesh_combo.currentTextChanged.connect(lambda *_: self._queue())
         sfm.addWidget(_bar_label("Mesh"))
         sfm.addWidget(self.mesh_combo)
+        sfm.addWidget(_vsep())
         # view controls (P4): drive view_init without recomputing the mesh
         self.s3_elev = self._dspin(-90, 90, 5, "", 0)
         self.s3_elev.setValue(self._s3_elev)
+        self.s3_elev.setMaximumWidth(64)
         self.s3_elev.valueChanged.connect(lambda *_: self._apply_s3_view())
         sfm.addWidget(_bar_label("Elev°"))
         sfm.addWidget(self.s3_elev)
         self.s3_azim = self._dspin(-180, 180, 5, "", 0)
         self.s3_azim.setWrapping(True)
         self.s3_azim.setValue(self._s3_azim)
+        self.s3_azim.setMaximumWidth(64)
         self.s3_azim.valueChanged.connect(lambda *_: self._apply_s3_view())
         sfm.addWidget(_bar_label("Azim°"))
         sfm.addWidget(self.s3_azim)
+        sfm.addWidget(_vsep())
         sfm.addWidget(_bar_label("View"))
         # 3D = the surface (isometric); M-M / P-M3 / P-M2 = 2-D cross-sections
         for name in ("3D", "M-M", "P-M3", "P-M2"):
@@ -1918,9 +1923,7 @@ class SectionDesignerWindow(QMainWindow):
             b.clicked.connect(lambda _c=False, n=name: self._set_s3_view(n))
             sfm.addWidget(b)
         sfm.addStretch(1)
-        icv.addWidget(dpg)                       # demand + slice controls
-        # the interaction-points table fills the rail below the inputs, so the
-        # results read well; the chart controls sit under the graphs instead
+        # the rail holds only the interaction table (results read full-height)
         icv.addWidget(self._pm_table_pane, 1)
 
         # view: KPI + verdict band on top, then the two graphs side by side —
@@ -1936,11 +1939,12 @@ class SectionDesignerWindow(QMainWindow):
         ctrl_bar = QFrame()
         ctrl_bar.setObjectName("chartCtrlBar")
         _cbh = QHBoxLayout(ctrl_bar)
-        _cbh.setContentsMargins(style.SP_SM, style.SP_XS, style.SP_SM,
-                                style.SP_XS)
+        _cbh.setContentsMargins(style.SP_MD, style.SP_SM, style.SP_MD,
+                                style.SP_SM)
         _cbh.setSpacing(style.SP_LG)
-        _cbh.addWidget(self._pm_curves_bar, 1)
-        _cbh.addWidget(spg, 1)
+        _cbh.addWidget(left_ctrl, 1)
+        _cbh.addWidget(_vsep())
+        _cbh.addWidget(right_ctrl, 1)
         inter = QWidget()
         _ivl = QVBoxLayout(inter)
         _ivl.setContentsMargins(0, 0, 0, 0)

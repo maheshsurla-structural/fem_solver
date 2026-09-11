@@ -326,6 +326,7 @@ QLabel#chartCursor {{ color: {MUTED}; font-family: {MONO_STACK};
 /* control bar beneath the P-M-M graphs (CSi-style) */
 QFrame#chartCtrlBar {{ background: {PANEL}; border: 1px solid {BORDER};
                       border-radius: 8px; }}
+QFrame#ctrlSep {{ background: {BORDER}; margin: 3px 2px; }}
 
 /* ---- constant [ controls | view ] workspace shell ---- */
 QWidget#ctrlRail {{ background: {BG}; border-right: 1px solid {BORDER}; }}
