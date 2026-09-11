@@ -327,6 +327,19 @@ QLabel#chartCursor {{ color: {MUTED}; font-family: {MONO_STACK};
 QFrame#chartCtrlBar {{ background: {PANEL}; border: 1px solid {BORDER};
                       border-radius: 8px; }}
 QFrame#ctrlSep {{ background: {BORDER}; margin: 3px 2px; }}
+/* curve-toggle chips (pill) + view-mode segmented buttons in the strips */
+QToolButton#chip {{ background: {PANEL}; border: 1px solid {BORDER};
+                   border-radius: 12px; padding: 3px 12px; color: {MUTED};
+                   font-size: {FS_SMALL}px; }}
+QToolButton#chip:hover {{ border-color: {ACCENT}; color: {ACCENT}; }}
+QToolButton#chip:checked {{ background: {ACCENT_SOFT}; border-color: {ACCENT};
+                           color: {ACCENT}; }}
+QToolButton#segbtn {{ background: {PANEL}; border: 1px solid {BORDER};
+                     border-radius: 6px; padding: 4px 12px; color: {TEXT};
+                     font-size: {FS_SMALL}px; }}
+QToolButton#segbtn:hover {{ border-color: {ACCENT}; color: {ACCENT}; }}
+QToolButton#segbtn:checked {{ background: {ACCENT_SOFT}; border-color: {ACCENT};
+                             color: {ACCENT}; font-weight: 600; }}
 
 /* ---- constant [ controls | view ] workspace shell ---- */
 QWidget#ctrlRail {{ background: {BG}; border-right: 1px solid {BORDER}; }}

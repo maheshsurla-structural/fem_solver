@@ -54,11 +54,11 @@ from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  (registers 3-d proj.)
 from PySide6.QtCore import Qt, QByteArray, QTimer
 from PySide6.QtCore import (QSize, QSettings, QPropertyAnimation, QEasingCurve,
-                            QDate)
+                            QDate, QRect, QPoint)
 from PySide6.QtGui import QColor, QIcon, QKeySequence, QPixmap, QShortcut
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import QToolButton
-from PySide6.QtWidgets import (QAbstractItemView, QApplication, QBoxLayout,
+from PySide6.QtWidgets import (QAbstractItemView, QApplication, QButtonGroup,
                                QCheckBox,
                                QColorDialog, QComboBox, QDialog,
                                QDialogButtonBox,
@@ -66,7 +66,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QBoxLayout,
                                QDockWidget, QFrame, QGraphicsOpacityEffect,
                                QGridLayout,
                                QGroupBox, QHeaderView,
-                               QHBoxLayout, QLabel, QLineEdit,
+                               QHBoxLayout, QLabel, QLayout, QLineEdit,
                                QListWidget, QListWidgetItem, QMainWindow, QMenu,
                                QMessageBox, QProgressBar, QPushButton,
                                QScrollArea, QSizePolicy, QSpinBox,
@@ -221,36 +221,74 @@ class ComboBoxDelegate(QStyledItemDelegate):
         model.setData(index, editor.currentText(), Qt.ItemDataRole.EditRole)
 
 
-class _ReflowBar(QFrame):
-    """The P-M-M control bar: its two groups sit side by side when there is
-    room and stack vertically when the window is too narrow. A ``QBoxLayout``
-    whose direction flips on resize does the reflow without rebuilding."""
+class FlowLayout(QLayout):
+    """Left-to-right layout that wraps to the next row when the widgets don't
+    fit the available width. Used for the per-graph control groups so each one
+    sits directly under the chart it drives and reflows to a second row only
+    when its pane is too narrow — instead of a single bar that has to stack."""
 
-    def __init__(self, left, sep, right, parent=None):
+    def __init__(self, parent=None, hspacing=8, vspacing=6):
         super().__init__(parent)
-        self.setObjectName("chartCtrlBar")
-        self._left, self._sep, self._right = left, sep, right
-        self._lay = QBoxLayout(QBoxLayout.Direction.LeftToRight, self)
-        self._lay.setContentsMargins(style.SP_MD, style.SP_SM,
-                                     style.SP_MD, style.SP_SM)
-        self._lay.setSpacing(style.SP_LG)
-        self._lay.addWidget(left, 1)
-        self._lay.addWidget(sep)
-        self._lay.addWidget(right, 1)
+        self._items: list = []
+        self._hspace = hspacing
+        self._vspace = vspacing
+        self.setContentsMargins(0, 0, 0, 0)
 
-    def resizeEvent(self, ev):
-        super().resizeEvent(ev)
-        # stay side by side down to the groups' tight minimum widths (lenient);
-        # only stack once they genuinely can't fit in a row
-        need = (self._left.minimumSizeHint().width()
-                + self._right.minimumSizeHint().width() + 24)
-        horizontal = self.width() >= need
-        want = (QBoxLayout.Direction.LeftToRight if horizontal
-                else QBoxLayout.Direction.TopToBottom)
-        if self._lay.direction() != want:
-            self._lay.setDirection(want)
-            self._lay.setSpacing(style.SP_LG if horizontal else style.SP_SM)
-            self._sep.setVisible(horizontal)   # vline only makes sense in a row
+    def addItem(self, item):
+        self._items.append(item)
+
+    def count(self):
+        return len(self._items)
+
+    def itemAt(self, i):
+        return self._items[i] if 0 <= i < len(self._items) else None
+
+    def takeAt(self, i):
+        return self._items.pop(i) if 0 <= i < len(self._items) else None
+
+    def expandingDirections(self):
+        return Qt.Orientation(0)
+
+    def hasHeightForWidth(self):
+        return True
+
+    def heightForWidth(self, width):
+        return self._do_layout(QRect(0, 0, width, 0), True)
+
+    def setGeometry(self, rect):
+        super().setGeometry(rect)
+        self._do_layout(rect, False)
+
+    def sizeHint(self):
+        return self.minimumSize()
+
+    def minimumSize(self):
+        # the widest single item — so a pane can shrink and the row wraps,
+        # rather than forcing the whole pane wider
+        size = QSize()
+        for it in self._items:
+            size = size.expandedTo(it.minimumSize())
+        m = self.contentsMargins()
+        return size + QSize(m.left() + m.right(), m.top() + m.bottom())
+
+    def _do_layout(self, rect, test_only):
+        m = self.contentsMargins()
+        x = rect.x() + m.left()
+        y = rect.y() + m.top()
+        right = rect.right() - m.right()
+        line_h = 0
+        for it in self._items:
+            hint = it.sizeHint()
+            w, h = hint.width(), hint.height()
+            if x + w > right and line_h > 0:      # wrap
+                x = rect.x() + m.left()
+                y += line_h + self._vspace
+                line_h = 0
+            if not test_only:
+                it.setGeometry(QRect(QPoint(x, y), hint))
+            x += w + self._hspace
+            line_h = max(line_h, h)
+        return y + line_h - rect.y() + m.bottom()
 
 
 class SectionDesignerWindow(QMainWindow):
@@ -1830,9 +1868,13 @@ class SectionDesignerWindow(QMainWindow):
         s3 = QWidget()
         s3v = QVBoxLayout(s3)
         s3v.setContentsMargins(0, 0, 0, 0)
-        self.s3_fig = Figure(figsize=(4.6, 4.2), layout="constrained")
+        # no constrained layout — _draw_surface / _draw_cross_section set their
+        # own margins (the 3-D surface fills the pane; the 2-D cuts keep room
+        # for axis labels)
+        self.s3_fig = Figure(figsize=(4.6, 4.2))
         self.s3_canvas = Canvas(self.s3_fig)
-        s3v.addWidget(self.s3_canvas)
+        s3v.addWidget(self.s3_canvas, 1)   # canvas absorbs the pane; the
+        #                                    control strip below takes its hint
         # interactive view state (P4): the surface is draggable (matplotlib 3-D
         # rotation); the elev/azim spins + presets drive the same view_init and
         # a drag syncs the spins back. Changing the view never recomputes.
@@ -1855,8 +1897,10 @@ class SectionDesignerWindow(QMainWindow):
         icv = QVBoxLayout(inter_ctrl)
         icv.setContentsMargins(12, 12, 12, 12)
         icv.setSpacing(8)
-        # the rail holds only the interaction table now — every input lives in
-        # the control bar UNDER the graphs (CSi-style), grouped by section.
+        # the rail holds only the interaction table now — each input lives in a
+        # control strip directly UNDER the graph it drives (CSi-style): the
+        # 2-D-curve controls beneath the P-M chart, the surface controls
+        # beneath the 3-D view.
         def _bar_label(text):
             _l = QLabel(text)
             _l.setObjectName("caption")
@@ -1866,6 +1910,7 @@ class SectionDesignerWindow(QMainWindow):
             ln = QFrame()
             ln.setObjectName("ctrlSep")
             ln.setFixedWidth(1)
+            ln.setFixedHeight(22)                # neat divider inside the flow
             return ln
 
         # design basis (φ / nominal / nominal + 1.25·f_y)
@@ -1876,59 +1921,71 @@ class SectionDesignerWindow(QMainWindow):
             "Design basis: φ-reduced design · nominal (no φ) · nominal with the "
             "1.25·f_y overstrength increase")
         self.design_mode.currentIndexChanged.connect(lambda *_: self._queue())
-        # slice angle (P3): walk the surface at different neutral-axis angles,
-        # ◀ / ▶ step by the spin's increment and wrap around 360°
-        angw = QWidget()
-        angh = QHBoxLayout(angw)
-        angh.setContentsMargins(0, 0, 0, 0)
-        angh.setSpacing(style.SP_XS)
-        self.pm_ang = self._dspin(-180, 180, 15, "", 0)
-        self.pm_ang.setWrapping(True)
-        self.pm_ang.setMaximumWidth(72)
-        self.pm_ang.valueChanged.connect(lambda *_: self._queue())
-        _prev = QToolButton()
-        _prev.setText("◀")
-        _prev.clicked.connect(lambda: self._step_pm_angle(-1))
-        _next = QToolButton()
-        _next.setText("▶")
-        _next.clicked.connect(lambda: self._step_pm_angle(+1))
-        angh.addWidget(_prev)
-        angh.addWidget(self.pm_ang, 1)
-        angh.addWidget(_next)
+        # slice angle (P3): a dropdown of neutral-axis angles — presets in 15°
+        # steps, editable so any angle can still be typed. Reads back via
+        # _pm_angle(); redraw on pick (activated) or after typing (editing done),
+        # not on every keystroke.
+        self.pm_ang = QComboBox()
+        self.pm_ang.setEditable(True)
+        self.pm_ang.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.pm_ang.addItems([f"{a}°" for a in range(0, 181, 15)])
+        self.pm_ang.setCurrentText("0°")
+        self.pm_ang.setMaximumWidth(84)
+        self.pm_ang.lineEdit().setAlignment(Qt.AlignmentFlag.AlignRight)
+        self.pm_ang.setToolTip(
+            "Neutral-axis slice angle θ — pick a preset or type any value")
+        self.pm_ang.activated.connect(lambda *_: self._queue())
+        self.pm_ang.lineEdit().editingFinished.connect(lambda: self._queue())
 
-        # curve toggles (P5) — under the 2-D graph
-        self.pm_show_nom = QCheckBox("Nominal")
-        self.pm_show_nom.setChecked(True)
-        self.pm_show_des = QCheckBox("Design")
-        self.pm_show_des.setChecked(True)
-        self.pm_show_fib = QCheckBox("Fibre")
-        self.pm_show_fib.setChecked(False)
-        self.pm_show_fib.setToolTip(
+        # curve toggles (P5) — chips that fill in when active (multi-select)
+        def _chip(text, on, tip=""):
+            b = QToolButton()
+            b.setObjectName("chip")
+            b.setText(text)
+            b.setCheckable(True)
+            b.setChecked(on)
+            b.setCursor(Qt.CursorShape.PointingHandCursor)
+            if tip:
+                b.setToolTip(tip)
+            return b
+        self.pm_show_nom = _chip("Nominal", True)
+        self.pm_show_des = _chip("Design", True)
+        self.pm_show_fib = _chip(
+            "Fibre", False,
             "Overlay the integrated (fibre-model) interaction curve — the actual "
             "section vs the code's simplified curve. Non-composite sections.")
         for cb in (self.pm_show_nom, self.pm_show_des, self.pm_show_fib):
-            cb.stateChanged.connect(lambda *_: self._queue())
-        # left section of the bar (under the 2-D graph): Basis · Slice · Curves
-        left_ctrl = QWidget()
-        _lcl = QHBoxLayout(left_ctrl)
-        _lcl.setContentsMargins(0, 0, 0, 0)
-        _lcl.setSpacing(style.SP_SM)
+            cb.toggled.connect(lambda *_: self._queue())
+        # control strip UNDER the 2-D graph: Basis · Slice · curve toggles.
+        # A wrapping FlowLayout keeps it under the chart and reflows to a
+        # second row when the pane is narrow (the three checkboxes self-label,
+        # so no "Curves" caption is needed).
+        left_ctrl = QFrame()
+        left_ctrl.setObjectName("chartCtrlBar")
+        _lcl = FlowLayout(left_ctrl, hspacing=style.SP_SM, vspacing=style.SP_XS)
+        _lcl.setContentsMargins(style.SP_MD, style.SP_SM,
+                                style.SP_MD, style.SP_SM)
         _lcl.addWidget(_bar_label("Basis"))
         _lcl.addWidget(self.design_mode)
         _lcl.addWidget(_vsep())
-        _lcl.addWidget(_bar_label("Slice θ°"))
-        _lcl.addWidget(angw)
+        _lcl.addWidget(_bar_label("Slice θ"))
+        _lcl.addWidget(self.pm_ang)
         _lcl.addWidget(_vsep())
-        _lcl.addWidget(_bar_label("Curves"))
+        _lcl.addWidget(_bar_label("Show"))
         for cb in (self.pm_show_nom, self.pm_show_des, self.pm_show_fib):
             _lcl.addWidget(cb)
-        _lcl.addStretch(1)
+        _lsp = left_ctrl.sizePolicy()
+        _lsp.setHeightForWidth(True)
+        left_ctrl.setSizePolicy(_lsp)
 
-        # right section of the bar (under the 3-D surface): Mesh · camera · View
-        right_ctrl = QWidget()
-        sfm = QHBoxLayout(right_ctrl)
-        sfm.setContentsMargins(0, 0, 0, 0)
-        sfm.setSpacing(style.SP_SM)
+        # control strip UNDER the 3-D surface: Mesh · Camera · View buttons —
+        # same wrapping FlowLayout so it sits under the surface and reflows on
+        # a narrow pane.
+        right_ctrl = QFrame()
+        right_ctrl.setObjectName("chartCtrlBar")
+        sfm = FlowLayout(right_ctrl, hspacing=style.SP_SM, vspacing=style.SP_XS)
+        sfm.setContentsMargins(style.SP_MD, style.SP_SM,
+                               style.SP_MD, style.SP_SM)
         self.mesh_combo = QComboBox()
         self.mesh_combo.addItems(list(_ARR_MESH))
         self.mesh_combo.setCurrentText("Coarse")
@@ -1937,50 +1994,69 @@ class SectionDesignerWindow(QMainWindow):
         sfm.addWidget(self.mesh_combo)
         sfm.addWidget(_vsep())
         # view controls (P4): drive view_init without recomputing the mesh
+        # one "Camera" caption serves both spinners (elevation · azimuth,
+        # spelled out in the tooltips) — saves a redundant second label
         self.s3_elev = self._dspin(-90, 90, 5, "", 0)
         self.s3_elev.setValue(self._s3_elev)
-        self.s3_elev.setMaximumWidth(64)
+        self.s3_elev.setMaximumWidth(60)
+        self.s3_elev.setToolTip("Camera elevation [°]")
         self.s3_elev.valueChanged.connect(lambda *_: self._apply_s3_view())
-        sfm.addWidget(_bar_label("Elev°"))
-        sfm.addWidget(self.s3_elev)
         self.s3_azim = self._dspin(-180, 180, 5, "", 0)
         self.s3_azim.setWrapping(True)
         self.s3_azim.setValue(self._s3_azim)
-        self.s3_azim.setMaximumWidth(64)
+        self.s3_azim.setMaximumWidth(60)
+        self.s3_azim.setToolTip("Camera azimuth [°]")
         self.s3_azim.valueChanged.connect(lambda *_: self._apply_s3_view())
-        sfm.addWidget(_bar_label("Azim°"))
+        sfm.addWidget(_bar_label("Camera"))
+        sfm.addWidget(self.s3_elev)
         sfm.addWidget(self.s3_azim)
         sfm.addWidget(_vsep())
-        sfm.addWidget(_bar_label("View"))
-        # 3D = the surface (isometric); M-M / P-M3 / P-M2 = 2-D cross-sections
+        # the buttons carry their own names (3D · M-M · P-M3 · P-M2), so the
+        # group needs no "View" caption. Segmented, exclusive: the active view
+        # stays filled. 3D = the surface (isometric); M-M / P-M3 / P-M2 = 2-D
+        # cross-sections.
+        self._s3_view_btns: dict = {}
+        self._s3_view_grp = QButtonGroup(self)
+        self._s3_view_grp.setExclusive(True)
         for name in ("3D", "M-M", "P-M3", "P-M2"):
             b = QToolButton()
+            b.setObjectName("segbtn")
             b.setText(name)
+            b.setCheckable(True)
+            b.setCursor(Qt.CursorShape.PointingHandCursor)
             b.clicked.connect(lambda _c=False, n=name: self._set_s3_view(n))
+            self._s3_view_grp.addButton(b)
+            self._s3_view_btns[name] = b
             sfm.addWidget(b)
-        sfm.addStretch(1)
+        self._s3_view_btns["3D"].setChecked(True)
+        _rsp = right_ctrl.sizePolicy()
+        _rsp.setHeightForWidth(True)
+        right_ctrl.setSizePolicy(_rsp)
         # the rail holds only the interaction table (results read full-height)
         icv.addWidget(self._pm_table_pane, 1)
 
+        # attach each control strip directly under the graph it drives, so the
+        # controls always sit beneath their own chart and move with the
+        # splitter (the 2-D-curve controls under the P-M chart; the surface
+        # controls under the 3-D view).
+        self._pm_chart_pane.layout().addWidget(left_ctrl)
+        s3.layout().addWidget(right_ctrl)
+
         # view: KPI + verdict band on top, then the two graphs side by side —
-        # the 2-D P-M curve and the always-shown 3-D surface. The M-M / P-M
-        # plane views are camera presets (View buttons) on that surface.
+        # the 2-D P-M curve (+ its controls) and the always-shown 3-D surface
+        # (+ its controls). The M-M / P-M plane views are camera presets (View
+        # buttons) on that surface.
         self.inter_split = QSplitter(Qt.Orientation.Horizontal)
         self.inter_split.addWidget(self._pm_chart_pane)   # left: 2-D curve
         self.inter_split.addWidget(s3)                    # right: 3-D surface
         self.inter_split.setStretchFactor(0, 1)           # 2-D curve
         self.inter_split.setStretchFactor(1, 1)           # 3-D surface
-        # control bar under the graphs (CSi-style): curve toggles under the 2-D
-        # graph, the 3-D mesh/camera controls under the 3-D surface
-        # groups side by side when wide, stacked when the window is narrow
-        ctrl_bar = _ReflowBar(left_ctrl, _vsep(), right_ctrl)
         inter = QWidget()
         _ivl = QVBoxLayout(inter)
         _ivl.setContentsMargins(0, 0, 0, 0)
         _ivl.setSpacing(style.SP_SM)
         _ivl.addWidget(self._pm_top)
         _ivl.addWidget(self.inter_split, 1)
-        _ivl.addWidget(ctrl_bar)
         inter = self._workspace(inter_ctrl, inter)
 
         # ---- Fibres (discretisation view + properties) ----
@@ -3511,10 +3587,19 @@ class SectionDesignerWindow(QMainWindow):
             f"QProgressBar#utilBar::chunk {{ background: {color}; "
             f"border-radius: 3px; }}")
 
-    def _step_pm_angle(self, sign: int) -> None:
-        """Step the P-M slice angle by the spin's increment, wrapped to ±180°."""
-        v = self.pm_ang.value() + sign * self.pm_ang.singleStep()
-        self.pm_ang.setValue(((v + 180) % 360) - 180)   # triggers a redraw
+    def _pm_angle(self) -> float:
+        """The P-M slice angle θ from the (editable) dropdown, in degrees.
+        Tolerates a trailing ° and blank/partial text (falls back to 0)."""
+        txt = self.pm_ang.currentText() if hasattr(self, "pm_ang") else "0"
+        num = re.sub(r"[^0-9.\-]", "", txt)
+        try:
+            return float(num) if num not in ("", "-", ".", "-.") else 0.0
+        except ValueError:
+            return 0.0
+
+    def _set_pm_angle(self, v: float) -> None:
+        """Set the slice-angle dropdown to a given angle (degrees)."""
+        self.pm_ang.setCurrentText(f"{v:g}°")
 
     def _design_basis(self):
         """The active P-M design option as (use_phi, fy_factor, label): φ-reduced
@@ -3685,7 +3770,7 @@ class SectionDesignerWindow(QMainWindow):
         if fy_fac != 1.0:
             aspec = self._analysis_spec()
             case = _case(replace(aspec, fy=aspec.fy * fy_fac))
-        theta = self.pm_ang.value()
+        theta = self._pm_angle()
         curve, landmarks = core.pmm_slice(case, code, theta_deg=theta)
         # keep the plotted slice for CSV export (C3)
         self._pm_curve = curve
@@ -4104,7 +4189,7 @@ class SectionDesignerWindow(QMainWindow):
         # meridian and its opposite together trace the full slice loop (magenta)
         thetas = list(mesh.get("thetas") or [])
         if thetas:
-            ang = self.pm_ang.value() % 360.0
+            ang = self._pm_angle() % 360.0
 
             def _near(a):
                 return min(range(len(thetas)),
@@ -4120,9 +4205,14 @@ class SectionDesignerWindow(QMainWindow):
         for a in (ax.xaxis, ax.yaxis, ax.zaxis):
             a.pane.set_visible(False)          # drop the grey walls + box edges
             a.line.set_color((0, 0, 0, 0))     # drop the axis lines
-        ax.set_title(f"P-Mz-My surface — slice θ = {self.pm_ang.value():g}°",
+        ax.set_title(f"P-Mz-My surface — slice θ = {self._pm_angle():g}°",
                      color=style.TEXT, fontsize=10, fontweight="bold")
         ax.view_init(elev=self._s3_elev, azim=self._s3_azim)   # keep view (P4)
+        try:
+            ax.set_box_aspect(None, zoom=1.4)    # enlarge the surface in the pane
+        except TypeError:                        # older mpl without zoom kwarg
+            pass
+        self.s3_fig.subplots_adjust(left=0.0, right=1.0, bottom=0.0, top=0.94)
         self._s3_ax = ax
         self.s3_canvas.draw_idle()
 
@@ -4148,6 +4238,9 @@ class SectionDesignerWindow(QMainWindow):
         """View button: '3D' shows the interaction surface (reset to isometric);
         'M-M' / 'P-M3' / 'P-M2' show that 2-D cross-section of the surface."""
         self._s3_view_mode = name
+        btn = self._s3_view_btns.get(name)        # keep the segmented state in
+        if btn is not None and not btn.isChecked():  # sync on programmatic calls
+            btn.setChecked(True)
         if name == "3D":                       # back to the isometric surface
             self._s3_elev, self._s3_azim = _S3_PRESETS["3D"]
             for spin, val in ((self.s3_elev, self._s3_elev),
@@ -4177,6 +4270,8 @@ class SectionDesignerWindow(QMainWindow):
         self._s3_ax = None                     # not a 3-D axes → view spins idle
         self.s3_fig.clear()
         self.s3_fig.set_facecolor(style.PANEL)
+        self.s3_fig.subplots_adjust(left=0.13, right=0.97, bottom=0.12,
+                                    top=0.92)   # room for the 2-D axis labels
         ax = self.s3_fig.add_subplot(111)
         ax.set_facecolor(style.PANEL)
         if self._spec.kind == "Composite":
