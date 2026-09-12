@@ -147,6 +147,8 @@ class NonlinearStaticAnalysis:
         keep_state: bool = False,
         const_force: "np.ndarray | None" = None,
         step_callback=None,
+        substep: bool = False,
+        max_substep_halvings: int = 6,
     ):
         if num_steps < 1:
             raise ValueError("num_steps must be >= 1")
@@ -170,6 +172,14 @@ class NonlinearStaticAnalysis:
         # a dict {step, num_steps, lambda, iterations, tracked}. Returning False
         # stops the run early (e.g. a UI cancel), keeping the results so far.
         self.step_callback = step_callback
+        # Adaptive step-cutting (plan §16 C4): when a step fails to converge,
+        # halve the increment and retry (subdividing to cover the nominal step),
+        # up to ``max_substep_halvings`` halvings, then grow back. Opt-in and
+        # only for integrators that advertise ``supports_substep`` (LoadControl,
+        # scalar DisplacementControl); off by default so existing behaviour and
+        # the "raise on non-convergence" contract are unchanged.
+        self.substep = bool(substep)
+        self.max_substep_halvings = int(max_substep_halvings)
 
         # results
         self.lambdas: list[float] = []
@@ -201,46 +211,88 @@ class NonlinearStaticAnalysis:
                     if eq >= 0:
                         node.disp[i] += du[eq]
 
-        for step in range(1, self.num_steps + 1):
-            self.integrator.new_step()
-            try:
-                report = self.algorithm.solve_step(
-                    self.integrator, self.convergence, scatter_du=scatter_du
-                )
-            except NotConvergedError:
-                # roll back: undo the step's load increment and last du
-                self.integrator.revert_step()
-                for e in m.elements.values():
-                    e.revert_state()
-                raise
-
-            # commit element state (e.g., plasticity will roll history forward)
+        def _commit_and_record(report) -> bool:
+            """Commit a converged (sub)step, record it, and fire the callback.
+            Returns False if the callback asked to cancel."""
             for e in m.elements.values():
                 e.commit_state()
-            # Report iteration count back to the integrator (used by
-            # adaptive arc-length to scale delta_s) before commit_step
             if hasattr(self.integrator, "record_step_iterations"):
                 self.integrator.record_step_iterations(report.iterations)
-            # commit integrator state (path-following integrators use this
-            # to update direction tracking, step-start snapshots, etc.)
             self.integrator.commit_step()
-
             self.iter_counts.append(report.iterations)
             self.lambdas.append(self.integrator.lambd)
             if self.track is not None:
                 tag, dof = self.track
                 self.tracked.append(float(m.node(tag).disp[dof]))
-
             if self.step_callback is not None:
                 info = {
-                    "step": step, "num_steps": self.num_steps,
+                    "step": len(self.lambdas), "num_steps": self.num_steps,
                     "lambda": self.integrator.lambd,
                     "iterations": report.iterations,
                     "tracked": (self.tracked[-1] if self.track is not None
                                 else None),
                 }
                 if self.step_callback(info) is False:
+                    return False
+            return True
+
+        use_substep = (self.substep
+                       and getattr(self.integrator, "supports_substep", False))
+        min_scale = 0.5 ** self.max_substep_halvings
+
+        for step in range(1, self.num_steps + 1):
+            if not use_substep:
+                self.integrator.new_step()
+                try:
+                    report = self.algorithm.solve_step(
+                        self.integrator, self.convergence,
+                        scatter_du=scatter_du)
+                except NotConvergedError:
+                    self.integrator.revert_step()
+                    for e in m.elements.values():
+                        e.revert_state()
+                    raise
+                if not _commit_and_record(report):
                     break                              # cooperative cancel
+                continue
+
+            # --- adaptive: cover one nominal step, subdividing on failure ---
+            remaining = 1.0
+            scale = 1.0
+            cancelled = False
+            while remaining > 1e-9:
+                frac = min(scale, remaining)
+                # Snapshot the committed displacements: a failed Newton solve
+                # leaves the drifted trial ``disp`` on the nodes (revert_step
+                # only rolls back the integrator/elements), so we must restore
+                # them before retrying a smaller sub-step.
+                disp_snap = {nid: nd.disp.copy()
+                             for nid, nd in m.nodes.items()}
+                self.integrator.set_step_scale(frac)
+                self.integrator.new_step()
+                try:
+                    report = self.algorithm.solve_step(
+                        self.integrator, self.convergence,
+                        scatter_du=scatter_du)
+                except NotConvergedError:
+                    self.integrator.revert_step()
+                    for e in m.elements.values():
+                        e.revert_state()
+                    for nid, nd in m.nodes.items():
+                        nd.disp[:] = disp_snap[nid]
+                    scale *= 0.5
+                    if scale < min_scale:
+                        self.integrator.set_step_scale(1.0)
+                        raise
+                    continue
+                if not _commit_and_record(report):
+                    cancelled = True
+                    break
+                remaining -= frac
+                scale = min(1.0, scale * 2.0)          # grow back toward full
+            self.integrator.set_step_scale(1.0)
+            if cancelled:
+                break
 
         # element response and reactions at the final state
         for e in m.elements.values():

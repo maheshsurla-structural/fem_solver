@@ -270,7 +270,7 @@ def run_pushover(project, *, control_node: int, control_dof: int,
             mm, num_steps=n_steps,
             integrator=DisplacementControl(control_node, control_dof, du),
             track=(control_node, control_dof), tol=tol, max_iter=max_iter,
-            step_callback=_step_cb)
+            step_callback=_step_cb, substep=True)      # C4: auto step-cutting
 
     if axial and axial_node:
         aref = [0.0, 0.0, 0.0]
@@ -384,7 +384,8 @@ def run_case(project, case, *, on_step=None, should_cancel=None,
                                                du),
                 track=(c.control_node, c.control_dof),
                 tol=float(c.tol), max_iter=int(c.max_iter),
-                step_callback=_step_cb)
+                step_callback=_step_cb, substep=True)   # C4 (monotonic only;
+            # a cyclic schedule advertises supports_substep=False -> no-op)
         return factory
 
     def _axial_factory(c):

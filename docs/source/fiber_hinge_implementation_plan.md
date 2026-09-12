@@ -852,6 +852,19 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
   `test_desktop_nonlinear.py` (16, incl. the tie‑group auto path); 466 section + 75 desktop tests
   pass. Remaining for G‑S4: a distinct core‑vs‑cover fibre preview in the Section Designer.
 - 2026 — **G‑S1 shipped + G‑S2 (session‑level).** Main‑view step scrubbing: `ModelView.show_nl_step` renders a run step on the main 3‑D view — the deformed shape at an adjustable scale over a grey ghost, each member coloured by its peak fiber strain (hinge state) — from `NonlinearResults.step(k)` (GUI‑I1). The main window gained an **Analysis‑steps** dock (step slider + scale spin, hidden until a run) and `set_nl_results`, which the pushover dialog calls on close so results **survive the dialog** and stay scrubbable (G‑S2 session‑level; disk persistence + run history remain). `test_desktop_pushover_ui.py` +2 (scrub every step; dock hidden with no results); 77 desktop tests pass.
+- 2026 — **C4 shipped (adaptive step‑cutting).** `NonlinearStaticAnalysis(substep=True)` halves the
+  increment and retries on `NotConvergedError`, subdividing to cover the nominal step then growing
+  back (≤ `max_substep_halvings`). Integrators advertise `supports_substep` + honour `set_step_scale`
+  (LoadControl, scalar DisplacementControl; a cyclic schedule opts out → no‑op). Fixed a latent bug
+  en route: a failed Newton solve leaves the drifted trial `disp` on the nodes (revert_step only
+  rolls back the integrator/elements), so the substep loop snapshots/restores node `disp` per
+  sub‑attempt — without it a retried sub‑step over‑shot. Opt‑in (default off ⇒ the "raise on
+  non‑convergence" contract is unchanged, e.g. the `max_iter`‑too‑small test still raises); the GUI
+  `run_pushover`/`run_case` push stages enable it. Only rescues `NotConvergedError`, not the
+  force‑based singular‑flexibility `RuntimeError` (a genuine formulation limit). `test_adaptive_substep.py`
+  (5): a too‑large step that aborts without substep completes with it and reaches the fine‑reference
+  tip/base‑shear; still raises when even the smallest sub‑step can't converge. Full suite 2561 pass
+  (only the 4 pre‑existing order‑8 quadrature failures).
 
 ---
 
@@ -1003,7 +1016,7 @@ current tree, not aspirational. Legend: ☐ todo · ◐ partial · ☑ done.
 | **C1** | **Confined core / unconfined cover split** in the analysis fiber section | ☑ | 2026 — the nonlinear pushover now builds a **confined Mander core + unconfined cover** through the **same** path as the Section Designer's confined M‑φ (unified, per §15): `desktop/nonlinear.fiber_section_from_spec` delegates to `section_gui_core._confined_fiber_section`, with the confinement `conf` dict from the shared `_section_confinement` (tie **Link** group + geometry, or a manual override). Confinement helpers (`_parse_legs`/`_auto_section_confinement`/`_section_confinement`) lifted from the GUI into the Qt‑free core (shims left in `section_designer`). Unconfined sections keep the single‑law path (unchanged). `test_desktop_nonlinear.py` +5. *(An earlier draft added parallel `Spec.conf_*` fields; removed in favour of the one tie‑group source.)* **Confinement *input UI* + core/cover preview = G‑S4.** |
 | **C2** | **3‑D nonlinear in the app** (P‑M2‑M3) | ☐ | `ForceBeamColumn3D` (P7) exists; `desktop/nonlinear.build_nonlinear_model` raises for `ndm≠2`. Needs 3‑D fiber section + element wiring + 3‑D control/monitor UI. |
 | **C3** | **Dynamic time‑history** (true transient: mass + damping) for fiber elements | ☐ | Engine has `nonlinear_transient.py`; not wired to the fiber‑hinge workflow. Case manager is quasi‑static (`monotonic`\|`cyclic`). Adds a `time_history` protocol + ground‑motion input + Rayleigh/modal damping. §1.3 deferred; the natural seismic next step. |
-| **C4** | **Adaptive step‑cutting / substepping** on non‑convergence | ☐ | §8 fixed the noise‑floor chatter; the force‑based element still hits singular flexibility at deep softening (manual smaller step / displacement‑based mesh today). Auto‑halve‑and‑retry in `NonlinearStaticAnalysis`. |
+| **C4** | **Adaptive step‑cutting / substepping** on non‑convergence | ☑ | 2026 — `NonlinearStaticAnalysis(substep=True)` halves the increment and retries on `NotConvergedError`, subdividing to cover the nominal step then growing back (up to `max_substep_halvings`). Integrators advertise `supports_substep` + honour `set_step_scale` (LoadControl, scalar DisplacementControl; a cyclic schedule opts out). Snapshots/restores node `disp` on a failed sub‑attempt (the drifted trial isn't otherwise rolled back). Opt‑in (default off ⇒ existing "raise on non‑convergence" contract unchanged); the GUI push runs enable it. `test_adaptive_substep.py` (5): a step that fails with a small max_iter now completes and reaches the fine‑reference target/base‑shear; still raises when hopeless. Note: only rescues `NotConvergedError`, not the force‑based singular‑flexibility `RuntimeError` (a true limit). |
 | **C5** | **Hinge acceptance criteria** (ASCE 41 IO/LS/CP; a/b/c) | ☐ | Damage shown as peak fiber strain only. Add strain/rotation acceptance limits + hinge‑state classification. |
 
 ### 16.2 GUI / workflow
@@ -1037,7 +1050,7 @@ persistence + main‑view scrubbing — makes the tool feel finished) → **C4**
 | C1 confined core/cover | ☑ | 2026 — unified onto section_gui_core._confined_fiber_section (one tie-group source) |
 | C2 3‑D nonlinear GUI | ☐ | |
 | C3 dynamic time‑history | ☐ | |
-| C4 adaptive step‑cutting | ☐ | |
+| C4 adaptive step‑cutting | ☑ | 2026 — NonlinearStaticAnalysis(substep=True); GUI runs enable it |
 | C5 acceptance criteria | ☐ | |
 | G‑S1 main‑view scrubbing | ☑ | 2026 — ModelView.show_nl_step + Analysis-steps dock |
 | G‑S2 results persistence | ◐ | session-level (held on main window); disk + history remain |

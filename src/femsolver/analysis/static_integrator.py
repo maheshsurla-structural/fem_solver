@@ -57,11 +57,21 @@ class StaticIntegrator(ABC):
     # difficulty cases).
     supports_line_search: bool = True
 
+    # Whether the run loop may subdivide this integrator's step on
+    # non-convergence (adaptive step-cutting, plan §16 C4). Integrators that
+    # advance by a scalar increment set this True and honour ``set_step_scale``.
+    supports_substep = False
+
     def __init__(self):
         self.model = None
         self._F_ref: np.ndarray | None = None
         self._F_const: np.ndarray | None = None
         self.lambd: float = 0.0
+
+    def set_step_scale(self, factor: float) -> None:
+        """Scale the *next* ``new_step`` increment by ``factor`` (adaptive
+        step-cutting). Default: no-op (integrator advances at full step)."""
+        return None
 
     def set_constant_force(self, F_const: np.ndarray | None) -> None:
         """Set a constant (unscaled) load vector held in the residual on top
@@ -169,17 +179,23 @@ class LoadControl(StaticIntegrator):
         is ``n_steps * dlambda``.
     """
 
+    supports_substep = True
+
     def __init__(self, dlambda: float = 0.1):
         super().__init__()
         if dlambda == 0.0:
             raise ValueError("dlambda must be non-zero")
         self.dlambda = float(dlambda)
+        self._scale = 1.0
+
+    def set_step_scale(self, factor: float) -> None:
+        self._scale = float(factor)
 
     def new_step(self) -> None:
-        self.lambd += self.dlambda
+        self.lambd += self.dlambda * self._scale
 
     def revert_step(self) -> None:
-        self.lambd -= self.dlambda
+        self.lambd -= self.dlambda * self._scale
 
 
 class DisplacementControl(StaticIntegrator):
@@ -235,6 +251,10 @@ class DisplacementControl(StaticIntegrator):
             self.du_step = float(arr[0])
         self.node_tag = int(node_tag)
         self.dof_index = int(dof_index)
+        # Adaptive step-cutting is available only for a scalar increment; a
+        # per-step schedule can't be subdivided without perturbing its indexing.
+        self.supports_substep = self._du_schedule is None
+        self._scale = 1.0
         # Equation number of the controlling DOF (set by bind()).
         self._eq: int = -1
         # u_d at the start of the current step (set by new_step()).
@@ -267,6 +287,9 @@ class DisplacementControl(StaticIntegrator):
         # Record the starting value of the control DOF so the first
         # new_step() has a reference.
         self._u_d_step_start = float(node.disp[self.dof_index])
+
+    def set_step_scale(self, factor: float) -> None:
+        self._scale = float(factor)
 
     def _control_disp(self) -> float:
         return float(self.model.node(self.node_tag).disp[self.dof_index])
@@ -327,7 +350,8 @@ class DisplacementControl(StaticIntegrator):
         # Constraint at this iteration: bring (u_d_current + du_d_this_iter)
         # to (u_d_step_start + du_step). The "du_d_this_iter" is the
         # control-DOF component of the iteration's du.
-        target_du_d = (self._u_d_step_start + self.du_step) - self._control_disp()
+        target_du_d = ((self._u_d_step_start + self.du_step * self._scale)
+                       - self._control_disp())
         dlambda = (target_du_d - du_t_d) / du_p_d
         self.lambd += dlambda
         return du_t_eff + dlambda * du_p_eff
