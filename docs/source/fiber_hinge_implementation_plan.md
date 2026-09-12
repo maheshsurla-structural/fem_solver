@@ -920,6 +920,19 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
   input). Verified end‑to‑end: run a pushover → save → **re‑open from disk** → re‑view the curve (peak
   ≈ 338 kN, IO marked). `test_desktop_nl_runs.py` (8, incl. a MainWindow record→save→load→undo
   integration test). Next ◐: G‑S4 core/cover preview, G‑S5 model checks.
+- 2026‑09‑12 — **G‑S4 shipped (core‑vs‑cover fibre preview).** The Section Designer **Fibres** tab has
+  a new **"Core / cover"** colour‑by mode that splits the concrete fibres into a **confined Mander
+  core** (teal) and an **unconfined cover** ring (tan), draws the rebar on top, and traces the core
+  boundary — the CSiBridge two‑zone view. The zone geometry is a new engine helper
+  `section_gui_core.confined_core_polygon(spec)` (the section outline inset by the cover, `None` when
+  it collapses); `_confined_fiber_section` was refactored onto it, so the **preview shows exactly the
+  two zones the confined M‑φ / pushover integrate** (per §15 unification — one source, two views). The
+  GUI `_draw_core_cover` tests each preview fibre's centroid against that polygon (prepared geometry).
+  Honest labelling: "Confined core" only with a tie group (else "Core (unconfined)"), and a
+  "no distinct core" note when cover ≥ half the dimension. C1 confined tests unchanged (refactor is
+  equivalent, 16/16); `test_desktop_gs4_corecover.py` (6) incl. a **preview‑zoning‑matches‑the‑run**
+  contract test (a fibre's material zone in the built section agrees with the preview polygon). Next ◐:
+  G‑S5 model checks / diagnostics.
 
 ---
 
@@ -1080,7 +1093,7 @@ current tree, not aspirational. Legend: ☐ todo · ◐ partial · ☑ done.
 | **G‑S1** | **Main model‑view step scrubbing** | ☑ | 2026 — `ModelView.show_nl_step(model, node_disp, member_damage, scale)` renders a run step on the main 3‑D view (deformed shape over a ghost, members coloured by peak fiber strain / hinge state). The main window gained an **Analysis‑steps** dock (step slider + displacement‑scale) that scrubs the whole model through the run, driven by `NonlinearResults.step(k)` (GUI‑I1). |
 | **G‑S2** | **Nonlinear results persistence + re‑open + run history** | ☑ | 2026‑09‑12 — a completed pushover/cyclic/case/time‑history run is now saved to the project as a lean `nl_runs.RunRecord` (curve + summary + ASCE 41 first‑reach milestones + descriptive meta; JSON‑safe, no heavy per‑step frames), carried on `Project.runs` and round‑tripped through the `.fsproj` file (`_load_runs`). The main window records each run as one undoable edit and offers **Analysis → Run history…** (`desktop/run_history_dialog.py`) to re‑view a saved run's curve (with IO/LS/CP markers), rename, or delete. Session‑level scrubbing (`set_nl_results`) unchanged; heavy frames stay session‑only (re‑run to scrub the model). `test_desktop_nl_runs.py` (8). |
 | **G‑S3** | **Run comparison / envelopes** | ☐ | Overlay pushovers, build cyclic backbone/envelope across runs. |
-| **G‑S4** | **Confinement input bridge + core/cover preview** | ◐ | **Input bridge done** — the tie **Link** group (Rebars tab) + Confinement tab + manual override that already drove the confined M‑φ now also drive the pushover (C1 unification), so "what you input is what you run". **Remaining:** a distinct **core‑vs‑cover fibre preview** in the Section Designer fibres view. |
+| **G‑S4** | **Confinement input bridge + core/cover preview** | ☑ | 2026‑09‑12 — the Section Designer **Fibres** tab gained a **"Core / cover"** colour‑by mode: concrete fibres split into a **confined Mander core** (teal) and an **unconfined cover** ring (tan), rebar on top, with the core boundary traced — a CSiBridge‑style two‑zone view. The zoning uses a new engine helper `section_gui_core.confined_core_polygon` (outline inset by the cover), which `_confined_fiber_section` now also uses, so the **preview shows exactly the zones the confined M‑φ / pushover integrate** (regression‑guarded: a fibre's material zone in the built section agrees with the preview polygon). Honestly labelled — "unconfined" when there is no tie group, and "no distinct core" when the cover ≥ half‑dimension. `test_desktop_gs4_corecover.py` (6). Input bridge (tie Link group drives the pushover) was already done under C1. |
 | **G‑S5** | **In‑app model checks / diagnostics** | ◐ | Convergence dock exists; add units/section/material sanity + non‑convergence guidance surfaced pre‑ and post‑run. |
 
 ### 16.3 Cross‑cutting product infra
@@ -1110,7 +1123,7 @@ persistence + main‑view scrubbing — makes the tool feel finished) → **C4**
 | G‑S1 main‑view scrubbing | ☑ | 2026 — ModelView.show_nl_step + Analysis-steps dock |
 | G‑S2 results persistence | ☑ | 2026‑09‑12 — RunRecord curve+milestones on Project.runs (JSON round-trip); Run-history dialog (re-view/rename/delete) |
 | G‑S3 run comparison | ☐ | |
-| G‑S4 confinement input + preview | ◐ | input bridge done (tie group drives pushover); core/cover preview remains |
+| G‑S4 confinement input + preview | ☑ | 2026‑09‑12 — Fibres-tab "Core / cover" mode (confined core vs unconfined cover) on shared confined_core_polygon; preview = run |
 | G‑S5 model checks | ◐ | |
 | X1 performance | ☐ | |
 | X2 verification manual | ☐ | |

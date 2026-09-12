@@ -1309,6 +1309,18 @@ def _section_confinement(spec, materials):
     return conf, info
 
 
+def confined_core_polygon(spec, outline=None):
+    """The confined-core region of the two-zone fibre build: the section outline
+    inset by the cover (a shapely polygon), or ``None`` when that inset collapses
+    (cover ≥ half the smaller dimension ⇒ no distinct core). Shared by
+    :func:`_confined_fiber_section` and the Fibres-tab core/cover preview so the
+    preview shows exactly the zones the confined analysis integrates."""
+    if outline is None:
+        outline = build_case(spec).section.geometry.polygon
+    core = outline.buffer(-float(spec.cover), join_style=2)
+    return core if (not core.is_empty and core.area > 1e-9) else None
+
+
 def _confined_fiber_section(spec, conf, na_angle=0.0, n_z=28, n_y=56):
     """Two-zone fibre section for a confined Circular / Rectangular column: an
     unconfined COVER ring plus a confined Mander CORE (the outline inset by the
@@ -1334,10 +1346,9 @@ def _confined_fiber_section(spec, conf, na_angle=0.0, n_z=28, n_y=56):
     def xf(g):
         return srotate(g, -na_angle, origin=(0, 0)) if abs(na_angle) > 1e-9 else g
 
-    core = outline.buffer(-cover, join_style=2)
+    core = confined_core_polygon(spec, outline)
     fibers = []
-    if core.is_empty or core.area <= 1e-9:
-        core = None
+    if core is None:
         fibers += _discretize_polygon_to_fibers(xf(outline), cover_law,
                                                 n_z=n_z, n_y=n_y)
     else:

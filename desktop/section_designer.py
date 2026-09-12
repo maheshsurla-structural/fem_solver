@@ -2095,7 +2095,7 @@ class SectionDesignerWindow(QMainWindow):
         self.fib_mode = QComboBox()
         # Material · Strain/Stress at an M-φ milestone · the manual-strain
         # stress field (folded in from the old Stress field tab)
-        self.fib_mode.addItems(["Material", "Strain", "Stress",
+        self.fib_mode.addItems(["Material", "Core / cover", "Strain", "Stress",
                                 "Stress field (ε)"])
         self.fib_mode.currentIndexChanged.connect(lambda *_: self._on_fib_mode())
         f.addRow("Colour by", self.fib_mode)
@@ -4495,6 +4495,68 @@ class SectionDesignerWindow(QMainWindow):
         except Exception:                              # noqa: BLE001
             pass
 
+    def _draw_core_cover(self, ax, aspec, fibers) -> None:
+        """Colour the concrete fibres by confinement zone — **confined Mander
+        core** vs **unconfined cover** — exactly as the confined M-φ / pushover
+        builds them (plan §16 G-S4): the core is the outline inset by the cover
+        (``core.confined_core_polygon``); cover is the ring outside it. Rebar is
+        drawn on top; the core boundary is outlined. So what the Fibres tab shows
+        is the two-zone section the analysis actually integrates."""
+        from shapely.geometry import Point
+        from shapely.prepared import prep
+
+        conf, _info = _section_confinement(self._spec, self._materials)
+        confined = (conf is not None
+                    and self._spec.kind in ("Rectangular", "Circular"))
+        corepoly = core.confined_core_polygon(aspec)
+
+        conc = [f for f in fibers if f["cell"]]
+        rebar = [f for f in fibers if not f["cell"]]
+        if corepoly is not None:
+            pc = prep(corepoly)
+            in_core = [pc.contains(Point(f["z"], f["y"])) for f in conc]
+        else:
+            in_core = [False] * len(conc)          # cover too large ⇒ all cover
+        core_f = [f for f, c in zip(conc, in_core) if c]
+        cover_f = [f for f, c in zip(conc, in_core) if not c]
+
+        self._fib_outline(ax)
+        core_color = "#2e8b8b" if confined else "#9db8b8"
+        core_label = ("Confined core" if confined else "Core (unconfined)")
+        if cover_f:
+            ax.scatter([f["z"] * 1e3 for f in cover_f],
+                       [f["y"] * 1e3 for f in cover_f], s=7, c="#d9a066",
+                       edgecolors="none", zorder=1,
+                       label=f"Cover ({len(cover_f)})")
+        if core_f:
+            ax.scatter([f["z"] * 1e3 for f in core_f],
+                       [f["y"] * 1e3 for f in core_f], s=7, c=core_color,
+                       edgecolors="none", zorder=2,
+                       label=f"{core_label} ({len(core_f)})")
+        if rebar:
+            ax.scatter([f["z"] * 1e3 for f in rebar],
+                       [f["y"] * 1e3 for f in rebar], s=26, c="#c0392b",
+                       edgecolors="none", zorder=4, label=f"Rebar ({len(rebar)})")
+        # trace the core boundary (exterior + any holes) so the split is legible
+        if corepoly is not None:
+            for geom in getattr(corepoly, "geoms", [corepoly]):
+                rings = [geom.exterior, *geom.interiors]
+                for r in rings:
+                    zs, ys = zip(*[(z * 1e3, y * 1e3) for z, y in r.coords])
+                    ax.plot(zs, ys, color=core_color, lw=1.1, ls="--", zorder=3)
+        ax.legend(loc="upper right", fontsize=8, framealpha=0.9)
+        ax.set_title("Confined core / unconfined cover" if confined
+                     else "Core / cover zones")
+        if not confined:
+            note = ("add a Link tie group (Rebars tab) to confine the core"
+                    if corepoly is not None else
+                    "cover ≥ half-dimension — no distinct core")
+            self.fib_info.setText(self.fib_info.text() + f" · {note}")
+        else:
+            self.fib_info.setText(
+                f"{len(core_f)} core + {len(cover_f)} cover cells, "
+                f"{len(rebar)} rebar")
+
     def _draw_fibers(self) -> None:
         """Render the fibre discretisation coloured by material, or by strain /
         stress at an M-φ milestone; plus fibre-vs-solid properties + table."""
@@ -4527,6 +4589,8 @@ class SectionDesignerWindow(QMainWindow):
         sizes = [26 if not f["cell"] else 6 for f in fibers]
         if mode == "Stress field (ε)":
             self._render_stress_field(ax, _case(aspec))
+        elif mode == "Core / cover":
+            self._draw_core_cover(ax, aspec, fibers)
         elif mode in ("Strain", "Stress") and state:
             key = "strain" if mode == "Strain" else "stress"
             scale = 1e3 if mode == "Strain" else 1e-6   # strain ‰, stress MPa
