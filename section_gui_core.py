@@ -316,6 +316,14 @@ class Spec:
     kappa_max: float = 0.06      # M-phi curvature sweep limit (1/m)
     conc_model: str = "Kent-Park"   # concrete compression model (CONC_MODELS)
     conc_f1_ratio: float = 0.4      # trilinear first-knee stress / f'c
+    # transverse confinement (hoops/spiral) — drives a Mander CONFINED core law
+    # for the fiber analysis (plan §16 C1). All zero = unconfined (the core and
+    # cover use the same law, i.e. the historical single-material behaviour).
+    # Only used when conc_model == "Mander".
+    conf_Asp: float = 0.0           # one hoop/spiral bar-leg area (m^2)
+    conf_s: float = 0.0             # hoop centre-to-centre spacing (m)
+    conf_fyh: float = 0.0           # hoop yield strength (Pa)
+    conf_hooptype: str = "Hoop"     # "Hoop" | "Spiral"
     steel_model: str = "Bilinear"   # rebar stress-strain model (STEEL_MODELS)
     # custom section (kind == "Custom"): explicit polygon + bars, in metres,
     # stored as nested tuples so the Spec stays hashable (drives caching).

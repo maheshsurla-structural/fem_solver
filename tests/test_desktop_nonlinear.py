@@ -52,6 +52,91 @@ def test_fiber_section_from_spec_circular():
     assert len(fs.fibers) > 50
 
 
+# ------------------------------------------------- confined core / cover (C1)
+
+def _peak_MPa(mat):
+    return -min(mat.get_response(-e)[0]
+                for e in np.linspace(1e-4, 8e-3, 60)) / 1e6
+
+
+def _conc_fibers(fs):
+    from femsolver.materials.uniaxial import ConcreteTensionStiffening
+    return [f for f in fs.fibers
+            if isinstance(f.material, ConcreteTensionStiffening)]
+
+
+def test_confined_core_vs_unconfined_cover_circular():
+    """With hoop confinement + the Mander model, the inner (core) concrete
+    fibers get a raised f'cc while the outer cover shell keeps f'c (plan C1)."""
+    import section_gui_core as core
+    spec = core.Spec(kind="Circular", D=0.9, cover=0.05, fc=35e6, fy=500e6,
+                     conc_model="Mander", conf_Asp=1e-4, conf_s=0.10,
+                     conf_fyh=400e6, conf_hooptype="Hoop")
+    fs = NL.fiber_section_from_spec(spec, target=600)
+    R, Rc = 0.45, 0.40
+    conc = _conc_fibers(fs)
+    core_pk = max(_peak_MPa(f.material) for f in conc
+                  if math.hypot(f.y, f.z) < Rc - 1e-9)
+    cover_pk = max(_peak_MPa(f.material) for f in conc
+                   if math.hypot(f.y, f.z) >= Rc - 1e-9)
+    assert cover_pk == pytest.approx(35.0, rel=0.02)      # unconfined cover
+    assert core_pk > 1.1 * cover_pk                       # confined core (f'cc)
+    assert core_pk < 2.0 * cover_pk                       # sane confinement
+
+
+def test_unconfined_spec_uses_single_concrete_law():
+    """No hoops (or a non-Mander model) -> one concrete law everywhere, i.e.
+    the historical behaviour is unchanged."""
+    import section_gui_core as core
+    spec = core.Spec(kind="Circular", D=0.9, cover=0.05, fc=35e6,
+                     conc_model="Kent-Park")
+    fs = NL.fiber_section_from_spec(spec, target=600)
+    peaks = [_peak_MPa(f.material) for f in _conc_fibers(fs)]
+    assert max(peaks) - min(peaks) < 0.1                  # single law
+    assert min(peaks) == pytest.approx(35.0, abs=0.1)
+    # even with the Mander model but no hoops -> still one law
+    spec2 = core.Spec(kind="Circular", D=0.9, cover=0.05, fc=35e6,
+                      conc_model="Mander")
+    fs2 = NL.fiber_section_from_spec(spec2, target=600)
+    assert NL._confinement_kw(spec2, None, [], 0.05) is None
+
+
+def test_confined_core_rectangular():
+    """The core/cover split also works for a rectangular section (eroded core
+    polygon)."""
+    import section_gui_core as core
+    spec = core.Spec(kind="Rectangular", b=0.5, h=0.7, cover=0.05, fc=30e6,
+                     fy=500e6, conc_model="Mander", conf_Asp=1e-4, conf_s=0.10,
+                     conf_fyh=400e6, conf_hooptype="Hoop")
+    fs = NL.fiber_section_from_spec(spec, n_z=14, n_y=18)
+    conc = _conc_fibers(fs)
+    core_pk = max(_peak_MPa(f.material) for f in conc
+                  if abs(f.z) < 0.2 and abs(f.y) < 0.3)   # interior
+    cover_pk = max(_peak_MPa(f.material) for f in conc
+                   if abs(f.z) > 0.22 or abs(f.y) > 0.32)  # outer shell
+    assert core_pk > 1.05 * cover_pk
+
+
+def test_confined_section_pushover_runs():
+    """A confined column still solves a pushover end-to-end."""
+    import section_gui_core as core
+    spec = core.Spec(kind="Circular", D=0.6, cover=0.04, fc=35e6, fy=500e6,
+                     conc_model="Mander", conf_Asp=8e-5, conf_s=0.08,
+                     conf_fyh=400e6, conf_hooptype="Spiral")
+    gsd = dataclasses.asdict(spec)
+    A = math.pi * 0.6 ** 2 / 4.0
+    p = Project()
+    p.nodes = [Node(1, 0.0, 0.0, supports=(1, 1, 1)), Node(2, 3.0, 0.0)]
+    p.sections = [Section(id=1, name="col", A=A, Iz=math.pi * 0.6**4 / 64.0,
+                          gsd_spec=gsd)]
+    p.materials = [Material(1, "conc", E=30e9, nu=0.2)]
+    p.members = [Member(1, 1, 2, 1, 1)]
+    res = NL.run_pushover(p, control_node=2, control_dof=1, target=0.05,
+                          n_steps=15)
+    assert len(res["disp"]) == 15
+    assert max(res["shear"]) > 0.0
+
+
 # ------------------------------------------------------ build_nonlinear_model
 
 def test_build_nonlinear_model_uses_fiber_element():

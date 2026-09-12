@@ -13,6 +13,50 @@ one section engine).
 from __future__ import annotations
 
 
+def _unconfined_conc_kw(spec) -> dict:
+    """The Spec's unconfined concrete material dict (cover + base curve)."""
+    return dict(
+        fc=spec.fc, conc_model=spec.conc_model, eps_c0=spec.eps_c0,
+        eps_cu=spec.eps_cu, fcu_ratio=spec.fcu_ratio, fr_model=spec.fr_model,
+        fr_coeff=spec.fr_coeff, eps_decay=spec.eps_decay,
+        conc_f1_ratio=spec.conc_f1_ratio)
+
+
+def _confinement_kw(spec, poly, bars, cover: float) -> dict | None:
+    """Extra ``conf_*`` keys for a Mander CONFINED core law (plan §16 C1), or
+    ``None`` when the section is unconfined (no hoops / not the Mander model /
+    no usable core). Added to the unconfined dict, these drive
+    :func:`concrete_uniaxial_from` to raise the core peak to ``f'cc`` at
+    ``eps_cc`` (Mander/Priestley) via the shared ``mander_confinement`` calc."""
+    import math
+    if getattr(spec, "conc_model", "") != "Mander":
+        return None
+    asp = float(getattr(spec, "conf_Asp", 0.0) or 0.0)
+    s = float(getattr(spec, "conf_s", 0.0) or 0.0)
+    fyh = float(getattr(spec, "conf_fyh", 0.0) or 0.0)
+    if not (asp > 0.0 and s > 0.0 and fyh > 0.0 and cover > 0.0):
+        return None
+    circular = getattr(spec, "kind", "") == "Circular"
+    if circular:
+        ds = float(spec.D) - 2.0 * cover          # core dia to hoop centre
+        if ds <= 0.0:
+            return None
+        a_core = math.pi / 4.0 * ds * ds
+        geom = {"conf_shape": "Circular", "conf_ds": ds,
+                "conf_hooptype": getattr(spec, "conf_hooptype", "Hoop")}
+    else:
+        minz, miny, maxz, maxy = poly.bounds
+        bc, dc = (maxz - minz) - 2.0 * cover, (maxy - miny) - 2.0 * cover
+        if bc <= 0.0 or dc <= 0.0:
+            return None
+        a_core = bc * dc
+        geom = {"conf_shape": "Rectangular", "conf_bc": bc, "conf_dc": dc}
+    a_long = sum(float(b.area) for b in bars)
+    rho_cc = min(max(a_long / a_core, 0.0), 0.2) if a_core > 0 else 0.0
+    return {"conf_Asp": asp, "conf_s": s, "conf_fyh": fyh,
+            "conf_rho_cc": rho_cc, **geom}
+
+
 def fiber_section_from_spec(spec, *, target: int = 1200, n_z: int = 16,
                             n_y: int = 40):
     """Build an inelastic :class:`FiberSection2D` from a ``section_gui_core.Spec``.
@@ -20,8 +64,14 @@ def fiber_section_from_spec(spec, *, target: int = 1200, n_z: int = 16,
     Concrete and rebar use the Spec's own constitutive models via the shared
     ``section_gui_core`` factories (so the fiber law matches what the Section
     Designer previews). Circular sections use the unified polar mesh (U2
-    :func:`polar_cells`); other shapes use the Cartesian grid. One concrete
-    material for now — confined core/cover split is a follow-up.
+    :func:`polar_cells`); other shapes use the Cartesian grid.
+
+    **Confined core / unconfined cover (plan §16 C1):** when the Spec carries
+    hoop confinement (``conf_Asp``/``conf_s``/``conf_fyh``) and the Mander
+    model, the fibers inside the cover boundary get a CONFINED core law (raised
+    ``f'cc``/``eps_cc`` from :func:`mander_confinement`) while the outer cover
+    shell keeps the unconfined law. With no hoops the whole section uses one
+    (unconfined) law — the historical behaviour, so existing runs are unchanged.
     """
     import section_gui_core as core
     from femsolver.sections.response.fiber import (Fiber, FiberSection2D,
@@ -30,11 +80,15 @@ def fiber_section_from_spec(spec, *, target: int = 1200, n_z: int = 16,
 
     case = core.build_case(spec)
     poly = case.section.geometry.polygon
-    conc = core.concrete_uniaxial_from(dict(
-        fc=spec.fc, conc_model=spec.conc_model, eps_c0=spec.eps_c0,
-        eps_cu=spec.eps_cu, fcu_ratio=spec.fcu_ratio, fr_model=spec.fr_model,
-        fr_coeff=spec.fr_coeff, eps_decay=spec.eps_decay,
-        conc_f1_ratio=spec.conc_f1_ratio))
+    bars = case.section.reinforcement.bars if case.section.reinforcement else []
+    cover = float(getattr(spec, "cover", 0.0) or 0.0)
+
+    unconf_kw = _unconfined_conc_kw(spec)
+    conf_kw = _confinement_kw(spec, poly, bars, cover)
+    cover_conc = core.concrete_uniaxial_from(unconf_kw)
+    core_conc = (core.concrete_uniaxial_from({**unconf_kw, **conf_kw})
+                 if conf_kw else cover_conc)
+    confined = conf_kw is not None
     steel = core.steel_uniaxial_from(dict(
         fy=spec.fy, Es=spec.Es, steel_model=spec.steel_model,
         steel_b=spec.steel_b, steel_fu_ratio=spec.steel_fu_ratio,
@@ -43,12 +97,28 @@ def fiber_section_from_spec(spec, *, target: int = 1200, n_z: int = 16,
     if getattr(spec, "kind", "") == "Circular":
         R = float(spec.D) / 2.0
         n_r, n_theta = polar_divisions(target)
-        fibers = [Fiber(y=y, z=z, area=a, material=conc.clone())
-                  for (y, z, a) in polar_cells(0.0, R, n_r, n_theta)]
+        if confined and 0.0 < cover < R:
+            Rc = R - cover                        # confined-core radius
+            n_core = max(1, int(round(n_r * Rc / R)))
+            n_cov = max(1, n_r - n_core)
+            fibers = [Fiber(y=y, z=z, area=a, material=core_conc.clone())
+                      for (y, z, a) in polar_cells(0.0, Rc, n_core, n_theta)]
+            fibers += [Fiber(y=y, z=z, area=a, material=cover_conc.clone())
+                       for (y, z, a) in polar_cells(Rc, R, n_cov, n_theta)]
+        else:
+            fibers = [Fiber(y=y, z=z, area=a, material=cover_conc.clone())
+                      for (y, z, a) in polar_cells(0.0, R, n_r, n_theta)]
     else:
-        fibers = list(_discretize_polygon_to_fibers(poly, conc, n_z=n_z, n_y=n_y))
+        fibers = list(_discretize_polygon_to_fibers(poly, cover_conc,
+                                                    n_z=n_z, n_y=n_y))
+        if confined and cover > 0.0:
+            from shapely.geometry import Point
+            core_poly = poly.buffer(-cover)
+            if (not core_poly.is_empty) and core_poly.is_valid:
+                for f in fibers:                  # reassign core fibers
+                    if core_poly.contains(Point(f.z, f.y)):
+                        f.material = core_conc.clone()
 
-    bars = case.section.reinforcement.bars if case.section.reinforcement else []
     for b in bars:
         fibers.append(Fiber(y=float(b.y), z=float(b.z), area=float(b.area),
                             material=steel.clone()))

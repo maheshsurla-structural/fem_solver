@@ -822,6 +822,22 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
   `test_convergence_robustness.py` (5); `test_newton_raphson.py` still green (stagnation guard leaves
   the `max_iter` too‑small case raising). Full suite unchanged except the 4 pre‑existing order‑8
   quadrature failures.
+- 2026 — Added **§16 Commercial‑completeness roadmap** (gaps to a commercial fiber‑hinge tool,
+  excluding the CSI/Midas comparison): core capability (C1 confined core/cover, C2 3‑D nonlinear GUI,
+  C3 dynamic time‑history, C4 adaptive step‑cutting, C5 acceptance criteria), GUI/workflow (main‑view
+  scrubbing, results persistence, run comparison, confinement input, model checks), and product infra
+  (performance, V&V manual, packaging).
+- 2026 — **C1 shipped (confined core / unconfined cover).** `fiber_section_from_spec`
+  (`desktop/nonlinear.py`) now builds a **confined Mander core + unconfined cover** instead of one
+  concrete law. `section_gui_core.Spec` gained hoop fields `conf_Asp`/`conf_s`/`conf_fyh`/
+  `conf_hooptype` (all default 0 ⇒ unconfined, so existing runs are byte‑for‑byte unchanged);
+  `_confinement_kw` derives the `conf_*` dict (core dia / `bc,dc` from geometry − 2·cover, `rho_cc`
+  from the bars) and the shared `concrete_uniaxial_from`+`mander_confinement` raise the core peak to
+  `f'cc` at `eps_cc`. Fibers are split by radius (circular: core ring `[0,R−cover]` + cover ring) or
+  by the cover‑eroded core polygon (rect); the cover shell keeps `f'c`. Verified: core f'cc ≈ 41 MPa
+  vs cover 35 MPa (fc=35), unconfined specs stay single‑law, rectangular split works, confined column
+  solves a pushover. `test_desktop_nonlinear.py` +4 (15 total); 466 section + 74 desktop tests pass.
+  The hoop **input UI** + core/cover preview is the separate item **G‑S4**.
 
 ---
 
@@ -958,3 +974,62 @@ section definition, same material laws, same fiber discretization, same code.
 
 **Principle:** *one section definition → one compiler → one analysis core → two views (design tool
 and fiber hinge).* Every session adds to this pipeline; nobody forks a parallel section engine.
+
+---
+
+## 16. Commercial‑completeness roadmap (post‑benchmark)
+
+Gaps that remain to make the fiber‑hinge capability **commercial‑grade**, *excluding* the
+CSI/Midas golden comparison (that is §7 + P10 + U5, blocked on the user's exports). Grounded in the
+current tree, not aspirational. Legend: ☐ todo · ◐ partial · ☑ done.
+
+### 16.1 Core capability (limits what users can model)
+| ID | Item | State | Notes |
+|---|---|---|---|
+| **C1** | **Confined core / unconfined cover split** in the analysis fiber section | ☑ | 2026 — `desktop/nonlinear.fiber_section_from_spec` now builds a **confined Mander core + unconfined cover**: `Spec` gained `conf_Asp`/`conf_s`/`conf_fyh`/`conf_hooptype` (default 0 = unconfined ⇒ unchanged); `_confinement_kw` derives the `conf_*` dict (core dia/`bc,dc` from geometry − 2·cover, `rho_cc` from bars) and `concrete_uniaxial_from` raises the core to `f'cc`/`eps_cc` via the shared `mander_confinement`. Fibers split by radius (circular) or eroded core polygon (rect); cover keeps `f'c`. `test_desktop_nonlinear.py` +4 (core f'cc>cover, unconfined single‑law, rect split, confined pushover). **Confinement *input UI* is G‑S4.** |
+| **C2** | **3‑D nonlinear in the app** (P‑M2‑M3) | ☐ | `ForceBeamColumn3D` (P7) exists; `desktop/nonlinear.build_nonlinear_model` raises for `ndm≠2`. Needs 3‑D fiber section + element wiring + 3‑D control/monitor UI. |
+| **C3** | **Dynamic time‑history** (true transient: mass + damping) for fiber elements | ☐ | Engine has `nonlinear_transient.py`; not wired to the fiber‑hinge workflow. Case manager is quasi‑static (`monotonic`\|`cyclic`). Adds a `time_history` protocol + ground‑motion input + Rayleigh/modal damping. §1.3 deferred; the natural seismic next step. |
+| **C4** | **Adaptive step‑cutting / substepping** on non‑convergence | ☐ | §8 fixed the noise‑floor chatter; the force‑based element still hits singular flexibility at deep softening (manual smaller step / displacement‑based mesh today). Auto‑halve‑and‑retry in `NonlinearStaticAnalysis`. |
+| **C5** | **Hinge acceptance criteria** (ASCE 41 IO/LS/CP; a/b/c) | ☐ | Damage shown as peak fiber strain only. Add strain/rotation acceptance limits + hinge‑state classification. |
+
+### 16.2 GUI / workflow
+| ID | Item | State | Notes |
+|---|---|---|---|
+| **G‑S1** | **Main model‑view step scrubbing** | ☐ | Results live only in the pushover dialog; `ModelView` can't scrub the model through steps. GUI‑I1 (`NonlinearResults`) unblocked this — wire a `show_nl_step(project, results, k, scale)`. |
+| **G‑S2** | **Nonlinear results persistence + re‑open + run history** | ☐ | Results are transient in the dialog; not in the `.` project, no "reopen last run". (This is the real gap behind GUI‑I2, which otherwise "just serializes defs".) |
+| **G‑S3** | **Run comparison / envelopes** | ☐ | Overlay pushovers, build cyclic backbone/envelope across runs. |
+| **G‑S4** | **Confinement input bridge + core/cover preview** | ☐ | "hoop bar area / spacing → f'cc, ε_cc, ε_cu" in the section UI (ties to C1); Section Designer previews core vs cover regions. |
+| **G‑S5** | **In‑app model checks / diagnostics** | ◐ | Convergence dock exists; add units/section/material sanity + non‑convergence guidance surfaced pre‑ and post‑run. |
+
+### 16.3 Cross‑cutting product infra
+| ID | Item | State | Notes |
+|---|---|---|---|
+| **X1** | **Performance** (fibers × IPs × steps × elements) | ☐ | Vectorize/cache; "results on disk" for long cyclic runs; benchmark. |
+| **X2** | **Verification manual** (non‑CSI/Midas) | ☐ | Package the internal cross‑checks + analytical/closed‑form + published experiments (Caltrans column has public test data) into a V&V doc. |
+| **X3** | **Packaging / docs / tutorials / in‑app examples** | ☐ | Installer, user manual, examples gallery. |
+
+### 16.4 Explicitly deferred (§1.3 — named, not scheduled)
+Biaxial concrete constitutive coupling & nonlinear shear in the fiber; bond‑slip / anchorage‑slip;
+longitudinal‑bar buckling; low‑cycle fatigue. Consistent with what the reference fiber hinges omit.
+
+### 16.5 Suggested sequence
+**C1** (confined core/cover — accuracy, engine already supports it) → **G‑S2 + G‑S1** (results
+persistence + main‑view scrubbing — makes the tool feel finished) → **C4** (adaptive stepping —
+"it just works") → **C3** (dynamic time‑history) → **C2** + **C5** (3‑D nonlinear + acceptance).
+
+### 16.6 Status tracker
+| ID | State | Commit / date |
+|---|---|---|
+| C1 confined core/cover | ☑ | 2026 — confined core + unconfined cover in `fiber_section_from_spec`; input UI = G‑S4 |
+| C2 3‑D nonlinear GUI | ☐ | |
+| C3 dynamic time‑history | ☐ | |
+| C4 adaptive step‑cutting | ☐ | |
+| C5 acceptance criteria | ☐ | |
+| G‑S1 main‑view scrubbing | ☐ | |
+| G‑S2 results persistence | ☐ | |
+| G‑S3 run comparison | ☐ | |
+| G‑S4 confinement input + preview | ☐ | |
+| G‑S5 model checks | ◐ | |
+| X1 performance | ☐ | |
+| X2 verification manual | ☐ | |
+| X3 packaging/docs | ☐ | |
