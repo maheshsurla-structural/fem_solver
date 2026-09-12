@@ -25,6 +25,16 @@ SELECTION_COLOR = "#f59e0b"   # amber — current selection highlight
 HINGE_COLOR = "#e11d9c"       # magenta — fiber plastic-hinge marker
 
 
+def _deformed_point(node, scale: float) -> np.ndarray:
+    """A node's deformed position (3-vec, z=0 for 2-D) = coords + scale·disp."""
+    c = np.asarray(node.coords, dtype=float).ravel()
+    d = np.asarray(node.disp, dtype=float).ravel()
+    x = float(c[0]) + scale * float(d[0])
+    y = (float(c[1]) + scale * float(d[1])) if c.size > 1 else 0.0
+    z = float(c[2]) if c.size > 2 else 0.0
+    return np.array([x, y, z], dtype=float)
+
+
 class _PolygonOverlay(QWidget):
     """Transparent overlay for lasso (polygon) selection — click vertices,
     double-click / right-click to close. Composites over the OpenGL viewport."""
@@ -382,6 +392,61 @@ class ModelView(QtInteractor):
         if len(supports):
             self.add_points(supports, color=SUPPORT_COLOR,
                             render_points_as_spheres=True, point_size=20,
+                            name="supports")
+        self.show_grid()
+        self._frame(model)
+
+    def show_nl_step(self, model, node_disp, member_damage, scale: float) -> None:
+        """Render one nonlinear-analysis step on the main view (plan G-S1):
+        the model's deformed shape at ``scale``, each member coloured by its
+        peak fiber strain (hinge state), over a grey ghost of the undeformed
+        model. ``node_disp`` maps node id -> (dx, dy) and ``member_damage``
+        maps element id -> peak |fiber strain|, both from
+        ``NonlinearResults.step(k)``. Lets the whole model be scrubbed through
+        the run's steps, not just the pushover dialog."""
+        import pyvista as pv
+        from matplotlib import colormaps
+        from matplotlib.colors import Normalize
+
+        # write this step's displacements onto the live model
+        for nid, n in model.nodes.items():
+            dx, dy = (node_disp or {}).get(nid, (0.0, 0.0))
+            n.disp[0] = float(dx)
+            n.disp[1] = float(dy)
+
+        self.clear()
+        span = mg.model_span(model)
+        ref = mg.members_mesh(model)
+        if ref is not None:
+            self.add_mesh(ref.tube(radius=max(span * 0.0025, 1e-3)),
+                          color=REFERENCE_COLOR, name="reference")
+
+        dmg = member_damage or {}
+        vmax = max([abs(v) for v in dmg.values()] + [1e-9])
+        norm = Normalize(0.0, vmax)
+        cmap = colormaps["YlOrRd"]
+        radius = max(span * 0.004, 1e-3)
+        for eid, el in model.elements.items():
+            tags = getattr(el, "node_tags", None)
+            if not tags or len(tags) < 2:
+                continue
+            na, nb = model.nodes[tags[0]], model.nodes[tags[-1]]
+            pa = _deformed_point(na, scale)
+            pb = _deformed_point(nb, scale)
+            rgb = cmap(norm(dmg[eid]))[:3] if eid in dmg else (0.5, 0.5, 0.5)
+            line = pv.PolyData(np.array([pa, pb]),
+                               lines=np.array([2, 0, 1], dtype=np.int64))
+            self.add_mesh(line.tube(radius=radius), color=rgb, name=f"nlmem{eid}")
+
+        pts = mg.deformed_points(model, scale)
+        if len(pts):
+            self.add_points(pts, color=DEFORMED_NODE,
+                            render_points_as_spheres=True, point_size=10,
+                            name="nl_nodes")
+        supports = mg.support_points(model)
+        if len(supports):
+            self.add_points(supports, color=SUPPORT_COLOR,
+                            render_points_as_spheres=True, point_size=18,
                             name="supports")
         self.show_grid()
         self._frame(model)

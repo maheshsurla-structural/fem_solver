@@ -12,9 +12,9 @@ import copy
 from PySide6.QtCore import QItemSelectionModel, Qt
 from PySide6.QtGui import QAction, QActionGroup, QUndoStack
 from PySide6.QtWidgets import (QAbstractItemView, QApplication, QDockWidget,
-                               QDoubleSpinBox, QFileDialog, QMainWindow,
-                               QMessageBox, QPlainTextEdit, QTreeWidget,
-                               QTreeWidgetItem)
+                               QDoubleSpinBox, QFileDialog, QHBoxLayout, QLabel,
+                               QMainWindow, QMessageBox, QPlainTextEdit,
+                               QSlider, QTreeWidget, QTreeWidgetItem, QWidget)
 
 import icons
 import model_geometry as mg
@@ -58,6 +58,15 @@ class MainWindow(QMainWindow):
         dock_log = QDockWidget("Output", self)
         dock_log.setWidget(self.log)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, dock_log)
+
+        # Nonlinear-results step scrubber (plan G-S1/G-S2) — hidden until a
+        # pushover/case run hands results back; scrubs the whole model view
+        # through the run's steps.
+        self._nl_results = None
+        self._nl_scale = 1.0
+        self._nl_dock = self._build_nl_step_dock()
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self._nl_dock)
+        self._nl_dock.hide()
 
         self.props = PropertiesPanel(self._apply_from_inspector,
                                      self._apply_bulk, self)
@@ -330,7 +339,74 @@ class MainWindow(QMainWindow):
                 "Nonlinear pushover needs a Section Designer (fiber) section "
                 "on a member.")
             return
-        PushoverDialog(self, p).exec()
+        dlg = PushoverDialog(self, p)
+        dlg.exec()
+        res = getattr(dlg, "_results", None)
+        if res is not None and res.has_shape:
+            self.set_nl_results(res)
+
+    # ------------------------------------------------ nonlinear results (G-S1/2)
+    def _build_nl_step_dock(self) -> QDockWidget:
+        dock = QDockWidget("Analysis steps", self)
+        w = QWidget()
+        row = QHBoxLayout(w)
+        row.setContentsMargins(8, 4, 8, 4)
+        self._nl_slider = QSlider(Qt.Orientation.Horizontal)
+        self._nl_slider.setEnabled(False)
+        self._nl_slider.valueChanged.connect(self._on_nl_step)
+        self._nl_step_lbl = QLabel("—")
+        self._nl_scale_spin = QDoubleSpinBox()
+        self._nl_scale_spin.setRange(0.0, 1.0e6)
+        self._nl_scale_spin.setDecimals(1)
+        self._nl_scale_spin.valueChanged.connect(self._on_nl_scale)
+        row.addWidget(QLabel("Step"))
+        row.addWidget(self._nl_slider, 1)
+        row.addWidget(self._nl_step_lbl)
+        row.addWidget(QLabel("scale ×"))
+        row.addWidget(self._nl_scale_spin)
+        dock.setWidget(w)
+        return dock
+
+    def set_nl_results(self, results) -> None:
+        """Hold a completed run's :class:`NonlinearResults` (survives the
+        dialog close — plan G-S2) and enable scrubbing the whole model view
+        through its steps on the main view (plan G-S1)."""
+        self._nl_results = results
+        n = results.n_steps
+        if n == 0 or self._model is None:
+            self._nl_dock.hide()
+            return
+        # auto displacement scale from the largest nodal translation over the run
+        dmax = 0.0
+        for k in range(n):
+            for dx, dy in (results.step(k).node_disp or {}).values():
+                dmax = max(dmax, (dx * dx + dy * dy) ** 0.5)
+        span = mg.model_span(self._model)
+        self._nl_scale = (0.08 * span / dmax) if dmax > 0 else 1.0
+        self._nl_scale_spin.blockSignals(True)
+        self._nl_scale_spin.setValue(self._nl_scale)
+        self._nl_scale_spin.blockSignals(False)
+        self._nl_slider.blockSignals(True)
+        self._nl_slider.setRange(0, n - 1)
+        self._nl_slider.setValue(n - 1)
+        self._nl_slider.setEnabled(True)
+        self._nl_slider.blockSignals(False)
+        self._nl_dock.show()
+        self._on_nl_step()
+
+    def _on_nl_scale(self, val: float) -> None:
+        self._nl_scale = float(val)
+        self._on_nl_step()
+
+    def _on_nl_step(self, *_a) -> None:
+        if self._nl_results is None or self._model is None:
+            return
+        k = self._nl_slider.value()
+        st = self._nl_results.step(k)
+        self._nl_step_lbl.setText(
+            f"{k + 1}/{self._nl_results.n_steps}  (d={st.disp:.4g})")
+        self.view.show_nl_step(self._model, st.node_disp, st.member_damage,
+                               self._nl_scale)
 
     def show_diagram(self, kind: str) -> None:
         if self._solve() is None:

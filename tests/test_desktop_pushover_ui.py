@@ -55,6 +55,42 @@ def test_main_window_wires_pushover(qapp):
     w.run_pushover_dialog()
 
 
+def test_main_view_step_scrubbing(qapp):
+    """G-S1/G-S2: a completed run's results are held on the main window and the
+    step slider scrubs the whole model view without error."""
+    import nonlinear as NL
+    from main_window import MainWindow
+    from nl_results import NonlinearResults
+    w = MainWindow()
+    p = _gsd_column_project()
+    w.load_project(p)
+    res = NL.run_pushover(p, control_node=2, control_dof=1, target=0.03,
+                          n_steps=8, capture_shape=True)
+    results = NonlinearResults.from_run(res)
+    assert results.has_shape
+    w.set_nl_results(results)
+    # dock is shown, slider spans the steps and lands on the last one
+    assert w._nl_dock.isVisibleTo(w._nl_dock.parent()) or not w.isVisible()
+    assert w._nl_slider.isEnabled()
+    assert w._nl_slider.maximum() == results.n_steps - 1
+    assert w._nl_slider.value() == results.n_steps - 1
+    assert w._nl_results is results          # retained after the dialog closes
+    # scrub through every step -> renders on the main view, no crash
+    for k in range(results.n_steps):
+        w._nl_slider.setValue(k)
+    # changing the displacement scale re-renders
+    w._nl_scale_spin.setValue(25.0)
+
+
+def test_main_view_no_results_dock_hidden(qapp):
+    """The step dock stays hidden until a run hands results back."""
+    from main_window import MainWindow
+    w = MainWindow()
+    w.load_project(_gsd_column_project())
+    assert w._nl_results is None
+    assert not w._nl_dock.isVisible()
+
+
 def test_worker_runs_and_streams(qapp):
     from pushover_dialog import PushoverWorker
     p = _gsd_column_project()

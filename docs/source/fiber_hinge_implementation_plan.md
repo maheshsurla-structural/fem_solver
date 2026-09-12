@@ -851,6 +851,7 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
   confinement **input** the M‑φ used now drives the pushover too (G‑S4 input bridge).
   `test_desktop_nonlinear.py` (16, incl. the tie‑group auto path); 466 section + 75 desktop tests
   pass. Remaining for G‑S4: a distinct core‑vs‑cover fibre preview in the Section Designer.
+- 2026 — **G‑S1 shipped + G‑S2 (session‑level).** Main‑view step scrubbing: `ModelView.show_nl_step` renders a run step on the main 3‑D view — the deformed shape at an adjustable scale over a grey ghost, each member coloured by its peak fiber strain (hinge state) — from `NonlinearResults.step(k)` (GUI‑I1). The main window gained an **Analysis‑steps** dock (step slider + scale spin, hidden until a run) and `set_nl_results`, which the pushover dialog calls on close so results **survive the dialog** and stay scrubbable (G‑S2 session‑level; disk persistence + run history remain). `test_desktop_pushover_ui.py` +2 (scrub every step; dock hidden with no results); 77 desktop tests pass.
 
 ---
 
@@ -1008,8 +1009,8 @@ current tree, not aspirational. Legend: ☐ todo · ◐ partial · ☑ done.
 ### 16.2 GUI / workflow
 | ID | Item | State | Notes |
 |---|---|---|---|
-| **G‑S1** | **Main model‑view step scrubbing** | ☐ | Results live only in the pushover dialog; `ModelView` can't scrub the model through steps. GUI‑I1 (`NonlinearResults`) unblocked this — wire a `show_nl_step(project, results, k, scale)`. |
-| **G‑S2** | **Nonlinear results persistence + re‑open + run history** | ☐ | Results are transient in the dialog; not in the `.` project, no "reopen last run". (This is the real gap behind GUI‑I2, which otherwise "just serializes defs".) |
+| **G‑S1** | **Main model‑view step scrubbing** | ☑ | 2026 — `ModelView.show_nl_step(model, node_disp, member_damage, scale)` renders a run step on the main 3‑D view (deformed shape over a ghost, members coloured by peak fiber strain / hinge state). The main window gained an **Analysis‑steps** dock (step slider + displacement‑scale) that scrubs the whole model through the run, driven by `NonlinearResults.step(k)` (GUI‑I1). |
+| **G‑S2** | **Nonlinear results persistence + re‑open + run history** | ◐ | **Session‑level done** — the pushover/case dialog hands its `NonlinearResults` back to the main window (`set_nl_results`), so results survive the dialog close and stay scrubbable (re‑view). **Remaining:** persist to the `.` project file (at least the curve) across save/load, and a multi‑run history. |
 | **G‑S3** | **Run comparison / envelopes** | ☐ | Overlay pushovers, build cyclic backbone/envelope across runs. |
 | **G‑S4** | **Confinement input bridge + core/cover preview** | ◐ | **Input bridge done** — the tie **Link** group (Rebars tab) + Confinement tab + manual override that already drove the confined M‑φ now also drive the pushover (C1 unification), so "what you input is what you run". **Remaining:** a distinct **core‑vs‑cover fibre preview** in the Section Designer fibres view. |
 | **G‑S5** | **In‑app model checks / diagnostics** | ◐ | Convergence dock exists; add units/section/material sanity + non‑convergence guidance surfaced pre‑ and post‑run. |
@@ -1038,8 +1039,8 @@ persistence + main‑view scrubbing — makes the tool feel finished) → **C4**
 | C3 dynamic time‑history | ☐ | |
 | C4 adaptive step‑cutting | ☐ | |
 | C5 acceptance criteria | ☐ | |
-| G‑S1 main‑view scrubbing | ☐ | |
-| G‑S2 results persistence | ☐ | |
+| G‑S1 main‑view scrubbing | ☑ | 2026 — ModelView.show_nl_step + Analysis-steps dock |
+| G‑S2 results persistence | ◐ | session-level (held on main window); disk + history remain |
 | G‑S3 run comparison | ☐ | |
 | G‑S4 confinement input + preview | ◐ | input bridge done (tie group drives pushover); core/cover preview remains |
 | G‑S5 model checks | ◐ | |
