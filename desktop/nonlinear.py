@@ -372,7 +372,8 @@ def run_time_history(project, accel, dt, *, control_node: int,
                      control_dof: int = 1, direction: str = "y",
                      zeta: float = 0.05, density: float = 2400.0,
                      num_steps: int | None = None, tol: float = 1.0,
-                     max_iter: int = 30, materials=None) -> dict:
+                     max_iter: int = 30, materials=None,
+                     on_step=None, should_cancel=None) -> dict:
     """Nonlinear **dynamic time-history** of the fiber model under rigid-base
     ground acceleration (plan §16 C3).
 
@@ -430,10 +431,19 @@ def run_time_history(project, accel, dt, *, control_node: int,
         return float(accel[i] * (1.0 - frac) + accel[i + 1] * frac)
 
     load_fn = ground_motion_force(m, direction=direction, accel_function=accel_fn)
+
+    def _step_cb(info):
+        if on_step is not None:
+            on_step({"step": info["step"], "num_steps": info["num_steps"],
+                     "time": info["time"], "disp": abs(info["disp"] or 0.0)})
+        if should_cancel is not None and should_cancel():
+            return False
+        return True
+
     out = NonlinearTransientAnalysis(
         m, num_steps=n, dt=dt, damping=damping, load_function=load_fn,
         tol=tol, max_iter=max_iter,
-        track=(control_node, control_dof)).run()
+        track=(control_node, control_dof), step_callback=_step_cb).run()
 
     disp = [float(x) for x in out["tracked_disp"]]
     return {

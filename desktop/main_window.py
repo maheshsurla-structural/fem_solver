@@ -138,6 +138,8 @@ class MainWindow(QMainWindow):
                                    self.manage_nonlinear_cases)
         self.act_pushover = _action(self, "Nonlinear &pushover…", None,
                                     self.run_pushover_dialog, "run")
+        self.act_timehistory = _action(self, "Nonlinear &time history…", None,
+                                       self.run_timehistory_dialog, "run")
         self.act_undef = _action(self, "&Undeformed", None,
                                  self._show_undeformed, "undeformed")
         self.act_fit = _action(self, "&Fit", "F", self.view.fit, "fit")
@@ -246,6 +248,7 @@ class MainWindow(QMainWindow):
         analysis_menu.addAction(self.act_run)
         analysis_menu.addAction(self.act_nlcases)
         analysis_menu.addAction(self.act_pushover)
+        analysis_menu.addAction(self.act_timehistory)
         analysis_menu.addAction(self.act_undef)
         analysis_menu.addSeparator()
         for a in (self.act_diag_n, self.act_diag_v, self.act_diag_m,
@@ -345,6 +348,19 @@ class MainWindow(QMainWindow):
         res = getattr(dlg, "_results", None)
         if res is not None and res.has_shape:
             self.set_nl_results(res)
+
+    def run_timehistory_dialog(self) -> None:
+        from timehistory_dialog import TimeHistoryDialog
+        p = self._project
+        if not p.members:
+            self.statusBar().showMessage("Add members first.")
+            return
+        if not any(getattr(s, "gsd_spec", None) for s in p.sections):
+            self.statusBar().showMessage(
+                "Nonlinear time history needs a Section Designer (fiber) "
+                "section on a member.")
+            return
+        TimeHistoryDialog(self, p).exec()
 
     # ------------------------------------------------ nonlinear results (G-S1/2)
     def _build_nl_step_dock(self) -> QDockWidget:

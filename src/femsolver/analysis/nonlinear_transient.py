@@ -153,6 +153,7 @@ class NonlinearTransientAnalysis:
         load_function: LoadFunction | None = None,
         track: tuple[int, int] | None = None,
         numberer: str = "default",
+        step_callback=None,
     ):
         if num_steps < 1:
             raise ValueError("num_steps must be >= 1")
@@ -183,6 +184,9 @@ class NonlinearTransientAnalysis:
         if numberer not in ("default", "rcm"):
             raise ValueError(f"unknown numberer {numberer!r}")
         self.numberer = numberer
+        # Optional per-step hook {step, num_steps, time, disp}; return False to
+        # stop early (e.g. a UI cancel). Backward-compatible (default None).
+        self.step_callback = step_callback
 
         # Results
         self.times: list[float] = []
@@ -262,6 +266,14 @@ class NonlinearTransientAnalysis:
                 self.tracked_disp.append(float(node.disp[dof]))
                 self.tracked_velocity.append(float(node.velocity[dof]))
                 self.tracked_acceleration.append(float(node.acceleration[dof]))
+
+            if self.step_callback is not None:
+                info = {"step": step, "num_steps": self.num_steps,
+                        "time": t_new,
+                        "disp": (self.tracked_disp[-1]
+                                 if self.track is not None else None)}
+                if self.step_callback(info) is False:
+                    break                              # cooperative cancel
 
         return {
             "neq": int(m.neq),
