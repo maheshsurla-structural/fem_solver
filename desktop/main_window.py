@@ -22,6 +22,7 @@ import style
 from commands import EditCommand
 from editing import (LoadDialog, MemberDialog, NodeDialog, SectionDialog,
                      dof_labels)
+from hinge_editor import HingeAssignmentDialog, HingeManagerDialog
 from material_editor import MaterialManagerDialog
 from model_view import ModelView
 from project import Material, Member, Node, Project, Section
@@ -103,6 +104,9 @@ class MainWindow(QMainWindow):
                                        self.add_section, "section")
         self.act_materials = _action(self, "&Materials…", None,
                                      self.manage_materials)
+        self.act_hinges = _action(self, "&Hinges…", None, self.manage_hinges)
+        self.act_assign_hinges = _action(self, "Assign &hinges…", None,
+                                         self.assign_hinges)
         self.act_genloads = _action(self, "Generate &loads…", None,
                                     self.generate_loads, "loadsgen")
         self.act_delete = _action(self, "&Delete", "Del", self.delete_selected,
@@ -209,7 +213,8 @@ class MainWindow(QMainWindow):
         edit_menu.addAction(self.act_redo)
         edit_menu.addSeparator()
         for a in (self.act_add_node, self.act_add_member, self.act_add_section,
-                  self.act_materials, self.act_add_load, self.act_delete):
+                  self.act_materials, self.act_hinges, self.act_assign_hinges,
+                  self.act_add_load, self.act_delete):
             edit_menu.addAction(a)
         edit_menu.addSeparator()
         edit_menu.addAction(self.act_deselect)
@@ -658,6 +663,26 @@ class MainWindow(QMainWindow):
             "Edit materials",
             lambda: setattr(self._project, "materials", result))
 
+    def manage_hinges(self) -> None:
+        result = HingeManagerDialog.manage(self, self._project)
+        if result is None:
+            return
+        self._apply_edit(
+            "Edit hinges",
+            lambda: setattr(self._project, "hinges", result))
+
+    def assign_hinges(self) -> None:
+        result = HingeAssignmentDialog.assign(self, self._project)
+        if result is None:
+            return
+
+        def _apply():
+            by_id = {mb.id: mb for mb in self._project.members}
+            for mid, hid in result.items():
+                if mid in by_id:
+                    by_id[mid].hinge = hid
+        self._apply_edit("Assign hinges", _apply)
+
     def _on_double_click(self, item, _col) -> None:
         ref = item.data(0, Qt.ItemDataRole.UserRole)
         if not ref:
@@ -1000,6 +1025,7 @@ class MainWindow(QMainWindow):
         try:
             self._model = self._project.build_model()
             self.view.set_model(self._model)
+            self.view.mark_hinges(self._project)
         except Exception as exc:                       # noqa: BLE001
             QMessageBox.critical(self, "Model error", str(exc))
         self._populate_tree()

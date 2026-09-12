@@ -22,6 +22,7 @@ DEFORMED_COLOR = "#d85a30"    # coral
 DEFORMED_NODE = "#993c1d"     # dark coral
 DIAGRAM_COLOR = {"N": "#1d4ed8", "V": "#0f766e", "M": "#b45309"}
 SELECTION_COLOR = "#f59e0b"   # amber — current selection highlight
+HINGE_COLOR = "#e11d9c"       # magenta — fiber plastic-hinge marker
 
 
 class _PolygonOverlay(QWidget):
@@ -328,6 +329,32 @@ class ModelView(QtInteractor):
         self._draw_highlight()
         if self._mode == "draw_node":
             self._add_ground_plane()
+
+    def mark_hinges(self, project) -> None:
+        """Overlay a magenta marker inside each end of every member that has a
+        fiber plastic hinge assigned (``Member.hinge``), placed at the midpoint
+        of the resolved hinge region. Call after :meth:`set_model` (which clears
+        the scene). No-op when nothing is hinged."""
+        coords = {n.id: np.array([n.x, n.y, getattr(n, "z", 0.0)], float)
+                  for n in project.nodes}
+        pts = []
+        for mb in project.members:
+            hid = getattr(mb, "hinge", None)
+            hinge = project.hinge(hid) if hid else None
+            if hinge is None or mb.n1 not in coords or mb.n2 not in coords:
+                continue
+            a, b = coords[mb.n1], coords[mb.n2]
+            L = float(np.linalg.norm(b - a))
+            if L <= 0.0:
+                continue
+            u = (b - a) / L
+            lp_i, lp_j = project.resolve_hinge_lengths(mb, hinge)
+            pts.append(a + u * (0.5 * lp_i))
+            pts.append(b - u * (0.5 * lp_j))
+        if pts:
+            self.add_points(np.asarray(pts, dtype=float), color=HINGE_COLOR,
+                            render_points_as_spheres=True, point_size=20,
+                            name="hinges")
 
     def show_deformed(self, model, scale: float) -> None:
         """Draw the deformed shape (coral) over a grey ghost of the model."""

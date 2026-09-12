@@ -87,11 +87,24 @@ def build_nonlinear_model(project):
                 Ec = mats[mb.material].E if mb.material in mats else 3.0e10
             base = ElasticIsotropic(100_000 + mb.id, E=Ec, nu=0.2)
             m.add_material(base)
-            # Displacement-based corotational fiber element: robust for GUI
-            # pushover to large drift (the force-based element's flexibility can
-            # go singular near softening — see plan §8 / P8).
-            m.add_element(BeamColumn2DCorotational(
-                mb.id, (mb.n1, mb.n2), base, section=fs))
+            hinge = (project.hinge(mb.hinge)
+                     if getattr(mb, "hinge", None) else None)
+            if hinge is not None:
+                # Lumped finite-length fiber hinge (P9 / GUI-3): elastic member
+                # with a fiber plastic hinge of length lp at each end (CSI
+                # "Fiber P-M2-M3" / Midas lumped hinge).
+                from femsolver.elements.beam_fiber_hinge import \
+                    FiberHingeBeamColumn2D
+                lp_i, lp_j = project.resolve_hinge_lengths(mb, hinge)
+                m.add_element(FiberHingeBeamColumn2D(
+                    mb.id, (mb.n1, mb.n2), base, section=fs,
+                    lp=lp_i, lp_j=lp_j))
+            else:
+                # Displacement-based corotational fiber element: robust for GUI
+                # pushover to large drift (the force-based element's flexibility
+                # can go singular near softening — see plan §8 / P8).
+                m.add_element(BeamColumn2DCorotational(
+                    mb.id, (mb.n1, mb.n2), base, section=fs))
             n_fiber += 1
         else:
             A, Iz, _Iy, _J = _resolve_section(sec)
@@ -149,25 +162,36 @@ def run_pushover(project, *, control_node: int, control_dof: int,
     shape_frames: list = []
     damage_frames: list = []
 
+    def _section_def(el, ip: int = 0):
+        """Committed base-section deformation (eps_a, kappa) at integration
+        point ``ip`` — from the displacement-based corotational element's
+        ``_e_sections`` or the force-based (hinge) element's ``_e_committed``;
+        None before the first commit / if unavailable."""
+        for attr in ("_e_sections", "_e_committed"):
+            arr = getattr(el, attr, None)
+            if arr is not None and len(arr) > ip:
+                return float(arr[ip][0]), float(arr[ip][1])
+        return None
+
     def _peak_abs_strain(el) -> float:
-        es = getattr(el, "_e_sections", None)
-        if not es:
+        d = _section_def(el, 0)
+        if d is None:
             return 0.0
-        eps_a, kappa = float(es[0][0]), float(es[0][1])
+        eps_a, kappa = d
         fibers = el.sections[0].fibers
         return max((abs(eps_a - f.y * kappa) for f in fibers), default=0.0)
 
     def _capture():
-        if capture_fibers and mon_el is not None \
-                and getattr(mon_el, "_e_sections", None):
-            e = mon_el._e_sections[0]
-            eps_a, kappa = float(e[0]), float(e[1])
-            snap = mon_el.sections[0].clone()          # don't perturb live state
-            frames.append([
-                (float(f.y), float(f.z),
-                 float(f.material.get_response(eps_a - f.y * kappa)[0]),
-                 float(eps_a - f.y * kappa))
-                for f in snap.fibers])
+        if capture_fibers and mon_el is not None:
+            d = _section_def(mon_el, 0)
+            if d is not None:
+                eps_a, kappa = d
+                snap = mon_el.sections[0].clone()      # don't perturb live state
+                frames.append([
+                    (float(f.y), float(f.z),
+                     float(f.material.get_response(eps_a - f.y * kappa)[0]),
+                     float(eps_a - f.y * kappa))
+                    for f in snap.fibers])
         if capture_shape:
             shape_frames.append({nid: (float(n.disp[0]), float(n.disp[1]))
                                  for nid, n in m.nodes.items()})

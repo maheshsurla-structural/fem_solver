@@ -64,6 +64,24 @@ class Node:
 
 
 @dataclass
+class Hinge:
+    """A finite-length fiber plastic-hinge *property* (plan §14 GUI-3).
+
+    Assigned to a member (``Member.hinge``) it turns that member's fiber
+    (Section-Designer) section into a lumped ``FiberHingeBeamColumn2D`` with a
+    plastic hinge of length ``lp`` at each end (the CSI "Fiber P-M2-M3" / Midas
+    lumped-hinge idiom). ``relative`` makes ``lp`` / ``lp_j`` fractions of the
+    member length (CSI "relative hinge length"); otherwise they are absolute
+    lengths in project units. ``lp_j`` ``None`` means end J equals end I
+    (a symmetric hinge)."""
+    id: int
+    name: str
+    lp: float = 0.1               # end-I hinge length (ratio if ``relative``)
+    lp_j: float | None = None     # end-J hinge length; None = same as end I
+    relative: bool = True
+
+
+@dataclass
 class Member:
     id: int
     n1: int
@@ -71,6 +89,7 @@ class Member:
     section: int
     material: int
     kind: str = "beamcolumn2d"
+    hinge: int | None = None      # Hinge property id (None = distributed/elastic)
 
 
 # Load "nature" -> ASCE 7 pattern key used by the code combinations. ``None``
@@ -127,6 +146,7 @@ class Project:
     design_code: str = "AISC 360"
     materials: list = field(default_factory=list)
     sections: list = field(default_factory=list)
+    hinges: list = field(default_factory=list)         # Hinge properties (GUI-3)
     nodes: list = field(default_factory=list)
     members: list = field(default_factory=list)
     load_cases: list = field(default_factory=list)    # LoadCase
@@ -147,6 +167,37 @@ class Project:
 
     def default_case_id(self) -> int:
         return self.load_cases[0].id if self.load_cases else 1
+
+    # ------------------------------------------------------------- hinges (GUI-3)
+    def hinge(self, hinge_id):
+        return next((h for h in self.hinges if h.id == hinge_id), None)
+
+    def member_length(self, member) -> float:
+        """Geometric length of ``member`` from its end-node coordinates."""
+        nodes = {n.id: n for n in self.nodes}
+        a, b = nodes[member.n1], nodes[member.n2]
+        d2 = (a.x - b.x) ** 2 + (a.y - b.y) ** 2
+        if self.ndm == 3:
+            d2 += (a.z - b.z) ** 2
+        return d2 ** 0.5
+
+    def resolve_hinge_lengths(self, member, hinge) -> tuple:
+        """Absolute (lp_i, lp_j) plastic-hinge lengths for ``member`` under
+        ``hinge`` — ratios × member length when ``hinge.relative``, else the
+        values as given — clamped positive and so lp_i + lp_j < the member
+        length (the element requires lp_i + lp_j ≤ L)."""
+        L = self.member_length(member) or 1.0
+        raw_i = float(hinge.lp)
+        raw_j = raw_i if hinge.lp_j is None else float(hinge.lp_j)
+        lp_i = raw_i * L if hinge.relative else raw_i
+        lp_j = raw_j * L if hinge.relative else raw_j
+        lp_i = max(lp_i, 1.0e-9)
+        lp_j = max(lp_j, 1.0e-9)
+        if lp_i + lp_j >= L:                       # scale down to fit the member
+            s = 0.98 * L / (lp_i + lp_j)
+            lp_i *= s
+            lp_j *= s
+        return lp_i, lp_j
 
     def generate_asce7_combinations(self) -> list:
         """ASCE 7-22 LRFD strength combinations as project ``LoadCombination``s,
@@ -199,6 +250,7 @@ class Project:
             design_code=d.get("design_code", "AISC 360"),
             materials=[Material(**m) for m in d.get("materials", [])],
             sections=[Section(**s) for s in d.get("sections", [])],
+            hinges=[Hinge(**h) for h in d.get("hinges", [])],
             nodes=[Node(**_coerce_node(n)) for n in d.get("nodes", [])],
             members=[Member(**m) for m in d.get("members", [])],
             load_cases=cases,

@@ -81,6 +81,13 @@ class PushoverDialog(QDialog):
         self.n_steps = QSpinBox()
         self.n_steps.setRange(2, 2000)
         self.n_steps.setValue(40)
+        self.tol = QComboBox()
+        for t in (1.0e-4, 1.0e-5, 1.0e-6, 1.0e-7, 1.0e-8):
+            self.tol.addItem(f"{t:.0e}", t)
+        self.tol.setCurrentIndex(2)                      # 1e-6 default
+        self.max_iter = QSpinBox()
+        self.max_iter.setRange(10, 1000)
+        self.max_iter.setValue(60)
         self.capture = QCheckBox("Record fiber response")
         self.capture.setChecked(True)
         self.axial = self._spin(0.0, unit=project.force_unit, decimals=1,
@@ -92,6 +99,8 @@ class PushoverDialog(QDialog):
         form.addRow("Push DOF", self.dof)
         form.addRow(f"Target [{project.length_unit}]", self.target)
         form.addRow("Steps", self.n_steps)
+        form.addRow("Convergence tol", self.tol)
+        form.addRow("Max iterations", self.max_iter)
         form.addRow(f"Axial preload [{project.force_unit}]", self.axial)
         form.addRow("Axial node", self.axial_node)
         form.addRow("Axial DOF", self.axial_dof)
@@ -232,6 +241,8 @@ class PushoverDialog(QDialog):
             axial=axial,
             axial_node=(self.axial_node.currentData() if axial else None),
             axial_dof=self.axial_dof.currentData(),
+            tol=float(self.tol.currentData()),
+            max_iter=int(self.max_iter.value()),
             capture_fibers=self.capture.isChecked(),
             capture_shape=self.capture.isChecked(),
         )

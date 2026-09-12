@@ -115,12 +115,16 @@ class MemberDialog(QDialog):
         self.n2 = _combo([(str(n.id), n.id) for n in project.nodes])
         self.sec = _combo([(f"{s.id}: {s.name}", s.id) for s in project.sections])
         self.mat = _combo([(f"{m.id}: {m.name}", m.id) for m in project.materials])
+        self.hinge = _combo([("— none —", None)]
+                            + [(f"{h.id}: {h.name}", h.id)
+                               for h in getattr(project, "hinges", [])])
 
         if member:
             _select(self.n1, member.n1)
             _select(self.n2, member.n2)
             _select(self.sec, member.section)
             _select(self.mat, member.material)
+            _select(self.hinge, getattr(member, "hinge", None))
         elif self.n2.count() > 1:
             self.n2.setCurrentIndex(1)
 
@@ -128,6 +132,8 @@ class MemberDialog(QDialog):
         form.addRow("End node", self.n2)
         form.addRow("Section", self.sec)
         form.addRow("Material", self.mat)
+        if getattr(project, "hinges", []):
+            form.addRow("Hinge", self.hinge)
         form.addRow(_buttons(self))
 
     def accept(self) -> None:
@@ -140,7 +146,8 @@ class MemberDialog(QDialog):
     def data(self) -> Member:
         return Member(id=self.id_spin.value(), n1=self.n1.currentData(),
                       n2=self.n2.currentData(), section=self.sec.currentData(),
-                      material=self.mat.currentData())
+                      material=self.mat.currentData(),
+                      hinge=self.hinge.currentData())
 
     @classmethod
     def edit(cls, parent, project, member=None):

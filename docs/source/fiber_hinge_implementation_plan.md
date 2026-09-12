@@ -733,6 +733,26 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
   `test_pushover_capture_shape_and_fibers_together`, `test_pushover_no_capture_omits_frames`,
   `test_dialog_deformed_shape`, `test_dialog_animation_advances_and_loops` (18 desktop NL/pushover tests
   pass). Next: **GUI‑3** (hinge assignment UI) / **GUI‑4** (nonlinear case manager), then **GUI‑7**.
+- 2026‑09‑12 — **GUI‑3 shipped (hinge property + assignment + model‑view marking).** Wires the P9
+  `FiberHingeBeamColumn2D` into the desktop front‑to‑back. Data model (`desktop/project.py`):
+  `Hinge` (id, name, `lp`, `lp_j`, `relative`) + `Member.hinge` + `Project.hinges`;
+  `member_length` + `resolve_hinge_lengths` (ratio×L when relative else absolute, clamped so
+  lp_i+lp_j < L — the element requires ≤ L); loaded in `from_dict` (old projects: `hinge`/`hinges`
+  default to none). `build_nonlinear_model` (`desktop/nonlinear.py`): a member carrying a hinge
+  compiles to `FiberHingeBeamColumn2D` (lumped fiber hinge each end), else the distributed
+  `BeamColumn2DCorotational`. UI (`desktop/hinge_editor.py`): `HingeDialog`
+  (relative/absolute × symmetric/asymmetric, live hint), `HingeManagerDialog` (list/add/edit/delete
+  with a delete‑in‑use guard), `HingeAssignmentDialog` (per‑fiber‑member hinge combo + "set all to");
+  `MemberDialog` gained a Hinge combo (preserves the assignment on edit); "Hinges…" / "Assign
+  hinges…" wired into the Edit menu; `ModelView.mark_hinges` overlays a magenta sphere inside each
+  hinged member end (called after `set_model`). GUI‑6 capture generalized (`_section_def`) to read the
+  force‑based element's `_e_committed`, so hinge members keep the fiber‑stress contour + damage
+  coloring. The force‑based hinge element is more drift‑sensitive than the distributed element (§8) —
+  it converges at a looser tol, so the pushover dialog now exposes **Convergence tol** + **Max
+  iterations** (default 1e‑6 / 60). Verified: a hinged column pushes to 0.02 m at tol 1e‑5, the base
+  bars yield (+500 MPa), damage grows; a portal frame shows magenta base hinges. Tests:
+  `test_desktop_hinges.py` (13; 42 desktop tests pass). Next: **GUI‑4** (nonlinear case manager) or
+  **GUI‑7** (report).
 
 ---
 
@@ -783,7 +803,7 @@ Each row: **Background** (engine/infra) + **GUI**. Status ✅ exists · ⚠ part
 |---|---|---|---|---|
 | GUI‑1 | Inelastic‑material editor + σ‑ε preview | P2, P3 | ☑ | 2026‑09‑12 — `desktop/materials.py` (engine‑backed `uniaxial_law`/`stress_strain_curve`) + `desktop/material_editor.py` (`MaterialDialog` w/ live matplotlib σ‑ε preview + `MaterialManagerDialog`); `Material.params`; wired "Materials…" into main_window; `test_desktop_materials.py` (11, headless offscreen). Kinds: elastic / Kent‑Park / Mander concrete / Park + cyclic steel |
 | GUI‑2 | Fiber‑mesh panel + fiber preview in Section Designer | P1, §15 U2 | ☑ | pre‑existing in `desktop/section_designer.py` (Fibres tab, mesh overlay + centroids toggle, mesh‑density combo, fibres‑CSV export via `core.section_fibers`/`section_fiber_mesh`) — now running on the **U2‑unified `polar_cells`** mesher. Confirmed 2026‑09‑12 |
-| GUI‑3 | Hinge property + assignment UI | P9 | ☐ | |
+| GUI‑3 | Hinge property + assignment UI | P9 | ☑ | 2026‑09‑12 — hinge **property** + **assignment** + **model‑view marking**, wiring the P9 `FiberHingeBeamColumn2D` into the desktop. Data model: `project.Hinge` (lp / lp_j / relative) + `Member.hinge` + `Project.hinges` + `resolve_hinge_lengths` (ratio×L or absolute, clamped lp_i+lp_j<L) + serialization. `build_nonlinear_model` compiles a hinged member to `FiberHingeBeamColumn2D` (lumped fiber hinge each end), else the distributed corotational element. `desktop/hinge_editor.py`: `HingeDialog` (relative/absolute, symmetric/asymmetric), `HingeManagerDialog` (list/add/edit/delete + in‑use guard), `HingeAssignmentDialog` (per‑member combo + "set all"); `MemberDialog` gained a Hinge combo; "Hinges…"/"Assign hinges…" in the Edit menu; `ModelView.mark_hinges` draws a magenta marker inside each hinged member end. GUI‑6 capture generalized to read the force‑based element's `_e_committed`, so hinge members keep their fiber contour + damage coloring. The force‑based hinge element needs a looser tol than the distributed default (§8), so the pushover dialog now exposes **Convergence tol** + **Max iterations**. Tests: `test_desktop_hinges.py` (13). |
 | GUI‑4 | Nonlinear case manager (control/monitor/staged/cyclic/NL‑params) | P6, P7 | ☐ | |
 | GUI‑5 | Threaded solver + progress/convergence dock + cancel | (infra) | ☑ | 2026‑09‑12 — **compute** (`desktop/nonlinear.py`: `fiber_section_from_spec`/`build_nonlinear_model`/`run_pushover`) + **threaded UI**. Engine enabler: optional `step_callback` on `NonlinearStaticAnalysis` (per‑step hook; return False = cancel). `desktop/pushover_dialog.py` = `PushoverWorker` (QThread, streams progress, cooperative cancel) + `PushoverDialog` (inputs, progress bar, convergence log, Cancel, live base‑shear/disp curve); "Nonlinear pushover…" wired into the Analysis menu. Tests: `test_desktop_nonlinear.py` (7, incl. step_callback + cancel), `test_desktop_pushover_ui.py` (4, headless — wiring/worker/cancel/dialog). |
 | GUI‑6 | NL post‑processing (hysteresis, step slider/anim, fiber contour, hinge state) | P8, GUI‑5 | ☑ | 2026‑09‑12 — **fiber‑stress/strain contour + step slider** then **deformed‑shape animation + hinge‑state coloring** shipped. Engine: `BeamColumn2DCorotational` stores per‑IP `_e_sections` (converged section deformations). `run_pushover(capture_fibers=True)` snapshots the base section's per‑fiber (y,z,σ,ε) each step (from a clone — live state untouched); `capture_shape=True` snapshots every node's (dx,dy) + per‑member peak \|fiber strain\| (`shape_frames`/`damage_frames`). `PushoverDialog` right pane = **curve \| fiber stress \| deformed shape** tabs sharing one **step slider** + a **▶ Play/Pause** `QTimer` animation; fiber tab has a stress/strain toggle (steel‑yield pattern / plane‑section gradient + concrete crush), deformed‑shape tab draws the deformed frame colored by peak fiber strain (hinge state) with an adjustable displacement scale over a gray undeformed reference. Tests: `test_pushover_capture_fibers`, `test_pushover_capture_shape`, `test_pushover_capture_shape_and_fibers_together`, `test_pushover_no_capture_omits_frames`; `test_dialog_fiber_contour`, `test_dialog_deformed_shape`, `test_dialog_animation_advances_and_loops`. |
