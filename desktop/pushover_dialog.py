@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDoubleSpinBox,
                                QWidget)
 
 import nonlinear as NL
+from nl_results import NonlinearResults
 
 _DOFS = [("Ux", 0), ("Uy", 1), ("Rz", 2)]
 
@@ -152,9 +153,8 @@ class PushoverDialog(QDialog):
         outer.addWidget(left, 0)
 
         # ---- right: tabs (curve | fiber stress | deformed shape) + shared step controls ----
-        self._frames: list = []
-        self._shape_frames: list = []
-        self._damage_frames: list = []
+        # Step-indexed results model (GUI-I1); populated on run completion.
+        self._results: NonlinearResults | None = None
         right = QWidget()
         rv = QVBoxLayout(right)
         tabs = QTabWidget()
@@ -347,13 +347,11 @@ class PushoverDialog(QDialog):
         self._draw_curve()
 
     def _on_done(self, res: dict) -> None:
+        self._results = NonlinearResults.from_run(res)
         self._disp = res.get("disp", self._disp)
         self._shear = res.get("shear", self._shear)
         self._protocol = res.get("protocol", "monotonic")
-        self._frames = res.get("fiber_frames", [])
-        self._shape_frames = res.get("shape_frames", [])
-        self._damage_frames = res.get("damage_frames", [])
-        n = max(len(self._frames), len(self._shape_frames))
+        n = self._results.n_steps
         if n:
             self.step_slider.setEnabled(True)
             self.play_btn.setEnabled(True)
@@ -395,7 +393,7 @@ class PushoverDialog(QDialog):
         self._ffig.clear()
         ax = self._ffig.add_subplot(111)
         self._fax = ax
-        if not self._frames:
+        if self._results is None or not self._results.has_fibers:
             ax.text(0.5, 0.5,
                     "(run with 'Record fiber response' to see fiber stresses)",
                     ha="center", va="center", transform=ax.transAxes,
@@ -403,8 +401,9 @@ class PushoverDialog(QDialog):
             ax.set_axis_off()
             self._fcanvas.draw_idle()
             return
-        step = max(0, min(self.step_slider.value(), len(self._frames) - 1))
-        frame = self._frames[step]
+        n_steps = self._results.n_steps
+        step = max(0, min(self.step_slider.value(), n_steps - 1))
+        frame = self._results.step(step).fibers
         y = np.array([t[0] for t in frame])
         z = np.array([t[1] for t in frame])
         if self.fiber_mode.currentText() == "strain":
@@ -421,16 +420,16 @@ class PushoverDialog(QDialog):
         ax.set_xlabel(f"z [{self._project.length_unit}]")
         ax.set_ylabel(f"y [{self._project.length_unit}]")
         d = self._disp[step] if step < len(self._disp) else 0.0
-        ax.set_title(f"Fiber stress · step {step + 1}/{len(self._frames)} "
+        ax.set_title(f"Fiber stress · step {step + 1}/{n_steps} "
                      f"(d = {d:.4g})", fontsize=9)
-        self.step_lbl.setText(f"step {step + 1}/{len(self._frames)}")
+        self.step_lbl.setText(f"step {step + 1}/{n_steps}")
         self._fcanvas.draw_idle()
 
     def _draw_shape(self, *_) -> None:
         self._sfig.clear()
         ax = self._sfig.add_subplot(111)
         self._sax = ax
-        if not self._shape_frames:
+        if self._results is None or not self._results.has_shape:
             ax.text(0.5, 0.5,
                     "(run with 'Record fiber response' to see the deformed shape)",
                     ha="center", va="center", transform=ax.transAxes,
@@ -438,9 +437,11 @@ class PushoverDialog(QDialog):
             ax.set_axis_off()
             self._scanvas.draw_idle()
             return
-        step = max(0, min(self.step_slider.value(), len(self._shape_frames) - 1))
-        frame = self._shape_frames[step]
-        dmg = self._damage_frames[step] if step < len(self._damage_frames) else {}
+        n_steps = self._results.n_steps
+        step = max(0, min(self.step_slider.value(), n_steps - 1))
+        st = self._results.step(step)
+        frame = st.node_disp
+        dmg = st.member_damage or {}
         scale = float(self.shape_scale.value())
         nodes = {n.id: (n.x, n.y) for n in self._project.nodes}
 
@@ -473,15 +474,16 @@ class PushoverDialog(QDialog):
         ax.set_aspect("equal", "datalim")
         ax.set_xlabel(f"x [{self._project.length_unit}]")
         ax.set_ylabel(f"y [{self._project.length_unit}]")
-        ax.set_title(f"Deformed shape · step {step + 1}/{len(self._shape_frames)} "
+        ax.set_title(f"Deformed shape · step {step + 1}/{n_steps} "
                      f"(×{scale:.0f})", fontsize=9)
         self._scanvas.draw_idle()
 
     # ------------------------------------------------ export / report (GUI-7)
     def _result(self) -> dict:
+        if self._results is not None:
+            return self._results.to_dict()
         return {"disp": self._disp, "shear": self._shear,
-                "protocol": self._protocol,
-                "damage_frames": self._damage_frames}
+                "protocol": self._protocol}
 
     def _report_meta(self) -> dict:
         lu, fu = self._project.length_unit, self._project.force_unit
@@ -525,18 +527,19 @@ class PushoverDialog(QDialog):
             force_unit=self._project.force_unit))
 
     def _export_fibers_csv(self) -> None:
-        if not self._frames:
+        if self._results is None or not self._results.has_fibers:
             self.log.appendPlainText("no fiber frames to export "
                                      "(run with 'Record fiber response')")
             return
         import nl_report
-        step = max(0, min(self.step_slider.value(), len(self._frames) - 1))
+        step = max(0, min(self.step_slider.value(), self._results.n_steps - 1))
         path, _ = QFileDialog.getSaveFileName(
             self, "Export fibers", f"fibers_step{step + 1}.csv", "CSV (*.csv)")
         if not path:
             return
         self._write(path, nl_report.fibers_csv(
-            self._frames[step], length_unit=self._project.length_unit))
+            self._results.step(step).fibers,
+            length_unit=self._project.length_unit))
 
     def _save_plot(self) -> None:
         fig = {0: self._fig, 1: self._ffig,

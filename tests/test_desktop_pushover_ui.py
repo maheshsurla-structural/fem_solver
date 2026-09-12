@@ -108,8 +108,8 @@ def test_dialog_fiber_contour(qapp):
     wk.progress.connect(dlg._on_progress)
     wk.done.connect(dlg._on_done)
     wk.run()
-    assert dlg._frames and dlg.step_slider.isEnabled()
-    assert dlg.step_slider.maximum() == len(dlg._frames) - 1
+    assert dlg._results.has_fibers and dlg.step_slider.isEnabled()
+    assert dlg.step_slider.maximum() == dlg._results.n_steps - 1
     for mode in ("strain", "stress"):
         dlg.fiber_mode.setCurrentText(mode)
         dlg.step_slider.setValue(0)
@@ -130,7 +130,8 @@ def test_dialog_deformed_shape(qapp):
     wk.progress.connect(dlg._on_progress)
     wk.done.connect(dlg._on_done)
     wk.run()
-    assert dlg._shape_frames and dlg._damage_frames
+    assert dlg._results.has_shape
+    assert dlg._results.step(0).member_damage is not None
     assert dlg.step_slider.isEnabled() and dlg.play_btn.isEnabled()
     for step in (0, dlg.step_slider.maximum()):
         dlg.step_slider.setValue(step)
