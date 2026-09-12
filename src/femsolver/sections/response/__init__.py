@@ -29,6 +29,13 @@ from femsolver.sections.response.fiber import (
     Fiber,
     FiberSection2D,
     FiberSection3D,
+    circular_sector_fibers,
+)
+from femsolver.sections.response.fiber_build import (
+    rc_circular_column_section,
+)
+from femsolver.sections.response.fiber_mphi import (
+    fiber_section_moment_curvature,
 )
 from femsolver.sections.response.wall import (
     WallRegion,
@@ -54,6 +61,9 @@ __all__ = [
     "Fiber",
     "FiberSection2D",
     "FiberSection3D",
+    "circular_sector_fibers",
+    "rc_circular_column_section",
+    "fiber_section_moment_curvature",
     "WallRegion",
     "wall_section_2d",
     "t_wall_section_3d",

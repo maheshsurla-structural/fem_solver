@@ -17,6 +17,7 @@ ConcreteDamage3D
 ConcreteDamagePlasticity3D
 ConcreteKentPark
 ConcreteMander
+ConcreteZone
 Constraint
 ContactNodeToPlane3D
 ConvectionEdge2D
@@ -104,6 +105,8 @@ PushoverToTarget
 Quad4
 Quad8
 RayleighDamping
+RebarLayer
+ReinforcedConcreteShellSection
 ResponseSpectrum
 ResponseSpectrumAnalysis
 RigidDiaphragm
@@ -114,7 +117,10 @@ ShellDKT3
 ShellLayer
 ShellMITC4
 ShellMITC9
+ShellMomentCurvaturePoint
+ShellMomentCurvatureResult
 ShellSectionBase
+ShellSectionResponse
 ShellTri3
 SoilSpringBackbone
 StaticIntegrator
@@ -179,6 +185,7 @@ embedment_correction
 equivalent_sdof
 evaluate_laminate
 evaluate_liquefaction
+fiber_section_moment_curvature
 fines_content_correction
 fit_collapse_fragility
 fit_lognormal_method_of_moments
@@ -213,9 +220,11 @@ pga_scale_factor
 py_curve_sand
 py_curve_soft_clay
 qz_curve
+rc_circular_column_section
 record_response_spectrum
 scale_record_suite
 seismic_combination
+shell_moment_curvature
 spherical_cap_mesh
 steel_critical_temperature
 steel_modulus_reduction_ec3

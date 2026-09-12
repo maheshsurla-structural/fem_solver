@@ -84,11 +84,24 @@ from femsolver.sections.response.fiber import (
     FiberSection2D,
     FiberSection3D,
 )
+from femsolver.sections.response.fiber_build import (
+    rc_circular_column_section,
+)
+from femsolver.sections.response.fiber_mphi import (
+    fiber_section_moment_curvature,
+)
 from femsolver.shell_sections import (
+    ConcreteZone,
     ElasticShellSection,
     LayeredShellSection,
+    RebarLayer,
+    ReinforcedConcreteShellSection,
     ShellLayer,
+    ShellMomentCurvaturePoint,
+    ShellMomentCurvatureResult,
     ShellSectionBase,
+    ShellSectionResponse,
+    shell_moment_curvature,
 )
 from femsolver.shell_sections.ply_failure import (
     PlyStrength,
@@ -169,11 +182,20 @@ __all__ = [
     "ElasticSection3D",
     "Fiber",
     "FiberSection2D",
+    "rc_circular_column_section",
+    "fiber_section_moment_curvature",
     "FiberSection3D",
     "ShellSectionBase",
     "ElasticShellSection",
     "LayeredShellSection",
     "ShellLayer",
+    "ConcreteZone",
+    "RebarLayer",
+    "ReinforcedConcreteShellSection",
+    "ShellSectionResponse",
+    "ShellMomentCurvaturePoint",
+    "ShellMomentCurvatureResult",
+    "shell_moment_curvature",
     "PlyStrength",
     "max_stress_index",
     "max_strain_index",

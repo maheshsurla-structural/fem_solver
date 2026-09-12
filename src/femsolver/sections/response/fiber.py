@@ -32,6 +32,7 @@ integration point of a beam element gets its own independent state.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 import numpy as np
@@ -54,6 +55,74 @@ class Fiber:
     z: float
     area: float
     material: UniaxialMaterial
+
+
+# ---------------------------------------------------------- circular meshing
+
+def circular_sector_fibers(
+    r_in: float,
+    r_out: float,
+    n_rings: int,
+    n_wedges: int,
+    material: UniaxialMaterial,
+    *,
+    centroid_y: float = 0.0,
+    centroid_z: float = 0.0,
+    theta_start: float = 0.0,
+    theta_end: float = 2.0 * math.pi,
+) -> list[Fiber]:
+    """Discretize an annular region into ``n_rings x n_wedges`` fibers.
+
+    Each fiber is a single annular sector spanning a radial band
+    ``[r_i, r_{i+1}]`` and an angular wedge ``[theta_j, theta_{j+1}]``. It
+    is placed at the **exact area centroid** of that sector and given the
+    **exact sector area**:
+
+        area   = 0.5 * dtheta * (r2^2 - r1^2)
+        r_bar  = (2/3) (r2^3 - r1^3) / (r2^2 - r1^2) * sin(a)/a     (a = dtheta/2)
+        y, z   = centroid + r_bar * (sin phi, cos phi)              (phi = wedge mid-angle)
+
+    With ``r_in = 0`` the innermost ring is a set of pie slices (the
+    formula degenerates gracefully to ``r_bar = (2/3) r2 sin a / a``).
+
+    For a full 360-degree annulus the summed area is **exact**
+    (``pi (r_out^2 - r_in^2)``) and, for ``n_wedges >= 2``, the section
+    centroid is exact (equally-spaced wedges sum to zero). Second moments
+    ``Iz/Iy`` are computed treating each fiber as a point area at its
+    centroid — the standard fiber-section idealization — and converge to
+    the analytic value as the mesh is refined.
+
+    Angles are measured so that ``phi = 0`` points along ``+z`` and
+    ``phi = pi/2`` along ``+y`` (consistent with the fiber kinematics in
+    :class:`FiberSection2D` / :class:`FiberSection3D`).
+    """
+    if r_out <= r_in:
+        raise ValueError(f"need r_out > r_in, got r_in={r_in}, r_out={r_out}")
+    if r_in < 0.0:
+        raise ValueError(f"r_in must be >= 0, got {r_in}")
+    if n_rings < 1:
+        raise ValueError(f"need at least 1 ring, got {n_rings}")
+    if n_wedges < 2:
+        raise ValueError(f"need at least 2 wedges, got {n_wedges}")
+    dr = (r_out - r_in) / n_rings
+    dtheta = (theta_end - theta_start) / n_wedges
+    half = 0.5 * dtheta
+    shape = 1.0 if half == 0.0 else math.sin(half) / half
+    fibers: list[Fiber] = []
+    for i in range(n_rings):
+        r1 = r_in + i * dr
+        r2 = r1 + dr
+        area = 0.5 * dtheta * (r2 * r2 - r1 * r1)
+        r_bar = (2.0 / 3.0) * (r2**3 - r1**3) / (r2 * r2 - r1 * r1) * shape
+        for j in range(n_wedges):
+            phi = theta_start + (j + 0.5) * dtheta
+            fibers.append(Fiber(
+                y=centroid_y + r_bar * math.sin(phi),
+                z=centroid_z + r_bar * math.cos(phi),
+                area=area,
+                material=material.clone(),
+            ))
+    return fibers
 
 
 class FiberSection2D(SectionBase):
@@ -185,6 +254,46 @@ class FiberSection2D(SectionBase):
             )
             for i in range(n_fibers)
         ]
+        return cls(fibers)
+
+    @classmethod
+    def circular(
+        cls,
+        diameter: float,
+        n_rings: int,
+        n_wedges: int,
+        material: UniaxialMaterial,
+        *,
+        centroid_y: float = 0.0,
+    ) -> "FiberSection2D":
+        """Build a solid circular section of ``diameter``, discretized into
+        ``n_rings`` radial bands by ``n_wedges`` circumferential wedges
+        (``n_rings * n_wedges`` fibers), all of one ``material``.
+
+        The total fiber area equals the analytic ``pi D^2 / 4`` exactly;
+        ``Iz`` converges to ``pi D^4 / 64`` as the mesh refines. Each fiber
+        gets its own cloned material so state is independent.
+
+        Parameters
+        ----------
+        diameter : float
+            Overall diameter.
+        n_rings : int
+            Number of radial bands (>= 1).
+        n_wedges : int
+            Number of circumferential wedges (>= 2; even values keep the
+            mesh symmetric about both axes).
+        material : UniaxialMaterial
+            Fiber stress-strain law (cloned per fiber).
+        centroid_y : float, default 0.0
+            Y-coordinate of the section centre.
+        """
+        if diameter <= 0.0:
+            raise ValueError(f"diameter must be positive, got {diameter}")
+        fibers = circular_sector_fibers(
+            0.0, 0.5 * diameter, n_rings, n_wedges, material,
+            centroid_y=centroid_y, centroid_z=0.0,
+        )
         return cls(fibers)
 
     def __repr__(self) -> str:
@@ -435,6 +544,36 @@ class FiberSection3D(SectionBase):
             for i in range(n_y)
             for j in range(n_z)
         ]
+        return cls(fibers, GJ=GJ)
+
+    @classmethod
+    def circular(
+        cls,
+        diameter: float,
+        n_rings: int,
+        n_wedges: int,
+        material: UniaxialMaterial,
+        *,
+        GJ: float,
+        centroid_y: float = 0.0,
+        centroid_z: float = 0.0,
+    ) -> "FiberSection3D":
+        """Build a solid circular 3-D fiber section of ``diameter``,
+        discretized into ``n_rings`` radial bands by ``n_wedges``
+        circumferential wedges, all of one ``material``.
+
+        Total area equals ``pi D^2 / 4`` exactly; ``Iz`` and ``Iy`` both
+        converge to ``pi D^4 / 64`` as the mesh refines (and are equal by
+        symmetry). ``GJ`` is the user-supplied torsional stiffness
+        (torsion stays uncoupled at the section level, as in
+        :meth:`rectangular`).
+        """
+        if diameter <= 0.0:
+            raise ValueError(f"diameter must be positive, got {diameter}")
+        fibers = circular_sector_fibers(
+            0.0, 0.5 * diameter, n_rings, n_wedges, material,
+            centroid_y=centroid_y, centroid_z=centroid_z,
+        )
         return cls(fibers, GJ=GJ)
 
     def __repr__(self) -> str:

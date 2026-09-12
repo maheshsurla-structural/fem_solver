@@ -98,7 +98,19 @@ CSI's *Fiber P‑M2‑M3 Hinge*, verified against both on the attached Caltrans 
 
 Midas provides the confined branch **pre‑computed** via its MANDER card (has `f'cc`, `ε_cc`,
 confinement steel `#8 @ 6″`, `ρ_s`, etc.); CSI computes it internally from the Caltrans
-confinement rebar. **Our builder must derive `f'cc, ε_cc, ε_cu` from geometry+hoops (Phase P2).**
+confinement rebar. **Our `mander_confined_circular` (P2, ✅) derives these from geometry+hoops.**
+
+**Decoded Midas confined targets** (MCT line 304 — core dia 79″, #8 hoop @ 6″, `f_yh` = 68 ksi,
+`f'c` = 5 ksi), used as the P2 golden gate:
+| Quantity | Midas card | Ours | Δ |
+|---|---|---|---|
+| `f'cc` | 6.35571 ksi | 6.371 | 0.24% |
+| `ε_cc` | 0.00522731 | 0.00526 | 0.64% |
+| `k_e` | 0.962451 | 0.96245 | exact |
+| `f_l` | 0.218155 ksi | 0.21816 | exact |
+| `ρ_s` | 0.00666667 | 0.006667 | exact |
+(Δ on `f'cc/ε_cc` is a textbook‑vs‑Midas `k_e` convention: ours includes the standard
+`/(1−ρ_cc)` Acc term. `ε_cu` ≈ 0.013 experimental; Midas card ≈ 0.0123.)
 
 **Reinforcing steel — A615 Gr60, expected:**
 | Param | Value | Notes |
@@ -181,6 +193,11 @@ Verified present (with file references). Sessions must build on these.
 | Gauss‑Lobatto quadrature | `numerics/quadrature.py` → `gauss_lobatto_1d` | |
 | Exact M‑φ, fibre P‑M slice, P‑M‑M surface (section designer) | `core.exact_mphi`, `section_pm_slice`; `examples/69_biaxial_pmm_surface.py` | design‑side, complementary |
 | **Existing fiber examples** (reuse idiom) | `examples/09,11,16,19,21,44` | 44 = CSI fiber hysteresis; 11 = corot fiber column + axial |
+| **Park reinforcing steel** (`E, f_y, f_su, eps_sh, eps_su`, monotonic) | `materials/uniaxial/reinforcing.py` → `UniaxialReinforcingSteel` | **This is P3's model** — already built (monotonic); cyclic via Menegotto‑Pinto |
+| **Section → fiber compiler** (polygon grid + rebar) | `sections/section.py` → `Section.fiber_section_2d/3d`, `_discretize_polygon_to_fibers` | the canonical "compile a defined section to a `FiberSection`" — unify P1 into this (§15 U2) |
+| **Exact section integrator** (M‑φ, P‑M slice, width bands) | ⚠ `section_gui_core.py` (root GUI file) → `exact_mphi`, `section_pm_slice`, `_width_bands` | **trapped in the GUI layer** — must be lifted into the engine (§15 U1) |
+| **Design M‑φ + biaxial P‑M‑M** (AASHTO/EC2/IS456) | `design/concrete/moment_curvature.py`, `design/concrete/biaxial.py` | a 3rd M‑φ path — consolidate behind one API (§15 U3) |
+| **Section Designer (GUI)** — draw/define, section‑level M‑φ / P‑M‑M | `section_gui_core.py` (Streamlit core), `desktop/section_designer.py` | already ~80% on the femsolver engine; RC core/cover + composite fiber assembly live in the GUI file (lift to engine, §15 U2) |
 
 **Public API idiom** (frozen — build the benchmark exactly this way):
 ```python
@@ -218,28 +235,51 @@ res = NonlinearStaticAnalysis(m, num_steps=n, dlambda=1/n, track=(2,1), tol=1e-6
 New/extended modules. **Names below are binding**; if you must change one, update this section
 and §13 in the same commit.
 
-### 5.1 Section builders — extend `sections/response/fiber.py` (or a new `fiber_build.py`)
+### 5.1 Section builders — ✅ SHIPPED in P1 (`sections/response/fiber.py` + `fiber_build.py`)
+Final as-built API (in `femsolver.sections.response.fiber` / `.fiber_build`, re-exported at
+`femsolver.*`). Signatures below are the **binding contract**:
 ```python
-# G1 — circular fiber discretization
-FiberSection2D.circular(
-    diameter, n_rings, n_wedges, material, *, centroid_y=0.0) -> FiberSection2D
-FiberSection3D.circular(
-    diameter, n_rings, n_wedges, material, *, GJ, ...) -> FiberSection3D
+# G1 — low-level annular meshing (public helper; angle phi=0 -> +z, phi=pi/2 -> +y)
+circular_sector_fibers(r_in, r_out, n_rings, n_wedges, material,
+    *, centroid_y=0.0, centroid_z=0.0, theta_start=0.0, theta_end=2*pi) -> list[Fiber]
 
-# G1+G2 — high-level RC circular column section (the benchmark one-liner)
+# G1 — circular fiber sections (classmethods)
+FiberSection2D.circular(diameter, n_rings, n_wedges, material, *, centroid_y=0.0)
+FiberSection3D.circular(diameter, n_rings, n_wedges, material, *, GJ,
+    centroid_y=0.0, centroid_z=0.0)
+
+# G1 — high-level RC circular column (the benchmark one-liner)
 def rc_circular_column_section(
-    *, diameter, cover,                     # geometry (to hoop c/c or bar face — DOCUMENT which)
-    core_concrete, cover_concrete,          # UniaxialMaterial (confined / unconfined)
-    n_bars, bar_area, steel,                # longitudinal ring
-    n_rings=8, n_wedges=24,                 # mesh (CSI defaults)
-    threeD=False, GJ=None,
-    lump_rebar=False,
+    *, diameter, cover,                       # cover = to core boundary; core dia = D - 2*cover (O2)
+    core_concrete, cover_concrete,            # UniaxialMaterial (confined / unconfined)
+    n_bars, bar_area, steel,                  # longitudinal ring
+    bar_circle_diameter=None,                 # default = core diameter
+    n_core_rings=8, n_cover_rings=2, n_wedges=24,   # mesh (CSI-like)
+    subtract_rebar_from_core=True,            # keep total area = gross exactly
+    three_d=False, GJ=None,
+    centroid_y=0.0, centroid_z=0.0,
 ) -> FiberSection2D | FiberSection3D
 ```
-Sign/coordinate convention **must** match existing fiber code: `y` from centroid, positive +y;
-`eps_f = eps_a - y*kappa_z (+ z*kappa_y)`; `N=Σσ·A`, `Mz=-Σy·σ·A`, `My=+Σz·σ·A`.
+> **Contract changes vs the original draft (recorded per §0 rule):** split `n_rings` into
+> `n_core_rings`/`n_cover_rings` (a 2-in cover on an 84-in column is thinner than one full-radius
+> ring, so core and cover are meshed as separate regions); added `bar_circle_diameter`,
+> `subtract_rebar_from_core`; renamed `threeD`→`three_d`; dropped `lump_rebar` (bars are always
+> discrete for now). `circular_sector_fibers` is exposed as a public helper.
 
-### 5.2 Mander confinement — new `materials/uniaxial/mander_confine.py`
+Sign/coordinate convention matches existing fiber code: `y` from centroid, positive +y;
+`eps_f = eps_a - y*kappa_z (+ z*kappa_y)`; `N=Σσ·A`, `Mz=-Σy·σ·A`, `My=+Σz·σ·A`.
+Verified: area exact to 1e-10; `Iz` error 8.6%→0.09% over meshes 2×8→24×72 (monotone);
+3-D `Iz==Iy`, `Iyz≈0`; RC total area == gross exactly; transformed `EA` matches by hand.
+
+### 5.2 Mander confinement — ⚠ **core calc already exists** (lifted to `sections/analysis.py` in U1)
+> `femsolver.sections.analysis.mander_confinement(m: dict)` computes confined `fcc, eps_cc,
+> eps_cu, ke, fl` for circular **and** rectangular cores (energy‑balance or experimental
+> `eps_cu`), and `concrete_uniaxial_from(..., conc_model="Mander")` already wires it into a
+> confined `ConcreteMander` law. **P2 remaining = (a) verify `fcc/eps_cc/eps_cu` against the Midas
+> MANDER card (§2.2) within tol; (b) add a clean engine wrapper for the fiber‑hinge stream
+> (below), reusing the SAME `mander_confinement` core (U4 — one calc for tool + hinge).** Do NOT
+> write a second confinement calculator.
+
 ```python
 @dataclass
 class ConfinedCircular:               # G2 result
@@ -256,13 +296,17 @@ Also a `mander_unconfined(...)` helper (spalling `ε_cu ≈ 0.005`). Formulas: M
 (1988) energy‑balance; cite in docstring. **Validate the intermediate `f'cc` against the Midas
 MANDER card values in §2.2 before trusting the section.**
 
-### 5.3 Caltrans/Park steel — add to `materials/uniaxial/` (e.g. `reinforcing_steel.py`)
+### 5.3 Caltrans/Park steel — ✅ **already exists** (`materials/uniaxial/reinforcing.py`)
 ```python
-class ReinforcingSteelParkCaltrans(UniaxialMaterial):   # G3
-    def __init__(self, *, E, fy, fu, eps_sh, eps_su, cyclic="kinematic"): ...
+class UniaxialReinforcingSteel(UniaxialMaterial):   # G3 backbone — SHIPPED
+    def __init__(self, E, f_y, f_su, eps_sh, eps_su): ...   # Park hardening, MONOTONIC
 ```
-Backbone: linear to `fy`, yield plateau to `eps_sh`, parabolic hardening to `(eps_su, fu)`;
-kinematic cyclic. (`UniaxialMenegottoPinto` remains available for smooth Bauschinger studies.)
+The monotonic Park backbone (linear → `f_y` → plateau to `eps_sh` → parabolic hardening to
+`(eps_su, f_su)`) is done. **P3 ✅ SHIPPED (2026‑09‑12):** cyclic added as
+`ReinforcingSteelKinematic` (`materials/uniaxial/reinforcing.py`) — a kinematic‑hardening return
+map over the *same* Park backbone (chosen over Menegotto‑Pinto so the backbone shape stays exactly
+the Caltrans/Park one both tools use). Monotonic reproduces the backbone to 1e‑13; reversals unload
+at `E` and show the kinematic Bauschinger shift.
 
 ### 5.4 Fiber hinge — new `elements/beam_fiber_hinge.py` (G4)
 ```python
@@ -294,12 +338,18 @@ def from_time_function(times, values, dt) -> np.ndarray
 Confirm whether `NonlinearStaticAnalysis` already continues from a model's committed state (it
 operates on live `Node`/element state). If yes, `StagedAnalysis` is a thin orchestrator.
 
-### 5.6 Recorders — `results/recorders.py` (G8)
+### 5.6 Recorders — ✅ SHIPPED in P4 (`results/recorders.py`, G8)
 ```python
-class FiberRecorder:     # per-fiber (y,z,σ,ε) at chosen IP/section, per step -> CSV
+class FiberRecorder:     # per-fiber (y,z,σ,ε) at chosen fibers, per step -> CSV
 class SectionRecorder:   # (N, Mz[, My], eps_a, kappa) per step -> CSV
 class NodeRecorder:      # monitored DOF (disp, reaction) per step -> CSV
 ```
+Exported from `femsolver.results`. Plain step data-loggers: call `record(...)`
+per committed step, `to_csv(path)` at the end. `SectionRecorder`/`FiberRecorder`
+take the section's generalized strain `e` and re-read it (non-committing);
+`NodeRecorder` snapshots a node's `disp`/`reaction`. P4 also added the
+**fibre-consistent** M-φ driver `fiber_section_moment_curvature`
+(`sections/response/fiber_mphi.py`) that these log.
 
 ### 5.7 Importers — `io/midas_mct.py`, `io/csi_b.py` (G9, optional)
 Parse **only** the benchmark subset: section geometry, materials, fiber division, hinge
@@ -314,9 +364,9 @@ Ordered by dependency. Acceptance = tests green + example runs + numbers within 
 | Phase | Deliverable | Depends on | Acceptance |
 |---|---|---|---|
 | **P0** | This plan reviewed; confirm §2 decode & §10 decisions | — | Plan committed; O1/D1 answered or defaulted |
-| **P1** | **G1** circular fiber builders (`.circular`, `rc_circular_column_section`) | P0 | `Ag, Iz, centroid` match analytic circle; mesh‑refinement test |
-| **P2** | **G2** Mander confinement pre‑processor | P1 | `f'cc, ε_cc` match Midas MANDER card §2.2 within 2% |
-| **P3** | **G3** Caltrans/Park steel material | P0 | backbone hits `(fy,ε_sh)`,(fu,ε_su); monotonic + cyclic tests |
+| **P1** | **G1** circular fiber builders (`.circular`, `rc_circular_column_section`) — ✅ shipped; **reconcile into the one compiler** in §15 U2 (route circular meshing through `Section.fiber_section_2d`) | P0 | `Ag, Iz, centroid` match analytic circle; mesh‑refinement test |
+| **P2** | **G2** Mander confinement pre‑processor — ✅ **done**: core `mander_confinement` (lifted U1) + typed `mander_confined_circular`/`ConfinedCircular` wrapper (`sections/analysis.py`); verified vs Midas card | P1 | ✅ `f'cc` 0.24%, `ε_cc` 0.64%, `ke`/`fl` exact vs Midas §2.2; `test_mander_confinement.py` (8) |
+| **P3** | **G3** Caltrans/Park steel — ⚠ **mostly done**: `UniaxialReinforcingSteel` already provides the monotonic Park backbone. P3 = verify vs §2.2 + add cyclic (reuse `UniaxialMenegottoPinto`, or a kinematic-hysteresis wrapper on the Park backbone) | P0 | backbone hits `(fy,ε_sh)`,(fu,ε_su); monotonic ✓ (exists) + cyclic test |
 | **P4** | **G8** recorders + **M‑φ** of the benchmark section (monotonic) | P1‑P3 | M‑φ vs Midas/CSI section M‑φ within tol |
 | **P5** | **Axial‑load benchmark** (Stage 1): build model, apply P, N‑vs‑axial‑strain | P1‑P4 | **matches Midas & CSI axial test §7.1** |
 | **P6** | **G6/G7** staged analysis + protocols; monotonic pushover (P then lateral) | P5 | pushover base‑shear/tip‑disp vs both tools §7.2 |
@@ -434,10 +484,10 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
 | Phase | Item | State | Commit / date / by |
 |---|---|---|---|
 | P0 | Plan + decode reviewed; D1 & O4 resolved (distributed‑first; user exports both) | ☑ | 2026‑09‑12 — plan authored; O1/O2/O3 defaulted |
-| P1 | G1 circular fiber builders | ☐ | |
+| P1 | G1 circular fiber builders | ☑ | 2026‑09‑12 — `fiber.circular`/`circular_sector_fibers`, `fiber_build.rc_circular_column_section`; 12 tests, example 80; area exact, Iz→0.09% |
 | P2 | G2 Mander confinement pre‑processor | ☐ | |
-| P3 | G3 Caltrans/Park steel | ☐ | |
-| P4 | G8 recorders + benchmark M‑φ | ☐ | |
+| P3 | G3 Caltrans/Park steel | ☑ | 2026‑09‑12 — verified the monotonic Park backbone (`UniaxialReinforcingSteel`) hits §2.2 (eps_sh,f_y)=(0.0075,68) & (eps_su,f_su)=(0.09,95); added cyclic `ReinforcingSteelKinematic` (kinematic hardening over the same backbone; monotonic reproduces it to 1e‑13, elastic unload = E, Bauschinger shift). `test_uniaxial_materials.py` +7; example 81; full suite 2470 pass |
+| P4 | G8 recorders + benchmark M‑φ | ☑ | 2026‑09‑12 — added `results/recorders.py` (`SectionRecorder`/`FiberRecorder`/`NodeRecorder`, CSV) + fibre‑consistent `fiber_section_moment_curvature` (`sections/response/fiber_mphi.py`); benchmark section M‑φ at P=2400 kip (N held to 1e‑11, M→32.9k kip‑ft). `test_fiber_mphi_recorders.py` (8), example 82. Golden Midas/CSI M‑φ (§7.2) pending user export; §7.4 cross‑checks pass. Full suite 2478 pass |
 | P5 | Axial‑load benchmark (Stage 1) | ☐ | |
 | P6 | G6/G7 staged + protocols; monotonic pushover | ☐ | |
 | P7 | G5 3‑D force‑based + circular 3‑D; P‑M2‑M3 | ☐ | |
@@ -455,3 +505,201 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
 - 2026‑09‑12 — P0 closed. User resolved D1 (distributed `ForceBeamColumn` first, finite‑length
   fiber hinge in P9) and O4 (user will export both Midas + CSI as independent golden targets).
   Next unblocked item: **P1 — circular fiber builders (G1)**.
+- 2026‑09‑12 — **P1 shipped (G1).** Added `circular_sector_fibers`, `FiberSection2D/3D.circular`,
+  and `rc_circular_column_section` (+ exports, `public_api.txt`). Tests `test_fiber_circular.py`
+  (12) + example `80_fiber_circular_section.py`. Contract adjusted (see §5.1 note). Area exact,
+  `Iz` converges to 0.09%, transformed `EA` verified. Next: **P2 — Mander confinement (G2)**.
+- 2026‑09‑12 — Added **§14 GUI & Productization roadmap** and **§15 Unified Section Analysis
+  architecture** (per user). Audited the desktop GUI (linear‑only today) and the Section
+  Designer (`section_gui_core.py`); found P3's steel already exists (`UniaxialReinforcingSteel`),
+  a canonical section→fiber compiler already exists (`Section.fiber_section_2d/3d`), and the
+  exact integrator is trapped in the GUI file — updated §3, §6 (P1/P3) accordingly.
+- 2026‑09‑12 — **U1 shipped.** Lifted the section‑analysis core (`exact_mphi`, `section_pm_slice`,
+  `_width_bands`, the `concrete/steel_uniaxial_from` factories, and `mander_confinement`) from the
+  GUI file `section_gui_core.py` into the engine `femsolver/sections/analysis.py`; GUI re‑exports
+  them (desktop + Streamlit unchanged). Verified before/after byte‑identical + shim identity;
+  `test_section_analysis_exact.py` (7); full suite 2454 pass (only the 4 pre‑existing quadrature
+  failures). This also front‑loads P2's Mander calc (now in the engine). Next: **P2 — verify
+  confinement vs Midas card + fiber‑hinge wrapper**.
+- 2026‑09‑12 — **P2 shipped (G2).** Verified `mander_confinement` vs the Midas card (§2.2):
+  `f'cc` 0.24%, `ε_cc` 0.64%, `k_e`/`f_l`/`ρ_s` exact. Added typed `mander_confined_circular` +
+  `ConfinedCircular` (`.to_material`) in `sections/analysis.py`, unit‑agnostic, reusing the same
+  calc (U4). `test_mander_confinement.py` (8); example 80 upgraded to the real confined core
+  (placeholder removed). Next: **P4** (recorders + section M‑φ on the unified core) or **U3**
+  (one M‑φ/P‑M‑M API), then **P5** (axial benchmark).
+- 2026‑09‑12 — **U3 shipped.** Added the unified section‑analysis API to
+  `femsolver/sections/analysis.py`: backend‑selector tokens `C_EXACT/C_FIBRE/C_NOMINAL/C_DESIGN`
+  (+ `MPHI_BACKENDS`/`PM_BACKENDS`), result types `MomentCurvatureResult`/`PMInteractionResult`,
+  and dispatchers `moment_curvature_analysis(case, P, backend=…)` (wraps `exact_mphi` / `mphi_data`)
+  and `pm_interaction(case, backend=…)` (wraps `section_pm_slice` for the fibre envelope and the
+  code stress‑block `pmm_slice` for nominal/design). Lifted `pmm_slice` out of the GUI
+  `section_gui_core.py` into the engine (verbatim; GUI now re‑exports it — same U1 shim pattern), so
+  all four M‑φ / P‑M capacity models live in one engine core the Section Designer tool, the tests,
+  and the fiber‑hinge stream share. `test_section_analysis_unified.py` (10); full suite 2463 pass
+  (only the 4 pre‑existing order‑8 quadrature failures). Next: **P4** (recorders + benchmark M‑φ on
+  the unified core), then **P5** (axial benchmark).
+- 2026‑09‑12 — **P3 shipped (G3).** Verified the existing monotonic Park backbone
+  (`UniaxialReinforcingSteel`) reproduces the §2.2 Caltrans A615 Gr60 landmarks exactly —
+  (eps_sh, f_y) = (0.0075, 68 ksi) and (eps_su, f_su) = (0.09, 95 ksi). Added the **cyclic**
+  `ReinforcingSteelKinematic` (in `materials/uniaxial/reinforcing.py`): the same Park backbone
+  wrapped in a kinematic‑hardening return map — a monotonic push reproduces the backbone to 1e‑13,
+  reversals unload elastically (slope E) and re‑yield early in compression (kinematic / Bauschinger
+  shift), matching Midas "Park PM" / CSI "Simple" + Kinematic. Because ∫H dp = α(p+dλ)−α(p) exactly,
+  no numerical integration of the hardening modulus is needed; it reduces to `UniaxialBilinear` for
+  a constant H. O1 (eps_su 0.09 Midas vs 0.06 CSI) covered by a test on both variants; both build
+  and hit (eps_su, 95). Exported from `femsolver.materials.uniaxial` (same placement as the
+  monotonic class; top‑level public surface unchanged). `test_uniaxial_materials.py` +7 tests;
+  example `81_reinforcing_steel_cyclic.py`; full suite 2470 pass (only the 4 pre‑existing quadrature
+  failures). Next: **P4** (recorders + benchmark section M‑φ on the unified core), then **P5**.
+- 2026‑09‑12 — **P4 shipped (G8 + benchmark M‑φ).** Added `femsolver/results/recorders.py` with
+  `SectionRecorder` (N, Mz[, My], eps_a, kappa per step), `FiberRecorder` (per‑fiber y,z,eps,sigma,
+  long format) and `NodeRecorder` (monitored disp/reaction DOFs) — plain step data‑loggers →CSV via
+  stdlib `csv`, exported from `femsolver.results` (results names are not on the top‑level surface, so
+  `public_api.txt` unchanged for them). Added the **fibre‑consistent** M‑φ driver
+  `fiber_section_moment_curvature` (`sections/response/fiber_mphi.py`, exported top‑level +
+  `public_api.txt`): drives a stateful `FiberSection2D` through prescribed curvatures at constant
+  axial force, Newton‑solving eps_a on the section axial residual (tangent `EA = ks[0,0]`) and
+  committing each step — so it integrates the section's own fibers/laws (confined Mander core, Park
+  steel), the same response the fiber hinge will integrate (§15 principle). Verified elastic
+  M=E·Iz·κ exactly; benchmark Caltrans section at P=2400 kip holds N to 1e‑11 and reaches
+  M≈32.9k kip‑ft, M(κ) monotonic to peak; kinematic‑steel path‑dependence confirmed. Example
+  `82_fiber_section_mphi.py` runs the benchmark M‑φ and writes both recorders to CSV.
+  `test_fiber_mphi_recorders.py` (8); full suite 2478 pass (only the 4 pre‑existing quadrature
+  failures). Golden Midas/CSI section M‑φ to be pasted into §7.2 on export. Next: **P5**
+  (axial‑load benchmark, Stage 1) — or **P6/P7** per the tracker.
+
+---
+
+## 14. GUI & Productization roadmap
+
+**Where the GUI is today (audited 2026‑09‑12):** the desktop app (`desktop/`, PySide6 +
+PyVista/VTK) is **linear‑only**. It builds models, has a strong Section Designer with
+*section‑level* fiber analysis (M‑φ, P‑M‑M), load cases / combos, and results as deformed shape
++ N/V/M diagrams via `LinearStaticAnalysis` (`desktop/main_window.py:290`). There is **no**
+hinge, nonlinear‑solver, displacement‑control, staged‑case, pushover/cyclic, or hysteresis UI
+anywhere. Exposing fiber hinges to users = building the nonlinear‑frame workflow front‑to‑back.
+
+Each row: **Background** (engine/infra) + **GUI**. Status ✅ exists · ⚠ partial · ❌ missing.
+
+| Stage (user workflow) | Background (engine/infra) | GUI | Status |
+|---|---|---|---|
+| **1. Define inelastic materials** (σ‑ε preview; confined/unconfined; Park steel) | Mander confinement calc (P2 ❌); `ConcreteMander`/`UniaxialReinforcingSteel`/Menegotto‑Pinto ✅; material def‑schema serialization ⚠ | Inelastic‑material editor with live σ‑ε plot; hoop inputs → f′cc/ε_cc/ε_cu ❌ | mostly ❌ |
+| **2. Build the fiber section** (mesh + fiber preview) | one compiler `Section.fiber_section_2d/3d` ✅ (extend for circular + core/cover, §15 U2) | fiber‑mesh panel (rings/wedges), fiber preview colored by material, per‑region material assign ⚠ (SD exists) | ⚠ |
+| **3. Define & assign the hinge** (from section; RelDist, length, save‑fiber‑resp) | fiber‑hinge element + assignment data model (P9 ❌) | hinge property dialog + member‑assignment tool + show hinges in model view ❌ | ❌ |
+| **4. Nonlinear load cases & protocols** (control mode, monitor DOF, staged, cyclic, NL params) | staged continuation (P6 ❌); protocol generators (P7 ❌); `NonlinearStaticAnalysis` ✅ | nonlinear case type in the case manager: control/monitor/target/continue‑from/cyclic table/NL‑params ⚠ (linear case mgr exists) | ⚠→❌ |
+| **5. Run the solve** (no UI freeze; progress + convergence; cancel) | **run on a worker thread**, stream step/convergence callbacks, cancellation, capture per‑step state ❌ (solve is a blocking call) | analysis‑run dialog + progress/convergence dock + non‑convergence diagnostics ❌ | ❌ (biggest infra gap) |
+| **6. Post‑process** (hysteresis/pushover; step slider/animation; fiber contour; hinge state) | recorders: monitored DOF, section N‑M/M‑φ, **per‑fiber σ‑ε**, hinge F‑D (P8 ❌); **step‑indexed results model** ⚠ (`node.disp` is one state) | X‑Y plot panel; step slider/animation; fiber σ‑ε contour on the section; hinge‑state color map; energy ❌ | ❌ (what makes it feel commercial) |
+| **7. Report & export** | nonlinear result export (curves, fiber states) ❌; results→CSV ✅ | export buttons on plots; hinge/analysis report ❌ | ⚠→❌ |
+
+**Cross‑cutting background infrastructure (prerequisites):**
+- **Threaded solve + progress/cancel** (stage 5) — prerequisite for *all* nonlinear UI.
+- **Step‑indexed results model** — every view (deformed, diagrams, section) reads "state at step k";
+  today state is a single snapshot.
+- **Project persistence** — inelastic materials, fiber sections, hinges, nonlinear cases must
+  save/load in the `.` project format (`desktop/project.py`).
+- **Performance** — fiber sections are heavy (fibers × IPs × steps); vectorize/cache; "results on
+  disk" for long cyclic runs.
+- **Validation & model checks** — units, section/material sanity, surface the Midas/CSI golden
+  comparison (P10) in‑app.
+
+**Suggested sequencing** (interleaves with engine phases):
+1. **Now (rides on P1–P3):** GUI‑1, GUI‑2 — inelastic‑material editor + σ‑ε preview; fiber‑mesh/preview in the Section Designer.
+2. **Then:** GUI‑5 (threaded solver + progress dock — reusable everywhere) and GUI‑4 (nonlinear case manager).
+3. **Then:** GUI‑6 (recorders P8 + hysteresis/step‑slider/fiber‑contour). *This is the commercial differentiator.*
+4. **Last:** GUI‑3 (hinge‑assignment UI, needs P9) and GUI‑7 (reporting).
+
+> Fastest path to a demoable "fiber hinge in the GUI": the **distributed `ForceBeamColumn`**
+> (chosen D1 default) driven by GUI‑1‑2‑5‑6 — no hinge‑assignment UI (GUI‑3) needed until CSI‑style
+> hinge parity later.
+
+### 14.1 GUI status tracker
+| Item | Deliverable | Depends on | State | Notes |
+|---|---|---|---|---|
+| GUI‑1 | Inelastic‑material editor + σ‑ε preview | P2, P3 | ☐ | |
+| GUI‑2 | Fiber‑mesh panel + fiber preview in Section Designer | P1, §15 U2 | ☐ | |
+| GUI‑3 | Hinge property + assignment UI | P9 | ☐ | |
+| GUI‑4 | Nonlinear case manager (control/monitor/staged/cyclic/NL‑params) | P6, P7 | ☐ | |
+| GUI‑5 | Threaded solver + progress/convergence dock + cancel | (infra) | ☐ | prerequisite for all NL UI |
+| GUI‑6 | NL post‑processing (hysteresis, step slider/anim, fiber contour, hinge state) | P8, GUI‑5 | ☐ | commercial differentiator |
+| GUI‑7 | Nonlinear report + export | GUI‑6 | ☐ | |
+| GUI‑I1 | Step‑indexed results model | (infra) | ☐ | underpins GUI‑6 |
+| GUI‑I2 | Project persistence for NL defs | (infra) | ☐ | |
+
+---
+
+## 15. Unified Section Analysis architecture (de‑duplication)
+
+**Goal (user):** one section‑analysis capability, not several parallel ones. What you analyze in
+the **Advanced Section Analysis** tool must be *exactly* what runs inside a **fiber hinge** — same
+section definition, same material laws, same fiber discretization, same code.
+
+### 15.1 The duplication today (concrete)
+1. **Exact integrator trapped in the GUI.** `exact_mphi`, `section_pm_slice`, `_width_bands` live
+   in `section_gui_core.py` (a *GUI* file). The desktop app reaches **up** into it
+   (`desktop/section_designer.py` → `core.exact_mphi`). The engine, tests, and the fiber‑hinge
+   stream cannot reuse it.
+2. **Two+ fiber‑generation paths.** `Section.fiber_section_2d/3d` (polygon grid) +
+   `_discretize_polygon_to_fibers`; the RC **core/cover** split and composite multi‑material
+   assembly done separately inside `section_gui_core.py`; and P1's circular ring/wedge builder.
+3. **Three M‑φ implementations.** `exact_mphi` (GUI), `design/concrete/moment_curvature`, and the
+   fiber‑section path.
+4. **Good news — already shared:** section geometry factories, `ReinforcementLayout`,
+   `femsolver.materials.uniaxial` (incl. `UniaxialReinforcingSteel`), `FiberSection2D`, biaxial
+   P‑M‑M — the Section Designer is already ~80% on the engine.
+
+### 15.2 Target architecture (one pipeline, two views)
+```
+        ┌─────────────────────────── ONE definition ───────────────────────────┐
+        │  femsolver.sections.Section  (polygon geometry + ReinforcementLayout   │
+        │  + material regions: core/cover/…  + tendons)                          │
+        └───────────────────────────────┬───────────────────────────────────────┘
+                                         │  ONE compiler
+                                         │  Section.fiber_section_2d/3d(...)
+                                         │  (polygon grid | circular ring‑wedge | core/cover split)
+                                         ▼
+                               FiberSection2D / FiberSection3D
+                        (element‑facing; discrete; stateful commit/revert/clone)
+                    ┌────────────────────┴───────────────────────┐
+                    │                                             │
+         ONE analysis core (engine)                     the SAME object feeds
+   femsolver.sections.analysis:                         the nonlinear element
+     • exact_mphi / section_pm_slice  (lifted from GUI)         │
+     • biaxial P‑M‑M (design/concrete)                          ▼
+     • fiber‑path M‑φ / P‑M                            ForceBeamColumn / FiberHinge
+     • nominal / design capacity                       (P5/P6/P9)  → staged NL analysis
+   backends behind ONE result API; tokens C_EXACT/C_FIBRE/C_NOMINAL/C_DESIGN
+                    │
+      ┌─────────────┴──────────────┐
+      ▼                            ▼
+  Advanced Section Analysis UI   (headless / CLI / tests)
+  (desktop + Streamlit call the ENGINE, never each other's GUI modules)
+```
+
+### 15.3 Consolidation tasks
+| ID | Task | Touches | Notes |
+|---|---|---|---|
+| **U1** | **Lift the exact integrator into the engine.** Move `exact_mphi`, `section_pm_slice`, `_width_bands` from `section_gui_core.py` → `femsolver/sections/analysis.py` (new). Leave thin re‑export shims in the GUI file; point `desktop/section_designer.py` at the engine. Add engine tests. | `section_gui_core.py`, `desktop/section_designer.py`, new `sections/analysis.py` | highest‑value; unblocks reuse + testing |
+| **U2** | **One section→fiber compiler.** Extend `Section.fiber_section_2d/3d` to (a) mesh circular geometry via P1's `circular_sector_fibers` (ring/wedge, not bbox grid), (b) support **core/cover material regions** (fold in the GUI's RC assembly), (c) optional rebar‑area subtraction. Make `rc_circular_column_section` a **thin wrapper** that builds a `Section` + calls the compiler. | `sections/section.py`, `sections/response/fiber_build.py`, `section_gui_core.py` | removes the parallel fiber paths (incl. P1's) |
+| **U3** | **One M‑φ / P‑M‑M API.** Wrap `exact` (U1), `fiber`, `design.moment_curvature`, and biaxial P‑M‑M behind a single results type + backend selector (the existing C_EXACT/C_FIBRE/C_NOMINAL/C_DESIGN tokens). | `sections/analysis.py`, `design/concrete/*` | one result object the GUI + hinge both consume |
+| **U4** | **One material library everywhere** (already `femsolver.materials.uniaxial`). Ensure the Mander confinement calc (P2) produces the confined law used by **both** the section tool and the hinge. | `materials/uniaxial/*` | mostly done; P2 closes the gap |
+| **U5** | **One section object across tool + hinge (UI).** In the app, "Analyze section" and "Assign as fiber hinge" are two actions on the *same* `Section`. No separate hinge‑section definition. | `desktop/section_designer.py`, hinge UI (GUI‑3) | delivers "what you analyze is what you run" |
+
+### 15.4 Impact on the engine phases
+- **P1** — keep the shipped code; **re‑wire** the circular mesher through `Section.fiber_section_2d`
+  (U2) so there is one public fiber‑build path.
+- **P3** — `UniaxialReinforcingSteel` already covers the monotonic Park backbone; P3 shrinks to
+  verify + cyclic.
+- **U1–U3** slot in **before/around P4** (the section M‑φ phase) so P4 is built on the unified core,
+  not a soon‑to‑be‑replaced one.
+
+### 15.5 Unification status tracker
+| Item | Deliverable | Depends on | State | Notes |
+|---|---|---|---|---|
+| U1 | Lift exact integrator → `sections/analysis.py` (+ shims, tests) | — | ☑ | 2026‑09‑12 — moved `exact_mphi`/`section_pm_slice`/`_width_bands` + material factories + `mander_confinement` to `femsolver/sections/analysis.py`; `section_gui_core` re‑exports (desktop+Streamlit unchanged); before/after byte‑identical; `test_section_analysis_exact.py` (7); full suite 2454 pass |
+| U2 | One section→fiber compiler (circular + core/cover); P1 rewired | P1 | ☐ | |
+| U3 | One M‑φ / P‑M‑M API + result type | U1 | ☑ | 2026‑09‑12 — added backend tokens `C_EXACT/C_FIBRE/C_NOMINAL/C_DESIGN` + `MomentCurvatureResult`/`PMInteractionResult` + `moment_curvature_analysis(backend=…)`/`pm_interaction(backend=…)` in `sections/analysis.py`; lifted `pmm_slice` from the GUI (verbatim + re-export shim, U1 pattern); `test_section_analysis_unified.py` (10); full suite 2463 pass (only the 4 pre-existing quadrature failures) |
+| U4 | Confinement law shared tool↔hinge | P2 | ◐ | calc shared (`mander_confinement` + `mander_confined_circular`, one source); hinge consumes it in P5 |
+| U5 | Same `Section` for analysis + hinge (UI) | U2, GUI‑3 | ☐ | |
+
+**Principle:** *one section definition → one compiler → one analysis core → two views (design tool
+and fiber hinge).* Every session adds to this pipeline; nobody forks a parallel section engine.

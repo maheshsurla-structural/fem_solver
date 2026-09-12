@@ -196,6 +196,7 @@ from femsolver.materials.uniaxial import (
     ConcreteParabolaRectangle,
     ConcreteTensionStiffening,
     ConcreteTrilinear,
+    ReinforcingSteelKinematic,
     UniaxialReinforcingSteel,
 )
 
@@ -346,6 +347,107 @@ class TestUniaxialReinforcingSteel:
         with pytest.raises(ValueError):
             UniaxialReinforcingSteel(E=200e9, f_y=414e6, f_su=621e6,
                                      eps_sh=0.001, eps_su=0.10)     # sh<eps_y
+
+
+class TestReinforcingSteelKinematic:
+    """Park backbone + kinematic hardening (cyclic): monotonic response equals
+    the monotonic backbone; reversals unload elastically (slope E) and
+    translate the backbone through the back-stress (plan P3/G3)."""
+
+    def _s(self):
+        return ReinforcingSteelKinematic(E=200e9, f_y=414e6, f_su=621e6,
+                                         eps_sh=0.008, eps_su=0.10)
+
+    def test_monotonic_reproduces_backbone(self):
+        """A committed monotonic push matches the monotonic Park backbone to
+        machine precision (same curve, so the fibre sees identical stress)."""
+        bb = UniaxialReinforcingSteel(E=200e9, f_y=414e6, f_su=621e6,
+                                      eps_sh=0.008, eps_su=0.10)
+        kin = self._s()
+        for eps in np.linspace(0.0, 0.095, 120):
+            s_bb = bb.get_response(eps)[0]
+            s_k, _ = kin.get_response(eps)
+            kin.commit_state()
+            assert s_k == pytest.approx(s_bb, abs=1.0)   # <1 Pa of 4e8
+
+    def test_benchmark_backbone_points(self):
+        """Caltrans A615 Gr60 expected (plan §2.2), kip/in^2 units: the
+        backbone hits (eps_sh, f_y)=(0.0075, 68) and (eps_su, f_su)=(0.09, 95),
+        for both the Midas eps_su=0.09 and CSI eps_su=0.06 variants (O1)."""
+        for esu in (0.09, 0.06):
+            m = ReinforcingSteelKinematic(E=29000.0, f_y=68.0, f_su=95.0,
+                                          eps_sh=0.0075, eps_su=esu)
+            assert m.get_response(0.0075)[0] == pytest.approx(68.0, rel=1e-6)
+            assert m.get_response(esu)[0] == pytest.approx(95.0, rel=1e-6)
+
+    def test_origin_tangent(self):
+        m = self._s()
+        assert m.get_response(0.0) == (0.0, 200e9)
+
+    def test_elastic_unload_slope(self):
+        """Right after a tension excursion the material unloads with the
+        initial elastic modulus, not the (soft) hardening tangent."""
+        m = self._s()
+        for eps in np.linspace(0.0, 0.02, 60):
+            m.get_response(eps)
+            m.commit_state()
+        s_peak = m.sigma_trial
+        de = -1e-6
+        s_un, Et = m.get_response(0.02 + de)
+        assert Et == pytest.approx(200e9, rel=1e-6)
+        assert (s_un - s_peak) / de == pytest.approx(200e9, rel=1e-3)
+
+    def test_kinematic_shift_bauschinger(self):
+        """Kinematic hardening: after yielding in tension, reverse yield in
+        compression starts early (at sigma = q - f_y, |.| < f_y), and the
+        elastic stress span across a reversal is ~2 f_y."""
+        m = self._s()
+        for eps in np.linspace(0.0, 0.02, 80):
+            m.get_response(eps)
+            m.commit_state()
+        q = m.q_committed
+        assert q > 0.0                          # tension raised the back-stress
+        # sweep down: elastic unloading first (Et == E), then compression
+        # re-yield. Capture the stress at the last elastic step -- it should
+        # sit near sigma = q - f_y.
+        prev_s = m.sigma_trial
+        was_elastic = False
+        onset = None
+        for eps in np.linspace(0.02, -0.02, 800):
+            s, Et = m.get_response(eps)
+            m.commit_state()
+            if Et > 0.99 * m.E:
+                was_elastic = True
+            elif was_elastic and onset is None:     # re-entered plasticity
+                onset = prev_s
+            prev_s = s
+        assert onset == pytest.approx(q - 414e6, rel=0.05)
+        assert abs(onset) < 414e6                # yields before -f_y (Bauschinger)
+
+    def test_commit_revert_lifecycle(self):
+        """A reverted trial leaves no history; a committed one advances it."""
+        m = self._s()
+        for eps in np.linspace(0.0, 0.02, 60):
+            m.get_response(eps)
+            m.commit_state()
+        p_before = m.p_committed
+        m.get_response(0.03)                     # trial only, no commit
+        m.revert_state()
+        assert m.p_trial == p_before
+        # committing the same push does advance accumulated plastic strain
+        m.get_response(0.03)
+        m.commit_state()
+        assert m.p_committed > p_before
+
+    def test_clone_is_independent(self):
+        m = self._s()
+        for eps in np.linspace(0.0, 0.02, 60):
+            m.get_response(eps)
+            m.commit_state()
+        c = m.clone()
+        c.get_response(0.05)
+        c.commit_state()
+        assert c.p_committed != m.p_committed    # state did not leak back
 
 
 class TestConcreteTrilinear:

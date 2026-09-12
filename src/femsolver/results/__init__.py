@@ -69,6 +69,11 @@ from femsolver.results.bom import (
     bom_steel_frame,
 )
 from femsolver.results.qa import QaReport, QaWarning, run_qa_checks
+from femsolver.results.recorders import (
+    FiberRecorder,
+    NodeRecorder,
+    SectionRecorder,
+)
 
 __all__ = [
     # files
@@ -88,4 +93,6 @@ __all__ = [
     "DxfDocument", "write_model_plan_dxf",
     "BomLine", "BomReport", "bom_concrete_frame", "bom_steel_frame", "bom_rebar",
     "QaReport", "QaWarning", "run_qa_checks",
+    # recorders
+    "SectionRecorder", "FiberRecorder", "NodeRecorder",
 ]

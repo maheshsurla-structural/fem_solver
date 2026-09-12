@@ -34,12 +34,28 @@ from femsolver.shell_sections.ply_failure import (
     tsai_wu_strength_ratio,
 )
 from femsolver.shell_sections.clt import CLTLayer, CLTSection
+from femsolver.shell_sections.rc_layered import (
+    ConcreteZone,
+    RebarLayer,
+    ReinforcedConcreteShellSection,
+    ShellMomentCurvaturePoint,
+    ShellMomentCurvatureResult,
+    ShellSectionResponse,
+    shell_moment_curvature,
+)
 
 __all__ = [
     "ShellSectionBase",
     "ElasticShellSection",
     "LayeredShellSection",
     "ShellLayer",
+    "ConcreteZone",
+    "RebarLayer",
+    "ReinforcedConcreteShellSection",
+    "ShellSectionResponse",
+    "ShellMomentCurvaturePoint",
+    "ShellMomentCurvatureResult",
+    "shell_moment_curvature",
     "PlyStrength",
     "evaluate_laminate",
     "max_strain_index",

@@ -1,7 +1,11 @@
-"""Reinforcing-steel monotonic stress-strain model (Park strain hardening).
+"""Reinforcing-steel stress-strain models (Park strain hardening).
 
 :class:`UniaxialReinforcingSteel` implements the classic Park & Paulay /
-Kent-Park monotonic backbone for reinforcing bars:
+Kent-Park **monotonic** backbone for reinforcing bars, and
+:class:`ReinforcingSteelKinematic` wraps that same backbone in a kinematic-
+hardening return map for **cyclic** analysis (the benchmark tools' rule).
+
+The monotonic backbone:
 
 * **Elastic** ``0 <= eps <= eps_y``:            ``sigma = E * eps``
 * **Yield plateau** ``eps_y < eps <= eps_sh``:  ``sigma = f_y``
@@ -105,6 +109,150 @@ class UniaxialReinforcingSteel(UniaxialMaterial):
     def __repr__(self) -> str:
         return (
             f"UniaxialReinforcingSteel(E={self.E:g}, f_y={self.f_y:g}, "
+            f"f_su={self.f_su:g}, eps_sh={self.eps_sh:g}, "
+            f"eps_su={self.eps_su:g})"
+        )
+
+
+class ReinforcingSteelKinematic(UniaxialMaterial):
+    """Park strain-hardening steel with **kinematic hardening** (cyclic).
+
+    The cyclic reinforcing-steel law used by both benchmark tools -- Midas
+    "Park PM" and CSI "Simple" steel with a *Kinematic* hysteresis rule
+    (plan §2.2 / §5.3 G3). It reuses the exact monotonic Park backbone of
+    :class:`UniaxialReinforcingSteel`, so a monotonic tension push reproduces
+    that curve fibre-for-fibre; on reversal it unloads elastically (slope
+    ``E``) and translates the backbone through a back-stress ``q`` -- classic
+    kinematic (Prager-type) hardening generalised to the Park backbone's
+    varying hardening modulus.
+
+    Formulation (return mapping, radius = ``f_y`` fixed, centre ``q`` moving)::
+
+        sigma_trial = E (eps - eps_p)                    # elastic predictor
+        f = |sigma_trial - q| - f_y                      # yield function
+        f <= 0 : elastic, Et = E
+        f  > 0 : plastic. Solve  R(dl) = |xi| - f_y - E dl - dQ(dl) = 0
+                 dQ(dl) = alpha(p + dl) - alpha(p)        (= integral H dp)
+                 eps_p += sign*dl ;  q += sign*dQ ;  p += dl
+                 sigma = E (eps - eps_p) ;  Et = E H / (E + H)
+
+    where ``alpha(p) = g(e(p)) - f_y`` is the virgin back-stress magnitude at
+    accumulated plastic strain ``p`` (``g`` the Park backbone, ``e(p)`` its
+    strain), and ``H(p) = d alpha / d p`` the kinematic modulus. Because
+    ``integral H dp = alpha(p + dl) - alpha(p)`` exactly, no numerical
+    integration of ``H`` is needed. With a constant ``H`` this reduces to the
+    bilinear kinematic return map (:class:`UniaxialBilinear`).
+
+    Parameters are identical to :class:`UniaxialReinforcingSteel`.
+    """
+
+    def __init__(self, E: float, f_y: float, f_su: float,
+                 eps_sh: float, eps_su: float):
+        self.backbone = UniaxialReinforcingSteel(E, f_y, f_su, eps_sh, eps_su)
+        self.E = float(E)
+        self.E0 = float(E)
+        self.f_y = float(f_y)
+        self.f_su = float(f_su)
+        self.eps_y = self.backbone.eps_y
+        self.eps_sh = float(eps_sh)
+        self.eps_su = float(eps_su)
+        # committed state
+        self.eps_p_committed: float = 0.0
+        self.q_committed: float = 0.0
+        self.p_committed: float = 0.0            # accumulated plastic strain
+        # trial mirrors
+        self.eps_p_trial: float = 0.0
+        self.q_trial: float = 0.0
+        self.p_trial: float = 0.0
+        # last response
+        self.sigma_trial: float = 0.0
+        self.Et: float = self.E
+
+    # ---------------------------------------------- backbone helpers
+    def _bb_strain_for_p(self, p: float) -> float:
+        """Backbone strain ``e >= eps_y`` whose accumulated plastic strain is
+        ``p``, i.e. the root of ``e - g(e)/E = p`` (monotone in ``e``)."""
+        if p <= 0.0:
+            return self.eps_y
+        e = self.eps_sh + p            # good initial guess (plateau has p=0)
+        for _ in range(60):
+            sig, Et = self.backbone._backbone(e)
+            h = e - sig / self.E - p
+            hp = 1.0 - Et / self.E
+            if abs(hp) < 1e-14:
+                break
+            step = h / hp
+            e -= step
+            if e < self.eps_y:
+                e = self.eps_y
+            if abs(step) < 1e-15:
+                break
+        return e
+
+    def _alpha_H(self, p: float) -> tuple[float, float]:
+        """``(alpha, H)`` at accumulated plastic strain ``p``: back-stress
+        magnitude ``alpha = g(e) - f_y`` and kinematic modulus
+        ``H = E*Et/(E - Et)``."""
+        e = self._bb_strain_for_p(p)
+        sig, Et = self.backbone._backbone(e)
+        alpha = sig - self.f_y
+        denom = self.E - Et
+        H = (self.E * Et / denom) if denom > 1e-9 else 0.0
+        return alpha, H
+
+    # ---------------------------------------------- get_response
+    def get_response(self, eps: float) -> tuple[float, float]:
+        eps = float(eps)
+        sigma_trial = self.E * (eps - self.eps_p_committed)
+        xi = sigma_trial - self.q_committed
+        f_trial = abs(xi) - self.f_y
+        if f_trial <= 0.0:                        # elastic step
+            self.eps_p_trial = self.eps_p_committed
+            self.q_trial = self.q_committed
+            self.p_trial = self.p_committed
+            self.sigma_trial = sigma_trial
+            self.Et = self.E
+            return sigma_trial, self.E
+        # plastic step: local Newton on the plastic multiplier dl >= 0
+        sign = 1.0 if xi >= 0.0 else -1.0
+        p0 = self.p_committed
+        alpha0, _ = self._alpha_H(p0)
+        absxi = abs(xi)
+        dl = f_trial / (self.E + self._alpha_H(p0)[1])   # bilinear first step
+        for _ in range(60):
+            alpha1, H1 = self._alpha_H(p0 + dl)
+            R = absxi - self.f_y - self.E * dl - (alpha1 - alpha0)
+            dRdl = -self.E - H1
+            step = R / dRdl
+            dl -= step
+            if dl < 0.0:
+                dl = 0.0
+            if abs(step) < 1e-14:
+                break
+        alpha1, H1 = self._alpha_H(p0 + dl)
+        self.p_trial = p0 + dl
+        self.eps_p_trial = self.eps_p_committed + sign * dl
+        self.q_trial = self.q_committed + sign * (alpha1 - alpha0)
+        sigma = self.E * (eps - self.eps_p_trial)
+        Et = (self.E * H1 / (self.E + H1)) if H1 > 0.0 else 0.0
+        self.sigma_trial = sigma
+        self.Et = Et
+        return sigma, Et
+
+    # ---------------------------------------------- state
+    def commit_state(self) -> None:
+        self.eps_p_committed = self.eps_p_trial
+        self.q_committed = self.q_trial
+        self.p_committed = self.p_trial
+
+    def revert_state(self) -> None:
+        self.eps_p_trial = self.eps_p_committed
+        self.q_trial = self.q_committed
+        self.p_trial = self.p_committed
+
+    def __repr__(self) -> str:
+        return (
+            f"ReinforcingSteelKinematic(E={self.E:g}, f_y={self.f_y:g}, "
             f"f_su={self.f_su:g}, eps_sh={self.eps_sh:g}, "
             f"eps_su={self.eps_su:g})"
         )

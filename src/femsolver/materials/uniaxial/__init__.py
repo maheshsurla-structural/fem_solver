@@ -27,6 +27,7 @@ from femsolver.materials.uniaxial.menegotto_pinto import (
     UniaxialMenegottoPinto,
 )
 from femsolver.materials.uniaxial.reinforcing import (
+    ReinforcingSteelKinematic,
     UniaxialReinforcingSteel,
 )
 from femsolver.materials.uniaxial.hysteretic import (
@@ -50,6 +51,7 @@ __all__ = [
     "ConcreteTensionStiffening",
     "ConcreteTrilinear",
     "UniaxialMenegottoPinto",
+    "ReinforcingSteelKinematic",
     "UniaxialReinforcingSteel",
     "UniaxialHysteretic",
     "UniaxialGap",
