@@ -308,7 +308,15 @@ map over the *same* Park backbone (chosen over Menegotto‑Pinto so the backbone
 the Caltrans/Park one both tools use). Monotonic reproduces the backbone to 1e‑13; reversals unload
 at `E` and show the kinematic Bauschinger shift.
 
-### 5.4 Fiber hinge — new `elements/beam_fiber_hinge.py` (G4)
+### 5.4 Fiber hinge — ✅ SHIPPED in P9 (`elements/beam_fiber_hinge.py`, G4)
+> **As‑built:** `FiberHingeBeamColumn2D(tag, nodes, material, *, section, lp, lp_j=None)` —
+> beam‑with‑hinges. Rather than the Scott‑Fenves modified Gauss‑Radau quadrature, it uses the
+> equivalent, unambiguous **flexibility decomposition**: exact elastic member flexibility plus a
+> localized plastic correction at each end hinge,
+> `F = F_el + Σ_h lp_h·b(x_h)ᵀ(f_fiber,h − f_el)b(x_h)`, `v = F_el·q + Σ_h lp_h·b(x_h)ᵀ(e_fiber,h −
+> f_el·s_h)`. Hinges at the member ends; reuses `ForceBeamColumn2DCorotational._section_strain_for_force`
+> and the corotational wrapping. `f_el` is probed at a small **compressive** strain (compression‑only
+> concrete reports zero tangent at exactly ε=0). Elastic response is exact for any `lp`.
 ```python
 class FiberHingeBeamColumn2D(Element):
     """Elastic member with a finite-length fiber hinge at a relative location.
@@ -519,7 +527,7 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
 | P6 | G6/G7 staged + protocols; monotonic pushover | ☑ | 2026‑09‑12 — `analysis/staged.py` (`StagedAnalysis`, continuation + constant‑load hold via new `StaticIntegrator.set_constant_force` + `NonlinearStaticAnalysis(keep_state, const_force)`) + `analysis/protocols.py` (`monotonic`/`stepped_cyclic`/`from_time_function`). Benchmark staged pushover holds P=2400 kip exactly through the lateral push; base‑shear·L peak 32,825 kip‑ft matches the P4 M‑φ peak (0.2%). Guarded ConcreteMander softening‑tail overflow. `test_fiber_hinge_pushover.py` (6), example 84. Full suite 2487 pass |
 | P7 | G5 3‑D force‑based + circular 3‑D; P‑M2‑M3 | ☑ | 2026‑09‑12 — `elements/beam_force_3d.py` `ForceBeamColumn3D` (small‑disp, 6‑DOF basic system, NF state determination). Elastic K == displacement‑based to 2e‑16; n_ip‑invariant (≥3); reduces to 2‑D under uniaxial bending to 1e‑7; biaxial 45° push gives Mz=−My, resultant = uniaxial capacity. `FiberSection3D.circular` from P1. `test_force_beam_3d.py` (4), example 85. Full suite 2490 pass |
 | P8 | Cyclic benchmark + energy | ☑ | 2026‑09‑12 — staged cyclic (hold P=2400, `stepped_cyclic` protocol via a new `DisplacementControl` per‑step increment schedule); `ReinforcingSteelKinematic` steel. Axial held; symmetric hysteresis, peak shear 7968 kip (≈ P6 monotonic 8000 w/ 4 disp‑based elements); loop energy grows 8→126→555→1093 kip‑in. Force‑based element is cyclically singular at reversals (§8) → disp‑based mesh used. `test_fiber_hinge_cyclic.py` (2), example 86. Full suite 2493 pass |
-| P9 | G4 fiber‑hinge element idiom | ☐ | |
+| P9 | G4 fiber‑hinge element idiom | ☑ | 2026‑09‑12 — `elements/beam_fiber_hinge.py` `FiberHingeBeamColumn2D` (beam‑with‑hinges: exact elastic interior + fiber hinge length `lp` at each end, `F = F_el + Σ lp·bᵀ(f_fiber−f_el)b`; reuses force‑based section inversion). Elastic K == distributed to 8e‑16 for any lp; axial reproduces distributed to 0.27% (P5); pushover yields, peak V brackets distributed (lp 4/8/16 → 7138/6567/5967 vs 6851) (P6). `test_fiber_hinge_element.py` (6), example 87 |
 | P10 | G9 importers + regression harness | ☐ | |
 
 ---
@@ -649,6 +657,21 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
   `86_fiber_hinge_cyclic.py`; results in §7.3. Full suite 2493 pass (only the 4 pre‑existing
   quadrature failures). Next: **P9** (finite‑length fiber‑hinge element idiom) or **P10** (importers
   + regression harness).
+- 2026‑09‑12 — **P9 shipped (G4).** Added `FiberHingeBeamColumn2D` (`elements/beam_fiber_hinge.py`):
+  the finite‑length fiber‑hinge idiom (CSI "Fiber P‑M2‑M3" over a relative hinge length / Midas
+  lumped inelastic hinge) — an elastic member with a fiber plastic hinge of length `lp` at each end.
+  Per D1, implemented as beam‑with‑hinges reusing the force‑based section state determination, via a
+  clean flexibility decomposition (exact elastic interior + localized plastic correction:
+  `F = F_el + Σ lp·bᵀ(f_fiber−f_el)b`) rather than a from‑memory Gauss‑Radau reconstruction — so the
+  elastic response is exact for any `lp` and plasticity localizes over `lp`. Found + fixed a real
+  gotcha: `f_el` must be probed at a small **compressive** strain because `ConcreteMander` reports a
+  zero tangent at exactly ε=0 (a zero‑strain probe dropped all concrete stiffness, making the member
+  ~5× too flexible). Verified: elastic K equals the distributed element to 8e‑16 for lp∈{4,8,15};
+  axial reproduces the distributed element to 0.27% (P5); the pushover yields and its peak base shear
+  brackets the distributed value across lp (4/8/16 in → 7138/6567/5967 kip vs 6851) (P6).
+  `FiberHingeBeamColumn2D` exported top‑level + `public_api.txt`. `test_fiber_hinge_element.py` (6);
+  example `87_fiber_hinge_element.py`. Next: **P10** (MCT/`$br` mini‑importer + regression harness,
+  needs the golden exports).
 
 ---
 

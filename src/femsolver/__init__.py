@@ -21,6 +21,7 @@ from femsolver.elements.beam_corot import BeamColumn2DCorotational
 from femsolver.elements.beam_corot_3d import BeamColumn3DCorotational
 from femsolver.elements.beam_force import ForceBeamColumn2DCorotational
 from femsolver.elements.beam_force_3d import ForceBeamColumn3D
+from femsolver.elements.beam_fiber_hinge import FiberHingeBeamColumn2D
 from femsolver.elements.beam_hinged import HingedBeamColumn2D
 from femsolver.elements.plane import Quad4, Quad8
 from femsolver.elements.membrane_drilling import MembraneQ4Drilling
@@ -345,6 +346,7 @@ __all__ = [
     "BeamColumn3DCorotational",
     "ForceBeamColumn2DCorotational",
     "ForceBeamColumn3D",
+    "FiberHingeBeamColumn2D",
     "HingedBeamColumn2D",
     "Quad4",
     "ShellMITC4",

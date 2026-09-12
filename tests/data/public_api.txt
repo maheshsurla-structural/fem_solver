@@ -45,6 +45,7 @@ EnvelopeResult
 EqualDOF
 EquivalentSDOF
 Fiber
+FiberHingeBeamColumn2D
 FiberSection2D
 FiberSection3D
 FiniteJ2Plasticity3D
