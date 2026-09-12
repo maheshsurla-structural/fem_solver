@@ -5645,89 +5645,12 @@ def _section_presets() -> dict:
     }
 
 
-def _parse_legs(txt):
-    """Parse a tie group's leg count 'n_y×n_z' (accepts 2x3, 2×3, 2,3, or a
-    single 3→3×3). Defaults to a perimeter hoop 2×2."""
-    nums = re.findall(r"\d+", str(txt or ""))
-    if len(nums) >= 2:
-        return max(int(nums[0]), 1), max(int(nums[1]), 1)
-    if len(nums) == 1:
-        return max(int(nums[0]), 1), max(int(nums[0]), 1)
-    return 2, 2
-
-
-def _auto_section_confinement(spec, materials):
-    """Read Mander confinement parameters straight off a Rectangular/Circular
-    section: core dims from the geometry minus cover, the hoop A_sp/s/s'/f_yh/
-    ε_su from the section's **Link** (tie) group and its steel grade, tie legs
-    from that group's Position ('n_y×n_z'), and ρ_cc / n_long from the
-    longitudinal bars. Returns ``(conf_dict, info)`` — or ``(None, reason)`` if
-    the shape is unsupported or no usable tie group is defined."""
-    if spec.kind not in ("Rectangular", "Circular"):
-        return None, "shape"
-    link = next((g for g in spec.rebar_groups if g and g[0] == "Link"), None)
-    if link is None:
-        return None, "no-link"
-    try:
-        _n, dia_h, s = core.parse_bar_desc(link[1] if len(link) > 1 else "")
-    except Exception:                              # noqa: BLE001
-        return None, "bad-pattern"
-    if not s or s <= 0:
-        return None, "no-spacing"           # a tie needs a spacing (e.g. B10-150)
-    asp = core.bar_area(dia_h)
-    sp = max(s - dia_h, 1e-3)               # clear spacing s' = s − hoop dia
-    hoopmat = materials.get(link[3]) if len(link) > 3 else None
-    fyh = float((hoopmat or {}).get("fy", 400e6))
-    esu = float((hoopmat or {}).get("steel_eps_su", 0.10))
-    es_h = float((hoopmat or {}).get("Es", 200e9))
-    ny, nz = _parse_legs(link[2] if len(link) > 2 else "")
-    cover = float(spec.cover)
-    try:
-        sec = core.build_case(spec).section
-        bars = sec.reinforcement.bars if sec.reinforcement else []
-    except Exception:                              # noqa: BLE001
-        bars = []
-    nlong = len(bars)
-    if nlong < 4:            # no real longitudinal cage → confinement undefined
-        return None, "no-cage"
-    as_long = sum(b.area for b in bars)
-
-    conf = dict(conf_shape=spec.kind, conf_fyh=fyh, conf_Asp=asp, conf_s=s,
-                conf_sp=sp, conf_eps_su_h=esu, conf_Es_h=es_h,
-                conf_ny=ny, conf_nz=nz, conf_nlong=nlong)
-    if spec.kind == "Circular":
-        ds = max(spec.D - 2.0 * cover, 1e-3)
-        a_core = np.pi / 4.0 * ds * ds
-        conf["conf_ds"] = ds
-        conf["conf_hooptype"] = "Spiral" if spec.spiral else "Hoop"
-    else:
-        bc = max(spec.b - 2.0 * cover, 1e-3)
-        dc = max(spec.h - 2.0 * cover, 1e-3)
-        a_core = bc * dc
-        conf["conf_bc"], conf["conf_dc"] = bc, dc
-    conf["conf_rho_cc"] = (min(max(as_long / a_core, 0.005), 0.08)
-                           if a_core > 0 else 0.02)
-    info = dict(dia_h=dia_h, s=s, sp=sp, fyh=fyh, esu=esu, ny=ny, nz=nz,
-                nlong=nlong, cover=cover, as_long=as_long, a_core=a_core,
-                hoop_grade=(link[3] if len(link) > 3 else None))
-    return conf, info
-
-
-def _section_confinement(spec, materials):
-    """Effective Mander confinement for a section: user-override inputs
-    (``spec.conf_manual`` when ``spec.conf_override``) else auto-read from the
-    tie group + geometry. Per-output overrides (``spec.conf_out``) and the ε_cu
-    method layer on top as ``ov_*`` / ``conf_ecu_method`` keys, so every
-    override flows straight into the moment-curvature. Returns ``(conf, info)``."""
-    if getattr(spec, "conf_override", False) and spec.conf_manual:
-        conf, info = {k: v for (k, v) in spec.conf_manual}, {"override": True}
-    else:
-        conf, info = _auto_section_confinement(spec, materials)
-    if conf is not None:
-        ov = {f"ov_{k}": v for (k, v) in getattr(spec, "conf_out", ())}
-        ov["conf_ecu_method"] = getattr(spec, "conf_ecu_method", "energy")
-        conf = dict(conf, **ov)
-    return conf, info
+# Confinement helpers lifted to the Qt-free core (plan §16 G-S4 / U-style):
+# the nonlinear pushover uses the SAME tie-group confinement source as the
+# Section Designer's confined M-φ. Re-exported here so existing call sites work.
+_parse_legs = core._parse_legs
+_auto_section_confinement = core._auto_section_confinement
+_section_confinement = core._section_confinement
 
 
 def _material_from_grade(fam: str, kind: str, grade: str) -> dict:

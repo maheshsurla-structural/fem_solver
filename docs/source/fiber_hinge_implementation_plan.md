@@ -838,6 +838,19 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
   vs cover 35 MPa (fc=35), unconfined specs stay single‑law, rectangular split works, confined column
   solves a pushover. `test_desktop_nonlinear.py` +4 (15 total); 466 section + 74 desktop tests pass.
   The hoop **input UI** + core/cover preview is the separate item **G‑S4**.
+- 2026 — **C1 refined into a true unification + G‑S4 input bridge.** Found the Section Designer
+  already sources confinement from the section's tie **Link** group (`_auto_section_confinement`) and
+  builds a two‑zone confined‑core/unconfined‑cover fibre section (`_confined_fiber_section`) for its
+  confined M‑φ. Re‑did C1 to **reuse that exact path** instead of the parallel `Spec.conf_*` fields
+  the first draft added (now removed): lifted `_parse_legs`/`_auto_section_confinement`/
+  `_section_confinement` into the Qt‑free `section_gui_core` (shims in `section_designer`), and
+  `fiber_section_from_spec` now delegates to `_confined_fiber_section` with `conf` from
+  `_section_confinement` (tie group or manual override), threading an optional `materials` map
+  (through `build_nonlinear_model`/`run_pushover`/`run_case`) for the hoop `f_yh`. So the pushover
+  fibre section == the confined M‑φ section (one confinement source, no parallel path — §15), and the
+  confinement **input** the M‑φ used now drives the pushover too (G‑S4 input bridge).
+  `test_desktop_nonlinear.py` (16, incl. the tie‑group auto path); 466 section + 75 desktop tests
+  pass. Remaining for G‑S4: a distinct core‑vs‑cover fibre preview in the Section Designer.
 
 ---
 
@@ -986,7 +999,7 @@ current tree, not aspirational. Legend: ☐ todo · ◐ partial · ☑ done.
 ### 16.1 Core capability (limits what users can model)
 | ID | Item | State | Notes |
 |---|---|---|---|
-| **C1** | **Confined core / unconfined cover split** in the analysis fiber section | ☑ | 2026 — `desktop/nonlinear.fiber_section_from_spec` now builds a **confined Mander core + unconfined cover**: `Spec` gained `conf_Asp`/`conf_s`/`conf_fyh`/`conf_hooptype` (default 0 = unconfined ⇒ unchanged); `_confinement_kw` derives the `conf_*` dict (core dia/`bc,dc` from geometry − 2·cover, `rho_cc` from bars) and `concrete_uniaxial_from` raises the core to `f'cc`/`eps_cc` via the shared `mander_confinement`. Fibers split by radius (circular) or eroded core polygon (rect); cover keeps `f'c`. `test_desktop_nonlinear.py` +4 (core f'cc>cover, unconfined single‑law, rect split, confined pushover). **Confinement *input UI* is G‑S4.** |
+| **C1** | **Confined core / unconfined cover split** in the analysis fiber section | ☑ | 2026 — the nonlinear pushover now builds a **confined Mander core + unconfined cover** through the **same** path as the Section Designer's confined M‑φ (unified, per §15): `desktop/nonlinear.fiber_section_from_spec` delegates to `section_gui_core._confined_fiber_section`, with the confinement `conf` dict from the shared `_section_confinement` (tie **Link** group + geometry, or a manual override). Confinement helpers (`_parse_legs`/`_auto_section_confinement`/`_section_confinement`) lifted from the GUI into the Qt‑free core (shims left in `section_designer`). Unconfined sections keep the single‑law path (unchanged). `test_desktop_nonlinear.py` +5. *(An earlier draft added parallel `Spec.conf_*` fields; removed in favour of the one tie‑group source.)* **Confinement *input UI* + core/cover preview = G‑S4.** |
 | **C2** | **3‑D nonlinear in the app** (P‑M2‑M3) | ☐ | `ForceBeamColumn3D` (P7) exists; `desktop/nonlinear.build_nonlinear_model` raises for `ndm≠2`. Needs 3‑D fiber section + element wiring + 3‑D control/monitor UI. |
 | **C3** | **Dynamic time‑history** (true transient: mass + damping) for fiber elements | ☐ | Engine has `nonlinear_transient.py`; not wired to the fiber‑hinge workflow. Case manager is quasi‑static (`monotonic`\|`cyclic`). Adds a `time_history` protocol + ground‑motion input + Rayleigh/modal damping. §1.3 deferred; the natural seismic next step. |
 | **C4** | **Adaptive step‑cutting / substepping** on non‑convergence | ☐ | §8 fixed the noise‑floor chatter; the force‑based element still hits singular flexibility at deep softening (manual smaller step / displacement‑based mesh today). Auto‑halve‑and‑retry in `NonlinearStaticAnalysis`. |
@@ -998,7 +1011,7 @@ current tree, not aspirational. Legend: ☐ todo · ◐ partial · ☑ done.
 | **G‑S1** | **Main model‑view step scrubbing** | ☐ | Results live only in the pushover dialog; `ModelView` can't scrub the model through steps. GUI‑I1 (`NonlinearResults`) unblocked this — wire a `show_nl_step(project, results, k, scale)`. |
 | **G‑S2** | **Nonlinear results persistence + re‑open + run history** | ☐ | Results are transient in the dialog; not in the `.` project, no "reopen last run". (This is the real gap behind GUI‑I2, which otherwise "just serializes defs".) |
 | **G‑S3** | **Run comparison / envelopes** | ☐ | Overlay pushovers, build cyclic backbone/envelope across runs. |
-| **G‑S4** | **Confinement input bridge + core/cover preview** | ☐ | "hoop bar area / spacing → f'cc, ε_cc, ε_cu" in the section UI (ties to C1); Section Designer previews core vs cover regions. |
+| **G‑S4** | **Confinement input bridge + core/cover preview** | ◐ | **Input bridge done** — the tie **Link** group (Rebars tab) + Confinement tab + manual override that already drove the confined M‑φ now also drive the pushover (C1 unification), so "what you input is what you run". **Remaining:** a distinct **core‑vs‑cover fibre preview** in the Section Designer fibres view. |
 | **G‑S5** | **In‑app model checks / diagnostics** | ◐ | Convergence dock exists; add units/section/material sanity + non‑convergence guidance surfaced pre‑ and post‑run. |
 
 ### 16.3 Cross‑cutting product infra
@@ -1020,7 +1033,7 @@ persistence + main‑view scrubbing — makes the tool feel finished) → **C4**
 ### 16.6 Status tracker
 | ID | State | Commit / date |
 |---|---|---|
-| C1 confined core/cover | ☑ | 2026 — confined core + unconfined cover in `fiber_section_from_spec`; input UI = G‑S4 |
+| C1 confined core/cover | ☑ | 2026 — unified onto section_gui_core._confined_fiber_section (one tie-group source) |
 | C2 3‑D nonlinear GUI | ☐ | |
 | C3 dynamic time‑history | ☐ | |
 | C4 adaptive step‑cutting | ☐ | |
@@ -1028,7 +1041,7 @@ persistence + main‑view scrubbing — makes the tool feel finished) → **C4**
 | G‑S1 main‑view scrubbing | ☐ | |
 | G‑S2 results persistence | ☐ | |
 | G‑S3 run comparison | ☐ | |
-| G‑S4 confinement input + preview | ☐ | |
+| G‑S4 confinement input + preview | ◐ | input bridge done (tie group drives pushover); core/cover preview remains |
 | G‑S5 model checks | ◐ | |
 | X1 performance | ☐ | |
 | X2 verification manual | ☐ | |

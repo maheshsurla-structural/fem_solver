@@ -65,15 +65,26 @@ def _conc_fibers(fs):
             if isinstance(f.material, ConcreteTensionStiffening)]
 
 
+def _manual_conf(shape, **kw):
+    """A manual-override confinement tuple for a Spec (drives the SAME
+    `_section_confinement` -> `_confined_fiber_section` path as the tie group,
+    without needing a hoop material)."""
+    conf = {"conf_shape": shape, "conf_fyh": 400e6, "conf_Asp": 1e-4,
+            "conf_s": 0.10, "conf_sp": 0.09, "conf_rho_cc": 0.02,
+            "conf_hooptype": "Hoop", **kw}
+    return tuple(conf.items())
+
+
 def test_confined_core_vs_unconfined_cover_circular():
-    """With hoop confinement + the Mander model, the inner (core) concrete
-    fibers get a raised f'cc while the outer cover shell keeps f'c (plan C1)."""
+    """With confinement, the inner (core) concrete fibers get a raised f'cc
+    while the outer cover shell keeps f'c -- the same two-zone section the
+    Section Designer's confined M-φ uses (plan C1 / G-S4 unification)."""
     import section_gui_core as core
     spec = core.Spec(kind="Circular", D=0.9, cover=0.05, fc=35e6, fy=500e6,
-                     conc_model="Mander", conf_Asp=1e-4, conf_s=0.10,
-                     conf_fyh=400e6, conf_hooptype="Hoop")
-    fs = NL.fiber_section_from_spec(spec, target=600)
-    R, Rc = 0.45, 0.40
+                     conc_model="Mander", conf_override=True,
+                     conf_manual=_manual_conf("Circular", conf_ds=0.8))
+    fs = NL.fiber_section_from_spec(spec)
+    Rc = 0.40
     conc = _conc_fibers(fs)
     core_pk = max(_peak_MPa(f.material) for f in conc
                   if math.hypot(f.y, f.z) < Rc - 1e-9)
@@ -85,30 +96,25 @@ def test_confined_core_vs_unconfined_cover_circular():
 
 
 def test_unconfined_spec_uses_single_concrete_law():
-    """No hoops (or a non-Mander model) -> one concrete law everywhere, i.e.
-    the historical behaviour is unchanged."""
+    """No confinement -> one concrete law everywhere (historical behaviour)."""
     import section_gui_core as core
     spec = core.Spec(kind="Circular", D=0.9, cover=0.05, fc=35e6,
                      conc_model="Kent-Park")
+    assert core._section_confinement(spec, {})[0] is None   # no tie -> none
     fs = NL.fiber_section_from_spec(spec, target=600)
     peaks = [_peak_MPa(f.material) for f in _conc_fibers(fs)]
     assert max(peaks) - min(peaks) < 0.1                  # single law
     assert min(peaks) == pytest.approx(35.0, abs=0.1)
-    # even with the Mander model but no hoops -> still one law
-    spec2 = core.Spec(kind="Circular", D=0.9, cover=0.05, fc=35e6,
-                      conc_model="Mander")
-    fs2 = NL.fiber_section_from_spec(spec2, target=600)
-    assert NL._confinement_kw(spec2, None, [], 0.05) is None
 
 
 def test_confined_core_rectangular():
-    """The core/cover split also works for a rectangular section (eroded core
-    polygon)."""
+    """The two-zone split also works for a rectangular section."""
     import section_gui_core as core
     spec = core.Spec(kind="Rectangular", b=0.5, h=0.7, cover=0.05, fc=30e6,
-                     fy=500e6, conc_model="Mander", conf_Asp=1e-4, conf_s=0.10,
-                     conf_fyh=400e6, conf_hooptype="Hoop")
-    fs = NL.fiber_section_from_spec(spec, n_z=14, n_y=18)
+                     fy=500e6, conc_model="Mander", conf_override=True,
+                     conf_manual=_manual_conf("Rectangular", conf_bc=0.4,
+                                              conf_dc=0.6))
+    fs = NL.fiber_section_from_spec(spec, n_z=20, n_y=26)
     conc = _conc_fibers(fs)
     core_pk = max(_peak_MPa(f.material) for f in conc
                   if abs(f.z) < 0.2 and abs(f.y) < 0.3)   # interior
@@ -117,12 +123,35 @@ def test_confined_core_rectangular():
     assert core_pk > 1.05 * cover_pk
 
 
+def test_confinement_from_tie_group_auto():
+    """The auto path: a **Link** tie group + a longitudinal cage yields a
+    confined core (same source as the Section Designer M-φ). Hoop f_yh comes
+    from the tie's material in ``materials``."""
+    import section_gui_core as core
+    spec = core.Spec(
+        kind="Circular", D=0.9, cover=0.05, fc=35e6, fy=500e6,
+        conc_model="Mander",
+        rebar_groups=(("Perimeter", "12B25", "", "rebar"),
+                      ("Link", "B10-150", "2x2", "hoop")))
+    materials = {"hoop": {"fy": 420e6, "Es": 200e9, "steel_eps_su": 0.10}}
+    conf, info = core._section_confinement(spec, materials)
+    assert conf is not None and conf["conf_fyh"] == 420e6
+    fs = NL.fiber_section_from_spec(spec, materials=materials)
+    conc = _conc_fibers(fs)
+    core_pk = max(_peak_MPa(f.material) for f in conc
+                  if math.hypot(f.y, f.z) < 0.40 - 1e-9)
+    cover_pk = max(_peak_MPa(f.material) for f in conc
+                   if math.hypot(f.y, f.z) >= 0.40 - 1e-9)
+    assert core_pk > 1.03 * cover_pk       # light hoops -> modest but real f'cc
+
+
 def test_confined_section_pushover_runs():
-    """A confined column still solves a pushover end-to-end."""
+    """A confined column still solves a pushover end-to-end (gsd_spec round-trips
+    the confinement override)."""
     import section_gui_core as core
     spec = core.Spec(kind="Circular", D=0.6, cover=0.04, fc=35e6, fy=500e6,
-                     conc_model="Mander", conf_Asp=8e-5, conf_s=0.08,
-                     conf_fyh=400e6, conf_hooptype="Spiral")
+                     conc_model="Mander", conf_override=True,
+                     conf_manual=_manual_conf("Circular", conf_ds=0.52))
     gsd = dataclasses.asdict(spec)
     A = math.pi * 0.6 ** 2 / 4.0
     p = Project()
