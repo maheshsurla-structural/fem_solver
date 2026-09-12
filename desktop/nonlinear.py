@@ -113,7 +113,8 @@ def run_pushover(project, *, control_node: int, control_dof: int,
                  axial_node: int | None = None, axial_dof: int = 0,
                  tol: float = 1e-6, max_iter: int = 60,
                  on_step=None, should_cancel=None,
-                 capture_fibers: bool = False) -> dict:
+                 capture_fibers: bool = False,
+                 capture_shape: bool = False) -> dict:
     """Displacement-controlled pushover of the nonlinear fiber model.
 
     Pushes ``control_node`` DOF ``control_dof`` (0=Ux, 1=Uy, 2=Rz) to
@@ -140,33 +141,45 @@ def run_pushover(project, *, control_node: int, control_dof: int,
     # Optional per-step fiber capture at the monitored member's base section
     # (IP 0 = the n1 end — the fixed base of a cantilever). Frames feed the
     # GUI-6 fiber-stress contour + step slider.
-    mon_el = None
-    if capture_fibers:
-        secs = {s.id: s for s in project.sections}
-        for mb in project.members:
-            if getattr(secs.get(mb.section), "gsd_spec", None):
-                mon_el = m.elements[mb.id]
-                break
+    secs = {s.id: s for s in project.sections}
+    fiber_members = [mb.id for mb in project.members
+                     if getattr(secs.get(mb.section), "gsd_spec", None)]
+    mon_el = m.elements[fiber_members[0]] if fiber_members else None
     frames: list = []
+    shape_frames: list = []
+    damage_frames: list = []
+
+    def _peak_abs_strain(el) -> float:
+        es = getattr(el, "_e_sections", None)
+        if not es:
+            return 0.0
+        eps_a, kappa = float(es[0][0]), float(es[0][1])
+        fibers = el.sections[0].fibers
+        return max((abs(eps_a - f.y * kappa) for f in fibers), default=0.0)
 
     def _capture():
-        if mon_el is None or not getattr(mon_el, "_e_sections", None):
-            return
-        e = mon_el._e_sections[0]
-        eps_a, kappa = float(e[0]), float(e[1])
-        snap = mon_el.sections[0].clone()              # don't perturb live state
-        frames.append([
-            (float(f.y), float(f.z),
-             float(f.material.get_response(eps_a - f.y * kappa)[0]),
-             float(eps_a - f.y * kappa))
-            for f in snap.fibers])
+        if capture_fibers and mon_el is not None \
+                and getattr(mon_el, "_e_sections", None):
+            e = mon_el._e_sections[0]
+            eps_a, kappa = float(e[0]), float(e[1])
+            snap = mon_el.sections[0].clone()          # don't perturb live state
+            frames.append([
+                (float(f.y), float(f.z),
+                 float(f.material.get_response(eps_a - f.y * kappa)[0]),
+                 float(eps_a - f.y * kappa))
+                for f in snap.fibers])
+        if capture_shape:
+            shape_frames.append({nid: (float(n.disp[0]), float(n.disp[1]))
+                                 for nid, n in m.nodes.items()})
+            damage_frames.append({eid: _peak_abs_strain(m.elements[eid])
+                                  for eid in fiber_members})
 
     def _step_cb(info):
         if on_step is not None:
             on_step({"step": info["step"], "num_steps": info["num_steps"],
                      "disp": abs(info["tracked"] or 0.0),
                      "shear": abs(info["lambda"])})
-        if capture_fibers:
+        if capture_fibers or capture_shape:
             _capture()
         if should_cancel is not None and should_cancel():
             return False                               # cooperative cancel
@@ -198,4 +211,7 @@ def run_pushover(project, *, control_node: int, control_dof: int,
               "shear": [abs(float(x)) for x in out["lambdas"]]}
     if capture_fibers:
         result["fiber_frames"] = frames
+    if capture_shape:
+        result["shape_frames"] = shape_frames
+        result["damage_frames"] = damage_frames
     return result

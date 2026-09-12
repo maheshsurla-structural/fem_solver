@@ -116,3 +116,50 @@ def test_dialog_fiber_contour(qapp):
         dlg._draw_fibers()
         dlg.step_slider.setValue(dlg.step_slider.maximum())
         dlg._draw_fibers()
+
+
+def test_dialog_deformed_shape(qapp):
+    """GUI-6 extras: after a captured run the deformed-shape tab has per-step
+    frames + hinge-state damage, the play button is enabled, and the shape draws
+    at both ends of the slider and at different scale factors — no crash."""
+    from pushover_dialog import PushoverDialog, PushoverWorker
+    p = _gsd_column_project()
+    dlg = PushoverDialog(None, p)
+    dlg.n_steps.setValue(12)
+    wk = PushoverWorker(p, dlg._kwargs())               # capture on by default
+    wk.progress.connect(dlg._on_progress)
+    wk.done.connect(dlg._on_done)
+    wk.run()
+    assert dlg._shape_frames and dlg._damage_frames
+    assert dlg.step_slider.isEnabled() and dlg.play_btn.isEnabled()
+    for step in (0, dlg.step_slider.maximum()):
+        dlg.step_slider.setValue(step)
+        dlg._draw_shape()
+    for scale in (0.0, 50.0):
+        dlg.shape_scale.setValue(scale)
+        dlg._draw_shape()
+
+
+def test_dialog_animation_advances_and_loops(qapp):
+    """The play button drives the shared step slider: _advance_step steps
+    forward and wraps back to 0 past the end (the animation loop)."""
+    from pushover_dialog import PushoverDialog, PushoverWorker
+    p = _gsd_column_project()
+    dlg = PushoverDialog(None, p)
+    dlg.n_steps.setValue(10)
+    wk = PushoverWorker(p, dlg._kwargs())
+    wk.progress.connect(dlg._on_progress)
+    wk.done.connect(dlg._on_done)
+    wk.run()
+    n = dlg.step_slider.maximum()
+    dlg.step_slider.setValue(0)
+    dlg._advance_step()
+    assert dlg.step_slider.value() == 1
+    dlg.step_slider.setValue(n)
+    dlg._advance_step()
+    assert dlg.step_slider.value() == 0                 # wrapped
+
+    dlg.play_btn.setChecked(True)                       # toggles the timer on
+    assert dlg._timer.isActive()
+    dlg.play_btn.setChecked(False)
+    assert not dlg._timer.isActive()

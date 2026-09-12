@@ -110,6 +110,50 @@ def test_pushover_capture_fibers():
     assert min(strains) < 0 < max(strains)
 
 
+def test_pushover_capture_shape():
+    """GUI-6 extras: per-step deformed shape + hinge-state (peak fiber strain)
+    frames — the tip deflection tracks the push and the base member's damage
+    grows monotonically as the plastic hinge forms."""
+    p = _circular_col_project()
+    res = NL.run_pushover(p, control_node=2, control_dof=1, target=0.05,
+                          n_steps=15, capture_shape=True)
+    sf = res["shape_frames"]
+    df = res["damage_frames"]
+    assert len(sf) == len(res["disp"]) == len(df)
+    # each frame is {node_id: (dx, dy)} for every node
+    assert set(sf[0]) == {n.id for n in p.nodes}
+    # the pushed tip (node 2, Uy) deflects further each step, up to target
+    tip = [f[2][1] for f in sf]
+    assert abs(tip[-1]) == pytest.approx(0.05, rel=0.05)
+    assert abs(tip[-1]) > abs(tip[0])
+    # damage keyed by the fiber member; peak strain grows into the inelastic range
+    assert set(df[0]) == {1}
+    assert df[-1][1] > df[0][1]
+    assert df[-1][1] > 2.0e-3                        # well past yield strain
+
+
+def test_pushover_capture_shape_and_fibers_together():
+    """Both capture flags coexist — shape/damage and fiber frames all present
+    and step-aligned (the dialog runs them together)."""
+    p = _circular_col_project()
+    res = NL.run_pushover(p, control_node=2, control_dof=1, target=0.04,
+                          n_steps=10, capture_fibers=True, capture_shape=True)
+    n = len(res["disp"])
+    assert len(res["fiber_frames"]) == n
+    assert len(res["shape_frames"]) == n
+    assert len(res["damage_frames"]) == n
+
+
+def test_pushover_no_capture_omits_frames():
+    """Without the capture flags the result carries only the curve."""
+    p = _circular_col_project()
+    res = NL.run_pushover(p, control_node=2, control_dof=1, target=0.03,
+                          n_steps=8)
+    assert "shape_frames" not in res
+    assert "damage_frames" not in res
+    assert "fiber_frames" not in res
+
+
 def test_pushover_with_axial_preload_runs():
     p = _circular_col_project()
     res = NL.run_pushover(p, control_node=2, control_dof=1, target=0.04,

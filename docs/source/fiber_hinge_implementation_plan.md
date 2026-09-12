@@ -719,6 +719,20 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
   heuristic, GUI circular section area = πR². 101 affected tests pass; helpers exported from
   `sections.response` (`public_api` unchanged). Unblocks **GUI‑2** (fiber‑mesh preview). Next: **GUI‑2**
   or **GUI‑5**.
+- 2026‑09‑12 — **GUI‑6 complete (deformed‑shape animation + hinge‑state coloring).** Finished the last
+  GUI‑6 items. Engine: `run_pushover(capture_shape=True)` snapshots, per step, the whole model's nodal
+  deformation (`{node: (dx, dy)}`) plus a per‑fiber‑member **hinge‑state** value = peak |fiber strain|
+  over the base section (`_peak_abs_strain`, from `_e_sections` — no live‑state perturbation); returns
+  `shape_frames` + `damage_frames`. Both capture flags coexist and stay step‑aligned. `PushoverDialog`
+  gained a third right‑pane tab, **Deformed shape**: light‑gray undeformed reference + the deformed
+  members colored by peak fiber strain (YlOrRd, "peak fiber strain" colorbar) at an adjustable
+  displacement scale, node markers on top. The step slider is now **shared** across the fiber‑stress and
+  deformed‑shape tabs, with a new **▶ Play/Pause** button (a `QTimer` auto‑advances and loops the steps)
+  — the genuine "step animation". Verified headless (offscreen) render: D=0.6 m/L=3 m column at 0.05 m
+  drift shows the base member dark‑red at ε≈5.6e‑3 (hinge formed). Tests: `test_pushover_capture_shape`,
+  `test_pushover_capture_shape_and_fibers_together`, `test_pushover_no_capture_omits_frames`,
+  `test_dialog_deformed_shape`, `test_dialog_animation_advances_and_loops` (18 desktop NL/pushover tests
+  pass). Next: **GUI‑3** (hinge assignment UI) / **GUI‑4** (nonlinear case manager), then **GUI‑7**.
 
 ---
 
@@ -772,7 +786,7 @@ Each row: **Background** (engine/infra) + **GUI**. Status ✅ exists · ⚠ part
 | GUI‑3 | Hinge property + assignment UI | P9 | ☐ | |
 | GUI‑4 | Nonlinear case manager (control/monitor/staged/cyclic/NL‑params) | P6, P7 | ☐ | |
 | GUI‑5 | Threaded solver + progress/convergence dock + cancel | (infra) | ☑ | 2026‑09‑12 — **compute** (`desktop/nonlinear.py`: `fiber_section_from_spec`/`build_nonlinear_model`/`run_pushover`) + **threaded UI**. Engine enabler: optional `step_callback` on `NonlinearStaticAnalysis` (per‑step hook; return False = cancel). `desktop/pushover_dialog.py` = `PushoverWorker` (QThread, streams progress, cooperative cancel) + `PushoverDialog` (inputs, progress bar, convergence log, Cancel, live base‑shear/disp curve); "Nonlinear pushover…" wired into the Analysis menu. Tests: `test_desktop_nonlinear.py` (7, incl. step_callback + cancel), `test_desktop_pushover_ui.py` (4, headless — wiring/worker/cancel/dialog). |
-| GUI‑6 | NL post‑processing (hysteresis, step slider/anim, fiber contour, hinge state) | P8, GUI‑5 | ◐ | 2026‑09‑12 — **fiber‑stress/strain contour + step slider** shipped. Engine: `BeamColumn2DCorotational` now stores per‑IP `_e_sections` (converged section deformations). `run_pushover(capture_fibers=True)` snapshots the monitored base section's per‑fiber (y,z,σ,ε) each step (from a clone — live state untouched). `PushoverDialog` gained a tabbed right pane (curve | fiber stress) with a **step slider** and a **stress/strain toggle**; shows the steel‑yield pattern (stress) and the plane‑section strain gradient + concrete crush (strain). Tests: `test_desktop_nonlinear.py::test_pushover_capture_fibers`, `test_desktop_pushover_ui.py::test_dialog_fiber_contour`. **Remaining: deformed‑shape step animation in the 3‑D model view + hinge‑state coloring.** |
+| GUI‑6 | NL post‑processing (hysteresis, step slider/anim, fiber contour, hinge state) | P8, GUI‑5 | ☑ | 2026‑09‑12 — **fiber‑stress/strain contour + step slider** then **deformed‑shape animation + hinge‑state coloring** shipped. Engine: `BeamColumn2DCorotational` stores per‑IP `_e_sections` (converged section deformations). `run_pushover(capture_fibers=True)` snapshots the base section's per‑fiber (y,z,σ,ε) each step (from a clone — live state untouched); `capture_shape=True` snapshots every node's (dx,dy) + per‑member peak \|fiber strain\| (`shape_frames`/`damage_frames`). `PushoverDialog` right pane = **curve \| fiber stress \| deformed shape** tabs sharing one **step slider** + a **▶ Play/Pause** `QTimer` animation; fiber tab has a stress/strain toggle (steel‑yield pattern / plane‑section gradient + concrete crush), deformed‑shape tab draws the deformed frame colored by peak fiber strain (hinge state) with an adjustable displacement scale over a gray undeformed reference. Tests: `test_pushover_capture_fibers`, `test_pushover_capture_shape`, `test_pushover_capture_shape_and_fibers_together`, `test_pushover_no_capture_omits_frames`; `test_dialog_fiber_contour`, `test_dialog_deformed_shape`, `test_dialog_animation_advances_and_loops`. |
 | GUI‑7 | Nonlinear report + export | GUI‑6 | ☐ | |
 | GUI‑I1 | Step‑indexed results model | (infra) | ☐ | underpins GUI‑6 |
 | GUI‑I2 | Project persistence for NL defs | (infra) | ☐ | |

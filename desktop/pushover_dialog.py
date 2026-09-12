@@ -13,9 +13,12 @@ Pure Qt + matplotlib (Agg canvas) — headless-constructible under
 from __future__ import annotations
 
 import numpy as np
+from matplotlib import colormaps
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as Canvas
+from matplotlib.cm import ScalarMappable
+from matplotlib.colors import Normalize
 from matplotlib.figure import Figure
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtCore import Qt, QThread, QTimer, Signal
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDoubleSpinBox,
                                QFormLayout, QHBoxLayout, QLabel, QPlainTextEdit,
                                QProgressBar, QPushButton, QSlider, QSpinBox,
@@ -116,9 +119,12 @@ class PushoverDialog(QDialog):
         form.addRow(row)
         outer.addWidget(left, 0)
 
-        # ---- right: tabs (pushover curve | fiber-stress contour) ----
+        # ---- right: tabs (curve | fiber stress | deformed shape) + shared step controls ----
         self._frames: list = []
-        self._cbar = None
+        self._shape_frames: list = []
+        self._damage_frames: list = []
+        right = QWidget()
+        rv = QVBoxLayout(right)
         tabs = QTabWidget()
 
         self._fig = Figure(figsize=(4.2, 3.4), layout="constrained")
@@ -126,32 +132,74 @@ class PushoverDialog(QDialog):
         self._canvas = Canvas(self._fig)
         tabs.addTab(self._canvas, "Pushover curve")
 
-        fib = QWidget()
-        fibv = QVBoxLayout(fib)
         self._ffig = Figure(figsize=(4.2, 3.4), layout="constrained")
         self._fax = self._ffig.add_subplot(111)
         self._fcanvas = Canvas(self._ffig)
-        fibv.addWidget(self._fcanvas, 1)
-        srow = QHBoxLayout()
+        tabs.addTab(self._fcanvas, "Fiber stress")
+
+        self._sfig = Figure(figsize=(4.2, 3.4), layout="constrained")
+        self._sax = self._sfig.add_subplot(111)
+        self._scanvas = Canvas(self._sfig)
+        tabs.addTab(self._scanvas, "Deformed shape")
+        self._tabs = tabs
+        rv.addWidget(tabs, 1)
+
+        # shared step controls (drive whichever tab is showing)
+        crow = QHBoxLayout()
+        self.play_btn = QPushButton("▶")               # ▶ play/pause
+        self.play_btn.setEnabled(False)
+        self.play_btn.setFixedWidth(32)
+        self.play_btn.setCheckable(True)
+        self.play_btn.toggled.connect(self._toggle_play)
+        self._timer = QTimer(self)
+        self._timer.setInterval(120)                        # ms per step
+        self._timer.timeout.connect(self._advance_step)
         self.step_slider = QSlider(Qt.Horizontal)
         self.step_slider.setEnabled(False)
-        self.step_slider.valueChanged.connect(self._draw_fibers)
+        self.step_slider.valueChanged.connect(self._on_step)
         self.step_lbl = QLabel("step —")
         self.fiber_mode = QComboBox()
         self.fiber_mode.addItems(["stress", "strain"])
         self.fiber_mode.currentIndexChanged.connect(self._draw_fibers)
-        srow.addWidget(QLabel("Step"))
-        srow.addWidget(self.step_slider, 1)
-        srow.addWidget(self.step_lbl)
-        srow.addWidget(self.fiber_mode)
-        fibv.addLayout(srow)
-        tabs.addTab(fib, "Fiber stress")
-        self._tabs = tabs
+        self.shape_scale = QDoubleSpinBox()
+        self.shape_scale.setRange(0.0, 1.0e6)
+        self.shape_scale.setValue(20.0)
+        self.shape_scale.valueChanged.connect(self._draw_shape)
+        crow.addWidget(self.play_btn)
+        crow.addWidget(QLabel("Step"))
+        crow.addWidget(self.step_slider, 1)
+        crow.addWidget(self.step_lbl)
+        crow.addWidget(QLabel("fiber:"))
+        crow.addWidget(self.fiber_mode)
+        crow.addWidget(QLabel("shape ×"))
+        crow.addWidget(self.shape_scale)
+        rv.addLayout(crow)
 
-        self._canvas.setMinimumWidth(400)
-        outer.addWidget(tabs, 1)
+        self._canvas.setMinimumWidth(420)
+        outer.addWidget(right, 1)
         self._draw_curve()
         self._draw_fibers()
+        self._draw_shape()
+
+    def _on_step(self, *_) -> None:
+        self._draw_fibers()
+        self._draw_shape()
+
+    # ------------------------------------------------ step animation
+    def _toggle_play(self, on: bool) -> None:
+        self.play_btn.setText("❚❚" if on else "▶")   # ❚❚ / ▶
+        if on:
+            self._timer.start()
+        else:
+            self._timer.stop()
+
+    def _advance_step(self) -> None:
+        n = self.step_slider.maximum()
+        if n <= 0:
+            self.play_btn.setChecked(False)
+            return
+        nxt = self.step_slider.value() + 1
+        self.step_slider.setValue(0 if nxt > n else nxt)   # loop
 
     # ------------------------------------------------ small widget helpers
     @staticmethod
@@ -185,9 +233,12 @@ class PushoverDialog(QDialog):
             axial_node=(self.axial_node.currentData() if axial else None),
             axial_dof=self.axial_dof.currentData(),
             capture_fibers=self.capture.isChecked(),
+            capture_shape=self.capture.isChecked(),
         )
 
     def _start(self) -> None:
+        self.play_btn.setChecked(False)                      # stop any animation
+        self.play_btn.setEnabled(False)
         self._disp, self._shear = [], []
         self.log.clear()
         self.bar.setRange(0, int(self.n_steps.value()))
@@ -218,11 +269,15 @@ class PushoverDialog(QDialog):
         self._disp = res.get("disp", self._disp)
         self._shear = res.get("shear", self._shear)
         self._frames = res.get("fiber_frames", [])
-        if self._frames:
+        self._shape_frames = res.get("shape_frames", [])
+        self._damage_frames = res.get("damage_frames", [])
+        n = max(len(self._frames), len(self._shape_frames))
+        if n:
             self.step_slider.setEnabled(True)
-            self.step_slider.setRange(0, len(self._frames) - 1)
-            self.step_slider.setValue(len(self._frames) - 1)   # show last step
-            self._draw_fibers()
+            self.play_btn.setEnabled(True)
+            self.step_slider.setRange(0, n - 1)
+            self.step_slider.setValue(n - 1)                   # show last step
+            self._on_step()
         self._finish(f"done — {len(self._disp)} steps, "
                      f"V_max = {max(self._shear) if self._shear else 0:.4g}")
 
@@ -279,3 +334,54 @@ class PushoverDialog(QDialog):
                      f"(d = {d:.4g})", fontsize=9)
         self.step_lbl.setText(f"step {step + 1}/{len(self._frames)}")
         self._fcanvas.draw_idle()
+
+    def _draw_shape(self, *_) -> None:
+        self._sfig.clear()
+        ax = self._sfig.add_subplot(111)
+        self._sax = ax
+        if not self._shape_frames:
+            ax.text(0.5, 0.5,
+                    "(run with 'Record fiber response' to see the deformed shape)",
+                    ha="center", va="center", transform=ax.transAxes,
+                    fontsize=8, color="0.5")
+            ax.set_axis_off()
+            self._scanvas.draw_idle()
+            return
+        step = max(0, min(self.step_slider.value(), len(self._shape_frames) - 1))
+        frame = self._shape_frames[step]
+        dmg = self._damage_frames[step] if step < len(self._damage_frames) else {}
+        scale = float(self.shape_scale.value())
+        nodes = {n.id: (n.x, n.y) for n in self._project.nodes}
+
+        # undeformed reference (light gray)
+        for mb in self._project.members:
+            (x1, y1), (x2, y2) = nodes[mb.n1], nodes[mb.n2]
+            ax.plot([x1, x2], [y1, y2], "-", color="0.85", lw=1.0, zorder=1)
+
+        # deformed, members colored by peak fiber strain (damage)
+        vmax = max([abs(v) for v in dmg.values()] + [1e-9])
+        cmap = colormaps["YlOrRd"]
+        norm = Normalize(0.0, vmax)
+
+        def _d(nid):
+            dx, dy = frame.get(nid, (0.0, 0.0))
+            return nodes[nid][0] + dx * scale, nodes[nid][1] + dy * scale
+
+        for mb in self._project.members:
+            (dx1, dy1), (dx2, dy2) = _d(mb.n1), _d(mb.n2)
+            color = cmap(norm(dmg[mb.id])) if mb.id in dmg else "0.4"
+            ax.plot([dx1, dx2], [dy1, dy2], "-", color=color, lw=3.0, zorder=2)
+        px = [_d(n.id)[0] for n in self._project.nodes]
+        py = [_d(n.id)[1] for n in self._project.nodes]
+        ax.scatter(px, py, s=14, color="k", zorder=3)
+
+        if dmg:
+            sm = ScalarMappable(norm=norm, cmap=cmap)
+            sm.set_array([])
+            self._sfig.colorbar(sm, ax=ax, label="peak fiber strain")
+        ax.set_aspect("equal", "datalim")
+        ax.set_xlabel(f"x [{self._project.length_unit}]")
+        ax.set_ylabel(f"y [{self._project.length_unit}]")
+        ax.set_title(f"Deformed shape · step {step + 1}/{len(self._shape_frames)} "
+                     f"(×{scale:.0f})", fontsize=9)
+        self._scanvas.draw_idle()
