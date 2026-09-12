@@ -864,7 +864,8 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
   force‑based singular‑flexibility `RuntimeError` (a genuine formulation limit). `test_adaptive_substep.py`
   (5): a too‑large step that aborts without substep completes with it and reaches the fine‑reference
   tip/base‑shear; still raises when even the smallest sub‑step can't converge. Full suite 2561 pass
-  (only the 4 pre‑existing order‑8 quadrature failures).
+   (only the 4 pre‑existing order‑8 quadrature failures).
+- 2026 — **C3 (engine/compute) shipped: nonlinear dynamic time‑history.** `desktop/nonlinear.run_time_history` runs the fiber model under rigid‑base ground acceleration: mass from `density` (rho·A·L, new `build_nonlinear_model(density=…)` giving the element materials `rho`), Rayleigh damping to `zeta` at the first two modal frequencies (`EigenAnalysis` → `RayleighDamping.from_modes`), base excitation `−M·ι·ü_g(t)` via `ground_motion_force`, and `NonlinearTransientAnalysis` (Newmark+Newton). Returns the monitored DOF's disp/vel/accel history + peak drift; SI force scale means a looser default `tol` (in force units) than the static default. Verified: runs to completion on a synthetic accelerogram, finite response, scales with excitation, sublinear (yielding) at high amplitude. `test_desktop_timehistory.py` (3). Remaining: the GUI `time_history` case type (record import + damping/direction inputs + response‑history plot).
 
 ---
 
@@ -1015,7 +1016,7 @@ current tree, not aspirational. Legend: ☐ todo · ◐ partial · ☑ done.
 |---|---|---|---|
 | **C1** | **Confined core / unconfined cover split** in the analysis fiber section | ☑ | 2026 — the nonlinear pushover now builds a **confined Mander core + unconfined cover** through the **same** path as the Section Designer's confined M‑φ (unified, per §15): `desktop/nonlinear.fiber_section_from_spec` delegates to `section_gui_core._confined_fiber_section`, with the confinement `conf` dict from the shared `_section_confinement` (tie **Link** group + geometry, or a manual override). Confinement helpers (`_parse_legs`/`_auto_section_confinement`/`_section_confinement`) lifted from the GUI into the Qt‑free core (shims left in `section_designer`). Unconfined sections keep the single‑law path (unchanged). `test_desktop_nonlinear.py` +5. *(An earlier draft added parallel `Spec.conf_*` fields; removed in favour of the one tie‑group source.)* **Confinement *input UI* + core/cover preview = G‑S4.** |
 | **C2** | **3‑D nonlinear in the app** (P‑M2‑M3) | ☐ | `ForceBeamColumn3D` (P7) exists; `desktop/nonlinear.build_nonlinear_model` raises for `ndm≠2`. Needs 3‑D fiber section + element wiring + 3‑D control/monitor UI. |
-| **C3** | **Dynamic time‑history** (true transient: mass + damping) for fiber elements | ☐ | Engine has `nonlinear_transient.py`; not wired to the fiber‑hinge workflow. Case manager is quasi‑static (`monotonic`\|`cyclic`). Adds a `time_history` protocol + ground‑motion input + Rayleigh/modal damping. §1.3 deferred; the natural seismic next step. |
+| **C3** | **Dynamic time‑history** (true transient: mass + damping) for fiber elements | ◐ | **Engine/compute done** — `desktop/nonlinear.run_time_history(project, accel, dt, …)` runs a nonlinear dynamic base‑excitation analysis on the fiber model: mass from `density` (rho·A·L, via `build_nonlinear_model(density=…)`), Rayleigh damping calibrated to `zeta` at the first two modal frequencies (`EigenAnalysis`+`RayleighDamping.from_modes`), base motion via `ground_motion_force` (`−M·ι·ü_g`), integrated with `NonlinearTransientAnalysis` (Newmark+Newton). Returns the monitored DOF's disp/vel/accel history + peak. `test_desktop_timehistory.py` (3). **Remaining:** a GUI `time_history` case type (ground‑motion record import, `direction`/`zeta`/`density`, response‑history plot). |
 | **C4** | **Adaptive step‑cutting / substepping** on non‑convergence | ☑ | 2026 — `NonlinearStaticAnalysis(substep=True)` halves the increment and retries on `NotConvergedError`, subdividing to cover the nominal step then growing back (up to `max_substep_halvings`). Integrators advertise `supports_substep` + honour `set_step_scale` (LoadControl, scalar DisplacementControl; a cyclic schedule opts out). Snapshots/restores node `disp` on a failed sub‑attempt (the drifted trial isn't otherwise rolled back). Opt‑in (default off ⇒ existing "raise on non‑convergence" contract unchanged); the GUI push runs enable it. `test_adaptive_substep.py` (5): a step that fails with a small max_iter now completes and reaches the fine‑reference target/base‑shear; still raises when hopeless. Note: only rescues `NotConvergedError`, not the force‑based singular‑flexibility `RuntimeError` (a true limit). |
 | **C5** | **Hinge acceptance criteria** (ASCE 41 IO/LS/CP; a/b/c) | ☐ | Damage shown as peak fiber strain only. Add strain/rotation acceptance limits + hinge‑state classification. |
 
@@ -1049,7 +1050,7 @@ persistence + main‑view scrubbing — makes the tool feel finished) → **C4**
 |---|---|---|
 | C1 confined core/cover | ☑ | 2026 — unified onto section_gui_core._confined_fiber_section (one tie-group source) |
 | C2 3‑D nonlinear GUI | ☐ | |
-| C3 dynamic time‑history | ☐ | |
+| C3 dynamic time‑history | ◐ | 2026 — engine run_time_history done; GUI case type remains |
 | C4 adaptive step‑cutting | ☑ | 2026 — NonlinearStaticAnalysis(substep=True); GUI runs enable it |
 | C5 acceptance criteria | ☐ | |
 | G‑S1 main‑view scrubbing | ☑ | 2026 — ModelView.show_nl_step + Analysis-steps dock |

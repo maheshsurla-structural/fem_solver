@@ -72,10 +72,15 @@ def fiber_section_from_spec(spec, *, materials=None, target: int = 1200,
     return FiberSection2D(fibers)
 
 
-def build_nonlinear_model(project, *, materials=None):
+def build_nonlinear_model(project, *, materials=None, density: float = 0.0):
     """Compile ``project`` into a nonlinear ``femsolver.Model``: members whose
     section carries a ``gsd_spec`` become fiber ``ForceBeamColumn2DCorotational``;
     the rest stay elastic ``BeamColumn2D``. Raises if no fiber section is found.
+
+    ``density`` (mass per unit volume) is assigned to every element's material
+    so the model carries consistent mass (element mass = rho·A·L) — needed for a
+    dynamic time-history (plan §16 C3). Default 0 (massless) leaves the static
+    pushover behaviour unchanged.
     """
     from femsolver import (BeamColumn2D, BeamColumn2DCorotational,
                            ElasticIsotropic, Model)
@@ -83,10 +88,11 @@ def build_nonlinear_model(project, *, materials=None):
 
     if project.ndm != 2:
         raise ValueError("nonlinear fiber model is 2-D only for now")
+    rho = float(density)
     m = Model(ndm=2, ndf=3)
     mats = {}
     for mat in project.materials:
-        obj = ElasticIsotropic(mat.id, E=mat.E, nu=mat.nu)
+        obj = ElasticIsotropic(mat.id, E=mat.E, nu=mat.nu, rho=rho)
         m.add_material(obj)
         mats[mat.id] = obj
     for nd in project.nodes:
@@ -103,7 +109,7 @@ def build_nonlinear_model(project, *, materials=None):
                 Ec = _gsd_modulus(sec.gsd_spec)
             except Exception:                          # noqa: BLE001
                 Ec = mats[mb.material].E if mb.material in mats else 3.0e10
-            base = ElasticIsotropic(100_000 + mb.id, E=Ec, nu=0.2)
+            base = ElasticIsotropic(100_000 + mb.id, E=Ec, nu=0.2, rho=rho)
             m.add_material(base)
             hinge = (project.hinge(mb.hinge)
                      if getattr(mb, "hinge", None) else None)
@@ -291,6 +297,87 @@ def run_pushover(project, *, control_node: int, control_dof: int,
               "protocol": "monotonic"}
     cap.result_into(result)
     return result
+
+
+# ----------------------------------------------------- dynamic time-history (C3)
+
+def run_time_history(project, accel, dt, *, control_node: int,
+                     control_dof: int = 1, direction: str = "y",
+                     zeta: float = 0.05, density: float = 2400.0,
+                     num_steps: int | None = None, tol: float = 1.0,
+                     max_iter: int = 30, materials=None) -> dict:
+    """Nonlinear **dynamic time-history** of the fiber model under rigid-base
+    ground acceleration (plan §16 C3).
+
+    Applies the base excitation ``accel`` (a ground-acceleration record sampled
+    at ``dt``) in ``direction`` via the standard ``-M·ι·ü_g(t)`` inertia load
+    (:func:`ground_motion_force`), with Rayleigh damping calibrated to ``zeta``
+    at the first two natural modes (from an eigen analysis of the mass/stiffness
+    model), and integrates with Newmark + Newton (``NonlinearTransientAnalysis``).
+    Mass comes from ``density`` (rho·A·L per element).
+
+    Returns ``{"times", "disp", "velocity", "acceleration", "dt", "peak_disp",
+    "protocol": "time_history"}`` — the monitored DOF's response history (the
+    standard seismic demand). ``control_dof`` defaults to 1 (Uy); ``direction``
+    sets the excitation axis.
+    """
+    import numpy as np
+    from femsolver import EigenAnalysis, NonlinearTransientAnalysis, RayleighDamping
+    from femsolver.analysis.response_spectrum import ground_motion_force
+
+    accel = np.asarray(accel, dtype=float).ravel()
+    if accel.size < 2:
+        raise ValueError("accel must have at least two samples")
+    n = int(num_steps) if num_steps is not None else accel.size - 1
+
+    m = build_nonlinear_model(project, materials=materials, density=density)
+    m.number_dofs()
+    if m.neq == 0:
+        raise RuntimeError("model is fully constrained — no dynamic DOFs")
+
+    # Rayleigh damping from the two lowest distinct modes at ratio zeta.
+    n_modes = max(1, min(4, m.neq - 1))
+    eig = EigenAnalysis(m, num_modes=n_modes).run()
+    omegas = [2.0 * np.pi * float(f) for f in eig["frequencies_hz"]
+              if f > 1e-9]
+    distinct = []
+    for w in omegas:
+        if all(abs(w - d) > 1e-6 * max(w, 1.0) for d in distinct):
+            distinct.append(w)
+    if len(distinct) >= 2:
+        damping = RayleighDamping.from_modes(distinct[0], zeta,
+                                             distinct[1], zeta)
+    elif distinct:                       # single mode -> mass-proportional only
+        damping = RayleighDamping(alpha_M=2.0 * zeta * distinct[0], alpha_K=0.0)
+    else:
+        damping = None
+
+    def accel_fn(t):
+        x = t / dt
+        i = int(x)
+        if i < 0:
+            return float(accel[0])
+        if i >= accel.size - 1:
+            return float(accel[-1])
+        frac = x - i
+        return float(accel[i] * (1.0 - frac) + accel[i + 1] * frac)
+
+    load_fn = ground_motion_force(m, direction=direction, accel_function=accel_fn)
+    out = NonlinearTransientAnalysis(
+        m, num_steps=n, dt=dt, damping=damping, load_function=load_fn,
+        tol=tol, max_iter=max_iter,
+        track=(control_node, control_dof)).run()
+
+    disp = [float(x) for x in out["tracked_disp"]]
+    return {
+        "times": [float(t) for t in out["times"]],
+        "disp": disp,
+        "velocity": [float(v) for v in out["tracked_velocity"]],
+        "acceleration": [float(a) for a in out["tracked_acceleration"]],
+        "dt": float(dt),
+        "peak_disp": max((abs(d) for d in disp), default=0.0),
+        "protocol": "time_history",
+    }
 
 
 # --------------------------------------------------------------- case runner
