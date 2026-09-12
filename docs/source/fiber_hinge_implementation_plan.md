@@ -509,7 +509,7 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
 | P4 | G8 recorders + benchmark M‑φ | ☑ | 2026‑09‑12 — added `results/recorders.py` (`SectionRecorder`/`FiberRecorder`/`NodeRecorder`, CSV) + fibre‑consistent `fiber_section_moment_curvature` (`sections/response/fiber_mphi.py`); benchmark section M‑φ at P=2400 kip (N held to 1e‑11, M→32.9k kip‑ft). `test_fiber_mphi_recorders.py` (8), example 82. Golden Midas/CSI M‑φ (§7.2) pending user export; §7.4 cross‑checks pass. Full suite 2478 pass |
 | P5 | Axial‑load benchmark (Stage 1) | ☑ | 2026‑09‑12 — two‑node `ForceBeamColumn2DCorotational` + Caltrans fiber section; load‑control preload holds 2400 kip (base reaction exact), EA fiber↔hand 0.9959, working‑point strain 1.04e‑4 (<ε_c0); section axial capacity (imposed strain, N=Σσ·A) peaks 41,291 kip @ ε≈0.0047 then softens to 32,772 @ 0.02. `test_fiber_hinge_axial.py` (3), example 83. Golden Midas/CSI axial (§7.1) pending export |
 | P6 | G6/G7 staged + protocols; monotonic pushover | ☑ | 2026‑09‑12 — `analysis/staged.py` (`StagedAnalysis`, continuation + constant‑load hold via new `StaticIntegrator.set_constant_force` + `NonlinearStaticAnalysis(keep_state, const_force)`) + `analysis/protocols.py` (`monotonic`/`stepped_cyclic`/`from_time_function`). Benchmark staged pushover holds P=2400 kip exactly through the lateral push; base‑shear·L peak 32,825 kip‑ft matches the P4 M‑φ peak (0.2%). Guarded ConcreteMander softening‑tail overflow. `test_fiber_hinge_pushover.py` (6), example 84. Full suite 2487 pass |
-| P7 | G5 3‑D force‑based + circular 3‑D; P‑M2‑M3 | ☐ | |
+| P7 | G5 3‑D force‑based + circular 3‑D; P‑M2‑M3 | ☑ | 2026‑09‑12 — `elements/beam_force_3d.py` `ForceBeamColumn3D` (small‑disp, 6‑DOF basic system, NF state determination). Elastic K == displacement‑based to 2e‑16; n_ip‑invariant (≥3); reduces to 2‑D under uniaxial bending to 1e‑7; biaxial 45° push gives Mz=−My, resultant = uniaxial capacity. `FiberSection3D.circular` from P1. `test_force_beam_3d.py` (4), example 85. Full suite 2490 pass |
 | P8 | Cyclic benchmark + energy | ☐ | |
 | P9 | G4 fiber‑hinge element idiom | ☐ | |
 | P10 | G9 importers + regression harness | ☐ | |
@@ -614,6 +614,20 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
   `test_fiber_hinge_pushover.py` (6); example `84_fiber_hinge_pushover.py`; results in §7.2. Full
   suite 2487 pass (only the 4 pre‑existing quadrature failures). Next: **P7** (3‑D force‑based +
   circular 3‑D; P‑M2‑M3) or **P8** (cyclic benchmark + energy).
+- 2026‑09‑12 — **P7 shipped (G5).** Added `ForceBeamColumn3D` (`elements/beam_force_3d.py`): a
+  small‑displacement force‑based 3‑D beam‑column (subclasses `BeamColumn3D`), giving genuine
+  **P‑M2‑M3** with one element per member. 6‑DOF basic system
+  `v=[u, θz1, θz2, θy1, θy2, φ]` / `q=[N, Mz1, Mz2, My1, My2, T]`; constant basic‑to‑local matrix
+  `a` (`v=a·u_local`, `f_local=aᵀq`), 4×6 force interpolation `b(x)` (bending linear, N/T constant),
+  and the Neuenhofer‑Filippou state‑determination loop (same structure as the 2‑D element, 4 section
+  resultants). Small‑disp chosen to match the benchmark's `GeoNonLin=None`. Verified: elastic K
+  equals the displacement‑based closed form to 2e‑16 and is n_ip‑invariant (≥3 IPs); under uniaxial
+  bending it reproduces the 2‑D force‑based response to ~1e‑7; a 45° biaxial push develops
+  `Mz = −My` with resultant equal to the uniaxial capacity (symmetric circular section).
+  `FiberSection3D.circular` was already shipped in P1. `test_force_beam_3d.py` (4); example
+  `85_fiber_hinge_pmm_3d.py`; `ForceBeamColumn3D` exported top‑level + `public_api.txt`. Full suite
+  2490 pass (only the 4 pre‑existing quadrature failures). Next: **P8** (cyclic benchmark + energy)
+  or **P9** (finite‑length fiber‑hinge element idiom).
 
 ---
 

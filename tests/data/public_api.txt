@@ -50,6 +50,7 @@ FiberSection3D
 FiniteJ2Plasticity3D
 FootingImpedance
 ForceBeamColumn2DCorotational
+ForceBeamColumn3D
 ForceEnvelope
 FragilityFit
 GeneralizedAlpha
