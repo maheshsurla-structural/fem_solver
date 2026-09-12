@@ -301,6 +301,15 @@ class ConcreteMander(UniaxialMaterial):
         fpc_eff = self.fpc * ratio       # signed (negative), reduced in magnitude
         x = eps / self.eps_c0
         r = self.r
+        # Guard the deep softening tail: for an absurd compressive strain
+        # (only reached by a diverging element-state-determination probe, never
+        # a physical step) ``x ** r`` overflows. There the Popovics stress
+        # ``fpc*x*r/(r-1+x^r)`` tends to ``fpc*r*x^(1-r) -> 0``; return that
+        # finite value (Et -> 0) so the solver fails gracefully instead of
+        # crashing with OverflowError. The threshold is far outside any real
+        # response, so normal results are unchanged.
+        if x > 1.0 and r * math.log10(x) > 250.0:
+            return fpc_eff * r * x ** (1.0 - r), 0.0
         denom = r - 1.0 + x ** r
         sigma = fpc_eff * x * r / denom
         df_dx = r * (r - 1.0) * (1.0 - x ** r) / (denom * denom)

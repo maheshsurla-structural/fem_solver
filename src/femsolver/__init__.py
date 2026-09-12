@@ -276,6 +276,12 @@ from femsolver.analysis.parallel_assembler import (
     assemble_stiffness_parallel,
 )
 from femsolver.analysis.nonlinear_static import NonlinearStaticAnalysis
+from femsolver.analysis.staged import StagedAnalysis
+from femsolver.analysis.protocols import (
+    from_time_function,
+    monotonic,
+    stepped_cyclic,
+)
 from femsolver.analysis.nonlinear_transient import NonlinearTransientAnalysis
 from femsolver.analysis.response_spectrum import (
     ResponseSpectrum,
@@ -398,6 +404,10 @@ __all__ = [
     "EigenAnalysis",
     "LinearBucklingAnalysis",
     "NonlinearStaticAnalysis",
+    "StagedAnalysis",
+    "monotonic",
+    "stepped_cyclic",
+    "from_time_function",
     "TransientAnalysis",
     "TransientIntegrator",
     "Newmark",

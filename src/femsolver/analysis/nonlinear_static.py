@@ -144,10 +144,19 @@ class NonlinearStaticAnalysis:
         max_iter: int = 25,
         numberer: str = "default",
         track: tuple[int, int] | None = None,
+        keep_state: bool = False,
+        const_force: "np.ndarray | None" = None,
     ):
         if num_steps < 1:
             raise ValueError("num_steps must be >= 1")
         self.model = model
+        # keep_state: continue from the model's current committed node/element
+        # state (do NOT zero displacements) -- used for staged continuation.
+        # const_force: a constant load vector held in the residual on top of
+        # the scaled pattern (e.g. a held axial preload). Both are wired by
+        # StagedAnalysis; defaults reproduce the standalone behaviour exactly.
+        self.keep_state = bool(keep_state)
+        self.const_force = const_force
         self.num_steps = int(num_steps)
         self.integrator = _resolve_integrator(integrator, dlambda)
         self.algorithm = _resolve_algorithm(algorithm)
@@ -166,7 +175,8 @@ class NonlinearStaticAnalysis:
     # ------------------------------------------------------------------ run
     def run(self) -> dict:
         m = self.model
-        m.reset_results()
+        if not self.keep_state:
+            m.reset_results()
         if self.numberer == "rcm":
             rcm_renumber(m)
         else:
@@ -175,6 +185,8 @@ class NonlinearStaticAnalysis:
             raise RuntimeError("no free DOFs — model is fully constrained or empty")
 
         self.integrator.bind(m)
+        if self.const_force is not None:
+            self.integrator.set_constant_force(self.const_force)
 
         # state vector lives on Node.disp; we manipulate it via scatter_du
         def scatter_du(du: np.ndarray) -> None:

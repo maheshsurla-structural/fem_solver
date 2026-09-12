@@ -323,7 +323,7 @@ class FiberHingeBeamColumn2D(Element):
 > the *hinge idiom*. Recommended: implement as **beam‑with‑hinges** reusing the force‑based
 > state determination at the hinge integration points. Do P1–P3 first; both idioms share them.
 
-### 5.5 Staged analysis & protocols — `analysis/staged.py` + `analysis/protocols.py` (G6/G7)
+### 5.5 Staged analysis & protocols — ✅ SHIPPED in P6 (`analysis/staged.py` + `analysis/protocols.py`, G6/G7)
 ```python
 # G6 — run case B continuing from case A's committed state (no unload)
 class StagedAnalysis:
@@ -335,8 +335,12 @@ def monotonic(target, n_steps) -> np.ndarray
 def stepped_cyclic(amplitudes=(0.25,0.5,0.75,1.0), cycles=1, pts_per_cycle=...) -> np.ndarray
 def from_time_function(times, values, dt) -> np.ndarray
 ```
-Confirm whether `NonlinearStaticAnalysis` already continues from a model's committed state (it
-operates on live `Node`/element state). If yes, `StagedAnalysis` is a thin orchestrator.
+> **As‑built note (P6):** `NonlinearStaticAnalysis` did **not** continue for free — `run()` calls
+> `reset_results()` (zeroes node disp) and its residual scales a single pattern (`λ·F_ref`). So P6
+> added two small, backward‑compatible primitives: `StaticIntegrator.set_constant_force` (residual →
+> `F_const + λ·F_ref − f_int`) and `NonlinearStaticAnalysis(keep_state=…, const_force=…)`.
+> `StagedAnalysis` is then the orchestrator: keep state between stages, fold each converged stage's
+> applied load into `F_const`, clear the pattern for the next stage.
 
 ### 5.6 Recorders — ✅ SHIPPED in P4 (`results/recorders.py`, G8)
 ```python
@@ -405,6 +409,13 @@ peak/ultimate ±10%; cyclic energy per loop ±15%. Justify any looser tolerance 
 ### 7.2 Monotonic M‑φ and pushover
 - Section M‑φ at N=2400 kip; column base‑shear vs tip‑displacement.
 - Golden: `TBD`.
+- **Our result (P6, 2026‑09‑12, no external data yet):** staged pushover (hold
+  P=2400 kip, displacement‑control lateral tip). Axial reaction held at 2400.0
+  kip throughout. Base shear rises with a clear yield knee — 3370 kip @ 0.02 in,
+  5649 @ 0.04, 7447 @ 0.09, 8039 @ 0.15 in — and `V·L` at the peak (32,825
+  kip‑ft) matches the P4 section M‑φ peak (~32,900 kip‑ft) to 0.2%, confirming
+  the element pushover and the section M‑φ are the same response. Paste
+  Midas/CSI base‑shear/tip‑disp here to lock the regression.
 
 ### 7.3 Cyclic
 - Stepped ±0.25/0.5/0.75/1.0 in; loop shapes, peak force per amplitude, dissipated energy.
@@ -497,7 +508,7 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
 | P3 | G3 Caltrans/Park steel | ☑ | 2026‑09‑12 — verified the monotonic Park backbone (`UniaxialReinforcingSteel`) hits §2.2 (eps_sh,f_y)=(0.0075,68) & (eps_su,f_su)=(0.09,95); added cyclic `ReinforcingSteelKinematic` (kinematic hardening over the same backbone; monotonic reproduces it to 1e‑13, elastic unload = E, Bauschinger shift). `test_uniaxial_materials.py` +7; example 81; full suite 2470 pass |
 | P4 | G8 recorders + benchmark M‑φ | ☑ | 2026‑09‑12 — added `results/recorders.py` (`SectionRecorder`/`FiberRecorder`/`NodeRecorder`, CSV) + fibre‑consistent `fiber_section_moment_curvature` (`sections/response/fiber_mphi.py`); benchmark section M‑φ at P=2400 kip (N held to 1e‑11, M→32.9k kip‑ft). `test_fiber_mphi_recorders.py` (8), example 82. Golden Midas/CSI M‑φ (§7.2) pending user export; §7.4 cross‑checks pass. Full suite 2478 pass |
 | P5 | Axial‑load benchmark (Stage 1) | ☑ | 2026‑09‑12 — two‑node `ForceBeamColumn2DCorotational` + Caltrans fiber section; load‑control preload holds 2400 kip (base reaction exact), EA fiber↔hand 0.9959, working‑point strain 1.04e‑4 (<ε_c0); section axial capacity (imposed strain, N=Σσ·A) peaks 41,291 kip @ ε≈0.0047 then softens to 32,772 @ 0.02. `test_fiber_hinge_axial.py` (3), example 83. Golden Midas/CSI axial (§7.1) pending export |
-| P6 | G6/G7 staged + protocols; monotonic pushover | ☐ | |
+| P6 | G6/G7 staged + protocols; monotonic pushover | ☑ | 2026‑09‑12 — `analysis/staged.py` (`StagedAnalysis`, continuation + constant‑load hold via new `StaticIntegrator.set_constant_force` + `NonlinearStaticAnalysis(keep_state, const_force)`) + `analysis/protocols.py` (`monotonic`/`stepped_cyclic`/`from_time_function`). Benchmark staged pushover holds P=2400 kip exactly through the lateral push; base‑shear·L peak 32,825 kip‑ft matches the P4 M‑φ peak (0.2%). Guarded ConcreteMander softening‑tail overflow. `test_fiber_hinge_pushover.py` (6), example 84. Full suite 2487 pass |
 | P7 | G5 3‑D force‑based + circular 3‑D; P‑M2‑M3 | ☐ | |
 | P8 | Cyclic benchmark + energy | ☐ | |
 | P9 | G4 fiber‑hinge element idiom | ☐ | |
@@ -587,6 +598,22 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
   `test_fiber_hinge_axial.py` (3); example `83_fiber_hinge_axial_test.py`; results recorded in §7.1.
   Full suite 2481 pass (only the 4 pre‑existing quadrature failures). Next: **P6** (staged analysis
   + protocols; monotonic pushover) or **P7** (3‑D force‑based + circular 3‑D; P‑M2‑M3).
+- 2026‑09‑12 — **P6 shipped (G6 + G7 + monotonic pushover).** `analysis/protocols.py` (G7):
+  `monotonic`, `stepped_cyclic` (±0.25…1.0‑style growing cycles), `from_time_function` — pure
+  target‑history generators. `analysis/staged.py` (G6): `StagedAnalysis` runs sequential stages on
+  one model, continuing from committed state and holding earlier stages' loads constant. This needed
+  two small, backward‑compatible core primitives: `StaticIntegrator.set_constant_force` (residual
+  becomes `F_const + λ·F_ref − f_int`) and `NonlinearStaticAnalysis(keep_state=…, const_force=…)`
+  (skip `reset_results`, pass the baseline). Verified the benchmark staged pushover: stage 1 applies
+  P=2400 kip (load control), stage 2 holds it (axial reaction stays 2400.0 kip) and pushes the tip
+  laterally (displacement control) — base shear yields, and `V·L` peak (32,825 kip‑ft) matches the
+  P4 section M‑φ peak to 0.2% (element pushover ≡ section M‑φ). Also guarded a `ConcreteMander`
+  softening‑tail `OverflowError` reachable only by a diverging force‑based state‑determination probe
+  (returns the finite asymptotic σ→0; normal results unchanged). All new top‑level exports
+  (`StagedAnalysis`, `monotonic`, `stepped_cyclic`, `from_time_function`) added to `public_api.txt`.
+  `test_fiber_hinge_pushover.py` (6); example `84_fiber_hinge_pushover.py`; results in §7.2. Full
+  suite 2487 pass (only the 4 pre‑existing quadrature failures). Next: **P7** (3‑D force‑based +
+  circular 3‑D; P‑M2‑M3) or **P8** (cyclic benchmark + energy).
 
 ---
 

@@ -60,7 +60,20 @@ class StaticIntegrator(ABC):
     def __init__(self):
         self.model = None
         self._F_ref: np.ndarray | None = None
+        self._F_const: np.ndarray | None = None
         self.lambd: float = 0.0
+
+    def set_constant_force(self, F_const: np.ndarray | None) -> None:
+        """Set a constant (unscaled) load vector held in the residual on top
+        of the scaled reference pattern -- e.g. a gravity/axial preload held
+        while a later stage is pushed. ``None`` clears it. Used by
+        :class:`~femsolver.analysis.staged.StagedAnalysis` to carry a prior
+        stage's converged load into the next stage."""
+        if F_const is None:
+            self._F_const = None
+            return
+        F_const = np.asarray(F_const, dtype=float).ravel()
+        self._F_const = F_const
 
     def bind(self, model) -> None:
         """Capture the reference load pattern. Called once at the start of
@@ -94,9 +107,14 @@ class StaticIntegrator(ABC):
         return _assemble_tangent(self.model)
 
     def residual(self) -> np.ndarray:
-        """Return ``R = lambda * F_ref - f_int(u)`` at the current state."""
+        """Return ``R = F_const + lambda * F_ref - f_int(u)`` at the current
+        state. ``F_const`` (default zero) is a constant load held on top of the
+        scaled reference pattern (see :meth:`set_constant_force`)."""
         f_int = _assemble_internal_force(self.model)
-        return self.lambd * self.F_ref - f_int
+        R = self.lambd * self.F_ref - f_int
+        if self._F_const is not None:
+            R = R + self._F_const
+        return R
 
     # ----------------------------------------------------- solve hook
     def solve_iteration(

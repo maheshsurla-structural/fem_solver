@@ -123,6 +123,7 @@ ShellSectionBase
 ShellSectionResponse
 ShellTri3
 SoilSpringBackbone
+StagedAnalysis
 StaticIntegrator
 SteadyHeatAnalysis
 SteadyHeatResult
@@ -191,6 +192,7 @@ fit_collapse_fragility
 fit_lognormal_method_of_moments
 fit_lognormal_mle
 friction_pendulum
+from_time_function
 gazetas_dynamic_coefficients
 gazetas_surface_footing
 ground_motion_force
@@ -210,6 +212,7 @@ magnitude_scaling_factor
 max_drift_edp
 max_strain_index
 max_stress_index
+monotonic
 multi_record_ida
 multi_support_ground_motion_force
 n2_target_displacement
@@ -229,6 +232,7 @@ spherical_cap_mesh
 steel_critical_temperature
 steel_modulus_reduction_ec3
 steel_strength_reduction_ec3
+stepped_cyclic
 story_drifts
 stress_reduction_coefficient
 subgrade_modulus_table
