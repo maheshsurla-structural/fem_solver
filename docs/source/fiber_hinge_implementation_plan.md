@@ -682,6 +682,14 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
   Edit menu. `test_desktop_materials.py` (11, first headless‑offscreen desktop test). Also corrected
   the stale **P2**/**U4** tracker rows (their code shipped earlier). Next GUI: **GUI‑2** (fiber‑mesh
   panel + preview, needs U2) or **GUI‑5** (threaded solver + progress dock).
+- 2026‑09‑12 — **GUI‑5 background shipped (nonlinear‑run subsystem, compute half).** `desktop/nonlinear.py`:
+  `fiber_section_from_spec` compiles a GSD `Spec` → inelastic `FiberSection2D` (circular via the U2
+  `polar_cells` mesh; concrete + rebar from the shared `section_gui_core` factories); `build_nonlinear_model`
+  turns GSD‑section members into displacement‑based fiber `BeamColumn2DCorotational` (robust for pushover —
+  the force‑based element goes singular near softening, §8/P8); `run_pushover` runs displacement control with
+  an optional constant‑held axial preload (`StagedAnalysis`). Verified: pushover of a D=0.6 m / L=3 m fiber
+  column yields (early K 1.2e7 → late 1.2e6) and axial preload raises capacity (339→358 kN — P‑M signature).
+  `test_desktop_nonlinear.py` (5). Next: the GUI‑5 UI (threaded run + progress/convergence dock + curve).
 - 2026‑09‑12 — **U2 done (polar‑mesh unification).** Extracted the annular‑sector polar mesh into
   engine helpers `polar_divisions` + `polar_cells` (`sections/response/fiber.py`); `circular_sector_fibers`
   now builds on them, and the Section Designer GUI (`section_gui_core.section_fibers` /
@@ -743,7 +751,7 @@ Each row: **Background** (engine/infra) + **GUI**. Status ✅ exists · ⚠ part
 | GUI‑2 | Fiber‑mesh panel + fiber preview in Section Designer | P1, §15 U2 | ☑ | pre‑existing in `desktop/section_designer.py` (Fibres tab, mesh overlay + centroids toggle, mesh‑density combo, fibres‑CSV export via `core.section_fibers`/`section_fiber_mesh`) — now running on the **U2‑unified `polar_cells`** mesher. Confirmed 2026‑09‑12 |
 | GUI‑3 | Hinge property + assignment UI | P9 | ☐ | |
 | GUI‑4 | Nonlinear case manager (control/monitor/staged/cyclic/NL‑params) | P6, P7 | ☐ | |
-| GUI‑5 | Threaded solver + progress/convergence dock + cancel | (infra) | ☐ | prerequisite for all NL UI |
+| GUI‑5 | Threaded solver + progress/convergence dock + cancel | (infra) | ◐ | 2026‑09‑12 — **compute/background shipped**: `desktop/nonlinear.py` (`fiber_section_from_spec` — GSD Spec→inelastic FiberSection2D via the U2 polar mesh + shared factories; `build_nonlinear_model` — GSD members→disp‑based fiber `BeamColumn2DCorotational`; `run_pushover` — displacement control, optional held axial preload via `StagedAnalysis`). `test_desktop_nonlinear.py` (5); pushover yields + axial raises capacity. **Remaining: threaded (QThread) run + progress/convergence dock + cancel + curve display in the app.** |
 | GUI‑6 | NL post‑processing (hysteresis, step slider/anim, fiber contour, hinge state) | P8, GUI‑5 | ☐ | commercial differentiator |
 | GUI‑7 | Nonlinear report + export | GUI‑6 | ☐ | |
 | GUI‑I1 | Step‑indexed results model | (infra) | ☐ | underpins GUI‑6 |
