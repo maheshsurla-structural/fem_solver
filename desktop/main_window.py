@@ -24,6 +24,7 @@ from editing import (LoadDialog, MemberDialog, NodeDialog, SectionDialog,
                      dof_labels)
 from hinge_editor import HingeAssignmentDialog, HingeManagerDialog
 from material_editor import MaterialManagerDialog
+from nonlinear_cases import NonlinearCaseManagerDialog
 from model_view import ModelView
 from project import Material, Member, Node, Project, Section
 from properties import PropertiesPanel
@@ -123,6 +124,8 @@ class MainWindow(QMainWindow):
 
         self.act_run = _action(self, "&Run (linear static)", "Ctrl+R",
                                self.run_linear_static, "run")
+        self.act_nlcases = _action(self, "Nonlinear &cases…", None,
+                                   self.manage_nonlinear_cases)
         self.act_pushover = _action(self, "Nonlinear &pushover…", None,
                                     self.run_pushover_dialog, "run")
         self.act_undef = _action(self, "&Undeformed", None,
@@ -231,6 +234,7 @@ class MainWindow(QMainWindow):
         analysis_menu.addAction(self.act_gencombos)
         analysis_menu.addSeparator()
         analysis_menu.addAction(self.act_run)
+        analysis_menu.addAction(self.act_nlcases)
         analysis_menu.addAction(self.act_pushover)
         analysis_menu.addAction(self.act_undef)
         analysis_menu.addSeparator()
@@ -682,6 +686,14 @@ class MainWindow(QMainWindow):
                 if mid in by_id:
                     by_id[mid].hinge = hid
         self._apply_edit("Assign hinges", _apply)
+
+    def manage_nonlinear_cases(self) -> None:
+        result = NonlinearCaseManagerDialog.manage(self, self._project)
+        if result is None:
+            return
+        self._apply_edit(
+            "Edit nonlinear cases",
+            lambda: setattr(self._project, "nonlinear_cases", result))
 
     def _on_double_click(self, item, _col) -> None:
         ref = item.data(0, Qt.ItemDataRole.UserRole)

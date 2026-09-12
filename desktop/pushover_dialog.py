@@ -36,10 +36,11 @@ class PushoverWorker(QThread):
     done = Signal(dict)              # {disp: [...], shear: [...]}
     failed = Signal(str)
 
-    def __init__(self, project, kwargs: dict):
+    def __init__(self, project, kwargs: dict, case=None):
         super().__init__()
         self._project = project
         self._kwargs = kwargs
+        self._case = case                # a NonlinearCase -> run_case, else manual
         self._cancel = False
 
     def cancel(self) -> None:
@@ -47,12 +48,20 @@ class PushoverWorker(QThread):
 
     def run(self) -> None:                          # QThread entry point
         try:
-            res = NL.run_pushover(
-                self._project,
-                on_step=lambda info: self.progress.emit(info),
-                should_cancel=lambda: self._cancel,
-                **self._kwargs,
-            )
+            if self._case is not None:
+                res = NL.run_case(
+                    self._project, self._case,
+                    on_step=lambda info: self.progress.emit(info),
+                    should_cancel=lambda: self._cancel,
+                    capture_fibers=self._kwargs.get("capture_fibers", False),
+                    capture_shape=self._kwargs.get("capture_shape", False))
+            else:
+                res = NL.run_pushover(
+                    self._project,
+                    on_step=lambda info: self.progress.emit(info),
+                    should_cancel=lambda: self._cancel,
+                    **self._kwargs,
+                )
             self.done.emit(res)
         except Exception as exc:                     # noqa: BLE001
             self.failed.emit(str(exc))
@@ -66,6 +75,7 @@ class PushoverDialog(QDialog):
         self._worker: PushoverWorker | None = None
         self._disp: list[float] = []
         self._shear: list[float] = []
+        self._protocol: str = "monotonic"
         outer = QHBoxLayout(self)
 
         # ---- left: inputs + progress ----
@@ -95,6 +105,14 @@ class PushoverDialog(QDialog):
         self.axial_node = self._combo([(str(i), i) for i in node_ids],
                                       default=(free[-1] if free else None))
         self.axial_dof = self._combo(_DOFS, default=0)
+        # saved nonlinear cases (GUI-4): pick one to run it (monotonic/cyclic/
+        # staged), or "— manual —" to use the quick inputs below.
+        self.case_combo = self._combo(
+            [("— manual —", None)]
+            + [(f"{c.id}: {c.name}", c.id)
+               for c in getattr(project, "nonlinear_cases", [])])
+        self.case_combo.currentIndexChanged.connect(self._on_case_changed)
+        form.addRow("Case", self.case_combo)
         form.addRow("Control node", self.node)
         form.addRow("Push DOF", self.dof)
         form.addRow(f"Target [{project.length_unit}]", self.target)
@@ -105,6 +123,10 @@ class PushoverDialog(QDialog):
         form.addRow("Axial node", self.axial_node)
         form.addRow("Axial DOF", self.axial_dof)
         form.addRow(self.capture)
+        # manual inputs disabled while a saved case drives the run
+        self._manual = [self.node, self.dof, self.target, self.n_steps,
+                        self.tol, self.max_iter, self.axial, self.axial_node,
+                        self.axial_dof]
 
         self.bar = QProgressBar()
         form.addRow(self.bar)
@@ -230,6 +252,34 @@ class PushoverDialog(QDialog):
         s.setValue(value)
         return s
 
+    @staticmethod
+    def _set_combo(combo, value) -> None:
+        i = combo.findData(value)
+        if i >= 0:
+            combo.setCurrentIndex(i)
+
+    # ------------------------------------------------ saved cases (GUI-4)
+    def _selected_case(self):
+        cid = self.case_combo.currentData()
+        return self._project.nonlinear_case(cid) if cid else None
+
+    def _on_case_changed(self, *_) -> None:
+        case = self._selected_case()
+        for w in self._manual:
+            w.setEnabled(case is None)                # case drives the run
+        if case is None:
+            return
+        self._set_combo(self.node, case.control_node)
+        self._set_combo(self.dof, case.control_dof)
+        self.target.setValue(case.target)
+        self.n_steps.setValue(case.n_steps)
+        self._set_combo(self.tol, case.tol)
+        self.max_iter.setValue(case.max_iter)
+        self.axial.setValue(case.axial)
+        if case.axial_node:
+            self._set_combo(self.axial_node, case.axial_node)
+        self._set_combo(self.axial_dof, case.axial_dof)
+
     # ------------------------------------------------ run lifecycle
     def _kwargs(self) -> dict:
         axial = float(self.axial.value())
@@ -252,11 +302,14 @@ class PushoverDialog(QDialog):
         self.play_btn.setEnabled(False)
         self._disp, self._shear = [], []
         self.log.clear()
-        self.bar.setRange(0, int(self.n_steps.value()))
+        case = self._selected_case()
+        total = (NL.case_total_steps(self._project, case) if case is not None
+                 else int(self.n_steps.value()))
+        self.bar.setRange(0, total)
         self.bar.setValue(0)
         self.run_btn.setEnabled(False)
         self.cancel_btn.setEnabled(True)
-        self._worker = PushoverWorker(self._project, self._kwargs())
+        self._worker = PushoverWorker(self._project, self._kwargs(), case=case)
         self._worker.progress.connect(self._on_progress)
         self._worker.done.connect(self._on_done)
         self._worker.failed.connect(self._on_failed)
@@ -279,6 +332,7 @@ class PushoverDialog(QDialog):
     def _on_done(self, res: dict) -> None:
         self._disp = res.get("disp", self._disp)
         self._shear = res.get("shear", self._shear)
+        self._protocol = res.get("protocol", "monotonic")
         self._frames = res.get("fiber_frames", [])
         self._shape_frames = res.get("shape_frames", [])
         self._damage_frames = res.get("damage_frames", [])
@@ -303,11 +357,18 @@ class PushoverDialog(QDialog):
 
     def _draw_curve(self) -> None:
         self._ax.clear()
+        cyclic = self._protocol == "cyclic"
         if self._disp:
-            self._ax.plot(self._disp, self._shear, "-o", ms=3, lw=1.6)
+            self._ax.plot(self._disp, self._shear,
+                          "-" if cyclic else "-o",
+                          ms=3, lw=1.2 if cyclic else 1.6)
+            if cyclic:                              # origin cross-hairs for loops
+                self._ax.axhline(0, color="0.6", lw=0.6)
+                self._ax.axvline(0, color="0.6", lw=0.6)
         self._ax.set_xlabel(f"displacement [{self._project.length_unit}]")
         self._ax.set_ylabel(f"base shear [{self._project.force_unit}]")
-        self._ax.set_title("Pushover", fontsize=9)
+        self._ax.set_title("Cyclic hysteresis" if cyclic else "Pushover",
+                           fontsize=9)
         self._ax.grid(True, alpha=0.25)
         self._canvas.draw_idle()
 

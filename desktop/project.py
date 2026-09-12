@@ -112,6 +112,41 @@ class LoadCase:
 
 
 @dataclass
+class NonlinearCase:
+    """A saved nonlinear (fiber) analysis case (plan §14 GUI-4) — the desktop
+    counterpart of a Midas/CSI nonlinear static load case.
+
+    Displacement-controlled: ``control_node`` DOF ``control_dof`` (0=Ux, 1=Uy,
+    2=Rz) is driven to ``target`` following ``protocol``:
+
+    * ``"monotonic"`` — a ramp 0→target over ``n_steps``.
+    * ``"cyclic"`` — reversed cycles of growing amplitude; the peaks are
+      ``amplitudes`` (fractions) × ``target``, ``cycles`` full cycles each,
+      ``pts_per_cycle`` points per cycle.
+
+    ``axial`` (compression magnitude at ``axial_node``/``axial_dof``) is applied
+    first and held constant (staged). ``continue_from`` (another case's id)
+    continues this case from that case's committed state (staged construction).
+    ``tol`` / ``max_iter`` are the Newton controls."""
+    id: int
+    name: str
+    control_node: int = 0
+    control_dof: int = 1
+    target: float = 0.05
+    n_steps: int = 40
+    protocol: str = "monotonic"           # "monotonic" | "cyclic"
+    amplitudes: list = field(default_factory=lambda: [0.25, 0.5, 0.75, 1.0])
+    cycles: int = 1
+    pts_per_cycle: int = 40
+    axial: float = 0.0
+    axial_node: int | None = None
+    axial_dof: int = 0
+    continue_from: int | None = None      # id of a prior NonlinearCase
+    tol: float = 1.0e-6
+    max_iter: int = 60
+
+
+@dataclass
 class Load:
     node: int
     values: tuple                 # nodal load vector (len ndf)
@@ -153,6 +188,7 @@ class Project:
     loads: list = field(default_factory=list)          # nodal Load
     member_loads: list = field(default_factory=list)   # MemberLoad (line loads)
     combinations: list = field(default_factory=list)   # LoadCombination
+    nonlinear_cases: list = field(default_factory=list)  # NonlinearCase (GUI-4)
 
     def __post_init__(self):
         if not self.load_cases:
@@ -164,6 +200,9 @@ class Project:
 
     def combination(self, combo_id):
         return next((c for c in self.combinations if c.id == combo_id), None)
+
+    def nonlinear_case(self, case_id):
+        return next((c for c in self.nonlinear_cases if c.id == case_id), None)
 
     def default_case_id(self) -> int:
         return self.load_cases[0].id if self.load_cases else 1
@@ -265,6 +304,8 @@ class Project:
                 id=c["id"], name=c["name"],
                 factors={int(k): v for k, v in c.get("factors", {}).items()})
                 for c in d.get("combinations", [])],
+            nonlinear_cases=[NonlinearCase(**c)
+                             for c in d.get("nonlinear_cases", [])],
         )
 
     @classmethod

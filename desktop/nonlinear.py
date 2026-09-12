@@ -121,6 +121,85 @@ def build_nonlinear_model(project):
     return m
 
 
+def _section_def(el, ip: int = 0):
+    """Committed base-section deformation (eps_a, kappa) at integration point
+    ``ip`` — from the displacement-based corotational element's ``_e_sections``
+    or the force-based (hinge) element's ``_e_committed``; None before the first
+    commit / if unavailable."""
+    for attr in ("_e_sections", "_e_committed"):
+        arr = getattr(el, attr, None)
+        if arr is not None and len(arr) > ip:
+            return float(arr[ip][0]), float(arr[ip][1])
+    return None
+
+
+def _peak_abs_strain(el) -> float:
+    d = _section_def(el, 0)
+    if d is None:
+        return 0.0
+    eps_a, kappa = d
+    return max((abs(eps_a - f.y * kappa) for f in el.sections[0].fibers),
+               default=0.0)
+
+
+class _Capturer:
+    """Per-step recorder for the GUI-6 post-processing: the monitored base
+    section's per-fiber (y, z, σ, ε) snapshot, the whole model's nodal
+    deformation, and each fiber member's peak |fiber strain| (hinge state).
+    Snapshots come from a section *clone*, so the live state is untouched."""
+
+    def __init__(self, model, mon_el, fiber_members,
+                 capture_fibers: bool, capture_shape: bool):
+        self._m = model
+        self._mon = mon_el
+        self._fiber_members = fiber_members
+        self._fibers = capture_fibers
+        self._shape = capture_shape
+        self.frames: list = []
+        self.shape_frames: list = []
+        self.damage_frames: list = []
+
+    @property
+    def active(self) -> bool:
+        return self._fibers or self._shape
+
+    def capture(self) -> None:
+        if self._fibers and self._mon is not None:
+            d = _section_def(self._mon, 0)
+            if d is not None:
+                eps_a, kappa = d
+                snap = self._mon.sections[0].clone()
+                self.frames.append([
+                    (float(f.y), float(f.z),
+                     float(f.material.get_response(eps_a - f.y * kappa)[0]),
+                     float(eps_a - f.y * kappa))
+                    for f in snap.fibers])
+        if self._shape:
+            self.shape_frames.append(
+                {nid: (float(n.disp[0]), float(n.disp[1]))
+                 for nid, n in self._m.nodes.items()})
+            self.damage_frames.append(
+                {eid: _peak_abs_strain(self._m.elements[eid])
+                 for eid in self._fiber_members})
+
+    def result_into(self, result: dict) -> None:
+        if self._fibers:
+            result["fiber_frames"] = self.frames
+        if self._shape:
+            result["shape_frames"] = self.shape_frames
+            result["damage_frames"] = self.damage_frames
+
+
+def _fiber_members(project, model):
+    """(fiber member ids, monitored element) — the members whose section is a
+    fiber (Section-Designer) section; the monitored element is the first one
+    (IP 0 = its n1 end, the base of a cantilever)."""
+    secs = {s.id: s for s in project.sections}
+    ids = [mb.id for mb in project.members
+           if getattr(secs.get(mb.section), "gsd_spec", None)]
+    return ids, (model.elements[ids[0]] if ids else None)
+
+
 def run_pushover(project, *, control_node: int, control_dof: int,
                  target: float, n_steps: int = 40, axial: float = 0.0,
                  axial_node: int | None = None, axial_dof: int = 0,
@@ -151,60 +230,18 @@ def run_pushover(project, *, control_node: int, control_dof: int,
     ref = [0.0, 0.0, 0.0]
     ref[control_dof] = -1.0
 
-    # Optional per-step fiber capture at the monitored member's base section
-    # (IP 0 = the n1 end — the fixed base of a cantilever). Frames feed the
-    # GUI-6 fiber-stress contour + step slider.
-    secs = {s.id: s for s in project.sections}
-    fiber_members = [mb.id for mb in project.members
-                     if getattr(secs.get(mb.section), "gsd_spec", None)]
-    mon_el = m.elements[fiber_members[0]] if fiber_members else None
-    frames: list = []
-    shape_frames: list = []
-    damage_frames: list = []
-
-    def _section_def(el, ip: int = 0):
-        """Committed base-section deformation (eps_a, kappa) at integration
-        point ``ip`` — from the displacement-based corotational element's
-        ``_e_sections`` or the force-based (hinge) element's ``_e_committed``;
-        None before the first commit / if unavailable."""
-        for attr in ("_e_sections", "_e_committed"):
-            arr = getattr(el, attr, None)
-            if arr is not None and len(arr) > ip:
-                return float(arr[ip][0]), float(arr[ip][1])
-        return None
-
-    def _peak_abs_strain(el) -> float:
-        d = _section_def(el, 0)
-        if d is None:
-            return 0.0
-        eps_a, kappa = d
-        fibers = el.sections[0].fibers
-        return max((abs(eps_a - f.y * kappa) for f in fibers), default=0.0)
-
-    def _capture():
-        if capture_fibers and mon_el is not None:
-            d = _section_def(mon_el, 0)
-            if d is not None:
-                eps_a, kappa = d
-                snap = mon_el.sections[0].clone()      # don't perturb live state
-                frames.append([
-                    (float(f.y), float(f.z),
-                     float(f.material.get_response(eps_a - f.y * kappa)[0]),
-                     float(eps_a - f.y * kappa))
-                    for f in snap.fibers])
-        if capture_shape:
-            shape_frames.append({nid: (float(n.disp[0]), float(n.disp[1]))
-                                 for nid, n in m.nodes.items()})
-            damage_frames.append({eid: _peak_abs_strain(m.elements[eid])
-                                  for eid in fiber_members})
+    # Optional per-step capture at the monitored member's base section (feeds
+    # the GUI-6 fiber contour / deformed-shape / hinge-state views).
+    fiber_members, mon_el = _fiber_members(project, m)
+    cap = _Capturer(m, mon_el, fiber_members, capture_fibers, capture_shape)
 
     def _step_cb(info):
         if on_step is not None:
             on_step({"step": info["step"], "num_steps": info["num_steps"],
                      "disp": abs(info["tracked"] or 0.0),
                      "shear": abs(info["lambda"])})
-        if capture_fibers or capture_shape:
-            _capture()
+        if cap.active:
+            cap.capture()
         if should_cancel is not None and should_cancel():
             return False                               # cooperative cancel
         return True
@@ -232,10 +269,140 @@ def run_pushover(project, *, control_node: int, control_dof: int,
         out = _push(m).run()
 
     result = {"disp": [abs(float(x)) for x in out["tracked"]],
-              "shear": [abs(float(x)) for x in out["lambdas"]]}
-    if capture_fibers:
-        result["fiber_frames"] = frames
-    if capture_shape:
-        result["shape_frames"] = shape_frames
-        result["damage_frames"] = damage_frames
+              "shear": [abs(float(x)) for x in out["lambdas"]],
+              "protocol": "monotonic"}
+    cap.result_into(result)
+    return result
+
+
+# --------------------------------------------------------------- case runner
+
+def _case_chain(project, case) -> list:
+    """The ordered ``continue_from`` chain ending at ``case`` — ``[root, …,
+    case]`` — so a staged run replays each ancestor's push, then this case's,
+    continuing from committed state. Broken/cyclic links stop the walk."""
+    chain = [case]
+    seen = {case.id}
+    cur = case
+    while cur.continue_from:
+        prev = project.nonlinear_case(cur.continue_from)
+        if prev is None or prev.id in seen:
+            break
+        chain.append(prev)
+        seen.add(prev.id)
+        cur = prev
+    chain.reverse()
+    return chain
+
+
+def _case_du(case):
+    """(du, n_steps) for a case's protocol: a scalar increment (monotonic) or a
+    signed per-step increment schedule (cyclic), plus the step count."""
+    from femsolver.analysis.protocols import monotonic, stepped_cyclic
+    import numpy as np
+    if case.protocol == "cyclic":
+        targets = stepped_cyclic(tuple(case.amplitudes),
+                                 scale=float(case.target),
+                                 cycles=int(case.cycles),
+                                 pts_per_cycle=int(case.pts_per_cycle))
+        du = np.diff(targets)
+        return du, int(len(du))
+    targets = monotonic(float(case.target), int(case.n_steps))
+    return float(targets[1] - targets[0]), int(case.n_steps)
+
+
+def case_total_steps(project, case) -> int:
+    """Total push steps a case run will report (summed over the continue-from
+    chain) — for sizing a progress bar."""
+    return sum(_case_du(c)[1] for c in _case_chain(project, case))
+
+
+def run_case(project, case, *, on_step=None, should_cancel=None,
+             capture_fibers: bool = False, capture_shape: bool = False) -> dict:
+    """Run a saved :class:`project.NonlinearCase` — monotonic or cyclic,
+    optional held axial preload, optional ``continue_from`` staged continuation.
+
+    Returns ``{"disp", "shear", "protocol"}`` (signed control-DOF displacement
+    and total base shear, so cyclic runs trace the hysteresis) plus the GUI-6
+    capture frames. Progress/cancel hooks match :func:`run_pushover`."""
+    from femsolver import NonlinearStaticAnalysis, StagedAnalysis
+    from femsolver.analysis.static_integrator import DisplacementControl
+
+    m = build_nonlinear_model(project)
+    chain = _case_chain(project, case)
+    root = chain[0]
+    need_axial = bool(root.axial and root.axial_node)
+
+    fiber_members, mon_el = _fiber_members(project, m)
+    cap = _Capturer(m, mon_el, fiber_members, capture_fibers, capture_shape)
+    total_steps = case_total_steps(project, case)
+    state = {"active": False, "i": 0}
+
+    def _step_cb(info):
+        if state["active"]:
+            state["i"] += 1
+            if on_step is not None:
+                on_step({"step": state["i"], "num_steps": total_steps,
+                         "disp": float(info["tracked"] or 0.0),
+                         "shear": -float(info["lambda"] or 0.0)})
+            if cap.active:
+                cap.capture()
+        if should_cancel is not None and should_cancel():
+            return False
+        return True
+
+    def _push_factory(c):
+        du, nsteps = _case_du(c)
+        ref = [0.0, 0.0, 0.0]
+        ref[c.control_dof] = -1.0
+
+        def factory(mm):
+            state["active"] = True
+            mm.add_nodal_load(c.control_node, ref)
+            return NonlinearStaticAnalysis(
+                mm, num_steps=nsteps,
+                integrator=DisplacementControl(c.control_node, c.control_dof,
+                                               du),
+                track=(c.control_node, c.control_dof),
+                tol=float(c.tol), max_iter=int(c.max_iter),
+                step_callback=_step_cb)
+        return factory
+
+    def _axial_factory(c):
+        aref = [0.0, 0.0, 0.0]
+        aref[c.axial_dof] = -abs(float(c.axial))
+
+        def factory(mm):
+            state["active"] = False           # don't record the preload stage
+            mm.add_nodal_load(c.axial_node, aref)
+            return NonlinearStaticAnalysis(
+                mm, num_steps=8, dlambda=0.125, integrator="load_control",
+                tol=float(c.tol), max_iter=int(c.max_iter),
+                step_callback=_step_cb)
+        return factory
+
+    disp: list = []
+    shear: list = []
+    if len(chain) == 1 and not need_axial:
+        out = _push_factory(case)(m).run()
+        disp = [float(x) for x in out["tracked"]]
+        shear = [-float(x) for x in out["lambdas"]]
+    else:
+        sa = StagedAnalysis(m)
+        if need_axial:
+            sa.add_stage("axial", _axial_factory(root))
+        for i, c in enumerate(chain):
+            sa.add_stage(f"push{i}", _push_factory(c))
+        out = sa.run()
+        offset = 0.0                          # cumulative held lateral factor
+        for i in range(len(chain)):
+            r = out[f"push{i}"]
+            for u, lam in zip(r["tracked"], r["lambdas"]):
+                disp.append(float(u))
+                shear.append(-(offset + float(lam)))
+            if r["lambdas"]:
+                offset += float(r["lambdas"][-1])
+
+    result = {"disp": disp, "shear": shear, "protocol": case.protocol}
+    cap.result_into(result)
     return result
