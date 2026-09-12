@@ -420,6 +420,14 @@ peak/ultimate ±10%; cyclic energy per loop ±15%. Justify any looser tolerance 
 ### 7.3 Cyclic
 - Stepped ±0.25/0.5/0.75/1.0 in; loop shapes, peak force per amplitude, dissipated energy.
 - Golden: `TBD`.
+- **Our result (P8, 2026‑09‑12, no external data yet):** hold P=2400 kip, cycle the tip through
+  ±(0.25,0.5,0.75,1.0)×0.12 in (peaks 0.03…0.12 in), 4 displacement‑based fiber elements,
+  `ReinforcingSteelKinematic` bars. Axial held at 2400.0 kip; symmetric hysteresis with peak base
+  shear ≈ 7,968 kip (matches the P6 monotonic ~8,000 kip). Peak +V/−V and dissipated energy per
+  loop: 0.030 in → ±4,58x, 8 kip‑in; 0.060 → ±7,1xx, 126; 0.090 → ±7,8xx, 555; 0.120 → ±7,9xx,
+  1,093; total ≈ 1,781 kip‑in. Paste Midas/CSI loop force + per‑loop energy here to lock the
+  regression. (Force‑based element flexibility is singular at cyclic reversals — plan §8 — so the
+  cyclic run uses a displacement‑based mesh; it converges to the force‑based capacity at ~4 elements.)
 
 ### 7.4 Cross‑checks that need no external data (do these regardless)
 - Circle `Ag`, `Iz` vs closed form; mesh refinement monotone‑convergent.
@@ -510,7 +518,7 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
 | P5 | Axial‑load benchmark (Stage 1) | ☑ | 2026‑09‑12 — two‑node `ForceBeamColumn2DCorotational` + Caltrans fiber section; load‑control preload holds 2400 kip (base reaction exact), EA fiber↔hand 0.9959, working‑point strain 1.04e‑4 (<ε_c0); section axial capacity (imposed strain, N=Σσ·A) peaks 41,291 kip @ ε≈0.0047 then softens to 32,772 @ 0.02. `test_fiber_hinge_axial.py` (3), example 83. Golden Midas/CSI axial (§7.1) pending export |
 | P6 | G6/G7 staged + protocols; monotonic pushover | ☑ | 2026‑09‑12 — `analysis/staged.py` (`StagedAnalysis`, continuation + constant‑load hold via new `StaticIntegrator.set_constant_force` + `NonlinearStaticAnalysis(keep_state, const_force)`) + `analysis/protocols.py` (`monotonic`/`stepped_cyclic`/`from_time_function`). Benchmark staged pushover holds P=2400 kip exactly through the lateral push; base‑shear·L peak 32,825 kip‑ft matches the P4 M‑φ peak (0.2%). Guarded ConcreteMander softening‑tail overflow. `test_fiber_hinge_pushover.py` (6), example 84. Full suite 2487 pass |
 | P7 | G5 3‑D force‑based + circular 3‑D; P‑M2‑M3 | ☑ | 2026‑09‑12 — `elements/beam_force_3d.py` `ForceBeamColumn3D` (small‑disp, 6‑DOF basic system, NF state determination). Elastic K == displacement‑based to 2e‑16; n_ip‑invariant (≥3); reduces to 2‑D under uniaxial bending to 1e‑7; biaxial 45° push gives Mz=−My, resultant = uniaxial capacity. `FiberSection3D.circular` from P1. `test_force_beam_3d.py` (4), example 85. Full suite 2490 pass |
-| P8 | Cyclic benchmark + energy | ☐ | |
+| P8 | Cyclic benchmark + energy | ☑ | 2026‑09‑12 — staged cyclic (hold P=2400, `stepped_cyclic` protocol via a new `DisplacementControl` per‑step increment schedule); `ReinforcingSteelKinematic` steel. Axial held; symmetric hysteresis, peak shear 7968 kip (≈ P6 monotonic 8000 w/ 4 disp‑based elements); loop energy grows 8→126→555→1093 kip‑in. Force‑based element is cyclically singular at reversals (§8) → disp‑based mesh used. `test_fiber_hinge_cyclic.py` (2), example 86. Full suite 2493 pass |
 | P9 | G4 fiber‑hinge element idiom | ☐ | |
 | P10 | G9 importers + regression harness | ☐ | |
 
@@ -628,6 +636,19 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
   `85_fiber_hinge_pmm_3d.py`; `ForceBeamColumn3D` exported top‑level + `public_api.txt`. Full suite
   2490 pass (only the 4 pre‑existing quadrature failures). Next: **P8** (cyclic benchmark + energy)
   or **P9** (finite‑length fiber‑hinge element idiom).
+- 2026‑09‑12 — **P8 shipped (cyclic benchmark + energy).** Extended `DisplacementControl` to accept
+  a **per‑step increment schedule** (scalar `du_step` still works; a sequence traces an arbitrary
+  reversed‑cyclic path in one analysis — feed `np.diff(stepped_cyclic(...))`). Staged cyclic run:
+  hold P=2400 kip (StagedAnalysis), then cycle the tip through ±(0.25,0.5,0.75,1.0)×0.12 in with the
+  `ReinforcingSteelKinematic` steel (P3). Axial held at 2400.0 kip; symmetric hysteresis, peak base
+  shear ≈ 7,968 kip (matches the P6 monotonic ~8,000), loop energy grows 8→126→555→1,093 kip‑in
+  (total ~1,781). **Element choice:** the force‑based element's flexibility goes singular at cyclic
+  reversals (documented §8), so P8 uses displacement‑based fiber elements — a 4‑element mesh is
+  cyclically robust and converges to the same capacity as the one‑element force‑based monotonic push
+  (mesh study: 1 el 10,862 kip → 2 el 8,940 → 4 el 8,001). `test_fiber_hinge_cyclic.py` (2); example
+  `86_fiber_hinge_cyclic.py`; results in §7.3. Full suite 2493 pass (only the 4 pre‑existing
+  quadrature failures). Next: **P9** (finite‑length fiber‑hinge element idiom) or **P10** (importers
+  + regression harness).
 
 ---
 

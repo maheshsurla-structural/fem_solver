@@ -214,13 +214,27 @@ class DisplacementControl(StaticIntegrator):
 
     supports_line_search = False
 
-    def __init__(self, node_tag: int, dof_index: int, du_step: float):
+    def __init__(self, node_tag: int, dof_index: int, du_step):
         super().__init__()
-        if du_step == 0.0:
-            raise ValueError("du_step must be non-zero")
+        # ``du_step`` may be a scalar (constant increment every step) or a
+        # sequence of per-step increments -- a *schedule* -- to trace an
+        # arbitrary (e.g. reversed-cyclic) displacement path in one analysis.
+        # For a schedule, run the analysis for ``len(du_step)`` steps; increment
+        # k is consumed on the k-th ``new_step``. Feed ``np.diff(targets)`` of a
+        # protocol from :mod:`femsolver.analysis.protocols`.
+        arr = np.atleast_1d(np.asarray(du_step, dtype=float))
+        if arr.size == 1:
+            if float(arr[0]) == 0.0:
+                raise ValueError("du_step must be non-zero")
+            self._du_schedule = None
+            self.du_step = float(arr[0])
+        else:
+            self._du_schedule = arr
+            self._sched_idx = 0
+            self._sched_idx_before = 0
+            self.du_step = float(arr[0])
         self.node_tag = int(node_tag)
         self.dof_index = int(dof_index)
-        self.du_step = float(du_step)
         # Equation number of the controlling DOF (set by bind()).
         self._eq: int = -1
         # u_d at the start of the current step (set by new_step()).
@@ -261,6 +275,16 @@ class DisplacementControl(StaticIntegrator):
         # Snapshot for potential revert.
         self._u_d_before_step_start = self._u_d_step_start
         self._lambd_before_step_start = self.lambd
+        # For a schedule, advance to this step's increment.
+        if self._du_schedule is not None:
+            self._sched_idx_before = self._sched_idx
+            if self._sched_idx >= self._du_schedule.size:
+                raise RuntimeError(
+                    "DisplacementControl: ran more steps than the du_step "
+                    f"schedule has ({self._du_schedule.size}); set num_steps "
+                    "to the schedule length")
+            self.du_step = float(self._du_schedule[self._sched_idx])
+            self._sched_idx += 1
         # Set the new step's reference state — the *current* control DOF
         # value (committed state from the previous step).
         self._u_d_step_start = self._control_disp()
@@ -268,6 +292,8 @@ class DisplacementControl(StaticIntegrator):
     def revert_step(self) -> None:
         self._u_d_step_start = self._u_d_before_step_start
         self.lambd = self._lambd_before_step_start
+        if self._du_schedule is not None:
+            self._sched_idx = self._sched_idx_before
 
     def solve_iteration(
         self,
