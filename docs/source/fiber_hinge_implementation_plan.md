@@ -904,6 +904,22 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
   oscillating‑then‑decaying tip response; worker streams + cancels. `test_desktop_timehistory_gui.py`
   (4). Next per §16.5: close the ◐ (G‑S2 disk persistence, G‑S4 core/cover preview, G‑S5 checks) or
   G‑S3 / X‑series.
+- 2026‑09‑12 — **G‑S2 shipped (nonlinear results persistence + run history).** Nonlinear runs are
+  expensive and run‑specific, so — unlike the linear results the project deliberately recomputes —
+  their **curve is now saved with the model** (what SAP2000/Midas do). New `desktop/nl_runs.py`
+  `RunRecord`: the base‑shear/displacement curve (or time/response), signed peak, ASCE 41 first‑reach
+  milestones, and small descriptive meta — all coerced to plain floats/str so it round‑trips through
+  the project JSON (no heavy per‑step fiber/shape frames; those stay session‑only, re‑run to scrub).
+  `Project` gained `runs: list` (+ `_load_runs`, tolerant of unknown keys); `build_model` ignores it.
+  The main window records each completed pushover/cyclic/case run (`_record_run`, via
+  `PushoverDialog.run_descriptor()`) and each time‑history (`RunRecord.from_time_history`) as one
+  undoable edit, and adds **Analysis → Run history…** → `desktop/run_history_dialog.py`
+  (`RunHistoryDialog`): lists saved runs, re‑plots a selected run's curve with IO/LS/CP markers,
+  rename / delete, returns the edited list (applied as an undoable edit like the other managers).
+  Also fixed a latent `NonlinearResults.__init__` bug (the `disp or []` idiom raised on numpy‑array
+  input). Verified end‑to‑end: run a pushover → save → **re‑open from disk** → re‑view the curve (peak
+  ≈ 338 kN, IO marked). `test_desktop_nl_runs.py` (8, incl. a MainWindow record→save→load→undo
+  integration test). Next ◐: G‑S4 core/cover preview, G‑S5 model checks.
 
 ---
 
@@ -1062,7 +1078,7 @@ current tree, not aspirational. Legend: ☐ todo · ◐ partial · ☑ done.
 | ID | Item | State | Notes |
 |---|---|---|---|
 | **G‑S1** | **Main model‑view step scrubbing** | ☑ | 2026 — `ModelView.show_nl_step(model, node_disp, member_damage, scale)` renders a run step on the main 3‑D view (deformed shape over a ghost, members coloured by peak fiber strain / hinge state). The main window gained an **Analysis‑steps** dock (step slider + displacement‑scale) that scrubs the whole model through the run, driven by `NonlinearResults.step(k)` (GUI‑I1). |
-| **G‑S2** | **Nonlinear results persistence + re‑open + run history** | ◐ | **Session‑level done** — the pushover/case dialog hands its `NonlinearResults` back to the main window (`set_nl_results`), so results survive the dialog close and stay scrubbable (re‑view). **Remaining:** persist to the `.` project file (at least the curve) across save/load, and a multi‑run history. |
+| **G‑S2** | **Nonlinear results persistence + re‑open + run history** | ☑ | 2026‑09‑12 — a completed pushover/cyclic/case/time‑history run is now saved to the project as a lean `nl_runs.RunRecord` (curve + summary + ASCE 41 first‑reach milestones + descriptive meta; JSON‑safe, no heavy per‑step frames), carried on `Project.runs` and round‑tripped through the `.fsproj` file (`_load_runs`). The main window records each run as one undoable edit and offers **Analysis → Run history…** (`desktop/run_history_dialog.py`) to re‑view a saved run's curve (with IO/LS/CP markers), rename, or delete. Session‑level scrubbing (`set_nl_results`) unchanged; heavy frames stay session‑only (re‑run to scrub the model). `test_desktop_nl_runs.py` (8). |
 | **G‑S3** | **Run comparison / envelopes** | ☐ | Overlay pushovers, build cyclic backbone/envelope across runs. |
 | **G‑S4** | **Confinement input bridge + core/cover preview** | ◐ | **Input bridge done** — the tie **Link** group (Rebars tab) + Confinement tab + manual override that already drove the confined M‑φ now also drive the pushover (C1 unification), so "what you input is what you run". **Remaining:** a distinct **core‑vs‑cover fibre preview** in the Section Designer fibres view. |
 | **G‑S5** | **In‑app model checks / diagnostics** | ◐ | Convergence dock exists; add units/section/material sanity + non‑convergence guidance surfaced pre‑ and post‑run. |
@@ -1092,7 +1108,7 @@ persistence + main‑view scrubbing — makes the tool feel finished) → **C4**
 | C4 adaptive step‑cutting | ☑ | 2026 — NonlinearStaticAnalysis(substep=True); GUI runs enable it |
 | C5 acceptance criteria | ☑ | 2026 — performance/acceptance.py (ASCE 41 IO/LS/CP fibre limits); accept_frames+milestones; main-view state colouring; report acceptance table |
 | G‑S1 main‑view scrubbing | ☑ | 2026 — ModelView.show_nl_step + Analysis-steps dock |
-| G‑S2 results persistence | ◐ | session-level (held on main window); disk + history remain |
+| G‑S2 results persistence | ☑ | 2026‑09‑12 — RunRecord curve+milestones on Project.runs (JSON round-trip); Run-history dialog (re-view/rename/delete) |
 | G‑S3 run comparison | ☐ | |
 | G‑S4 confinement input + preview | ◐ | input bridge done (tie group drives pushover); core/cover preview remains |
 | G‑S5 model checks | ◐ | |

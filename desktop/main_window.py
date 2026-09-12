@@ -140,6 +140,8 @@ class MainWindow(QMainWindow):
                                     self.run_pushover_dialog, "run")
         self.act_timehistory = _action(self, "Nonlinear &time history…", None,
                                        self.run_timehistory_dialog, "run")
+        self.act_runhistory = _action(self, "Run &history…", None,
+                                      self.show_run_history)
         self.act_undef = _action(self, "&Undeformed", None,
                                  self._show_undeformed, "undeformed")
         self.act_fit = _action(self, "&Fit", "F", self.view.fit, "fit")
@@ -249,6 +251,7 @@ class MainWindow(QMainWindow):
         analysis_menu.addAction(self.act_nlcases)
         analysis_menu.addAction(self.act_pushover)
         analysis_menu.addAction(self.act_timehistory)
+        analysis_menu.addAction(self.act_runhistory)
         analysis_menu.addAction(self.act_undef)
         analysis_menu.addSeparator()
         for a in (self.act_diag_n, self.act_diag_v, self.act_diag_m,
@@ -346,6 +349,8 @@ class MainWindow(QMainWindow):
         dlg = PushoverDialog(self, p)
         dlg.exec()
         res = getattr(dlg, "_results", None)
+        if res is not None and res.n_curve:
+            self._record_run(dlg.run_descriptor(), res)   # save to history (G-S2)
         if res is not None and res.has_shape:
             self.set_nl_results(res)
 
@@ -360,7 +365,19 @@ class MainWindow(QMainWindow):
                 "Nonlinear time history needs a Section Designer (fiber) "
                 "section on a member.")
             return
-        TimeHistoryDialog(self, p).exec()
+        dlg = TimeHistoryDialog(self, p)
+        dlg.exec()
+        res = getattr(dlg, "_result", None)
+        if res and res.get("disp"):
+            from nl_runs import RunRecord, next_run_id
+            direction, _ = dlg.direction.currentData()
+            rec = RunRecord.from_time_history(
+                res, id=next_run_id(p.runs), name="Time history",
+                meta={"Project": p.name, "Monitor":
+                      f"node {dlg.node.currentData()} {direction.upper()}",
+                      "Damping": f"{dlg.zeta.value():g}"})
+            self._apply_edit("Record time-history run",
+                             lambda: self._project.runs.append(rec))
 
     # ------------------------------------------------ nonlinear results (G-S1/2)
     def _build_nl_step_dock(self) -> QDockWidget:
@@ -415,6 +432,28 @@ class MainWindow(QMainWindow):
         self._nl_slider.blockSignals(False)
         self._nl_dock.show()
         self._on_nl_step()
+
+    def _record_run(self, descriptor, results) -> None:
+        """Append a completed pushover/cyclic/case run to the project history
+        (plan §16 G-S2) as one undoable edit, so it persists across save/load."""
+        from nl_runs import RunRecord, next_run_id
+        name, kind, meta = descriptor
+        rec = RunRecord.from_results(
+            results, id=next_run_id(self._project.runs), name=name, kind=kind,
+            meta=meta)
+        self._apply_edit(f"Record run '{name}'",
+                         lambda: self._project.runs.append(rec))
+
+    def show_run_history(self) -> None:
+        from run_history_dialog import RunHistoryDialog
+        if not self._project.runs:
+            self.statusBar().showMessage(
+                "No saved runs yet — run a nonlinear pushover or time history.")
+            return
+        result = RunHistoryDialog.manage(self, self._project)
+        if result is not None:
+            self._apply_edit("Edit run history",
+                             lambda: setattr(self._project, "runs", result))
 
     def _on_nl_scale(self, val: float) -> None:
         self._nl_scale = float(val)

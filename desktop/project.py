@@ -189,6 +189,10 @@ class Project:
     member_loads: list = field(default_factory=list)   # MemberLoad (line loads)
     combinations: list = field(default_factory=list)   # LoadCombination
     nonlinear_cases: list = field(default_factory=list)  # NonlinearCase (GUI-4)
+    # Saved nonlinear-run results (plan §16 G-S2) — the expensive, run-specific
+    # exception to "results are recomputed": each is a lean ``nl_runs.RunRecord``
+    # (curve + summary + ASCE 41 milestones). Not consumed by ``build_model``.
+    runs: list = field(default_factory=list)
 
     def __post_init__(self):
         if not self.load_cases:
@@ -306,6 +310,7 @@ class Project:
                 for c in d.get("combinations", [])],
             nonlinear_cases=[NonlinearCase(**c)
                              for c in d.get("nonlinear_cases", [])],
+            runs=_load_runs(d.get("runs", [])),
         )
 
     @classmethod
@@ -457,6 +462,16 @@ class Project:
             lambda model, factor=1.0, cid=c.id: self.apply_case(
                 model, cid, factor))
             for c in self.load_cases}
+
+
+def _load_runs(raw):
+    """Deserialize stored run records (plan §16 G-S2) into ``RunRecord``s,
+    tolerant of unknown keys. Imported lazily to keep the project model free of
+    a hard dependency on the (desktop-only) results layer."""
+    if not raw:
+        return []
+    from nl_runs import RunRecord
+    return [RunRecord.from_dict(r) for r in raw]
 
 
 def _coerce_node(n: dict) -> dict:

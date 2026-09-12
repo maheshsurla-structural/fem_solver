@@ -498,6 +498,21 @@ class PushoverDialog(QDialog):
         return {"disp": self._disp, "shear": self._shear,
                 "protocol": self._protocol}
 
+    def run_descriptor(self) -> tuple[str, str, dict]:
+        """(name, kind, meta) for saving this run to the project history
+        (plan §16 G-S2). Name defaults to the selected case, else the protocol;
+        meta reuses the report metadata (without the step count)."""
+        case = self._selected_case()
+        if case is not None:
+            name, kind = case.name, "case"
+        elif self._protocol == "cyclic":
+            name, kind = "Cyclic", "cyclic"
+        else:
+            name, kind = "Pushover", "pushover"
+        meta = self._report_meta()
+        meta.pop("Steps", None)
+        return name, kind, meta
+
     def _report_meta(self) -> dict:
         lu, fu = self._project.length_unit, self._project.force_unit
         dofs = {0: "Ux", 1: "Uy", 2: "Rz"}

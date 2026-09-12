@@ -48,8 +48,8 @@ class NonlinearResults:
     def __init__(self, disp, shear, *, protocol: str = "monotonic",
                  fiber_frames=None, shape_frames=None, damage_frames=None,
                  accept_frames=None, accept_milestones=None):
-        self.disp = [float(x) for x in (disp or [])]
-        self.shear = [float(x) for x in (shear or [])]
+        self.disp = [float(x) for x in (disp if disp is not None else [])]
+        self.shear = [float(x) for x in (shear if shear is not None else [])]
         self.protocol = str(protocol)
         self._fibers = list(fiber_frames) if fiber_frames else []
         self._shape = list(shape_frames) if shape_frames else []
