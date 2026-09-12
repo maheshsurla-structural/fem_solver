@@ -86,17 +86,19 @@ def classify_strain(eps: float, limits: FiberStrainLimits) -> int:
 
 
 def section_state(fibers, eps_a: float, kappa: float, *,
-                  limits_for=default_limits) -> int:
+                  kappa_y: float = 0.0, limits_for=default_limits) -> int:
     """Governing (worst) acceptance level over a section's fibres at the plane-
-    section strain field ``eps(y) = eps_a - y*kappa``.
+    section strain field ``eps = eps_a - y*kappa (+ z*kappa_y)``.
 
-    ``fibers`` is a sequence with ``.y`` and ``.material`` (a
-    :class:`FiberSection2D`'s fibres). ``limits_for(material)`` maps a fibre's
-    material to its :class:`FiberStrainLimits` (default: concrete vs steel).
+    ``fibers`` is a sequence with ``.y``/``.z`` and ``.material`` (a
+    :class:`FiberSection2D`/``3D``'s fibres). ``kappa`` is the strong-axis
+    curvature; ``kappa_y`` the weak-axis curvature (3-D biaxial, default 0).
+    ``limits_for(material)`` maps a fibre's material to its
+    :class:`FiberStrainLimits` (default: concrete vs steel).
     """
     worst = 0
     for f in fibers:
-        eps = eps_a - f.y * kappa
+        eps = eps_a - f.y * kappa + f.z * kappa_y
         lvl = classify_strain(eps, limits_for(f.material))
         if lvl > worst:
             worst = lvl

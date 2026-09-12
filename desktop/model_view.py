@@ -416,9 +416,10 @@ class ModelView(QtInteractor):
 
         # write this step's displacements onto the live model
         for nid, n in model.nodes.items():
-            dx, dy = (node_disp or {}).get(nid, (0.0, 0.0))
-            n.disp[0] = float(dx)
-            n.disp[1] = float(dy)
+            disp = (node_disp or {}).get(nid) or ()
+            for i, v in enumerate(disp):          # 2-D (dx,dy) or 3-D (dx,dy,dz)
+                if i < len(n.disp):
+                    n.disp[i] = float(v)
 
         self.clear()
         span = mg.model_span(model)

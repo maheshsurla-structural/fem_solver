@@ -385,8 +385,8 @@ class MainWindow(QMainWindow):
         # auto displacement scale from the largest nodal translation over the run
         dmax = 0.0
         for k in range(n):
-            for dx, dy in (results.step(k).node_disp or {}).values():
-                dmax = max(dmax, (dx * dx + dy * dy) ** 0.5)
+            for d in (results.step(k).node_disp or {}).values():
+                dmax = max(dmax, sum(v * v for v in d) ** 0.5)
         span = mg.model_span(self._model)
         self._nl_scale = (0.08 * span / dmax) if dmax > 0 else 1.0
         self._nl_scale_spin.blockSignals(True)

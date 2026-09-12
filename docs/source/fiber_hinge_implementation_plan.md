@@ -878,6 +878,19 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
   back to the peak‑strain yielded/elastic flag when no acceptance capture). Demo column reached IO at
   d≈42 mm, LS at d≈74 mm. `test_acceptance.py` (6) + report/results C5 tests. Next per §16.5: **C2**
   (3‑D nonlinear in the app) or close the remaining ◐ (C3 GUI case type, G‑S2 disk, G‑S4 preview).
+- 2026‑09‑12 — **C2 shipped: 3‑D nonlinear (P‑M2‑M3) in the app.** `desktop/nonlinear.build_nonlinear_model`
+  now compiles `ndm=3` projects — GSD members become `FiberSection3D` (fibres reused from the 2‑D
+  build; torsion elastic via `GJ = G·J`) on the disp‑based `BeamColumn3DCorotational`; other members →
+  linear `BeamColumn3D`. `run_pushover`/`run_case` size their load vectors to `ndf` so any of the 6
+  DOFs is a valid push/monitor direction; capture is biaxial‑aware — fibre strain `eps_a − y·κz + z·κy`
+  via a new `_fiber_strain`, engine `BeamColumn3DCorotational._e_sections` (additive), `acceptance.
+  section_state(kappa_y=…)`, and 3‑component shape frames — and the display consumers (main‑view
+  `show_nl_step`, dialog deformed‑shape/scale, main‑window auto‑scale) unpack 2‑ or 3‑component node
+  deformation. The pushover dialog offers all 6 DOFs (Ux..Rz) for a 3‑D project. Verified: a 3‑D
+  cantilever pushed in Uy **and** Uz reproduces the 2‑D pushover (339 vs 339 kN, symmetric column),
+  reaches IO at the same drift, and captures 3‑D shape. `test_desktop_nonlinear_3d.py` (7). Lumped
+  fiber hinges remain 2‑D (3‑D uses the distributed element). Next per §16.5: close the ◐ items
+  (C3 GUI case type, G‑S2 disk persistence, G‑S4 core/cover preview) or G‑S3/X‑series.
 
 ---
 
@@ -1027,7 +1040,7 @@ current tree, not aspirational. Legend: ☐ todo · ◐ partial · ☑ done.
 | ID | Item | State | Notes |
 |---|---|---|---|
 | **C1** | **Confined core / unconfined cover split** in the analysis fiber section | ☑ | 2026 — the nonlinear pushover now builds a **confined Mander core + unconfined cover** through the **same** path as the Section Designer's confined M‑φ (unified, per §15): `desktop/nonlinear.fiber_section_from_spec` delegates to `section_gui_core._confined_fiber_section`, with the confinement `conf` dict from the shared `_section_confinement` (tie **Link** group + geometry, or a manual override). Confinement helpers (`_parse_legs`/`_auto_section_confinement`/`_section_confinement`) lifted from the GUI into the Qt‑free core (shims left in `section_designer`). Unconfined sections keep the single‑law path (unchanged). `test_desktop_nonlinear.py` +5. *(An earlier draft added parallel `Spec.conf_*` fields; removed in favour of the one tie‑group source.)* **Confinement *input UI* + core/cover preview = G‑S4.** |
-| **C2** | **3‑D nonlinear in the app** (P‑M2‑M3) | ☐ | `ForceBeamColumn3D` (P7) exists; `desktop/nonlinear.build_nonlinear_model` raises for `ndm≠2`. Needs 3‑D fiber section + element wiring + 3‑D control/monitor UI. |
+| **C2** | **3‑D nonlinear in the app** (P‑M2‑M3) | ☑ | 2026‑09‑12 — `build_nonlinear_model` now handles `ndm=3`: GSD members → `FiberSection3D` (fibres wrapped from the 2‑D build; torsion held elastic via `GJ = G·J`) on the disp‑based `BeamColumn3DCorotational` (non‑fiber members → linear `BeamColumn3D`). `run_pushover`/`run_case` load vectors sized to `ndf` so any of the 6 DOFs can be pushed/monitored; capture is biaxial‑aware (fibre strain `= eps_a − y·κz + z·κy`, engine `BeamColumn3DCorotational._e_sections` added, `section_state(kappa_y=…)`, 3‑component shape frames). GUI: the pushover dialog offers 6 DOFs (Ux..Rz) for a 3‑D project; the main‑view step scrubbing + acceptance colouring handle 3‑D node deformation. Verified: 3‑D uniaxial push (Uy **and** Uz) matches the 2‑D pushover (339 vs 339 kN) for the symmetric column. `test_desktop_nonlinear_3d.py` (7). Lumped hinges stay 2‑D (3‑D uses the distributed element). |
 | **C3** | **Dynamic time‑history** (true transient: mass + damping) for fiber elements | ◐ | **Engine/compute done** — `desktop/nonlinear.run_time_history(project, accel, dt, …)` runs a nonlinear dynamic base‑excitation analysis on the fiber model: mass from `density` (rho·A·L, via `build_nonlinear_model(density=…)`), Rayleigh damping calibrated to `zeta` at the first two modal frequencies (`EigenAnalysis`+`RayleighDamping.from_modes`), base motion via `ground_motion_force` (`−M·ι·ü_g`), integrated with `NonlinearTransientAnalysis` (Newmark+Newton). Returns the monitored DOF's disp/vel/accel history + peak. `test_desktop_timehistory.py` (3). **Remaining:** a GUI `time_history` case type (ground‑motion record import, `direction`/`zeta`/`density`, response‑history plot). |
 | **C4** | **Adaptive step‑cutting / substepping** on non‑convergence | ☑ | 2026 — `NonlinearStaticAnalysis(substep=True)` halves the increment and retries on `NotConvergedError`, subdividing to cover the nominal step then growing back (up to `max_substep_halvings`). Integrators advertise `supports_substep` + honour `set_step_scale` (LoadControl, scalar DisplacementControl; a cyclic schedule opts out). Snapshots/restores node `disp` on a failed sub‑attempt (the drifted trial isn't otherwise rolled back). Opt‑in (default off ⇒ existing "raise on non‑convergence" contract unchanged); the GUI push runs enable it. `test_adaptive_substep.py` (5): a step that fails with a small max_iter now completes and reaches the fine‑reference target/base‑shear; still raises when hopeless. Note: only rescues `NotConvergedError`, not the force‑based singular‑flexibility `RuntimeError` (a true limit). |
 | **C5** | **Hinge acceptance criteria** (ASCE 41 IO/LS/CP) | ☑ | 2026 — engine `femsolver/performance/acceptance.py`: per‑material fibre‑strain limits (`FiberStrainLimits`, concrete/steel defaults **from the benchmark CSI acceptance table**: concrete comp 0.003/0.006/0.015 tension‑ignored, steel tension 0.01/0.02/0.05 comp 0.005/0.01/0.02), `classify_strain`, `section_state` (worst fibre → level). `run_pushover`/`run_case` capture per‑step per‑member acceptance level (`accept_frames`) + first‑reach milestones (`accept_milestones` — drift at IO/LS/CP). Surfaced: `NonlinearResults.member_state`/`accept_milestones`; main‑view step scrubbing gains a **discrete IO/LS/CP colour mode** (Analysis‑steps dock toggle + governing state in the step label); pushover dialog logs the milestones; the HTML report shows an ASCE 41 hinge‑state column + acceptance table (falls back to yielded/elastic when no capture). `test_acceptance.py` (6) + report/results C5 tests. |
@@ -1061,7 +1074,7 @@ persistence + main‑view scrubbing — makes the tool feel finished) → **C4**
 | ID | State | Commit / date |
 |---|---|---|
 | C1 confined core/cover | ☑ | 2026 — unified onto section_gui_core._confined_fiber_section (one tie-group source) |
-| C2 3‑D nonlinear GUI | ☐ | |
+| C2 3‑D nonlinear GUI | ☑ | 2026‑09‑12 — build_nonlinear_model ndm=3 (FiberSection3D + BeamColumn3DCorotational), ndf-general control, biaxial-aware capture, 6-DOF dialog; 3-D matches 2-D uniaxial |
 | C3 dynamic time‑history | ◐ | 2026 — engine run_time_history done; GUI case type remains |
 | C4 adaptive step‑cutting | ☑ | 2026 — NonlinearStaticAnalysis(substep=True); GUI runs enable it |
 | C5 acceptance criteria | ☑ | 2026 — performance/acceptance.py (ASCE 41 IO/LS/CP fibre limits); accept_frames+milestones; main-view state colouring; report acceptance table |

@@ -28,7 +28,13 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDoubleSpinBox,
 import nonlinear as NL
 from nl_results import NonlinearResults
 
-_DOFS = [("Ux", 0), ("Uy", 1), ("Rz", 2)]
+_DOFS_2D = [("Ux", 0), ("Uy", 1), ("Rz", 2)]
+_DOFS_3D = [("Ux", 0), ("Uy", 1), ("Uz", 2),
+            ("Rx", 3), ("Ry", 4), ("Rz", 5)]
+
+
+def _dof_items(ndf: int):
+    return _DOFS_3D if ndf >= 6 else _DOFS_2D
 
 
 class PushoverWorker(QThread):
@@ -88,7 +94,8 @@ class PushoverDialog(QDialog):
         self.node = self._combo([(str(i), i) for i in node_ids],
                                 default=(free[-1] if free else
                                          (node_ids[-1] if node_ids else None)))
-        self.dof = self._combo(_DOFS, default=1)
+        dof_items = _dof_items(project.ndf)
+        self.dof = self._combo(dof_items, default=1)
         self.target = self._spin(0.05, unit=project.length_unit, decimals=4)
         self.n_steps = QSpinBox()
         self.n_steps.setRange(2, 2000)
@@ -106,7 +113,7 @@ class PushoverDialog(QDialog):
                                 big=True)
         self.axial_node = self._combo([(str(i), i) for i in node_ids],
                                       default=(free[-1] if free else None))
-        self.axial_dof = self._combo(_DOFS, default=0)
+        self.axial_dof = self._combo(dof_items, default=0)
         # saved nonlinear cases (GUI-4): pick one to run it (monotonic/cyclic/
         # staged), or "— manual —" to use the quick inputs below.
         self.case_combo = self._combo(
@@ -461,7 +468,8 @@ class PushoverDialog(QDialog):
         norm = Normalize(0.0, vmax)
 
         def _d(nid):
-            dx, dy = frame.get(nid, (0.0, 0.0))
+            d = frame.get(nid) or (0.0, 0.0)          # 2-D (dx,dy) or 3-D (…,dz)
+            dx, dy = d[0], d[1]                        # x-y projection
             return nodes[nid][0] + dx * scale, nodes[nid][1] + dy * scale
 
         for mb in self._project.members:

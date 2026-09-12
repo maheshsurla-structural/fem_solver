@@ -251,11 +251,16 @@ class BeamColumn3DCorotational(BeamColumn3D):
         xi_pts, w_pts = gauss_lobatto_1d(self.n_int)
         f_local = np.zeros(12)
         jac = 0.5 * L0
+        e_sections = []
         for i, (xi, w) in enumerate(zip(xi_pts, w_pts)):
             B = self._strain_disp_matrix(xi, L0)
             e_i = B @ u_local_corot
+            e_sections.append(e_i)
             s_i, _ = self.sections[i].get_response(e_i)
             f_local += (w * jac) * (B.T @ s_i)
+        # Per-IP section deformations at the last evaluation (converged after a
+        # step commits) — read by post-processing for the fiber field (§16 C2).
+        self._e_sections = e_sections
 
         # Transform back to global. The "transform matrix" is built
         # from the CURRENT chord triad — that is what makes this a

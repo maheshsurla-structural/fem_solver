@@ -83,20 +83,26 @@ def build_nonlinear_model(project, *, materials=None, density: float = 0.0):
     pushover behaviour unchanged.
     """
     from femsolver import (BeamColumn2D, BeamColumn2DCorotational,
+                           BeamColumn3D, BeamColumn3DCorotational,
                            ElasticIsotropic, Model)
+    from femsolver.sections.response.fiber import FiberSection3D
     from project import _gsd_modulus, _resolve_section, _spec_from_gsd
 
-    if project.ndm != 2:
-        raise ValueError("nonlinear fiber model is 2-D only for now")
+    if project.ndm not in (2, 3):
+        raise ValueError("nonlinear fiber model supports ndm 2 or 3")
+    threeD = project.ndm == 3
     rho = float(density)
-    m = Model(ndm=2, ndf=3)
+    m = Model(ndm=project.ndm, ndf=(6 if threeD else 3))
     mats = {}
     for mat in project.materials:
         obj = ElasticIsotropic(mat.id, E=mat.E, nu=mat.nu, rho=rho)
         m.add_material(obj)
         mats[mat.id] = obj
     for nd in project.nodes:
-        m.add_node(nd.id, nd.x, nd.y)
+        if threeD:
+            m.add_node(nd.id, nd.x, nd.y, nd.z)
+        else:
+            m.add_node(nd.id, nd.x, nd.y)
 
     secs = {s.id: s for s in project.sections}
     n_fiber = 0
@@ -111,6 +117,18 @@ def build_nonlinear_model(project, *, materials=None, density: float = 0.0):
                 Ec = mats[mb.material].E if mb.material in mats else 3.0e10
             base = ElasticIsotropic(100_000 + mb.id, E=Ec, nu=0.2, rho=rho)
             m.add_material(base)
+            if threeD:
+                # 3-D biaxial (P-M2-M3): wrap the fibres in a FiberSection3D
+                # (torsion held elastic via GJ) on the disp-based corotational
+                # 3-D element. Lumped hinges are 2-D only, so 3-D uses the
+                # distributed element.
+                _A, _Iz, _Iy, J = _resolve_section(sec)
+                GJ = Ec / (2.0 * (1.0 + 0.2)) * max(float(J), 1e-9)
+                fs3 = FiberSection3D(list(fs.fibers), GJ=GJ)
+                m.add_element(BeamColumn3DCorotational(
+                    mb.id, (mb.n1, mb.n2), base, section=fs3))
+                n_fiber += 1
+                continue
             hinge = (project.hinge(mb.hinge)
                      if getattr(mb, "hinge", None) else None)
             if hinge is not None:
@@ -130,6 +148,10 @@ def build_nonlinear_model(project, *, materials=None, density: float = 0.0):
                 m.add_element(BeamColumn2DCorotational(
                     mb.id, (mb.n1, mb.n2), base, section=fs))
             n_fiber += 1
+        elif threeD:
+            A, Iz, Iy, J = _resolve_section(sec)
+            m.add_element(BeamColumn3D(mb.id, (mb.n1, mb.n2),
+                                       mats[mb.material], A, Iy, Iz, J))
         else:
             A, Iz, _Iy, _J = _resolve_section(sec)
             m.add_element(BeamColumn2D(mb.id, (mb.n1, mb.n2),
@@ -146,35 +168,43 @@ def build_nonlinear_model(project, *, materials=None, density: float = 0.0):
 
 
 def _section_def(el, ip: int = 0):
-    """Committed base-section deformation (eps_a, kappa) at integration point
-    ``ip`` — from the displacement-based corotational element's ``_e_sections``
-    or the force-based (hinge) element's ``_e_committed``; None before the first
-    commit / if unavailable."""
+    """Committed base-section deformation vector at integration point ``ip`` —
+    ``[eps_a, kappa_z]`` in 2-D or ``[eps_a, kappa_z, kappa_y, gamma]`` in 3-D —
+    from the corotational element's ``_e_sections`` or the force-based (hinge)
+    element's ``_e_committed``; None before the first commit / if unavailable."""
     for attr in ("_e_sections", "_e_committed"):
         arr = getattr(el, attr, None)
         if arr is not None and len(arr) > ip:
-            return float(arr[ip][0]), float(arr[ip][1])
+            return [float(x) for x in arr[ip]]
     return None
 
 
+def _fiber_strain(f, e) -> float:
+    """Plane-section fibre strain ``eps_a - y*kappa_z (+ z*kappa_y)`` for a 2-D
+    or 3-D section-deformation vector ``e``."""
+    eps = e[0] - f.y * e[1]
+    if len(e) > 2:                              # 3-D biaxial: + z*kappa_y
+        eps += f.z * e[2]
+    return eps
+
+
 def _peak_abs_strain(el) -> float:
-    d = _section_def(el, 0)
-    if d is None:
+    e = _section_def(el, 0)
+    if e is None:
         return 0.0
-    eps_a, kappa = d
-    return max((abs(eps_a - f.y * kappa) for f in el.sections[0].fibers),
+    return max((abs(_fiber_strain(f, e)) for f in el.sections[0].fibers),
                default=0.0)
 
 
 def _section_accept_state(el) -> int:
     """Governing ASCE 41 acceptance level (0 Elastic .. 3 CP) of the element's
-    base section (§16 C5)."""
+    base section (§16 C5). Handles 2-D and 3-D (biaxial) sections."""
     from femsolver.performance.acceptance import section_state
-    d = _section_def(el, 0)
-    if d is None:
+    e = _section_def(el, 0)
+    if e is None:
         return 0
-    eps_a, kappa = d
-    return section_state(el.sections[0].fibers, eps_a, kappa)
+    return section_state(el.sections[0].fibers, e[0], e[1],
+                         kappa_y=(e[2] if len(e) > 2 else 0.0))
 
 
 class _Capturer:
@@ -201,18 +231,18 @@ class _Capturer:
 
     def capture(self) -> None:
         if self._fibers and self._mon is not None:
-            d = _section_def(self._mon, 0)
-            if d is not None:
-                eps_a, kappa = d
+            e = _section_def(self._mon, 0)
+            if e is not None:
                 snap = self._mon.sections[0].clone()
                 self.frames.append([
                     (float(f.y), float(f.z),
-                     float(f.material.get_response(eps_a - f.y * kappa)[0]),
-                     float(eps_a - f.y * kappa))
+                     float(f.material.get_response(_fiber_strain(f, e))[0]),
+                     float(_fiber_strain(f, e)))
                     for f in snap.fibers])
         if self._shape:
+            ndm = self._m.ndm
             self.shape_frames.append(
-                {nid: (float(n.disp[0]), float(n.disp[1]))
+                {nid: tuple(float(n.disp[d]) for d in range(ndm))
                  for nid, n in self._m.nodes.items()})
             self.damage_frames.append(
                 {eid: _peak_abs_strain(self._m.elements[eid])
@@ -287,7 +317,7 @@ def run_pushover(project, *, control_node: int, control_dof: int,
     m = build_nonlinear_model(project, materials=materials)
     targets = monotonic(target, n_steps)
     du = float(targets[1] - targets[0])
-    ref = [0.0, 0.0, 0.0]
+    ref = [0.0] * project.ndf
     ref[control_dof] = -1.0
 
     # Optional per-step capture at the monitored member's base section (feeds
@@ -315,7 +345,7 @@ def run_pushover(project, *, control_node: int, control_dof: int,
             step_callback=_step_cb, substep=True)      # C4: auto step-cutting
 
     if axial and axial_node:
-        aref = [0.0, 0.0, 0.0]
+        aref = [0.0] * project.ndf
         aref[axial_dof] = -abs(axial)
         sa = StagedAnalysis(m)
         sa.add_stage("axial", lambda mm: (
@@ -496,7 +526,7 @@ def run_case(project, case, *, on_step=None, should_cancel=None,
 
     def _push_factory(c):
         du, nsteps = _case_du(c)
-        ref = [0.0, 0.0, 0.0]
+        ref = [0.0] * project.ndf
         ref[c.control_dof] = -1.0
 
         def factory(mm):
@@ -513,7 +543,7 @@ def run_case(project, case, *, on_step=None, should_cancel=None,
         return factory
 
     def _axial_factory(c):
-        aref = [0.0, 0.0, 0.0]
+        aref = [0.0] * project.ndf
         aref[c.axial_dof] = -abs(float(c.axial))
 
         def factory(mm):
