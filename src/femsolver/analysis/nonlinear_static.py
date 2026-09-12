@@ -146,6 +146,7 @@ class NonlinearStaticAnalysis:
         track: tuple[int, int] | None = None,
         keep_state: bool = False,
         const_force: "np.ndarray | None" = None,
+        step_callback=None,
     ):
         if num_steps < 1:
             raise ValueError("num_steps must be >= 1")
@@ -165,6 +166,10 @@ class NonlinearStaticAnalysis:
             raise ValueError(f"unknown numberer {numberer!r}")
         self.numberer = numberer
         self.track = track  # (node_tag, dof_index) or None
+        # Optional per-step hook: called after each converged+committed step with
+        # a dict {step, num_steps, lambda, iterations, tracked}. Returning False
+        # stops the run early (e.g. a UI cancel), keeping the results so far.
+        self.step_callback = step_callback
 
         # results
         self.lambdas: list[float] = []
@@ -225,6 +230,17 @@ class NonlinearStaticAnalysis:
             if self.track is not None:
                 tag, dof = self.track
                 self.tracked.append(float(m.node(tag).disp[dof]))
+
+            if self.step_callback is not None:
+                info = {
+                    "step": step, "num_steps": self.num_steps,
+                    "lambda": self.integrator.lambd,
+                    "iterations": report.iterations,
+                    "tracked": (self.tracked[-1] if self.track is not None
+                                else None),
+                }
+                if self.step_callback(info) is False:
+                    break                              # cooperative cancel
 
         # element response and reactions at the final state
         for e in m.elements.values():

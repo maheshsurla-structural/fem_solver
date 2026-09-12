@@ -98,3 +98,41 @@ def test_pushover_with_axial_preload_runs():
                           n_steps=20, axial=2.0e6, axial_node=2, axial_dof=0)
     assert len(res["disp"]) > 5
     assert max(res["shear"]) > 0
+
+
+def test_pushover_on_step_progress_and_cancel():
+    """on_step fires per push step; should_cancel stops early (keeps the
+    curve so far) — the hooks the threaded GUI-5 runner uses."""
+    p = _circular_col_project()
+    seen = []
+
+    def on_step(info):
+        seen.append(info["step"])
+        assert info["disp"] >= 0.0 and info["shear"] >= 0.0
+
+    res = NL.run_pushover(p, control_node=2, control_dof=1, target=0.06,
+                          n_steps=30, on_step=on_step,
+                          should_cancel=lambda: len(seen) >= 6)
+    assert seen[:3] == [1, 2, 3]                 # progress fired in order
+    assert len(res["disp"]) == 6                 # cancelled after 6 steps
+
+
+# ------------------------------------------------------ engine step_callback
+
+def test_engine_step_callback_fires_and_cancels():
+    from femsolver import (BeamColumn2D, ElasticIsotropic,
+                           NonlinearStaticAnalysis, Model)
+    m = Model(ndm=2, ndf=3)
+    mat = ElasticIsotropic(1, E=2e11, nu=0.3)
+    m.add_material(mat)
+    m.add_node(1, 0, 0)
+    m.add_node(2, 1, 0)
+    m.fix(1, [1, 1, 1])
+    m.add_element(BeamColumn2D(1, (1, 2), mat, 0.01, 1e-4))
+    m.add_nodal_load(2, [0.0, -1000.0, 0.0])
+    calls = []
+    NonlinearStaticAnalysis(
+        m, num_steps=10, dlambda=0.1, integrator="load_control",
+        step_callback=lambda info: (calls.append(info["step"]),
+                                    len(calls) < 4)[1]).run()
+    assert calls == [1, 2, 3, 4]                 # returned False at step 4 -> stop

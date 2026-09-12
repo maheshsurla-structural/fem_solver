@@ -1,0 +1,95 @@
+"""GUI-5 UI — nonlinear pushover dialog + threaded worker (plan §14).
+
+Headless (offscreen). The worker's logic is exercised by calling ``run()``
+directly (synchronous, no thread); Qt delivers same-thread signals inline, so
+progress/cancel are observable without real threading.
+"""
+from __future__ import annotations
+
+import dataclasses
+import math
+import os
+import sys
+from pathlib import Path
+
+import pytest
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_ROOT))
+sys.path.insert(0, str(_ROOT / "desktop"))
+
+from project import Material, Member, Node, Project, Section  # noqa: E402
+
+
+@pytest.fixture(scope="module")
+def qapp():
+    pytest.importorskip("PySide6")
+    pytest.importorskip("matplotlib")
+    from PySide6.QtWidgets import QApplication
+    yield QApplication.instance() or QApplication([])
+
+
+def _gsd_column_project(*, D=0.6, L=3.0):
+    import section_gui_core as core
+    spec = core.Spec(kind="Circular", D=D, fc=35e6, fy=500e6)
+    gsd = dataclasses.asdict(spec)
+    A = math.pi * D * D / 4.0
+    Iz = math.pi * D**4 / 64.0
+    p = Project()
+    p.nodes = [Node(1, 0.0, 0.0, supports=(1, 1, 1)), Node(2, L, 0.0)]
+    p.sections = [Section(id=1, name="col", A=A, Iz=Iz, gsd_spec=gsd)]
+    p.materials = [Material(1, "conc", E=30e9, nu=0.2)]
+    p.members = [Member(1, 1, 2, 1, 1)]
+    return p
+
+
+def test_main_window_wires_pushover(qapp):
+    from demo_model import demo_project
+    from main_window import MainWindow
+    w = MainWindow()
+    w.load_project(demo_project())
+    assert hasattr(w, "act_pushover")
+    assert callable(w.run_pushover_dialog)
+    # demo has no fiber section -> guarded (no dialog, just a status message)
+    w.run_pushover_dialog()
+
+
+def test_worker_runs_and_streams(qapp):
+    from pushover_dialog import PushoverWorker
+    p = _gsd_column_project()
+    steps, results = [], []
+    wk = PushoverWorker(p, dict(control_node=2, control_dof=1, target=0.05,
+                                n_steps=20))
+    wk.progress.connect(lambda info: steps.append(info["step"]))
+    wk.done.connect(lambda res: results.append(res))
+    wk.run()                                    # synchronous (no thread)
+    assert steps[:3] == [1, 2, 3]
+    assert results and len(results[0]["disp"]) > 10
+    assert max(results[0]["shear"]) > 0
+
+
+def test_worker_cancel(qapp):
+    from pushover_dialog import PushoverWorker
+    p = _gsd_column_project()
+    results = []
+    wk = PushoverWorker(p, dict(control_node=2, control_dof=1, target=0.06,
+                                n_steps=30))
+
+    def _maybe_cancel(info):
+        if info["step"] >= 5:
+            wk.cancel()
+    wk.progress.connect(_maybe_cancel)
+    wk.done.connect(lambda res: results.append(res))
+    wk.run()
+    assert results and len(results[0]["disp"]) <= 7      # stopped early
+
+
+def test_dialog_constructs_and_reads(qapp):
+    from pushover_dialog import PushoverDialog
+    dlg = PushoverDialog(None, _gsd_column_project())
+    kw = dlg._kwargs()
+    assert kw["control_node"] == 2                       # the free node
+    assert kw["control_dof"] in (0, 1, 2)
+    assert kw["n_steps"] >= 2
+    dlg._draw_curve()                                    # no crash

@@ -682,6 +682,16 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
   Edit menu. `test_desktop_materials.py` (11, first headless‑offscreen desktop test). Also corrected
   the stale **P2**/**U4** tracker rows (their code shipped earlier). Next GUI: **GUI‑2** (fiber‑mesh
   panel + preview, needs U2) or **GUI‑5** (threaded solver + progress dock).
+- 2026‑09‑12 — **GUI‑5 UI shipped (nonlinear‑run subsystem complete).** Engine enabler: added an
+  optional `step_callback` to `NonlinearStaticAnalysis` (called after each committed step; returning
+  `False` cancels — backward‑compatible, default None). `run_pushover` gained `on_step`/`should_cancel`.
+  `desktop/pushover_dialog.py`: `PushoverWorker` (QThread — streams per‑step progress, cooperative
+  cancel) + `PushoverDialog` (control node/DOF/target/steps/axial inputs, progress bar, convergence
+  log, Cancel, live base‑shear vs displacement curve). "Nonlinear pushover…" wired into the Analysis
+  menu (guarded: needs a GSD/fiber section). Headless‑verified: worker streams + cancels, dialog
+  builds, main‑window wiring. `test_desktop_nonlinear.py` (7), `test_desktop_pushover_ui.py` (4). The
+  app can now run a fiber pushover without freezing and watch the curve build. Next: **GUI‑6** (step
+  slider / fiber‑stress contour / hinge state) or **GUI‑3/4** (hinge + case‑manager UIs).
 - 2026‑09‑12 — **GUI‑5 background shipped (nonlinear‑run subsystem, compute half).** `desktop/nonlinear.py`:
   `fiber_section_from_spec` compiles a GSD `Spec` → inelastic `FiberSection2D` (circular via the U2
   `polar_cells` mesh; concrete + rebar from the shared `section_gui_core` factories); `build_nonlinear_model`
@@ -751,7 +761,7 @@ Each row: **Background** (engine/infra) + **GUI**. Status ✅ exists · ⚠ part
 | GUI‑2 | Fiber‑mesh panel + fiber preview in Section Designer | P1, §15 U2 | ☑ | pre‑existing in `desktop/section_designer.py` (Fibres tab, mesh overlay + centroids toggle, mesh‑density combo, fibres‑CSV export via `core.section_fibers`/`section_fiber_mesh`) — now running on the **U2‑unified `polar_cells`** mesher. Confirmed 2026‑09‑12 |
 | GUI‑3 | Hinge property + assignment UI | P9 | ☐ | |
 | GUI‑4 | Nonlinear case manager (control/monitor/staged/cyclic/NL‑params) | P6, P7 | ☐ | |
-| GUI‑5 | Threaded solver + progress/convergence dock + cancel | (infra) | ◐ | 2026‑09‑12 — **compute/background shipped**: `desktop/nonlinear.py` (`fiber_section_from_spec` — GSD Spec→inelastic FiberSection2D via the U2 polar mesh + shared factories; `build_nonlinear_model` — GSD members→disp‑based fiber `BeamColumn2DCorotational`; `run_pushover` — displacement control, optional held axial preload via `StagedAnalysis`). `test_desktop_nonlinear.py` (5); pushover yields + axial raises capacity. **Remaining: threaded (QThread) run + progress/convergence dock + cancel + curve display in the app.** |
+| GUI‑5 | Threaded solver + progress/convergence dock + cancel | (infra) | ☑ | 2026‑09‑12 — **compute** (`desktop/nonlinear.py`: `fiber_section_from_spec`/`build_nonlinear_model`/`run_pushover`) + **threaded UI**. Engine enabler: optional `step_callback` on `NonlinearStaticAnalysis` (per‑step hook; return False = cancel). `desktop/pushover_dialog.py` = `PushoverWorker` (QThread, streams progress, cooperative cancel) + `PushoverDialog` (inputs, progress bar, convergence log, Cancel, live base‑shear/disp curve); "Nonlinear pushover…" wired into the Analysis menu. Tests: `test_desktop_nonlinear.py` (7, incl. step_callback + cancel), `test_desktop_pushover_ui.py` (4, headless — wiring/worker/cancel/dialog). |
 | GUI‑6 | NL post‑processing (hysteresis, step slider/anim, fiber contour, hinge state) | P8, GUI‑5 | ☐ | commercial differentiator |
 | GUI‑7 | Nonlinear report + export | GUI‑6 | ☐ | |
 | GUI‑I1 | Step‑indexed results model | (infra) | ☐ | underpins GUI‑6 |

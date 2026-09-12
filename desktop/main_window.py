@@ -119,6 +119,8 @@ class MainWindow(QMainWindow):
 
         self.act_run = _action(self, "&Run (linear static)", "Ctrl+R",
                                self.run_linear_static, "run")
+        self.act_pushover = _action(self, "Nonlinear &pushover…", None,
+                                    self.run_pushover_dialog, "run")
         self.act_undef = _action(self, "&Undeformed", None,
                                  self._show_undeformed, "undeformed")
         self.act_fit = _action(self, "&Fit", "F", self.view.fit, "fit")
@@ -224,6 +226,7 @@ class MainWindow(QMainWindow):
         analysis_menu.addAction(self.act_gencombos)
         analysis_menu.addSeparator()
         analysis_menu.addAction(self.act_run)
+        analysis_menu.addAction(self.act_pushover)
         analysis_menu.addAction(self.act_undef)
         analysis_menu.addSeparator()
         for a in (self.act_diag_n, self.act_diag_v, self.act_diag_m,
@@ -305,6 +308,20 @@ class MainWindow(QMainWindow):
             f"max|u| = {dmax:.4e} m, deformation ×{scale:.0f}")
         self.statusBar().showMessage(
             f"Solved · max|u| {dmax:.3e} m · deformation ×{scale:.0f}")
+
+    def run_pushover_dialog(self) -> None:
+        from pushover_dialog import PushoverDialog
+        p = self._project
+        if not p.members:
+            self.statusBar().showMessage("Add members first.")
+            return
+        has_fiber = any(getattr(s, "gsd_spec", None) for s in p.sections)
+        if not has_fiber:
+            self.statusBar().showMessage(
+                "Nonlinear pushover needs a Section Designer (fiber) section "
+                "on a member.")
+            return
+        PushoverDialog(self, p).exec()
 
     def show_diagram(self, kind: str) -> None:
         if self._solve() is None:

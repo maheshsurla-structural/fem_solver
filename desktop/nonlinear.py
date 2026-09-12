@@ -111,7 +111,8 @@ def build_nonlinear_model(project):
 def run_pushover(project, *, control_node: int, control_dof: int,
                  target: float, n_steps: int = 40, axial: float = 0.0,
                  axial_node: int | None = None, axial_dof: int = 0,
-                 tol: float = 1e-6, max_iter: int = 60) -> dict:
+                 tol: float = 1e-6, max_iter: int = 60,
+                 on_step=None, should_cancel=None) -> dict:
     """Displacement-controlled pushover of the nonlinear fiber model.
 
     Pushes ``control_node`` DOF ``control_dof`` (0=Ux, 1=Uy, 2=Rz) to
@@ -120,6 +121,11 @@ def run_pushover(project, *, control_node: int, control_dof: int,
     constant* while pushing (staged). Returns ``{"disp", "shear"}`` — abs tip
     displacement and abs base shear (the displacement-control load factor of
     the unit reference load).
+
+    ``on_step(info)`` (if given) is called after each push step with
+    ``{step, num_steps, disp, shear}`` for live UI progress; ``should_cancel()``
+    (if given) is polled each step and, when true, stops the push early
+    (keeping the curve so far) — the hooks a threaded UI runner uses.
     """
     from femsolver import NonlinearStaticAnalysis, StagedAnalysis, monotonic
     from femsolver.analysis.static_integrator import DisplacementControl
@@ -130,12 +136,22 @@ def run_pushover(project, *, control_node: int, control_dof: int,
     ref = [0.0, 0.0, 0.0]
     ref[control_dof] = -1.0
 
+    def _step_cb(info):
+        if on_step is not None:
+            on_step({"step": info["step"], "num_steps": info["num_steps"],
+                     "disp": abs(info["tracked"] or 0.0),
+                     "shear": abs(info["lambda"])})
+        if should_cancel is not None and should_cancel():
+            return False                               # cooperative cancel
+        return True
+
     def _push(mm):
         mm.add_nodal_load(control_node, ref)
         return NonlinearStaticAnalysis(
             mm, num_steps=n_steps,
             integrator=DisplacementControl(control_node, control_dof, du),
-            track=(control_node, control_dof), tol=tol, max_iter=max_iter)
+            track=(control_node, control_dof), tol=tol, max_iter=max_iter,
+            step_callback=_step_cb)
 
     if axial and axial_node:
         aref = [0.0, 0.0, 0.0]
