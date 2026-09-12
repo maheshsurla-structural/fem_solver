@@ -59,6 +59,67 @@ class Fiber:
 
 # ---------------------------------------------------------- circular meshing
 
+def polar_divisions(target: int) -> tuple[int, int]:
+    """``(n_rings, n_wedges)`` for a polar mesh of ~``target`` annular-sector
+    cells with ~square cells at the perimeter (radial step ≈ arc step). Shared
+    by the fiber discretizer and the Section Designer's fibre view so both
+    choose the same mesh."""
+    n_rings = max(4, int(round((target / (2.0 * math.pi)) ** 0.5)))
+    n_wedges = max(8, int(round(2.0 * math.pi * n_rings)))
+    return n_rings, n_wedges
+
+
+def polar_cells(
+    r_in: float,
+    r_out: float,
+    n_rings: int,
+    n_wedges: int,
+    *,
+    centroid_y: float = 0.0,
+    centroid_z: float = 0.0,
+    theta_start: float = 0.0,
+    theta_end: float = 2.0 * math.pi,
+) -> list[tuple[float, float, float]]:
+    """Annular-sector polar-mesh cells as ``(y, z, area)`` tuples — the single
+    geometric primitive behind :func:`circular_sector_fibers` (analysis fibers)
+    and the Section Designer's fibre view (visualization cells), so the
+    annular-sector area / centroid maths lives in exactly one place.
+
+    Each cell spans a radial band ``[r_i, r_{i+1}]`` × an angular wedge, placed
+    at its exact area centroid with the exact sector area:
+
+        area  = 0.5 · dtheta · (r2² − r1²)
+        r_bar = (2/3) (r2³ − r1³)/(r2² − r1²) · sin(a)/a      (a = dtheta/2)
+        y, z  = centroid + r_bar · (sin phi, cos phi)         (phi = wedge mid)
+
+    ``r_in = 0`` gives pie slices; a full 360° annulus sums to the exact area
+    ``pi (r_out² − r_in²)`` and (for ``n_wedges ≥ 2``) has an exact centroid.
+    """
+    if r_out <= r_in:
+        raise ValueError(f"need r_out > r_in, got r_in={r_in}, r_out={r_out}")
+    if r_in < 0.0:
+        raise ValueError(f"r_in must be >= 0, got {r_in}")
+    if n_rings < 1:
+        raise ValueError(f"need at least 1 ring, got {n_rings}")
+    if n_wedges < 2:
+        raise ValueError(f"need at least 2 wedges, got {n_wedges}")
+    dr = (r_out - r_in) / n_rings
+    dtheta = (theta_end - theta_start) / n_wedges
+    half = 0.5 * dtheta
+    shape = 1.0 if half == 0.0 else math.sin(half) / half
+    cells: list[tuple[float, float, float]] = []
+    for i in range(n_rings):
+        r1 = r_in + i * dr
+        r2 = r1 + dr
+        area = 0.5 * dtheta * (r2 * r2 - r1 * r1)
+        r_bar = (2.0 / 3.0) * (r2**3 - r1**3) / (r2 * r2 - r1 * r1) * shape
+        for j in range(n_wedges):
+            phi = theta_start + (j + 0.5) * dtheta
+            cells.append((centroid_y + r_bar * math.sin(phi),
+                          centroid_z + r_bar * math.cos(phi), area))
+    return cells
+
+
 def circular_sector_fibers(
     r_in: float,
     r_out: float,
@@ -104,25 +165,11 @@ def circular_sector_fibers(
         raise ValueError(f"need at least 1 ring, got {n_rings}")
     if n_wedges < 2:
         raise ValueError(f"need at least 2 wedges, got {n_wedges}")
-    dr = (r_out - r_in) / n_rings
-    dtheta = (theta_end - theta_start) / n_wedges
-    half = 0.5 * dtheta
-    shape = 1.0 if half == 0.0 else math.sin(half) / half
-    fibers: list[Fiber] = []
-    for i in range(n_rings):
-        r1 = r_in + i * dr
-        r2 = r1 + dr
-        area = 0.5 * dtheta * (r2 * r2 - r1 * r1)
-        r_bar = (2.0 / 3.0) * (r2**3 - r1**3) / (r2 * r2 - r1 * r1) * shape
-        for j in range(n_wedges):
-            phi = theta_start + (j + 0.5) * dtheta
-            fibers.append(Fiber(
-                y=centroid_y + r_bar * math.sin(phi),
-                z=centroid_z + r_bar * math.cos(phi),
-                area=area,
-                material=material.clone(),
-            ))
-    return fibers
+    cells = polar_cells(r_in, r_out, n_rings, n_wedges, centroid_y=centroid_y,
+                        centroid_z=centroid_z, theta_start=theta_start,
+                        theta_end=theta_end)
+    return [Fiber(y=y, z=z, area=area, material=material.clone())
+            for (y, z, area) in cells]
 
 
 class FiberSection2D(SectionBase):

@@ -30,6 +30,8 @@ from femsolver.sections.response.fiber import (
     FiberSection2D,
     FiberSection3D,
     circular_sector_fibers,
+    polar_cells,
+    polar_divisions,
 )
 from femsolver.sections.response.fiber_build import (
     rc_circular_column_section,
@@ -62,6 +64,8 @@ __all__ = [
     "FiberSection2D",
     "FiberSection3D",
     "circular_sector_fibers",
+    "polar_cells",
+    "polar_divisions",
     "rc_circular_column_section",
     "fiber_section_moment_curvature",
     "WallRegion",

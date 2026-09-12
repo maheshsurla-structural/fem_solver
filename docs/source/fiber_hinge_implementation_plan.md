@@ -682,6 +682,15 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
   Edit menu. `test_desktop_materials.py` (11, first headless‑offscreen desktop test). Also corrected
   the stale **P2**/**U4** tracker rows (their code shipped earlier). Next GUI: **GUI‑2** (fiber‑mesh
   panel + preview, needs U2) or **GUI‑5** (threaded solver + progress dock).
+- 2026‑09‑12 — **U2 done (polar‑mesh unification).** Extracted the annular‑sector polar mesh into
+  engine helpers `polar_divisions` + `polar_cells` (`sections/response/fiber.py`); `circular_sector_fibers`
+  now builds on them, and the Section Designer GUI (`section_gui_core.section_fibers` /
+  `section_fiber_mesh`), which carried a duplicate copy of the formula, now imports the same helpers —
+  the annular‑sector maths lives in exactly one place (§15 "no forked section engine"). Provably
+  identical: `polar_cells(0,42,8,24)` area = πR² exact, `polar_divisions(1400)`=(15,94) matches the GUI
+  heuristic, GUI circular section area = πR². 101 affected tests pass; helpers exported from
+  `sections.response` (`public_api` unchanged). Unblocks **GUI‑2** (fiber‑mesh preview). Next: **GUI‑2**
+  or **GUI‑5**.
 
 ---
 
@@ -811,7 +820,7 @@ section definition, same material laws, same fiber discretization, same code.
 | Item | Deliverable | Depends on | State | Notes |
 |---|---|---|---|---|
 | U1 | Lift exact integrator → `sections/analysis.py` (+ shims, tests) | — | ☑ | 2026‑09‑12 — moved `exact_mphi`/`section_pm_slice`/`_width_bands` + material factories + `mander_confinement` to `femsolver/sections/analysis.py`; `section_gui_core` re‑exports (desktop+Streamlit unchanged); before/after byte‑identical; `test_section_analysis_exact.py` (7); full suite 2454 pass |
-| U2 | One section→fiber compiler (circular + core/cover); P1 rewired | P1 | ☐ | |
+| U2 | One section→fiber compiler (circular + core/cover); P1 rewired | P1 | ☑ | 2026‑09‑12 — unified the **polar circular‑mesh math** into the engine: `polar_divisions` + `polar_cells` in `sections/response/fiber.py`; `circular_sector_fibers` now builds on them, and the GUI `section_fibers`/`section_fiber_mesh` (which had a duplicate annular‑sector formula) now import the same helpers — one implementation. Verified identical (`polar_divisions(1400)`=(15,94); GUI circular cells area=πR² exact); 101 affected tests pass. Deferred nicety: `Section.fiber_section_2d` auto‑polar routing + core/cover (rc_circular_column_section already builds circular RC for the hinge stream). |
 | U3 | One M‑φ / P‑M‑M API + result type | U1 | ☑ | 2026‑09‑12 — added backend tokens `C_EXACT/C_FIBRE/C_NOMINAL/C_DESIGN` + `MomentCurvatureResult`/`PMInteractionResult` + `moment_curvature_analysis(backend=…)`/`pm_interaction(backend=…)` in `sections/analysis.py`; lifted `pmm_slice` from the GUI (verbatim + re-export shim, U1 pattern); `test_section_analysis_unified.py` (10); full suite 2463 pass (only the 4 pre-existing quadrature failures) |
 | U4 | Confinement law shared tool↔hinge | P2 | ☑ | one calc (`mander_confinement` + `mander_confined_circular`) shared by the Section Designer, the fiber hinge (P5), and now the GUI‑1 material bridge |
 | U5 | Same `Section` for analysis + hinge (UI) | U2, GUI‑3 | ☐ | |

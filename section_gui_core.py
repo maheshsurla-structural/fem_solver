@@ -53,7 +53,8 @@ from femsolver.sections.analysis import (  # noqa: E402,F401
     concrete_uniaxial_from, ec2_fctm, exact_mphi, mander_confinement,
     mphi_data, pmm_slice, section_pm_slice, steel_uniaxial_from,
 )
-from femsolver.sections.response.fiber import Fiber, FiberSection2D
+from femsolver.sections.response.fiber import (Fiber, FiberSection2D,
+                                               polar_cells, polar_divisions)
 from femsolver.materials.uniaxial import PrestressedUniaxial
 from femsolver.benchmarks.section_designer import (
     SectionCase,
@@ -1685,12 +1686,11 @@ def _composite_cell_fibers(spec, csz_z, csz_y, eps0=None, kappa=None) -> list:
     return rows
 
 
-def _polar_divisions(target: int):
-    """Rings × sectors for a polar mesh with ~``target`` cells and ~square cells
-    at the perimeter (radial step ≈ arc step)."""
-    n_r = max(4, int(round((target / (2.0 * math.pi)) ** 0.5)))
-    n_theta = max(8, int(round(2.0 * math.pi * n_r)))
-    return n_r, n_theta
+# Polar mesh divisions + annular-sector cells now live in the engine
+# (femsolver.sections.response.fiber) so the analysis fibers and this fibre view
+# share one implementation of the maths (plan §15 U2). Kept aliased under the
+# old private name for the call sites below.
+_polar_divisions = polar_divisions
 
 
 def section_fiber_mesh(spec: "Spec", target: int = 1400) -> dict:
@@ -1786,22 +1786,12 @@ def section_fibers(spec: "Spec", target: int = 1400,
         return row
 
     if spec.kind == "Circular":
-        # polar (rings × sectors) discretisation — the cell is an annular sector
+        # polar (rings × sectors) discretisation via the shared engine mesher
         R = float(spec.D) / 2.0
-        n_z, n_y = _polar_divisions(target)            # rings, sectors
-        dr, dth, al = R / n_z, 2.0 * math.pi / n_y, math.pi / n_y
-        cells = []
-        for i in range(n_z):
-            r1, r2 = i * dr, (i + 1) * dr
-            Rc = ((2.0 / 3.0) * (math.sin(al) / al)
-                  * (r2 ** 3 - r1 ** 3) / max(r2 ** 2 - r1 ** 2, 1e-12))
-            a_cell = 0.5 * dth * (r2 ** 2 - r1 ** 2)
-            for j in range(n_y):
-                thm = (j + 0.5) * dth
-                cells.append(_state(
-                    {"area": a_cell, "z": Rc * math.cos(thm),
-                     "y": Rc * math.sin(thm), "mat": "Concrete", "cell": True},
-                    conc_law))
+        n_z, n_y = polar_divisions(target)             # rings, sectors
+        cells = [_state({"area": area, "z": z, "y": y,
+                         "mat": "Concrete", "cell": True}, conc_law)
+                 for (y, z, area) in polar_cells(0.0, R, n_z, n_y)]
     elif spec.kind == "Composite":
         cells = _composite_cell_fibers(spec, w / n_z, h / n_y, eps0, kappa)
     else:

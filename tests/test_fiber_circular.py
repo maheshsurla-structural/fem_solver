@@ -24,12 +24,47 @@ from femsolver.sections.response.fiber import (
     FiberSection2D,
     FiberSection3D,
     circular_sector_fibers,
+    polar_cells,
+    polar_divisions,
 )
 from femsolver.sections.response.fiber_build import rc_circular_column_section
 
 D = 84.0  # benchmark column diameter (in)
 A_EXACT = math.pi * D * D / 4.0
 I_EXACT = math.pi * D**4 / 64.0
+
+
+# ------------------------------------------------------ U2 shared polar mesh
+
+def test_polar_divisions_matches_gui_heuristic():
+    # documented in the GUI commit: a target ~1400 gives 15 rings x 94 sectors
+    assert polar_divisions(1400) == (15, 94)
+    nr, nt = polar_divisions(50)
+    assert nr >= 4 and nt >= 8                          # floors
+
+
+def test_polar_cells_exact_area_and_centroid():
+    cells = polar_cells(0.0, 42.0, 8, 24)               # full disc R=42
+    assert len(cells) == 8 * 24
+    A = sum(c[2] for c in cells)
+    assert A == pytest.approx(math.pi * 42.0**2, rel=1e-12)
+    cy = sum(c[2] * c[0] for c in cells) / A
+    cz = sum(c[2] * c[1] for c in cells) / A
+    assert cy == pytest.approx(0.0, abs=1e-9)
+    assert cz == pytest.approx(0.0, abs=1e-9)
+    # annulus area is exact too
+    ann = polar_cells(10.0, 42.0, 5, 24)
+    assert sum(c[2] for c in ann) == pytest.approx(
+        math.pi * (42.0**2 - 10.0**2), rel=1e-12)
+
+
+def test_circular_sector_fibers_consistent_with_polar_cells():
+    m = UniaxialElastic(1.0)
+    fibers = circular_sector_fibers(0.0, 42.0, 6, 18, m)
+    cells = polar_cells(0.0, 42.0, 6, 18)
+    assert len(fibers) == len(cells)
+    for f, (y, z, a) in zip(fibers, cells):
+        assert (f.y, f.z, f.area) == pytest.approx((y, z, a))
 
 
 # ------------------------------------------------------ low-level meshing
