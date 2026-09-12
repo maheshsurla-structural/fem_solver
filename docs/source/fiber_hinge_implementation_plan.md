@@ -520,7 +520,7 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
 |---|---|---|---|
 | P0 | Plan + decode reviewed; D1 & O4 resolved (distributed‑first; user exports both) | ☑ | 2026‑09‑12 — plan authored; O1/O2/O3 defaulted |
 | P1 | G1 circular fiber builders | ☑ | 2026‑09‑12 — `fiber.circular`/`circular_sector_fibers`, `fiber_build.rc_circular_column_section`; 12 tests, example 80; area exact, Iz→0.09% |
-| P2 | G2 Mander confinement pre‑processor | ☐ | |
+| P2 | G2 Mander confinement pre‑processor | ☑ | done (row was stale) — `mander_confinement` (engine) + typed `mander_confined_circular`/`ConfinedCircular` in `sections/analysis.py`; verified vs Midas card (fcc 0.24%, ke/fl exact); `test_mander_confinement.py` present |
 | P3 | G3 Caltrans/Park steel | ☑ | 2026‑09‑12 — verified the monotonic Park backbone (`UniaxialReinforcingSteel`) hits §2.2 (eps_sh,f_y)=(0.0075,68) & (eps_su,f_su)=(0.09,95); added cyclic `ReinforcingSteelKinematic` (kinematic hardening over the same backbone; monotonic reproduces it to 1e‑13, elastic unload = E, Bauschinger shift). `test_uniaxial_materials.py` +7; example 81; full suite 2470 pass |
 | P4 | G8 recorders + benchmark M‑φ | ☑ | 2026‑09‑12 — added `results/recorders.py` (`SectionRecorder`/`FiberRecorder`/`NodeRecorder`, CSV) + fibre‑consistent `fiber_section_moment_curvature` (`sections/response/fiber_mphi.py`); benchmark section M‑φ at P=2400 kip (N held to 1e‑11, M→32.9k kip‑ft). `test_fiber_mphi_recorders.py` (8), example 82. Golden Midas/CSI M‑φ (§7.2) pending user export; §7.4 cross‑checks pass. Full suite 2478 pass |
 | P5 | Axial‑load benchmark (Stage 1) | ☑ | 2026‑09‑12 — two‑node `ForceBeamColumn2DCorotational` + Caltrans fiber section; load‑control preload holds 2400 kip (base reaction exact), EA fiber↔hand 0.9959, working‑point strain 1.04e‑4 (<ε_c0); section axial capacity (imposed strain, N=Σσ·A) peaks 41,291 kip @ ε≈0.0047 then softens to 32,772 @ 0.02. `test_fiber_hinge_axial.py` (3), example 83. Golden Midas/CSI axial (§7.1) pending export |
@@ -672,6 +672,16 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
   `FiberHingeBeamColumn2D` exported top‑level + `public_api.txt`. `test_fiber_hinge_element.py` (6);
   example `87_fiber_hinge_element.py`. Next: **P10** (MCT/`$br` mini‑importer + regression harness,
   needs the golden exports).
+- 2026‑09‑12 — **GUI‑1 shipped (§14).** New session (justforjme account) resumed after the other
+  account committed P1–P9 + U1/U3. Started the GUI roadmap: added the desktop **inelastic‑material
+  editor with a live engine‑backed σ‑ε preview**. `desktop/materials.py` bridges a `project.Material`
+  to the femsolver uniaxial library (`uniaxial_law`, `stress_strain_curve`) — one source, no
+  re‑implemented constitutive maths (§15). `desktop/material_editor.py` = `MaterialDialog`
+  (kind selector + per‑kind param fields + matplotlib σ‑ε canvas) and `MaterialManagerDialog`
+  (list/add/edit/delete, delete‑in‑use guard). `Material.params` added; "Materials…" wired into the
+  Edit menu. `test_desktop_materials.py` (11, first headless‑offscreen desktop test). Also corrected
+  the stale **P2**/**U4** tracker rows (their code shipped earlier). Next GUI: **GUI‑2** (fiber‑mesh
+  panel + preview, needs U2) or **GUI‑5** (threaded solver + progress dock).
 
 ---
 
@@ -720,7 +730,7 @@ Each row: **Background** (engine/infra) + **GUI**. Status ✅ exists · ⚠ part
 ### 14.1 GUI status tracker
 | Item | Deliverable | Depends on | State | Notes |
 |---|---|---|---|---|
-| GUI‑1 | Inelastic‑material editor + σ‑ε preview | P2, P3 | ☐ | |
+| GUI‑1 | Inelastic‑material editor + σ‑ε preview | P2, P3 | ☑ | 2026‑09‑12 — `desktop/materials.py` (engine‑backed `uniaxial_law`/`stress_strain_curve`) + `desktop/material_editor.py` (`MaterialDialog` w/ live matplotlib σ‑ε preview + `MaterialManagerDialog`); `Material.params`; wired "Materials…" into main_window; `test_desktop_materials.py` (11, headless offscreen). Kinds: elastic / Kent‑Park / Mander concrete / Park + cyclic steel |
 | GUI‑2 | Fiber‑mesh panel + fiber preview in Section Designer | P1, §15 U2 | ☐ | |
 | GUI‑3 | Hinge property + assignment UI | P9 | ☐ | |
 | GUI‑4 | Nonlinear case manager (control/monitor/staged/cyclic/NL‑params) | P6, P7 | ☐ | |
@@ -803,7 +813,7 @@ section definition, same material laws, same fiber discretization, same code.
 | U1 | Lift exact integrator → `sections/analysis.py` (+ shims, tests) | — | ☑ | 2026‑09‑12 — moved `exact_mphi`/`section_pm_slice`/`_width_bands` + material factories + `mander_confinement` to `femsolver/sections/analysis.py`; `section_gui_core` re‑exports (desktop+Streamlit unchanged); before/after byte‑identical; `test_section_analysis_exact.py` (7); full suite 2454 pass |
 | U2 | One section→fiber compiler (circular + core/cover); P1 rewired | P1 | ☐ | |
 | U3 | One M‑φ / P‑M‑M API + result type | U1 | ☑ | 2026‑09‑12 — added backend tokens `C_EXACT/C_FIBRE/C_NOMINAL/C_DESIGN` + `MomentCurvatureResult`/`PMInteractionResult` + `moment_curvature_analysis(backend=…)`/`pm_interaction(backend=…)` in `sections/analysis.py`; lifted `pmm_slice` from the GUI (verbatim + re-export shim, U1 pattern); `test_section_analysis_unified.py` (10); full suite 2463 pass (only the 4 pre-existing quadrature failures) |
-| U4 | Confinement law shared tool↔hinge | P2 | ◐ | calc shared (`mander_confinement` + `mander_confined_circular`, one source); hinge consumes it in P5 |
+| U4 | Confinement law shared tool↔hinge | P2 | ☑ | one calc (`mander_confinement` + `mander_confined_circular`) shared by the Section Designer, the fiber hinge (P5), and now the GUI‑1 material bridge |
 | U5 | Same `Section` for analysis + hinge (UI) | U2, GUI‑3 | ☐ | |
 
 **Principle:** *one section definition → one compiler → one analysis core → two views (design tool

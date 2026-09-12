@@ -29,6 +29,11 @@ class Material:
     kind: str = "elastic_isotropic"
     fy: float = 345.0e6           # yield (A992 = 345 MPa) — for design checks
     fu: float = 448.0e6           # ultimate (A992 = 448 MPa)
+    # Inelastic (fiber) constitutive parameters, per ``kind`` — e.g. concrete
+    # {fc, eps_c0, eps_cu, Ec, fpcu_ratio}, steel {E, fy, fu, eps_sh, eps_su}.
+    # Elastic materials leave this empty. Consumed by desktop.materials
+    # (`uniaxial_law` / `stress_strain_curve`) to build the engine law.
+    params: dict = field(default_factory=dict)
 
 
 @dataclass

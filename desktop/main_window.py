@@ -22,6 +22,7 @@ import style
 from commands import EditCommand
 from editing import (LoadDialog, MemberDialog, NodeDialog, SectionDialog,
                      dof_labels)
+from material_editor import MaterialManagerDialog
 from model_view import ModelView
 from project import Material, Member, Node, Project, Section
 from properties import PropertiesPanel
@@ -100,6 +101,8 @@ class MainWindow(QMainWindow):
                                     "load")
         self.act_add_section = _action(self, "Add &section…", None,
                                        self.add_section, "section")
+        self.act_materials = _action(self, "&Materials…", None,
+                                     self.manage_materials)
         self.act_genloads = _action(self, "Generate &loads…", None,
                                     self.generate_loads, "loadsgen")
         self.act_delete = _action(self, "&Delete", "Del", self.delete_selected,
@@ -204,7 +207,7 @@ class MainWindow(QMainWindow):
         edit_menu.addAction(self.act_redo)
         edit_menu.addSeparator()
         for a in (self.act_add_node, self.act_add_member, self.act_add_section,
-                  self.act_add_load, self.act_delete):
+                  self.act_materials, self.act_add_load, self.act_delete):
             edit_menu.addAction(a)
         edit_menu.addSeparator()
         edit_menu.addAction(self.act_deselect)
@@ -629,6 +632,14 @@ class MainWindow(QMainWindow):
         self._apply_edit("Add section",
                          lambda: self._project.sections.append(section),
                          ("section", section.id))
+
+    def manage_materials(self) -> None:
+        result = MaterialManagerDialog.manage(self, self._project)
+        if result is None:
+            return
+        self._apply_edit(
+            "Edit materials",
+            lambda: setattr(self._project, "materials", result))
 
     def _on_double_click(self, item, _col) -> None:
         ref = item.data(0, Qt.ItemDataRole.UserRole)
