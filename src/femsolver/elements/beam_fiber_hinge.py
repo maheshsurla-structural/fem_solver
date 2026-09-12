@@ -154,7 +154,7 @@ class FiberHingeBeamColumn2D(ForceBeamColumn2DCorotational):
                     f"fiber-hinge beam {self.tag}: element flexibility became "
                     f"singular during state determination ({exc})."
                 ) from exc
-            if float(np.max(np.abs(dv))) < self.state_det_tol:
+            if self._state_det_converged(dv, v_target):
                 break
             q = q + K_b @ dv
         else:

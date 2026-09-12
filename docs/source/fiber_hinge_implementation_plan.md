@@ -451,6 +451,19 @@ peak/ultimate ±10%; cyclic energy per loop ±15%. Justify any looser tolerance 
 - **Steel `ε_su` discrepancy (0.09 vs 0.06)** → §10 O1; run both, report sensitivity.
 - **State‑determination non‑convergence at softening** (`beam_force.py` warns on singular
   flexibility) → hardening tangents, smaller steps, or switch to displacement control past peak.
+  **✅ Convergence‑robustness pass (2026, engine §8):** the force‑based / fiber‑hinge inner
+  state‑determination leaves an irreducible residual *noise floor* in the assembled unbalance, so an
+  absolute `NormUnbalance` tolerance set below it made the outer Newton chatter forever while `||du||`
+  had already collapsed to machine zero. Fixed two scale‑fragile absolute tolerances (both fixes
+  strictly *additive* — they only accept convergence the old tests would miss): (1) `NormUnbalance`
+  now also converges on **displacement stagnation** (`||du|| ≤ stag_du·||du_ref||` with a residual
+  guard `||R|| ≤ stag_res·||R_ref||` so a stuck/singular iteration is never mistaken for
+  convergence); (2) the elements' inner NF loop gained a **relative** deformation tolerance
+  (`state_det_rel_tol`) beside the absolute `state_det_tol`. Effect: the benchmark force‑based
+  pushover extends from ~0.15 in to ~0.36 in tip drift, and the fiber‑hinge element to ~0.60 in,
+  before the *remaining* limit — the force‑based element's genuinely **singular flexibility** at deep
+  softening (a true formulation limit; use a smaller step or the displacement‑based / fiber‑hinge
+  path there). `test_convergence_robustness.py` (5).
 - **Unit slips (kip‑in vs kip‑ft)** → all benchmark code in **kip, in**; assert `Ag≈5542 in²`.
 - **Cross‑account drift** → this doc + Status Tracker are authoritative; no private assumptions.
 
@@ -794,6 +807,21 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
   infra polish (**GUI‑I1** step‑indexed results model; **GUI‑I2** is largely covered — materials, hinges,
   and nonlinear cases all serialize), a convergence‑robustness pass on the force‑based element (§8), or
   **U5**/**P10** once the Midas/CSI exports land.
+- 2026 — **Engine convergence‑robustness pass (§8).** Diagnosed the force‑based/fiber‑hinge outer
+  Newton chatter: with an absolute `NormUnbalance` tol below the elements' state‑determination
+  residual noise floor, `||R||` oscillated at the floor (~1e‑9 kip on the benchmark) while `||du||`
+  had collapsed to ~1e‑16 (fully converged). Fix (two additive tolerance changes, so no
+  previously‑converging step can now fail): (1) `NormUnbalance` also converges on displacement
+  stagnation — `||du|| ≤ stag_du·||du_ref||` guarded by `||R|| ≤ stag_res·||R_ref||` (a stuck /
+  near‑singular iteration with large residual is still rejected); (2) the force‑based elements
+  (`beam_force`, `beam_force_3d`, `beam_fiber_hinge`) gained a relative inner tolerance
+  `state_det_rel_tol` beside the absolute `state_det_tol`. Benchmark force‑based pushover now
+  converges to ~0.36 in tip drift (was ~0.15 at tight tol) and the fiber‑hinge element to ~0.60 in;
+  the remaining force‑based failure at deeper drift is the genuine **singular‑flexibility** limit of
+  the flexibility formulation (smaller step or displacement‑based/fiber‑hinge path there).
+  `test_convergence_robustness.py` (5); `test_newton_raphson.py` still green (stagnation guard leaves
+  the `max_iter` too‑small case raising). Full suite unchanged except the 4 pre‑existing order‑8
+  quadrature failures.
 
 ---
 

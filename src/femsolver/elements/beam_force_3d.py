@@ -47,7 +47,20 @@ class ForceBeamColumn3D(BeamColumn3D):
     """
 
     state_det_tol: float = 1.0e-12
+    # Relative companion to the absolute tolerance (see the 2-D element): the
+    # inner loop is also converged when ``||dv||`` falls to this fraction of
+    # the deformation being resolved. Additive -- never rejects a step the
+    # absolute test accepts; robust where an absolute deformation tolerance
+    # floors out near softening / across unit systems.
+    state_det_rel_tol: float = 1.0e-10
     state_det_max_iter: int = 30
+
+    def _state_det_converged(self, dv, v_target) -> bool:
+        dv_n = float(np.max(np.abs(dv)))
+        if dv_n < self.state_det_tol:
+            return True
+        v_n = float(np.max(np.abs(v_target)))
+        return v_n > 0.0 and dv_n <= self.state_det_rel_tol * v_n
 
     def __init__(
         self,
@@ -177,7 +190,7 @@ class ForceBeamColumn3D(BeamColumn3D):
                     "cause: a section lost stiffness in a needed direction "
                     "(fully plastic). Use a hardening section or smaller steps."
                 ) from exc
-            if float(np.max(np.abs(dv))) < self.state_det_tol:
+            if self._state_det_converged(dv, v_target):
                 break
             q = q + K_b @ dv
         else:

@@ -107,7 +107,23 @@ class ForceBeamColumn2DCorotational(BeamColumn2DCorotational):
     # tolerances (~1e-6 to 1e-8) so the state-determination noise
     # floor does not limit the global convergence rate.
     state_det_tol: float = 1.0e-12
+    # Relative companion to the absolute ``state_det_tol``: the inner
+    # (Neuenhofer-Filippou) loop is also converged when the natural-deformation
+    # residual has fallen to this fraction of the deformation being resolved.
+    # A purely absolute tolerance on deformations is scale-fragile (rotations
+    # and elongations span many magnitudes across unit systems and members) and
+    # can floor out near softening; the relative test converges robustly there.
+    # It is *additive* -- it only ever accepts convergence the absolute test
+    # would miss -- so it cannot make a previously-converging step fail.
+    state_det_rel_tol: float = 1.0e-10
     state_det_max_iter: int = 30
+
+    def _state_det_converged(self, dv, v_target) -> bool:
+        dv_n = float(np.max(np.abs(dv)))
+        if dv_n < self.state_det_tol:
+            return True
+        v_n = float(np.max(np.abs(v_target)))
+        return v_n > 0.0 and dv_n <= self.state_det_rel_tol * v_n
 
     def __init__(
         self,
@@ -255,7 +271,7 @@ class ForceBeamColumn2DCorotational(BeamColumn2DCorotational):
                 v_computed += (w * jac) * (b.T @ e_i)
 
             dv = v_target - v_computed
-            if float(np.max(np.abs(dv))) < self.state_det_tol:
+            if self._state_det_converged(dv, v_target):
                 K_b = np.linalg.inv(F_b)
                 break
 
