@@ -393,6 +393,14 @@ peak/ultimate ±10%; cyclic energy per loop ±15%. Justify any looser tolerance 
 - Checks: initial `EA = E_c·A_transformed`; onset of concrete nonlinearity near `ε_c0`; peak `N`;
   post‑peak softening; the P=2400 kip working point strain.
 - Golden: Midas `axial` export = `TBD`; CSI `FH1_P2400_PRELOAD` = `TBD`.
+- **Our result (P5, 2026‑09‑12, no external data yet — §7.4 cross‑checks):** the
+  two‑node force‑based fiber column holds the 2400 kip preload with base reaction
+  = 2400.0 kip; tip shortening 0.00509 in (strain 1.04e‑4, i.e. `< ε_c0`, elastic
+  working point); transformed `EA` = 2.308e7 kip vs `Ec·Ac + Es·As` = 2.318e7
+  (0.41%). Section axial capacity (imposed strain, `N = Σσ·A`): peak 41,291 kip at
+  ε ≈ 0.0047 (near the confined `ε_cc` = 0.00526), softening to 32,772 kip at
+  ε = 0.02 as the cover spalls and the confined core degrades. Paste Midas/CSI
+  numbers here to lock the regression.
 
 ### 7.2 Monotonic M‑φ and pushover
 - Section M‑φ at N=2400 kip; column base‑shear vs tip‑displacement.
@@ -488,7 +496,7 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
 | P2 | G2 Mander confinement pre‑processor | ☐ | |
 | P3 | G3 Caltrans/Park steel | ☑ | 2026‑09‑12 — verified the monotonic Park backbone (`UniaxialReinforcingSteel`) hits §2.2 (eps_sh,f_y)=(0.0075,68) & (eps_su,f_su)=(0.09,95); added cyclic `ReinforcingSteelKinematic` (kinematic hardening over the same backbone; monotonic reproduces it to 1e‑13, elastic unload = E, Bauschinger shift). `test_uniaxial_materials.py` +7; example 81; full suite 2470 pass |
 | P4 | G8 recorders + benchmark M‑φ | ☑ | 2026‑09‑12 — added `results/recorders.py` (`SectionRecorder`/`FiberRecorder`/`NodeRecorder`, CSV) + fibre‑consistent `fiber_section_moment_curvature` (`sections/response/fiber_mphi.py`); benchmark section M‑φ at P=2400 kip (N held to 1e‑11, M→32.9k kip‑ft). `test_fiber_mphi_recorders.py` (8), example 82. Golden Midas/CSI M‑φ (§7.2) pending user export; §7.4 cross‑checks pass. Full suite 2478 pass |
-| P5 | Axial‑load benchmark (Stage 1) | ☐ | |
+| P5 | Axial‑load benchmark (Stage 1) | ☑ | 2026‑09‑12 — two‑node `ForceBeamColumn2DCorotational` + Caltrans fiber section; load‑control preload holds 2400 kip (base reaction exact), EA fiber↔hand 0.9959, working‑point strain 1.04e‑4 (<ε_c0); section axial capacity (imposed strain, N=Σσ·A) peaks 41,291 kip @ ε≈0.0047 then softens to 32,772 @ 0.02. `test_fiber_hinge_axial.py` (3), example 83. Golden Midas/CSI axial (§7.1) pending export |
 | P6 | G6/G7 staged + protocols; monotonic pushover | ☐ | |
 | P7 | G5 3‑D force‑based + circular 3‑D; P‑M2‑M3 | ☐ | |
 | P8 | Cyclic benchmark + energy | ☐ | |
@@ -567,6 +575,18 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
   `test_fiber_mphi_recorders.py` (8); full suite 2478 pass (only the 4 pre‑existing quadrature
   failures). Golden Midas/CSI section M‑φ to be pasted into §7.2 on export. Next: **P5**
   (axial‑load benchmark, Stage 1) — or **P6/P7** per the tracker.
+- 2026‑09‑12 — **P5 shipped (axial‑load benchmark, Stage 1).** Built the benchmark model exactly
+  per §2.7: two nodes (base fixed, tip axial‑only), one `ForceBeamColumn2DCorotational` carrying the
+  Caltrans fiber section (P1‑P2 + Park steel P3). Load‑control to P=2400 kip holds the preload (base
+  reaction 2400.0 kip), tip shortens 0.00509 in (strain 1.04e‑4 `< ε_c0`), transformed `EA` matches
+  `Ec·Ac+Es·As` to 0.41%. The force‑based element flexibility goes singular at full crushing (its
+  documented limit), so the axial *capacity* curve is taken at the section level (imposed strain,
+  `N=Σσ·A`, the pure material validation §7.1 describes): peak 41,291 kip near `ε_cc`, softening to
+  32,772 kip at ε=0.02 (cover spalls, confined core degrades); the preload strain carries 2400 kip
+  on the bare section (element↔section consistency). Logged with `SectionRecorder` (G8 reuse).
+  `test_fiber_hinge_axial.py` (3); example `83_fiber_hinge_axial_test.py`; results recorded in §7.1.
+  Full suite 2481 pass (only the 4 pre‑existing quadrature failures). Next: **P6** (staged analysis
+  + protocols; monotonic pushover) or **P7** (3‑D force‑based + circular 3‑D; P‑M2‑M3).
 
 ---
 
