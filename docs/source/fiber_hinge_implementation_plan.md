@@ -740,7 +740,7 @@ Each row: **Background** (engine/infra) + **GUI**. Status ✅ exists · ⚠ part
 | Item | Deliverable | Depends on | State | Notes |
 |---|---|---|---|---|
 | GUI‑1 | Inelastic‑material editor + σ‑ε preview | P2, P3 | ☑ | 2026‑09‑12 — `desktop/materials.py` (engine‑backed `uniaxial_law`/`stress_strain_curve`) + `desktop/material_editor.py` (`MaterialDialog` w/ live matplotlib σ‑ε preview + `MaterialManagerDialog`); `Material.params`; wired "Materials…" into main_window; `test_desktop_materials.py` (11, headless offscreen). Kinds: elastic / Kent‑Park / Mander concrete / Park + cyclic steel |
-| GUI‑2 | Fiber‑mesh panel + fiber preview in Section Designer | P1, §15 U2 | ☐ | |
+| GUI‑2 | Fiber‑mesh panel + fiber preview in Section Designer | P1, §15 U2 | ☑ | pre‑existing in `desktop/section_designer.py` (Fibres tab, mesh overlay + centroids toggle, mesh‑density combo, fibres‑CSV export via `core.section_fibers`/`section_fiber_mesh`) — now running on the **U2‑unified `polar_cells`** mesher. Confirmed 2026‑09‑12 |
 | GUI‑3 | Hinge property + assignment UI | P9 | ☐ | |
 | GUI‑4 | Nonlinear case manager (control/monitor/staged/cyclic/NL‑params) | P6, P7 | ☐ | |
 | GUI‑5 | Threaded solver + progress/convergence dock + cancel | (infra) | ☐ | prerequisite for all NL UI |
