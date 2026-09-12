@@ -866,6 +866,18 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
   tip/base‑shear; still raises when even the smallest sub‑step can't converge. Full suite 2561 pass
    (only the 4 pre‑existing order‑8 quadrature failures).
 - 2026 — **C3 (engine/compute) shipped: nonlinear dynamic time‑history.** `desktop/nonlinear.run_time_history` runs the fiber model under rigid‑base ground acceleration: mass from `density` (rho·A·L, new `build_nonlinear_model(density=…)` giving the element materials `rho`), Rayleigh damping to `zeta` at the first two modal frequencies (`EigenAnalysis` → `RayleighDamping.from_modes`), base excitation `−M·ι·ü_g(t)` via `ground_motion_force`, and `NonlinearTransientAnalysis` (Newmark+Newton). Returns the monitored DOF's disp/vel/accel history + peak drift; SI force scale means a looser default `tol` (in force units) than the static default. Verified: runs to completion on a synthetic accelerogram, finite response, scales with excitation, sublinear (yielding) at high amplitude. `test_desktop_timehistory.py` (3). Remaining: the GUI `time_history` case type (record import + damping/direction inputs + response‑history plot).
+- 2026‑09‑12 — **C5 shipped: ASCE 41 hinge acceptance criteria.** New engine module
+  `femsolver/performance/acceptance.py` — per‑material fibre‑strain IO/LS/CP limits
+  (`FiberStrainLimits`; concrete/steel defaults taken from the **benchmark CSI acceptance table**,
+  §2), `classify_strain`, and `section_state` (worst fibre → governing level). The pushover / case
+  runs capture per‑step per‑member acceptance level (`accept_frames`) and the first drift reaching
+  IO/LS/CP (`accept_milestones`); `NonlinearResults` exposes `member_state` + `accept_milestones`.
+  The main‑view step scrubbing gained a **discrete IO/LS/CP colour mode** (Analysis‑steps dock
+  toggle + governing level in the step label), the pushover dialog logs the milestones, and the HTML
+  report shows an ASCE 41 hinge‑state column + acceptance‑milestone table (backward‑compatible: falls
+  back to the peak‑strain yielded/elastic flag when no acceptance capture). Demo column reached IO at
+  d≈42 mm, LS at d≈74 mm. `test_acceptance.py` (6) + report/results C5 tests. Next per §16.5: **C2**
+  (3‑D nonlinear in the app) or close the remaining ◐ (C3 GUI case type, G‑S2 disk, G‑S4 preview).
 
 ---
 
@@ -1018,7 +1030,7 @@ current tree, not aspirational. Legend: ☐ todo · ◐ partial · ☑ done.
 | **C2** | **3‑D nonlinear in the app** (P‑M2‑M3) | ☐ | `ForceBeamColumn3D` (P7) exists; `desktop/nonlinear.build_nonlinear_model` raises for `ndm≠2`. Needs 3‑D fiber section + element wiring + 3‑D control/monitor UI. |
 | **C3** | **Dynamic time‑history** (true transient: mass + damping) for fiber elements | ◐ | **Engine/compute done** — `desktop/nonlinear.run_time_history(project, accel, dt, …)` runs a nonlinear dynamic base‑excitation analysis on the fiber model: mass from `density` (rho·A·L, via `build_nonlinear_model(density=…)`), Rayleigh damping calibrated to `zeta` at the first two modal frequencies (`EigenAnalysis`+`RayleighDamping.from_modes`), base motion via `ground_motion_force` (`−M·ι·ü_g`), integrated with `NonlinearTransientAnalysis` (Newmark+Newton). Returns the monitored DOF's disp/vel/accel history + peak. `test_desktop_timehistory.py` (3). **Remaining:** a GUI `time_history` case type (ground‑motion record import, `direction`/`zeta`/`density`, response‑history plot). |
 | **C4** | **Adaptive step‑cutting / substepping** on non‑convergence | ☑ | 2026 — `NonlinearStaticAnalysis(substep=True)` halves the increment and retries on `NotConvergedError`, subdividing to cover the nominal step then growing back (up to `max_substep_halvings`). Integrators advertise `supports_substep` + honour `set_step_scale` (LoadControl, scalar DisplacementControl; a cyclic schedule opts out). Snapshots/restores node `disp` on a failed sub‑attempt (the drifted trial isn't otherwise rolled back). Opt‑in (default off ⇒ existing "raise on non‑convergence" contract unchanged); the GUI push runs enable it. `test_adaptive_substep.py` (5): a step that fails with a small max_iter now completes and reaches the fine‑reference target/base‑shear; still raises when hopeless. Note: only rescues `NotConvergedError`, not the force‑based singular‑flexibility `RuntimeError` (a true limit). |
-| **C5** | **Hinge acceptance criteria** (ASCE 41 IO/LS/CP; a/b/c) | ☐ | Damage shown as peak fiber strain only. Add strain/rotation acceptance limits + hinge‑state classification. |
+| **C5** | **Hinge acceptance criteria** (ASCE 41 IO/LS/CP) | ☑ | 2026 — engine `femsolver/performance/acceptance.py`: per‑material fibre‑strain limits (`FiberStrainLimits`, concrete/steel defaults **from the benchmark CSI acceptance table**: concrete comp 0.003/0.006/0.015 tension‑ignored, steel tension 0.01/0.02/0.05 comp 0.005/0.01/0.02), `classify_strain`, `section_state` (worst fibre → level). `run_pushover`/`run_case` capture per‑step per‑member acceptance level (`accept_frames`) + first‑reach milestones (`accept_milestones` — drift at IO/LS/CP). Surfaced: `NonlinearResults.member_state`/`accept_milestones`; main‑view step scrubbing gains a **discrete IO/LS/CP colour mode** (Analysis‑steps dock toggle + governing state in the step label); pushover dialog logs the milestones; the HTML report shows an ASCE 41 hinge‑state column + acceptance table (falls back to yielded/elastic when no capture). `test_acceptance.py` (6) + report/results C5 tests. |
 
 ### 16.2 GUI / workflow
 | ID | Item | State | Notes |
@@ -1052,7 +1064,7 @@ persistence + main‑view scrubbing — makes the tool feel finished) → **C4**
 | C2 3‑D nonlinear GUI | ☐ | |
 | C3 dynamic time‑history | ◐ | 2026 — engine run_time_history done; GUI case type remains |
 | C4 adaptive step‑cutting | ☑ | 2026 — NonlinearStaticAnalysis(substep=True); GUI runs enable it |
-| C5 acceptance criteria | ☐ | |
+| C5 acceptance criteria | ☑ | 2026 — performance/acceptance.py (ASCE 41 IO/LS/CP fibre limits); accept_frames+milestones; main-view state colouring; report acceptance table |
 | G‑S1 main‑view scrubbing | ☑ | 2026 — ModelView.show_nl_step + Analysis-steps dock |
 | G‑S2 results persistence | ◐ | session-level (held on main window); disk + history remain |
 | G‑S3 run comparison | ☐ | |

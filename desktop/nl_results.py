@@ -33,6 +33,7 @@ class StepState:
     node_disp: dict | None       # {node_id: (dx, dy)}
     member_damage: dict | None   # {member_id: peak |fiber strain|}
     fibers: list | None          # [(y, z, sigma, eps), ...] monitored section
+    member_state: dict | None    # {member_id: ASCE 41 level 0..3} (§16 C5)
 
 
 class NonlinearResults:
@@ -45,13 +46,16 @@ class NonlinearResults:
     """
 
     def __init__(self, disp, shear, *, protocol: str = "monotonic",
-                 fiber_frames=None, shape_frames=None, damage_frames=None):
+                 fiber_frames=None, shape_frames=None, damage_frames=None,
+                 accept_frames=None, accept_milestones=None):
         self.disp = [float(x) for x in (disp or [])]
         self.shear = [float(x) for x in (shear or [])]
         self.protocol = str(protocol)
         self._fibers = list(fiber_frames) if fiber_frames else []
         self._shape = list(shape_frames) if shape_frames else []
         self._damage = list(damage_frames) if damage_frames else []
+        self._accept = list(accept_frames) if accept_frames else []
+        self.accept_milestones = dict(accept_milestones or {})
 
     # ------------------------------------------------------------- builders
     @classmethod
@@ -62,7 +66,9 @@ class NonlinearResults:
             protocol=result.get("protocol", "monotonic"),
             fiber_frames=result.get("fiber_frames"),
             shape_frames=result.get("shape_frames"),
-            damage_frames=result.get("damage_frames"))
+            damage_frames=result.get("damage_frames"),
+            accept_frames=result.get("accept_frames"),
+            accept_milestones=result.get("accept_milestones"))
 
     def to_dict(self) -> dict:
         """Reconstruct the run-dict form (for the export / report path)."""
@@ -73,6 +79,10 @@ class NonlinearResults:
         if self._shape:
             d["shape_frames"] = self._shape
             d["damage_frames"] = self._damage
+        if self._accept:
+            d["accept_frames"] = self._accept
+        if self.accept_milestones:
+            d["accept_milestones"] = self.accept_milestones
         return d
 
     # ------------------------------------------------------------- queries
@@ -83,7 +93,7 @@ class NonlinearResults:
     @property
     def n_steps(self) -> int:
         """Number of scrubbable steps (captured post-processing frames)."""
-        return max(len(self._fibers), len(self._shape))
+        return max(len(self._fibers), len(self._shape), len(self._accept))
 
     @property
     def has_fibers(self) -> bool:
@@ -110,7 +120,8 @@ class NonlinearResults:
             shear=self.shear[k] if k < len(self.shear) else float("nan"),
             node_disp=self._shape[k] if k < len(self._shape) else None,
             member_damage=self._damage[k] if k < len(self._damage) else None,
-            fibers=self._fibers[k] if k < len(self._fibers) else None)
+            fibers=self._fibers[k] if k < len(self._fibers) else None,
+            member_state=self._accept[k] if k < len(self._accept) else None)
 
     def __len__(self) -> int:
         return max(self.n_curve, self.n_steps)

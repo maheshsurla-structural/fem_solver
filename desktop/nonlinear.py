@@ -166,6 +166,17 @@ def _peak_abs_strain(el) -> float:
                default=0.0)
 
 
+def _section_accept_state(el) -> int:
+    """Governing ASCE 41 acceptance level (0 Elastic .. 3 CP) of the element's
+    base section (§16 C5)."""
+    from femsolver.performance.acceptance import section_state
+    d = _section_def(el, 0)
+    if d is None:
+        return 0
+    eps_a, kappa = d
+    return section_state(el.sections[0].fibers, eps_a, kappa)
+
+
 class _Capturer:
     """Per-step recorder for the GUI-6 post-processing: the monitored base
     section's per-fiber (y, z, σ, ε) snapshot, the whole model's nodal
@@ -182,6 +193,7 @@ class _Capturer:
         self.frames: list = []
         self.shape_frames: list = []
         self.damage_frames: list = []
+        self.accept_frames: list = []          # per step: {eid: level 0..3}
 
     @property
     def active(self) -> bool:
@@ -205,6 +217,9 @@ class _Capturer:
             self.damage_frames.append(
                 {eid: _peak_abs_strain(self._m.elements[eid])
                  for eid in self._fiber_members})
+            self.accept_frames.append(
+                {eid: _section_accept_state(self._m.elements[eid])
+                 for eid in self._fiber_members})
 
     def result_into(self, result: dict) -> None:
         if self._fibers:
@@ -212,6 +227,7 @@ class _Capturer:
         if self._shape:
             result["shape_frames"] = self.shape_frames
             result["damage_frames"] = self.damage_frames
+            result["accept_frames"] = self.accept_frames
 
 
 def _fiber_members(project, model):
@@ -222,6 +238,26 @@ def _fiber_members(project, model):
     ids = [mb.id for mb in project.members
            if getattr(secs.get(mb.section), "gsd_spec", None)]
     return ids, (model.elements[ids[0]] if ids else None)
+
+
+def _add_accept_milestones(result: dict) -> None:
+    """From per-step acceptance levels + the control displacement, record the
+    step/displacement at which the model first reaches IO, LS and CP (§16 C5)."""
+    from femsolver.performance.acceptance import LEVELS
+    af = result.get("accept_frames")
+    disp = result.get("disp")
+    if not af or not disp:
+        return
+    worst = [max(fr.values()) if fr else 0 for fr in af]
+    milestones: dict = {}
+    for lvl in (1, 2, 3):                       # IO, LS, CP
+        for k, w in enumerate(worst):
+            if w >= lvl:
+                milestones[LEVELS[lvl]] = {
+                    "step": k + 1,
+                    "disp": (disp[k] if k < len(disp) else None)}
+                break
+    result["accept_milestones"] = milestones
 
 
 def run_pushover(project, *, control_node: int, control_dof: int,
@@ -296,6 +332,7 @@ def run_pushover(project, *, control_node: int, control_dof: int,
               "shear": [abs(float(x)) for x in out["lambdas"]],
               "protocol": "monotonic"}
     cap.result_into(result)
+    _add_accept_milestones(result)
     return result
 
 
@@ -512,4 +549,5 @@ def run_case(project, case, *, on_step=None, should_cancel=None,
 
     result = {"disp": disp, "shear": shear, "protocol": case.protocol}
     cap.result_into(result)
+    _add_accept_milestones(result)
     return result

@@ -75,6 +75,17 @@ from femsolver.performance.p58 import (
     DamageState,
     P58AssessmentResult,
 )
+from femsolver.performance.acceptance import (
+    CONCRETE_LIMITS,
+    LEVELS,
+    LEVEL_COLORS,
+    STEEL_LIMITS,
+    FiberStrainLimits,
+    classify_strain,
+    default_limits,
+    level_name,
+    section_state,
+)
 
 __all__ = [
     # capacity_design
@@ -101,4 +112,8 @@ __all__ = [
     # p58
     "ComponentDamageAssessment", "ComponentFragility", "ComponentGroup",
     "DamageState", "P58AssessmentResult",
+    # acceptance (ASCE 41 fibre-strain IO/LS/CP)
+    "FiberStrainLimits", "CONCRETE_LIMITS", "STEEL_LIMITS", "LEVELS",
+    "LEVEL_COLORS", "classify_strain", "default_limits", "section_state",
+    "level_name",
 ]

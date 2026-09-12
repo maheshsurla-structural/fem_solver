@@ -360,6 +360,11 @@ class PushoverDialog(QDialog):
             self._on_step()
         for b in self._export_btns:
             b.setEnabled(bool(self._disp))
+        ms = self._results.accept_milestones if self._results else {}
+        if ms:
+            parts = [f"{lvl} @ d={ms[lvl]['disp']:.4g}"
+                     for lvl in ("IO", "LS", "CP") if lvl in ms]
+            self.log.appendPlainText("ASCE 41: " + "; ".join(parts))
         self._finish(f"done — {len(self._disp)} steps, "
                      f"V_max = {max(self._shear) if self._shear else 0:.4g}")
 

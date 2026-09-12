@@ -17,6 +17,24 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "desktop"))
 from nl_results import NonlinearResults, StepState   # noqa: E402
 
 
+def test_accept_frames_and_milestones_roundtrip():
+    """Acceptance levels are exposed per step (member_state) and milestones are
+    held + round-tripped (§16 C5)."""
+    res = {"protocol": "monotonic", "disp": [0.0, 0.02, 0.05],
+           "shear": [0.0, 200.0, 300.0],
+           "shape_frames": [{1: (0.0, 0.0)}, {1: (0.0, 0.02)}, {1: (0.0, 0.05)}],
+           "damage_frames": [{1: 0.0}, {1: 0.004}, {1: 0.012}],
+           "accept_frames": [{1: 0}, {1: 1}, {1: 2}],
+           "accept_milestones": {"IO": {"step": 2, "disp": 0.02}}}
+    r = NonlinearResults.from_run(res)
+    assert r.step(0).member_state == {1: 0}
+    assert r.step(2).member_state == {1: 2}
+    assert r.accept_milestones["IO"]["disp"] == 0.02
+    d = r.to_dict()
+    assert d["accept_frames"] == res["accept_frames"]
+    assert d["accept_milestones"] == res["accept_milestones"]
+
+
 def _run_dict(with_capture: bool) -> dict:
     d = {"disp": [0.0, 0.5, 1.0], "shear": [0.0, 80.0, -60.0],
          "protocol": "cyclic"}

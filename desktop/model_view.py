@@ -396,17 +396,23 @@ class ModelView(QtInteractor):
         self.show_grid()
         self._frame(model)
 
-    def show_nl_step(self, model, node_disp, member_damage, scale: float) -> None:
+    def show_nl_step(self, model, node_disp, member_damage, scale: float,
+                     *, member_state=None, color_mode: str = "strain") -> None:
         """Render one nonlinear-analysis step on the main view (plan G-S1):
         the model's deformed shape at ``scale``, each member coloured by its
-        peak fiber strain (hinge state), over a grey ghost of the undeformed
-        model. ``node_disp`` maps node id -> (dx, dy) and ``member_damage``
-        maps element id -> peak |fiber strain|, both from
-        ``NonlinearResults.step(k)``. Lets the whole model be scrubbed through
-        the run's steps, not just the pushover dialog."""
+        hinge state, over a grey ghost of the undeformed model. ``node_disp``
+        maps node id -> (dx, dy); ``member_damage`` maps element id -> peak
+        |fiber strain|; ``member_state`` maps element id -> ASCE 41 level
+        (0..3), all from ``NonlinearResults.step(k)``.
+
+        ``color_mode`` = ``"strain"`` colours by the continuous peak fiber
+        strain (YlOrRd); ``"acceptance"`` colours by the discrete IO/LS/CP
+        performance level (§16 C5) when ``member_state`` is supplied."""
         import pyvista as pv
         from matplotlib import colormaps
         from matplotlib.colors import Normalize
+
+        from femsolver.performance.acceptance import LEVEL_COLORS
 
         # write this step's displacements onto the live model
         for nid, n in model.nodes.items():
@@ -422,6 +428,8 @@ class ModelView(QtInteractor):
                           color=REFERENCE_COLOR, name="reference")
 
         dmg = member_damage or {}
+        state = member_state or {}
+        by_state = color_mode == "acceptance" and bool(state)
         vmax = max([abs(v) for v in dmg.values()] + [1e-9])
         norm = Normalize(0.0, vmax)
         cmap = colormaps["YlOrRd"]
@@ -433,7 +441,13 @@ class ModelView(QtInteractor):
             na, nb = model.nodes[tags[0]], model.nodes[tags[-1]]
             pa = _deformed_point(na, scale)
             pb = _deformed_point(nb, scale)
-            rgb = cmap(norm(dmg[eid]))[:3] if eid in dmg else (0.5, 0.5, 0.5)
+            if by_state:
+                lvl = int(state.get(eid, 0))
+                rgb = LEVEL_COLORS[max(0, min(lvl, len(LEVEL_COLORS) - 1))]
+            elif eid in dmg:
+                rgb = cmap(norm(dmg[eid]))[:3]
+            else:
+                rgb = (0.5, 0.5, 0.5)
             line = pv.PolyData(np.array([pa, pb]),
                                lines=np.array([2, 0, 1], dtype=np.int64))
             self.add_mesh(line.tube(radius=radius), color=rgb, name=f"nlmem{eid}")

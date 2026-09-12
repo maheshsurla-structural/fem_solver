@@ -11,10 +11,11 @@ import copy
 
 from PySide6.QtCore import QItemSelectionModel, Qt
 from PySide6.QtGui import QAction, QActionGroup, QUndoStack
-from PySide6.QtWidgets import (QAbstractItemView, QApplication, QDockWidget,
-                               QDoubleSpinBox, QFileDialog, QHBoxLayout, QLabel,
-                               QMainWindow, QMessageBox, QPlainTextEdit,
-                               QSlider, QTreeWidget, QTreeWidgetItem, QWidget)
+from PySide6.QtWidgets import (QAbstractItemView, QApplication, QComboBox,
+                               QDockWidget, QDoubleSpinBox, QFileDialog,
+                               QHBoxLayout, QLabel, QMainWindow, QMessageBox,
+                               QPlainTextEdit, QSlider, QTreeWidget,
+                               QTreeWidgetItem, QWidget)
 
 import icons
 import model_geometry as mg
@@ -359,11 +360,16 @@ class MainWindow(QMainWindow):
         self._nl_scale_spin.setRange(0.0, 1.0e6)
         self._nl_scale_spin.setDecimals(1)
         self._nl_scale_spin.valueChanged.connect(self._on_nl_scale)
+        self._nl_color = QComboBox()
+        self._nl_color.addItems(["acceptance", "peak strain"])
+        self._nl_color.currentIndexChanged.connect(self._on_nl_step)
         row.addWidget(QLabel("Step"))
         row.addWidget(self._nl_slider, 1)
         row.addWidget(self._nl_step_lbl)
         row.addWidget(QLabel("scale ×"))
         row.addWidget(self._nl_scale_spin)
+        row.addWidget(QLabel("colour"))
+        row.addWidget(self._nl_color)
         dock.setWidget(w)
         return dock
 
@@ -403,10 +409,17 @@ class MainWindow(QMainWindow):
             return
         k = self._nl_slider.value()
         st = self._nl_results.step(k)
+        lvl = ""
+        if st.member_state:
+            from femsolver.performance.acceptance import level_name
+            lvl = f"  [{level_name(max(st.member_state.values()))}]"
         self._nl_step_lbl.setText(
-            f"{k + 1}/{self._nl_results.n_steps}  (d={st.disp:.4g})")
+            f"{k + 1}/{self._nl_results.n_steps}  (d={st.disp:.4g}){lvl}")
+        mode = ("acceptance" if self._nl_color.currentText() == "acceptance"
+                else "strain")
         self.view.show_nl_step(self._model, st.node_disp, st.member_damage,
-                               self._nl_scale)
+                               self._nl_scale, member_state=st.member_state,
+                               color_mode=mode)
 
     def show_diagram(self, kind: str) -> None:
         if self._solve() is None:

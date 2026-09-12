@@ -84,6 +84,24 @@ def test_report_html_contains_sections():
     assert "data:image/png;base64,QUJD" in html           # embedded curve
 
 
+def test_report_asce41_states_and_milestones():
+    """With acceptance capture, the report shows ASCE 41 hinge states and an
+    acceptance-milestone table (§16 C5)."""
+    res = {"protocol": "monotonic", "disp": [0.0, 0.02, 0.05, 0.08],
+           "shear": [0.0, 200.0, 300.0, 320.0],
+           "damage_frames": [{1: 0.0}, {1: 0.004}, {1: 0.012}, {1: 0.03}],
+           "accept_frames": [{1: 0}, {1: 1}, {1: 2}, {1: 2}],
+           "accept_milestones": {"IO": {"step": 2, "disp": 0.02},
+                                 "LS": {"step": 3, "disp": 0.05}}}
+    assert R.member_accept_state(res) == {1: 2}          # worst level = LS
+    html = R.report_html(res, {"Project": "Demo"},
+                         length_unit="m", force_unit="kN")
+    assert "ASCE 41 state" in html                       # hinge table header
+    assert "LS" in html                                  # governing state
+    assert "ASCE 41 acceptance" in html                  # milestone table
+    assert "IO" in html
+
+
 def test_report_html_without_image_or_strain():
     res = {"protocol": "monotonic", "disp": [0.0, 0.01], "shear": [0.0, 90.0]}
     html = R.report_html(res, {"Project": "P"})
