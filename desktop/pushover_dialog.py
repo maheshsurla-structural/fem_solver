@@ -20,9 +20,10 @@ from matplotlib.colors import Normalize
 from matplotlib.figure import Figure
 from PySide6.QtCore import Qt, QThread, QTimer, Signal
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDoubleSpinBox,
-                               QFormLayout, QHBoxLayout, QLabel, QPlainTextEdit,
-                               QProgressBar, QPushButton, QSlider, QSpinBox,
-                               QTabWidget, QVBoxLayout, QWidget)
+                               QFileDialog, QFormLayout, QHBoxLayout, QLabel,
+                               QPlainTextEdit, QProgressBar, QPushButton,
+                               QSlider, QSpinBox, QTabWidget, QVBoxLayout,
+                               QWidget)
 
 import nonlinear as NL
 
@@ -206,6 +207,22 @@ class PushoverDialog(QDialog):
         crow.addWidget(self.shape_scale)
         rv.addLayout(crow)
 
+        # export row (GUI-7): enabled once a run has results
+        erow = QHBoxLayout()
+        erow.addWidget(QLabel("Export:"))
+        self._export_btns = []
+        for label, cb in (("Curve CSV…", self._export_curve_csv),
+                          ("Fibers CSV…", self._export_fibers_csv),
+                          ("Image…", self._save_plot),
+                          ("Report…", self._export_report)):
+            b = QPushButton(label)
+            b.setEnabled(False)
+            b.clicked.connect(cb)
+            erow.addWidget(b)
+            self._export_btns.append(b)
+        erow.addStretch(1)
+        rv.addLayout(erow)
+
         self._canvas.setMinimumWidth(420)
         outer.addWidget(right, 1)
         self._draw_curve()
@@ -343,6 +360,8 @@ class PushoverDialog(QDialog):
             self.step_slider.setRange(0, n - 1)
             self.step_slider.setValue(n - 1)                   # show last step
             self._on_step()
+        for b in self._export_btns:
+            b.setEnabled(bool(self._disp))
         self._finish(f"done — {len(self._disp)} steps, "
                      f"V_max = {max(self._shear) if self._shear else 0:.4g}")
 
@@ -457,3 +476,101 @@ class PushoverDialog(QDialog):
         ax.set_title(f"Deformed shape · step {step + 1}/{len(self._shape_frames)} "
                      f"(×{scale:.0f})", fontsize=9)
         self._scanvas.draw_idle()
+
+    # ------------------------------------------------ export / report (GUI-7)
+    def _result(self) -> dict:
+        return {"disp": self._disp, "shear": self._shear,
+                "protocol": self._protocol,
+                "damage_frames": self._damage_frames}
+
+    def _report_meta(self) -> dict:
+        lu, fu = self._project.length_unit, self._project.force_unit
+        dofs = {0: "Ux", 1: "Uy", 2: "Rz"}
+        meta = {"Project": self._project.name, "Steps": str(len(self._disp))}
+        case = self._selected_case()
+        if case is not None:
+            meta["Case"] = f"{case.id}: {case.name}"
+            meta["Control"] = (f"node {case.control_node} "
+                               f"{dofs.get(case.control_dof, '?')}")
+            meta["Target"] = f"{case.target:g} {lu}"
+            if case.axial:
+                meta["Axial preload"] = f"{case.axial:g} {fu}"
+            if case.continue_from:
+                meta["Continues from"] = f"case {case.continue_from}"
+        else:
+            meta["Control"] = (f"node {self.node.currentData()} "
+                               f"{dofs.get(self.dof.currentData(), '?')}")
+            meta["Target"] = f"{self.target.value():g} {lu}"
+        return meta
+
+    def _curve_png_b64(self) -> str:
+        import base64
+        import io
+        buf = io.BytesIO()
+        self._fig.savefig(buf, format="png", dpi=130)
+        return base64.b64encode(buf.getvalue()).decode("ascii")
+
+    def _export_curve_csv(self) -> None:
+        if not self._disp:
+            return
+        import nl_report
+        default = ("hysteresis.csv" if self._protocol == "cyclic"
+                   else "pushover_curve.csv")
+        path, _ = QFileDialog.getSaveFileName(self, "Export curve", default,
+                                              "CSV (*.csv)")
+        if not path:
+            return
+        self._write(path, nl_report.curve_csv(
+            self._disp, self._shear, length_unit=self._project.length_unit,
+            force_unit=self._project.force_unit))
+
+    def _export_fibers_csv(self) -> None:
+        if not self._frames:
+            self.log.appendPlainText("no fiber frames to export "
+                                     "(run with 'Record fiber response')")
+            return
+        import nl_report
+        step = max(0, min(self.step_slider.value(), len(self._frames) - 1))
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export fibers", f"fibers_step{step + 1}.csv", "CSV (*.csv)")
+        if not path:
+            return
+        self._write(path, nl_report.fibers_csv(
+            self._frames[step], length_unit=self._project.length_unit))
+
+    def _save_plot(self) -> None:
+        fig = {0: self._fig, 1: self._ffig,
+               2: self._sfig}.get(self._tabs.currentIndex(), self._fig)
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save image", "plot.png",
+            "PNG (*.png);;PDF (*.pdf);;SVG (*.svg)")
+        if not path:
+            return
+        try:
+            fig.savefig(path, dpi=150, bbox_inches="tight")
+            self.log.appendPlainText(f"saved {path}")
+        except Exception as exc:                          # noqa: BLE001
+            self.log.appendPlainText(f"save failed: {exc}")
+
+    def _export_report(self) -> None:
+        if not self._disp:
+            return
+        import nl_report
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export report", "nonlinear_report.html", "HTML (*.html)")
+        if not path:
+            return
+        html = nl_report.report_html(
+            self._result(), self._report_meta(),
+            length_unit=self._project.length_unit,
+            force_unit=self._project.force_unit,
+            curve_png_b64=self._curve_png_b64())
+        self._write(path, html)
+
+    def _write(self, path: str, text: str) -> None:
+        try:
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(text)
+            self.log.appendPlainText(f"saved {path}")
+        except Exception as exc:                          # noqa: BLE001
+            self.log.appendPlainText(f"save failed: {exc}")

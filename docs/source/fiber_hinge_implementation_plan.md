@@ -776,6 +776,24 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
   Note (§8): the force‑based/cyclic paths are more drift‑sensitive than a monotonic distributed push, so
   cases carry their own tol/max_iter (cyclic converges at ~1e‑5). Next: **GUI‑7** (report) or the infra
   (**GUI‑I1** step‑indexed results, **GUI‑I2** NL‑def persistence — largely covered by the case model).
+- 2026‑09‑12 — **GUI‑7 shipped (nonlinear report + export).** The nonlinear post‑processing is now
+  exportable. New pure module `desktop/nl_report.py` (Qt‑free, unit‑tested): `curve_csv` (step /
+  displacement / base shear — signed, so a cyclic run round‑trips the hysteresis), `fibers_csv` (a
+  captured step's per‑fiber y,z,σ,ε), `run_summary` (peak base shear + displacement at peak, max drift,
+  initial stiffness, dissipated energy for cyclic runs, peak fiber strain), `member_peak_strain` (each
+  fiber member's peak |strain| over the run — the hinge‑state summary), and `report_html` (a
+  self‑contained, printable HTML report: run‑metadata table + results table + per‑member hinge‑state
+  table + an embedded base64 PNG of the curve). `PushoverDialog` gained an **Export** row below the step
+  controls — Curve CSV / Fibers CSV / Image (PNG·PDF·SVG of whichever tab is shown) / Report… — each
+  enabled once a run has results and wired through `QFileDialog`, plus dialog helpers `_result`,
+  `_report_meta`, `_curve_png_b64`. Verified: an RC‑column pushover exports a curve CSV, a fibers CSV, and
+  a full HTML report with the embedded response curve. Tests: `test_desktop_nlreport.py` (10; 63 desktop
+  tests pass). **The GUI fiber‑hinge workflow is now complete end‑to‑end** (GUI‑1‑2‑3‑4‑5‑6‑7): define
+  inelastic materials → build a fiber section → define & assign hinges → define nonlinear cases → run
+  threaded → post‑process (curve / fiber contour / deformed shape + hinge state) → export + report. Next:
+  infra polish (**GUI‑I1** step‑indexed results model; **GUI‑I2** is largely covered — materials, hinges,
+  and nonlinear cases all serialize), a convergence‑robustness pass on the force‑based element (§8), or
+  **U5**/**P10** once the Midas/CSI exports land.
 
 ---
 
@@ -798,7 +816,7 @@ Each row: **Background** (engine/infra) + **GUI**. Status ✅ exists · ⚠ part
 | **4. Nonlinear load cases & protocols** (control mode, monitor DOF, staged, cyclic, NL params) | staged continuation (P6 ✅); protocol generators (P7 ✅); `NonlinearStaticAnalysis` ✅ | nonlinear case type in the case manager: control/monitor/target/continue‑from/cyclic table/NL‑params ✅ (GUI‑4: `NonlinearCase` + manager + `run_case`) | ✅ |
 | **5. Run the solve** (no UI freeze; progress + convergence; cancel) | **run on a worker thread**, stream step/convergence callbacks, cancellation, capture per‑step state ❌ (solve is a blocking call) | analysis‑run dialog + progress/convergence dock + non‑convergence diagnostics ❌ | ❌ (biggest infra gap) |
 | **6. Post‑process** (hysteresis/pushover; step slider/animation; fiber contour; hinge state) | recorders: monitored DOF, section N‑M/M‑φ, **per‑fiber σ‑ε**, hinge F‑D (P8 ❌); **step‑indexed results model** ⚠ (`node.disp` is one state) | X‑Y plot panel; step slider/animation; fiber σ‑ε contour on the section; hinge‑state color map; energy ❌ | ❌ (what makes it feel commercial) |
-| **7. Report & export** | nonlinear result export (curves, fiber states) ❌; results→CSV ✅ | export buttons on plots; hinge/analysis report ❌ | ⚠→❌ |
+| **7. Report & export** | nonlinear result export (curves, fiber states) ✅ (GUI‑7 `nl_report`); results→CSV ✅ | export buttons on plots ✅; hinge/analysis report ✅ (HTML) | ✅ |
 
 **Cross‑cutting background infrastructure (prerequisites):**
 - **Threaded solve + progress/cancel** (stage 5) — prerequisite for *all* nonlinear UI.
@@ -830,7 +848,7 @@ Each row: **Background** (engine/infra) + **GUI**. Status ✅ exists · ⚠ part
 | GUI‑4 | Nonlinear case manager (control/monitor/staged/cyclic/NL‑params) | P6, P7 | ☑ | 2026‑09‑12 — nonlinear analysis **cases as persistent project objects** + manager + runner. Data model (`project.py`): `NonlinearCase` (control node/DOF, target, protocol monotonic\|cyclic, cyclic amplitudes/cycles/pts, held axial preload, `continue_from`, tol/max_iter) + `Project.nonlinear_cases` + `nonlinear_case()` + serialization. Runner (`nonlinear.py`): `run_case` dispatches monotonic (P7 `monotonic`) or cyclic (P7 `stepped_cyclic` → signed `DisplacementControl` schedule → signed disp/shear tracing the hysteresis), holds an axial preload and chains `continue_from` via `StagedAnalysis` (P6) with correct total‑base‑shear accounting across stages; `_case_chain`/`case_total_steps` helpers; capture refactored into a shared `_Capturer` (reused by `run_pushover`). UI (`nonlinear_cases.py`): `NonlinearCaseDialog` (protocol‑dependent fields toggle) + `NonlinearCaseManagerDialog` (list/add/edit/delete + continued‑from guard); "Nonlinear cases…" in the Analysis menu; the pushover dialog gained a **Case** selector that populates+locks the manual inputs and runs the saved case (cyclic → hysteresis curve). Tests: `test_desktop_nlcases.py` (11; 53 desktop tests pass). |
 | GUI‑5 | Threaded solver + progress/convergence dock + cancel | (infra) | ☑ | 2026‑09‑12 — **compute** (`desktop/nonlinear.py`: `fiber_section_from_spec`/`build_nonlinear_model`/`run_pushover`) + **threaded UI**. Engine enabler: optional `step_callback` on `NonlinearStaticAnalysis` (per‑step hook; return False = cancel). `desktop/pushover_dialog.py` = `PushoverWorker` (QThread, streams progress, cooperative cancel) + `PushoverDialog` (inputs, progress bar, convergence log, Cancel, live base‑shear/disp curve); "Nonlinear pushover…" wired into the Analysis menu. Tests: `test_desktop_nonlinear.py` (7, incl. step_callback + cancel), `test_desktop_pushover_ui.py` (4, headless — wiring/worker/cancel/dialog). |
 | GUI‑6 | NL post‑processing (hysteresis, step slider/anim, fiber contour, hinge state) | P8, GUI‑5 | ☑ | 2026‑09‑12 — **fiber‑stress/strain contour + step slider** then **deformed‑shape animation + hinge‑state coloring** shipped. Engine: `BeamColumn2DCorotational` stores per‑IP `_e_sections` (converged section deformations). `run_pushover(capture_fibers=True)` snapshots the base section's per‑fiber (y,z,σ,ε) each step (from a clone — live state untouched); `capture_shape=True` snapshots every node's (dx,dy) + per‑member peak \|fiber strain\| (`shape_frames`/`damage_frames`). `PushoverDialog` right pane = **curve \| fiber stress \| deformed shape** tabs sharing one **step slider** + a **▶ Play/Pause** `QTimer` animation; fiber tab has a stress/strain toggle (steel‑yield pattern / plane‑section gradient + concrete crush), deformed‑shape tab draws the deformed frame colored by peak fiber strain (hinge state) with an adjustable displacement scale over a gray undeformed reference. Tests: `test_pushover_capture_fibers`, `test_pushover_capture_shape`, `test_pushover_capture_shape_and_fibers_together`, `test_pushover_no_capture_omits_frames`; `test_dialog_fiber_contour`, `test_dialog_deformed_shape`, `test_dialog_animation_advances_and_loops`. |
-| GUI‑7 | Nonlinear report + export | GUI‑6 | ☐ | |
+| GUI‑7 | Nonlinear report + export | GUI‑6 | ☑ | 2026‑09‑12 — export + report from the pushover dialog. Pure `desktop/nl_report.py`: `curve_csv` (step/disp/base‑shear, signed so cyclic round‑trips), `fibers_csv` (a captured step's y,z,σ,ε), `run_summary` (peak shear + disp‑at‑peak, max drift, initial stiffness, cyclic dissipated energy, peak fiber strain), `member_peak_strain` (per‑member hinge state), `report_html` (self‑contained printable report: run metadata + metrics + hinge‑state table + embedded base64 curve PNG). `PushoverDialog` gained an **Export** row — Curve CSV / Fibers CSV / Image (PNG·PDF·SVG of the shown tab) / Report… — enabled once a run has results, wired through `QFileDialog`. Tests: `test_desktop_nlreport.py` (10; 63 desktop tests pass). |
 | GUI‑I1 | Step‑indexed results model | (infra) | ☐ | underpins GUI‑6 |
 | GUI‑I2 | Project persistence for NL defs | (infra) | ☐ | |
 
