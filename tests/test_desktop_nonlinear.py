@@ -92,6 +92,24 @@ def test_pushover_yields():
     assert k1 < 0.6 * k0
 
 
+def test_pushover_capture_fibers():
+    """GUI-6: per-step fiber snapshots at the base section — stresses grow to
+    steel yield and the frame count matches the curve."""
+    p = _circular_col_project()
+    res = NL.run_pushover(p, control_node=2, control_dof=1, target=0.05,
+                          n_steps=15, capture_fibers=True)
+    fr = res["fiber_frames"]
+    assert len(fr) == len(res["disp"])
+    assert len(fr[0]) > 50                          # (y, z, sigma, strain) tuples
+    s0 = max(abs(t[2]) for t in fr[0])
+    sL = max(abs(t[2]) for t in fr[-1])
+    assert sL > s0                                  # response grows (yielding)
+    assert sL > 4.0e8                               # steel reaches ~yield stress
+    # strain field is the plane-section gradient: both signs present at the end
+    strains = [t[3] for t in fr[-1]]
+    assert min(strains) < 0 < max(strains)
+
+
 def test_pushover_with_axial_preload_runs():
     p = _circular_col_project()
     res = NL.run_pushover(p, control_node=2, control_dof=1, target=0.04,

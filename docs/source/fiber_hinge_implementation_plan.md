@@ -682,6 +682,16 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
   Edit menu. `test_desktop_materials.py` (11, first headless‑offscreen desktop test). Also corrected
   the stale **P2**/**U4** tracker rows (their code shipped earlier). Next GUI: **GUI‑2** (fiber‑mesh
   panel + preview, needs U2) or **GUI‑5** (threaded solver + progress dock).
+- 2026‑09‑12 — **GUI‑6 fiber contour + step slider shipped.** Engine: `BeamColumn2DCorotational`
+  stores per‑IP `_e_sections` (converged section deformations; additive). `run_pushover(capture_fibers=True)`
+  snapshots the monitored base section's per‑fiber (y,z,σ,ε) each step (from a section clone, so live
+  state is untouched). `PushoverDialog` now has a tabbed right pane — pushover curve | **fiber‑stress
+  contour** — with a **step slider** and a **stress/strain toggle**. The contour reads exactly like
+  CSI's SaveFibResp: stress mode shows the rebar yield pattern (bottom bars +500 MPa tension, top bars
+  compression), strain mode shows the plane‑section gradient with the extreme concrete crushing (69
+  fibers past ε_cu, 8 bars yielded at the demo drift). Tests: `test_pushover_capture_fibers`,
+  `test_dialog_fiber_contour`. Remaining GUI‑6: deformed‑shape step animation (3‑D view) + hinge‑state
+  coloring. Next: **GUI‑3** (hinge UI) / **GUI‑4** (case manager), then GUI‑6 anim/hinge‑state, GUI‑7.
 - 2026‑09‑12 — **GUI‑5 UI shipped (nonlinear‑run subsystem complete).** Engine enabler: added an
   optional `step_callback` to `NonlinearStaticAnalysis` (called after each committed step; returning
   `False` cancels — backward‑compatible, default None). `run_pushover` gained `on_step`/`should_cancel`.
@@ -762,7 +772,7 @@ Each row: **Background** (engine/infra) + **GUI**. Status ✅ exists · ⚠ part
 | GUI‑3 | Hinge property + assignment UI | P9 | ☐ | |
 | GUI‑4 | Nonlinear case manager (control/monitor/staged/cyclic/NL‑params) | P6, P7 | ☐ | |
 | GUI‑5 | Threaded solver + progress/convergence dock + cancel | (infra) | ☑ | 2026‑09‑12 — **compute** (`desktop/nonlinear.py`: `fiber_section_from_spec`/`build_nonlinear_model`/`run_pushover`) + **threaded UI**. Engine enabler: optional `step_callback` on `NonlinearStaticAnalysis` (per‑step hook; return False = cancel). `desktop/pushover_dialog.py` = `PushoverWorker` (QThread, streams progress, cooperative cancel) + `PushoverDialog` (inputs, progress bar, convergence log, Cancel, live base‑shear/disp curve); "Nonlinear pushover…" wired into the Analysis menu. Tests: `test_desktop_nonlinear.py` (7, incl. step_callback + cancel), `test_desktop_pushover_ui.py` (4, headless — wiring/worker/cancel/dialog). |
-| GUI‑6 | NL post‑processing (hysteresis, step slider/anim, fiber contour, hinge state) | P8, GUI‑5 | ☐ | commercial differentiator |
+| GUI‑6 | NL post‑processing (hysteresis, step slider/anim, fiber contour, hinge state) | P8, GUI‑5 | ◐ | 2026‑09‑12 — **fiber‑stress/strain contour + step slider** shipped. Engine: `BeamColumn2DCorotational` now stores per‑IP `_e_sections` (converged section deformations). `run_pushover(capture_fibers=True)` snapshots the monitored base section's per‑fiber (y,z,σ,ε) each step (from a clone — live state untouched). `PushoverDialog` gained a tabbed right pane (curve | fiber stress) with a **step slider** and a **stress/strain toggle**; shows the steel‑yield pattern (stress) and the plane‑section strain gradient + concrete crush (strain). Tests: `test_desktop_nonlinear.py::test_pushover_capture_fibers`, `test_desktop_pushover_ui.py::test_dialog_fiber_contour`. **Remaining: deformed‑shape step animation in the 3‑D model view + hinge‑state coloring.** |
 | GUI‑7 | Nonlinear report + export | GUI‑6 | ☐ | |
 | GUI‑I1 | Step‑indexed results model | (infra) | ☐ | underpins GUI‑6 |
 | GUI‑I2 | Project persistence for NL defs | (infra) | ☐ | |

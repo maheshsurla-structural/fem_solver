@@ -112,7 +112,8 @@ def run_pushover(project, *, control_node: int, control_dof: int,
                  target: float, n_steps: int = 40, axial: float = 0.0,
                  axial_node: int | None = None, axial_dof: int = 0,
                  tol: float = 1e-6, max_iter: int = 60,
-                 on_step=None, should_cancel=None) -> dict:
+                 on_step=None, should_cancel=None,
+                 capture_fibers: bool = False) -> dict:
     """Displacement-controlled pushover of the nonlinear fiber model.
 
     Pushes ``control_node`` DOF ``control_dof`` (0=Ux, 1=Uy, 2=Rz) to
@@ -136,11 +137,37 @@ def run_pushover(project, *, control_node: int, control_dof: int,
     ref = [0.0, 0.0, 0.0]
     ref[control_dof] = -1.0
 
+    # Optional per-step fiber capture at the monitored member's base section
+    # (IP 0 = the n1 end — the fixed base of a cantilever). Frames feed the
+    # GUI-6 fiber-stress contour + step slider.
+    mon_el = None
+    if capture_fibers:
+        secs = {s.id: s for s in project.sections}
+        for mb in project.members:
+            if getattr(secs.get(mb.section), "gsd_spec", None):
+                mon_el = m.elements[mb.id]
+                break
+    frames: list = []
+
+    def _capture():
+        if mon_el is None or not getattr(mon_el, "_e_sections", None):
+            return
+        e = mon_el._e_sections[0]
+        eps_a, kappa = float(e[0]), float(e[1])
+        snap = mon_el.sections[0].clone()              # don't perturb live state
+        frames.append([
+            (float(f.y), float(f.z),
+             float(f.material.get_response(eps_a - f.y * kappa)[0]),
+             float(eps_a - f.y * kappa))
+            for f in snap.fibers])
+
     def _step_cb(info):
         if on_step is not None:
             on_step({"step": info["step"], "num_steps": info["num_steps"],
                      "disp": abs(info["tracked"] or 0.0),
                      "shear": abs(info["lambda"])})
+        if capture_fibers:
+            _capture()
         if should_cancel is not None and should_cancel():
             return False                               # cooperative cancel
         return True
@@ -167,5 +194,8 @@ def run_pushover(project, *, control_node: int, control_dof: int,
     else:
         out = _push(m).run()
 
-    return {"disp": [abs(float(x)) for x in out["tracked"]],
-            "shear": [abs(float(x)) for x in out["lambdas"]]}
+    result = {"disp": [abs(float(x)) for x in out["tracked"]],
+              "shear": [abs(float(x)) for x in out["lambdas"]]}
+    if capture_fibers:
+        result["fiber_frames"] = frames
+    return result

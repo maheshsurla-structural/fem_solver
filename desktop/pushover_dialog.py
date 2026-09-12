@@ -12,13 +12,14 @@ Pure Qt + matplotlib (Agg canvas) — headless-constructible under
 """
 from __future__ import annotations
 
+import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as Canvas
 from matplotlib.figure import Figure
-from PySide6.QtCore import QThread, Signal
-from PySide6.QtWidgets import (QComboBox, QDialog, QDoubleSpinBox, QFormLayout,
-                               QHBoxLayout, QLabel, QPlainTextEdit,
-                               QProgressBar, QPushButton, QSpinBox, QVBoxLayout,
-                               QWidget)
+from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDoubleSpinBox,
+                               QFormLayout, QHBoxLayout, QLabel, QPlainTextEdit,
+                               QProgressBar, QPushButton, QSlider, QSpinBox,
+                               QTabWidget, QVBoxLayout, QWidget)
 
 import nonlinear as NL
 
@@ -77,6 +78,8 @@ class PushoverDialog(QDialog):
         self.n_steps = QSpinBox()
         self.n_steps.setRange(2, 2000)
         self.n_steps.setValue(40)
+        self.capture = QCheckBox("Record fiber response")
+        self.capture.setChecked(True)
         self.axial = self._spin(0.0, unit=project.force_unit, decimals=1,
                                 big=True)
         self.axial_node = self._combo([(str(i), i) for i in node_ids],
@@ -89,6 +92,7 @@ class PushoverDialog(QDialog):
         form.addRow(f"Axial preload [{project.force_unit}]", self.axial)
         form.addRow("Axial node", self.axial_node)
         form.addRow("Axial DOF", self.axial_dof)
+        form.addRow(self.capture)
 
         self.bar = QProgressBar()
         form.addRow(self.bar)
@@ -112,13 +116,42 @@ class PushoverDialog(QDialog):
         form.addRow(row)
         outer.addWidget(left, 0)
 
-        # ---- right: pushover curve ----
+        # ---- right: tabs (pushover curve | fiber-stress contour) ----
+        self._frames: list = []
+        self._cbar = None
+        tabs = QTabWidget()
+
         self._fig = Figure(figsize=(4.2, 3.4), layout="constrained")
         self._ax = self._fig.add_subplot(111)
         self._canvas = Canvas(self._fig)
-        self._canvas.setMinimumWidth(380)
-        outer.addWidget(self._canvas, 1)
+        tabs.addTab(self._canvas, "Pushover curve")
+
+        fib = QWidget()
+        fibv = QVBoxLayout(fib)
+        self._ffig = Figure(figsize=(4.2, 3.4), layout="constrained")
+        self._fax = self._ffig.add_subplot(111)
+        self._fcanvas = Canvas(self._ffig)
+        fibv.addWidget(self._fcanvas, 1)
+        srow = QHBoxLayout()
+        self.step_slider = QSlider(Qt.Horizontal)
+        self.step_slider.setEnabled(False)
+        self.step_slider.valueChanged.connect(self._draw_fibers)
+        self.step_lbl = QLabel("step —")
+        self.fiber_mode = QComboBox()
+        self.fiber_mode.addItems(["stress", "strain"])
+        self.fiber_mode.currentIndexChanged.connect(self._draw_fibers)
+        srow.addWidget(QLabel("Step"))
+        srow.addWidget(self.step_slider, 1)
+        srow.addWidget(self.step_lbl)
+        srow.addWidget(self.fiber_mode)
+        fibv.addLayout(srow)
+        tabs.addTab(fib, "Fiber stress")
+        self._tabs = tabs
+
+        self._canvas.setMinimumWidth(400)
+        outer.addWidget(tabs, 1)
         self._draw_curve()
+        self._draw_fibers()
 
     # ------------------------------------------------ small widget helpers
     @staticmethod
@@ -151,6 +184,7 @@ class PushoverDialog(QDialog):
             axial=axial,
             axial_node=(self.axial_node.currentData() if axial else None),
             axial_dof=self.axial_dof.currentData(),
+            capture_fibers=self.capture.isChecked(),
         )
 
     def _start(self) -> None:
@@ -183,6 +217,12 @@ class PushoverDialog(QDialog):
     def _on_done(self, res: dict) -> None:
         self._disp = res.get("disp", self._disp)
         self._shear = res.get("shear", self._shear)
+        self._frames = res.get("fiber_frames", [])
+        if self._frames:
+            self.step_slider.setEnabled(True)
+            self.step_slider.setRange(0, len(self._frames) - 1)
+            self.step_slider.setValue(len(self._frames) - 1)   # show last step
+            self._draw_fibers()
         self._finish(f"done — {len(self._disp)} steps, "
                      f"V_max = {max(self._shear) if self._shear else 0:.4g}")
 
@@ -204,3 +244,38 @@ class PushoverDialog(QDialog):
         self._ax.set_title("Pushover", fontsize=9)
         self._ax.grid(True, alpha=0.25)
         self._canvas.draw_idle()
+
+    def _draw_fibers(self, *_) -> None:
+        self._ffig.clear()
+        ax = self._ffig.add_subplot(111)
+        self._fax = ax
+        if not self._frames:
+            ax.text(0.5, 0.5,
+                    "(run with 'Record fiber response' to see fiber stresses)",
+                    ha="center", va="center", transform=ax.transAxes,
+                    fontsize=8, color="0.5")
+            ax.set_axis_off()
+            self._fcanvas.draw_idle()
+            return
+        step = max(0, min(self.step_slider.value(), len(self._frames) - 1))
+        frame = self._frames[step]
+        y = np.array([t[0] for t in frame])
+        z = np.array([t[1] for t in frame])
+        if self.fiber_mode.currentText() == "strain":
+            val = np.array([t[3] for t in frame])
+            label = "fiber strain"
+        else:
+            val = np.array([t[2] for t in frame]) / 1.0e6        # MPa
+            label = "fiber stress (MPa)"
+        vmax = max(float(np.abs(val).max()), 1e-12)
+        sc = ax.scatter(z, y, c=val, cmap="coolwarm", s=10,
+                        vmin=-vmax, vmax=vmax)
+        self._ffig.colorbar(sc, ax=ax, label=label)
+        ax.set_aspect("equal", "box")
+        ax.set_xlabel(f"z [{self._project.length_unit}]")
+        ax.set_ylabel(f"y [{self._project.length_unit}]")
+        d = self._disp[step] if step < len(self._disp) else 0.0
+        ax.set_title(f"Fiber stress · step {step + 1}/{len(self._frames)} "
+                     f"(d = {d:.4g})", fontsize=9)
+        self.step_lbl.setText(f"step {step + 1}/{len(self._frames)}")
+        self._fcanvas.draw_idle()

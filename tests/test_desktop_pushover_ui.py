@@ -92,4 +92,27 @@ def test_dialog_constructs_and_reads(qapp):
     assert kw["control_node"] == 2                       # the free node
     assert kw["control_dof"] in (0, 1, 2)
     assert kw["n_steps"] >= 2
+    assert kw["capture_fibers"] is True                  # on by default
     dlg._draw_curve()                                    # no crash
+    dlg._draw_fibers()                                   # placeholder, no crash
+
+
+def test_dialog_fiber_contour(qapp):
+    """GUI-6: after a captured run the step slider is enabled and the fiber
+    contour draws in both stress and strain modes."""
+    from pushover_dialog import PushoverDialog, PushoverWorker
+    p = _gsd_column_project()
+    dlg = PushoverDialog(None, p)
+    dlg.n_steps.setValue(12)
+    wk = PushoverWorker(p, dlg._kwargs())               # capture on by default
+    wk.progress.connect(dlg._on_progress)
+    wk.done.connect(dlg._on_done)
+    wk.run()
+    assert dlg._frames and dlg.step_slider.isEnabled()
+    assert dlg.step_slider.maximum() == len(dlg._frames) - 1
+    for mode in ("strain", "stress"):
+        dlg.fiber_mode.setCurrentText(mode)
+        dlg.step_slider.setValue(0)
+        dlg._draw_fibers()
+        dlg.step_slider.setValue(dlg.step_slider.maximum())
+        dlg._draw_fibers()

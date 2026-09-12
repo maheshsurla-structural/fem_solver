@@ -188,12 +188,18 @@ class BeamColumn2DCorotational(BeamColumn2D):
         K_l_nat = np.zeros((3, 3))
         f_nat = np.zeros(3)
         jac = 0.5 * L0
+        e_sections = []
         for i, (xi, w) in enumerate(zip(xi_pts, w_pts)):
             B_nat = self._natural_B_matrix(xi, L0)
             e_section = B_nat @ q_nat
+            e_sections.append(e_section)
             s_section, ks_section = self.sections[i].get_response(e_section)
             f_nat += (w * jac) * (B_nat.T @ s_section)
             K_l_nat += (w * jac) * (B_nat.T @ ks_section @ B_nat)
+        # Per-IP section deformations at the last evaluation (the converged
+        # state after a step commits) — read by post-processing to recover the
+        # fiber stress/strain field for the GUI fiber contour (plan §14 GUI-6).
+        self._e_sections = e_sections
         return f_nat, K_l_nat, c, s, L, L0
 
     # ---------------------------------------------------- transformation B
