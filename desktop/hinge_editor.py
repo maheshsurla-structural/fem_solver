@@ -14,18 +14,22 @@ A member with a hinge assigned compiles to a finite-length
 ``FiberHingeBeamColumn2D`` (elastic member + fiber plastic hinge at each end)
 instead of the distributed fiber element (see ``nonlinear.build_nonlinear_model``).
 
-Pure Qt — headless-constructible under ``QT_QPA_PLATFORM=offscreen``.
+Rebuilt onto the shared card scaffold (:mod:`analysis_ui`) for the GUI-polish
+work stream (plan gui-polish D2); every `.data()` / `.manage()` / `.assign()`
+contract and test-referenced attribute is unchanged. Pure Qt —
+headless-constructible under ``QT_QPA_PLATFORM=offscreen``.
 """
 from __future__ import annotations
 
 import copy
 
-from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox,
-                               QDoubleSpinBox, QFormLayout, QHBoxLayout, QLabel,
-                               QLineEdit, QMessageBox, QPushButton, QSpinBox,
-                               QTableWidget, QTableWidgetItem, QVBoxLayout,
-                               QWidget)
+from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox, QDialog,
+                               QDoubleSpinBox, QHBoxLayout, QLabel, QLineEdit,
+                               QMessageBox, QPushButton, QSpinBox, QTableWidget,
+                               QTableWidgetItem, QVBoxLayout)
 
+import style
+from analysis_ui import GroupCard, dialog_buttons
 from project import Hinge
 
 
@@ -54,49 +58,49 @@ class HingeDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Edit hinge" if hinge else "Add hinge")
         self._project = project
-        form = QFormLayout(self)
+        v = QVBoxLayout(self)
+        v.setContentsMargins(style.SP_LG, style.SP_LG, style.SP_LG, style.SP_LG)
+        v.setSpacing(style.SP_MD)
 
+        ident = GroupCard("Identity")
         self.id_spin = QSpinBox()
         self.id_spin.setRange(1, 10_000_000)
         self.id_spin.setValue(hinge.id if hinge
                               else _next_id([h.id for h in project.hinges]))
         self.id_spin.setEnabled(hinge is None)
-        form.addRow("Hinge id", self.id_spin)
-
+        ident.add_row("Hinge id", self.id_spin)
         self.name = QLineEdit(hinge.name if hinge else "Fiber hinge")
-        form.addRow("Name", self.name)
+        ident.add_row("Name", self.name)
+        v.addWidget(ident)
 
+        length = GroupCard("Plastic-hinge length")
         self.relative = QCheckBox("length is a fraction of the member length")
         self.relative.setChecked(hinge.relative if hinge else True)
         self.relative.toggled.connect(self._on_relative)
-        form.addRow(self.relative)
-
+        length.add_full_row(self.relative)
         self.lp_i = self._len_spin(hinge.lp if hinge else 0.1)
-        form.addRow("Hinge length I", self.lp_i)
-
+        length.add_row("Hinge length I", self.lp_i)
         self.symmetric = QCheckBox("end J same as end I")
         self.symmetric.setChecked(hinge.lp_j is None if hinge else True)
         self.symmetric.toggled.connect(self._on_symmetric)
-        form.addRow(self.symmetric)
-
+        length.add_full_row(self.symmetric)
         lp_j0 = (hinge.lp_j if (hinge and hinge.lp_j is not None)
                  else (hinge.lp if hinge else 0.1))
         self.lp_j = self._len_spin(lp_j0)
         self.lp_j_row = QLabel("Hinge length J")
-        form.addRow(self.lp_j_row, self.lp_j)
+        length.body_layout().addRow(self.lp_j_row, self.lp_j)
+        v.addWidget(length)
 
         self.hint = QLabel()
+        self.hint.setObjectName("hintLabel")
         self.hint.setWordWrap(True)
-        self.hint.setStyleSheet("color: gray;")
-        form.addRow(self.hint)
-
-        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        btns.accepted.connect(self.accept)
-        btns.rejected.connect(self.reject)
-        form.addRow(btns)
+        v.addWidget(self.hint)
+        v.addStretch(1)
+        v.addWidget(dialog_buttons(self))
 
         self._on_relative(self.relative.isChecked())
         self._on_symmetric(self.symmetric.isChecked())
+        style.apply(self)
 
     @staticmethod
     def _len_spin(value: float) -> QDoubleSpinBox:
@@ -154,26 +158,44 @@ class HingeManagerDialog(QDialog):
         self._project = project
         self._hinges = copy.deepcopy(project.hinges)
         v = QVBoxLayout(self)
+        v.setContentsMargins(style.SP_LG, style.SP_LG, style.SP_LG, style.SP_LG)
+        v.setSpacing(style.SP_SM)
 
+        head = QLabel("Plastic-hinge properties")
+        head.setObjectName("h2")
+        v.addWidget(head)
+        sub = QLabel("Fiber plastic hinges assignable to Section-Designer members.")
+        sub.setObjectName("sub")
+        v.addWidget(sub)
+
+        body = QHBoxLayout()
+        body.setSpacing(style.SP_MD)
         self.table = QTableWidget(0, 3)
         self.table.setHorizontalHeaderLabels(["id", "name", "length"])
         self.table.horizontalHeader().setStretchLastSection(True)
-        self.table.setMinimumSize(440, 220)
-        v.addWidget(self.table)
+        self.table.verticalHeader().setVisible(False)
+        self.table.setMinimumSize(460, 240)
+        self.table.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setSelectionMode(
+            QAbstractItemView.SelectionMode.SingleSelection)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.doubleClicked.connect(lambda *_: self._edit())
+        body.addWidget(self.table, 1)
 
-        row = QHBoxLayout()
+        col = QVBoxLayout()
+        col.setSpacing(style.SP_SM)
         for label, cb in (("Add…", self._add), ("Edit…", self._edit),
                           ("Delete", self._delete)):
             b = QPushButton(label)
             b.clicked.connect(cb)
-            row.addWidget(b)
-        row.addStretch(1)
-        v.addLayout(row)
+            col.addWidget(b)
+        col.addStretch(1)
+        body.addLayout(col)
+        v.addLayout(body)
 
-        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        btns.accepted.connect(self.accept)
-        btns.rejected.connect(self.reject)
-        v.addWidget(btns)
+        v.addWidget(dialog_buttons(self))
+        style.apply(self)
         self._refresh()
 
     def _refresh(self) -> None:
@@ -245,17 +267,28 @@ class HingeAssignmentDialog(QDialog):
         self._members = [mb for mb in project.members
                          if _has_fiber(secs.get(mb.section))]
         v = QVBoxLayout(self)
+        v.setContentsMargins(style.SP_LG, style.SP_LG, style.SP_LG, style.SP_LG)
+        v.setSpacing(style.SP_SM)
+
+        head = QLabel("Assign hinges to members")
+        head.setObjectName("h2")
+        v.addWidget(head)
 
         if not project.hinges:
-            v.addWidget(QLabel("No hinge properties defined yet — "
-                               "use Hinges… to add one first."))
+            note = QLabel("No hinge properties defined yet — use Hinges… to add "
+                          "one first.")
+            note.setObjectName("sub")
+            v.addWidget(note)
         elif not self._members:
-            v.addWidget(QLabel("No fiber (Section Designer) members to assign "
-                               "a hinge to."))
+            note = QLabel("No fiber (Section Designer) members to assign a hinge "
+                          "to.")
+            note.setObjectName("sub")
+            v.addWidget(note)
 
         self.table = QTableWidget(len(self._members), 3)
         self.table.setHorizontalHeaderLabels(["member", "section", "hinge"])
         self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.verticalHeader().setVisible(False)
         self.table.setMinimumSize(460, 240)
         self._combos: dict[int, QComboBox] = {}
         for r, mb in enumerate(self._members):
@@ -287,10 +320,8 @@ class HingeAssignmentDialog(QDialog):
             row.addWidget(self._all_combo)
             v.addLayout(row)
 
-        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        btns.accepted.connect(self.accept)
-        btns.rejected.connect(self.reject)
-        v.addWidget(btns)
+        v.addWidget(dialog_buttons(self))
+        style.apply(self)
 
     def _set_all(self) -> None:
         hid = self._all_combo.currentData()

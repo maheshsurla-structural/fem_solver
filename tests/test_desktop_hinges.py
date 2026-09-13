@@ -123,6 +123,16 @@ def test_hinge_pushover_runs_and_captures():
 
 # ------------------------------------------------------------- Qt dialogs
 
+def test_hinge_dialog_uses_scaffold_cards(qapp):
+    """D2: the flat form was rebuilt onto GroupCard panels."""
+    from PySide6.QtWidgets import QGroupBox
+
+    from hinge_editor import HingeDialog
+    dlg = HingeDialog(None, _gsd_column_project())
+    titles = {b.title() for b in dlg.findChildren(QGroupBox)}
+    assert {"Identity", "Plastic-hinge length"} <= titles
+
+
 def test_hinge_dialog_symmetric_and_asymmetric(qapp):
     from hinge_editor import HingeDialog
     p = _gsd_column_project()

@@ -180,7 +180,7 @@ Pick the lowest-numbered unchecked item whose deps are met.
 | V1 | Viewport **themes** (bg/grid/axis + entity colours from tokens; repaint on theme change) | — | [x] | `feat(gui-polish V1)` · 2026-09-13 |
 | V2 | Replace plot-style `show_grid()` with a **CAD ground grid + origin triad** | V1 | [x] | `feat(gui-polish V2)` · 2026-09-13 |
 | D1 | Redesign **Material editor** onto the scaffold | — | [x] | `feat(gui-polish D1)` · 2026-09-13 |
-| D2 | Redesign **Hinge editor / assignment** onto the scaffold | — | [ ] | |
+| D2 | Redesign **Hinge editor / assignment** onto the scaffold | — | [x] | `feat(gui-polish D2)` · 2026-09-13 |
 | D3 | Polish **Model-checks · Section-import · Run-history · Design · Drawings** dialogs | — | [ ] | |
 | G1 | **Charter sweep test** — every top-level surface builds + themes in all 4 combos | T1–T5, V1, D1–D3 | [ ] | |
 | G2 | **Visual record** — light/dark (+ density) screenshots of every polished surface | most above | [ ] | |
@@ -279,3 +279,14 @@ different, finished product.
   test (`test_dialog_uses_scaffold_cards`) added to `test_desktop_materials.py` (12 there now);
   full desktop suite green (214 passed, 1 skipped). Visual record
   `phase21_outputs/gui_polish/D1_material_{light,dark}`. No `project.py` / solver changes.
+- 2026-09-13 — **D2 done.** The three hinge dialogs (`desktop/hinge_editor.py`) moved onto the
+  scaffold. `HingeDialog`: an **Identity** GroupCard over a **Plastic-hinge length** card
+  (relative checkbox · length I · symmetric checkbox · length J), the grey inline hint now a
+  themed `#hintLabel`, `dialog_buttons(self)`. `HingeManagerDialog` + `HingeAssignmentDialog` got
+  `#h2`/`#sub` headers, hidden vertical table headers, and (manager) a right-side Add/Edit/Delete
+  column with double-click-to-edit; the assignment dialog's empty-state notes are `#sub`. All
+  call `style.apply(self)`. Contracts preserved — `.data()`/`.manage()`/`.assign()`/
+  `result_hinges()`/`result_assignments()` and `relative`/`lp_i`/`lp_j`/`symmetric`/`table`/
+  `_combos`/`_all_combo`/`_set_all`. 1 new structure test (`test_hinge_dialog_uses_scaffold_cards`);
+  full desktop suite green (215 passed, 1 skipped). Visual record
+  `phase21_outputs/gui_polish/D2_hinge_{light,dark}`. No `project.py` / solver changes.
