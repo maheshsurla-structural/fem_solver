@@ -145,8 +145,11 @@ Legend: `[x]` done · `[ ]` open. Do the lowest open item whose deps are met.
   `_on_branch_expanded/collapsed` and persisted to `QSettings("nav/expanded")` (seeded with
   `_DEFAULT_EXPANDED` on first run). Nav panel gains an **Expand all / Collapse all** header
   (`_build_nav_panel`, `expand_all_tree` / `collapse_all_tree`). — `feat(nav N3)`, 2026-09-13.
-- [ ] **N4 — Search / filter box.** A filter field above the tree that live-hides non-matching
-  categories/leaves (by id, name, type). Deps: N1.
+- [x] **N4 — Search / filter box.** A `navFilter` `QLineEdit` above the tree (`_apply_filter`)
+  live-hides non-matching branches by id / name / type; a container shows when it or any descendant
+  matches (matched containers force their descendants visible + expand), and clearing restores the
+  saved outline via `_restore_expansion`. Re-applied after an edit-rebuild. — `feat(nav N4)`,
+  2026-09-13.
 - [ ] **N5 — Live counts / partial refresh.** Update counts + affected branch in place after an
   edit instead of a full `clear()`+rebuild, preserving expansion and scroll. Deps: N1, N3.
 - [ ] **N6 — Pure-summary option.** A toggle that drops individual leaves entirely (tree = counts
@@ -161,6 +164,17 @@ Legend: `[x]` done · `[ ]` open. Do the lowest open item whose deps are met.
 ## 6. Change log
 
 _(prepend newest)_
+
+- **2026-09-13 — N4.** Live search/filter. `_build_nav_panel` now tops the panel with a `navFilter`
+  `QLineEdit` (placeholder "Search model…", clear button) whose `textChanged` drives
+  `_apply_filter(text)`: a case-insensitive substring test over each branch's column-0 text (id /
+  name / element-type), hiding non-matches with `setHidden`. A container is shown when it matches or
+  any descendant does; a matched container forces all its descendants visible and expands, and a
+  matched leaf reveals its ancestors. Filtering runs under the `_building_tree` guard (transient
+  expansion, no persist churn); clearing the box unhides everything and calls the new
+  `_restore_expansion` (extracted from `_populate_tree`, also reused at rebuild's tail, which now
+  re-applies an active filter to the fresh items). Import: `QLineEdit`. Tests: +3 in
+  `tests/test_desktop_nav.py`. Screenshot `N4_nav_filter.png`. Desktop suite: 394 passed, 1 skipped.
 
 - **2026-09-13 — N3.** Expand/collapse state now survives edit-rebuilds and sessions. Every
   expandable branch carries a stable key in `KEY_ROLE` (`UserRole+2`): `grp:<title>` for

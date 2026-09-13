@@ -163,3 +163,43 @@ def test_expansion_survives_rebuild(qapp, tmp_path):
     assert "cat:nodes" in w._expanded
     w._populate_tree()                                 # an edit rebuilds the tree
     assert _cat(w, "Structures", "Nodes").isExpanded()
+
+
+def _top(w, name):
+    return next(w.tree.topLevelItem(i)
+               for i in range(w.tree.topLevelItemCount())
+               if w.tree.topLevelItem(i).text(0) == name)
+
+
+def test_filter_hides_nonmatching(qapp):
+    from main_window import MainWindow
+    w = MainWindow()
+    w.load_project(_project())
+    w._apply_filter("beam")
+    elements = _cat(w, "Structures", "Elements")
+    beam = next(elements.child(k) for k in range(elements.childCount())
+                if elements.child(k).text(0) == "Beam")
+    assert not elements.isHidden() and not beam.isHidden()
+    assert elements.isExpanded()                       # match reveals children
+    assert _top(w, "Properties").isHidden()            # no match → hidden
+
+
+def test_filter_matches_container_shows_descendants(qapp):
+    from main_window import MainWindow
+    w = MainWindow()
+    w.load_project(_project())
+    w._apply_filter("nodes")                           # a category name
+    nodes = _cat(w, "Structures", "Nodes")
+    assert not nodes.isHidden() and nodes.childCount() > 0
+    assert not nodes.child(0).isHidden()               # descendants forced on
+
+
+def test_filter_clear_restores(qapp):
+    from main_window import MainWindow
+    w = MainWindow()
+    w.load_project(_project())
+    w._apply_filter("beam")
+    assert _top(w, "Properties").isHidden()
+    w._apply_filter("")                                # clear
+    assert not _top(w, "Properties").isHidden()
+    assert not _cat(w, "Properties", "Materials").isHidden()

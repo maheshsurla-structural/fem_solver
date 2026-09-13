@@ -15,7 +15,7 @@ from PySide6.QtGui import (QAction, QActionGroup, QBrush, QColor, QFont,
 from PySide6.QtWidgets import (QAbstractItemView, QApplication, QComboBox,
                                QDockWidget, QDoubleSpinBox, QFileDialog,
                                QFrame, QHBoxLayout, QHeaderView, QLabel,
-                               QMainWindow,
+                               QLineEdit, QMainWindow,
                                QMenu, QMessageBox, QPlainTextEdit, QSizePolicy,
                                QSlider, QStackedWidget, QTabBar, QToolButton,
                                QTreeWidget, QTreeWidgetItem, QVBoxLayout,
@@ -1875,7 +1875,6 @@ class MainWindow(QMainWindow):
     def _populate_tree(self) -> None:
         p = self._project
         labels = dof_labels(p.ndm, p.ndf)
-        self._building_tree = True          # ignore programmatic expand signals
         self.tree.clear()
 
         # ---- Properties -------------------------------------------------
@@ -1955,12 +1954,12 @@ class MainWindow(QMainWindow):
             self._leaf(runs, getattr(r, "name", f"Run {i + 1}"), None)
 
         # Restore each branch's expand/collapse state from the persisted set
-        # (nav N3) so an edit-triggered rebuild keeps the user's outline.
-        for it in self._iter_tree_items():
-            key = it.data(0, KEY_ROLE)
-            if key is not None:
-                it.setExpanded(key in self._expanded)
-        self._building_tree = False
+        # (nav N3) so an edit-triggered rebuild keeps the user's outline; then
+        # re-apply any active filter (nav N4) to the fresh items.
+        self._restore_expansion()
+        flt = getattr(self, "_nav_filter", None)
+        if flt is not None and flt.text().strip():
+            self._apply_filter(flt.text())
 
     def _iter_tree_items(self, parent=None):
         """Depth-first walk of every item (used by the recursive finder)."""
@@ -2000,6 +1999,18 @@ class MainWindow(QMainWindow):
         col = QVBoxLayout(panel)
         col.setContentsMargins(0, 0, 0, 0)
         col.setSpacing(0)
+        # Live filter (nav plan N4): hides non-matching branches as you type;
+        # matches by id / name / element-type (the leaf label text).
+        self._nav_filter = QLineEdit()
+        self._nav_filter.setObjectName("navFilter")
+        self._nav_filter.setPlaceholderText("Search model…")
+        self._nav_filter.setClearButtonEnabled(True)
+        self._nav_filter.textChanged.connect(self._apply_filter)
+        fwrap = QHBoxLayout()
+        fwrap.setContentsMargins(style.SP_XS, style.SP_XS, style.SP_XS,
+                                 style.SP_XS)
+        fwrap.addWidget(self._nav_filter)
+        col.addLayout(fwrap)
         bar = QHBoxLayout()
         bar.setContentsMargins(style.SP_XS, style.SP_XS, style.SP_XS, 0)
         bar.setSpacing(style.SP_XS)
@@ -2020,6 +2031,46 @@ class MainWindow(QMainWindow):
         col.addLayout(bar)
         col.addWidget(self.tree)
         return panel
+
+    def _restore_expansion(self) -> None:
+        """Set every branch's expanded state from the persisted set, without
+        letting the programmatic changes churn the persist signals (N3)."""
+        self._building_tree = True
+        for it in self._iter_tree_items():
+            key = it.data(0, KEY_ROLE)
+            if key is not None:
+                it.setExpanded(key in self._expanded)
+        self._building_tree = False
+
+    # ------------------------------------------------------------- filter (N4)
+    def _apply_filter(self, text) -> None:
+        """Live-hide branches that don't match ``text`` (by id / name / type).
+        A container is shown when it matches or any descendant does; when the
+        query clears, everything is unhidden and the saved outline restored."""
+        q = (text or "").strip().lower()
+        if not q:
+            for it in self._iter_tree_items():
+                it.setHidden(False)
+            self._restore_expansion()
+            return
+
+        self._building_tree = True          # expansion here is transient
+
+        def visit(item, forced=False):
+            match = forced or q in item.text(0).lower()
+            child_hit = False
+            for i in range(item.childCount()):
+                if visit(item.child(i), forced=match):
+                    child_hit = True
+            visible = match or child_hit
+            item.setHidden(not visible)
+            if child_hit or (match and item.childCount()):
+                item.setExpanded(True)
+            return visible
+
+        for i in range(self.tree.topLevelItemCount()):
+            visit(self.tree.topLevelItem(i))
+        self._building_tree = False
 
     def _on_branch_expanded(self, item) -> None:
         if self._building_tree:
