@@ -324,7 +324,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
 | A5 | Fold `NonlinearCaseManagerDialog` into A1 | A1 | [x] | `feat(loads-ux A5)` · 2026-09-13 |
 | S1 | Menu reorg (Loads menu) | L2, L5, A1, A4 | [x] | `feat(loads-ux S1)` · 2026-09-13 |
 | S2 | Loads & Analysis toolbar groups | S1 | [x] | `feat(loads-ux S2)` · 2026-09-13 |
-| S3 | (Optional) ribbon-style top bar | S2 | [ ] | |
+| S3 | (Optional) ribbon-style top bar | S2 | [x] | `feat(loads-ux S3)` · 2026-09-13 |
 | Q1 | Smoke-test sweep | all above | [x] | `feat(loads-ux Q1)` · 2026-09-13 |
 | Q2 | Visual record (screenshots) | all above | [x] | `feat(loads-ux Q2)` · 2026-09-13 |
 
@@ -495,6 +495,23 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
   15 of 16 tracker items complete; only S3 (the optional unified ribbon band, "may be deferred")
   is left open by design.**
 
+- 2026-09-13 — **S3 done (stream complete, 16/16).** Consolidated the top into **one cohesive
+  captioned ribbon band** in `main_window.py`, reusing the S2 `_ribbon_group` helper. A new
+  **Home** ribbon row (File · Model · Edit · View · Tools) sits over the S2 **Loads** and
+  **Analysis** rows, so the whole top reads as a CSiBridge/Midas-style ribbon (no tab framework).
+  It **replaces** the old scattered icon toolbars (File / Edit / Generate / View / Tools) — their
+  full action sets stay in the S1 menus (Modify move/copy/mirror/rotate/extrude, Materials, all
+  view directions, Drawings, Generate-frame, Delete), and the ribbon carries the common ones;
+  the modal, checkable **draw/select** palettes stay icon-only on their own row below the band
+  (with the snap-grid spin). Home is curated to 11 buttons so it fits without a "»" overflow down
+  to a 1200px window (verified). No action object is dropped (`act_run` still rides the Analyse
+  group → Ctrl+R live; Delete keeps its Del shortcut + Edit menu). 5 offscreen tests in
+  `test_desktop_ribbon.py` (band rows, Home groups/captions, old bars folded in, modal palettes
+  remain, menus keep the full sets); the S2 Edit/Generate-toolbar test retargeted to the ribbon.
+  Full desktop suite 188 passed, 1 skipped. Screenshots
+  `phase21_outputs/loads_ux/S3_ribbon_band_light.png`, `…_dark.png`. No `project.py` / solver
+  changes. **All 16 tracker items now complete.**
+
 ## 10. Before / after notes
 
 _(Fill in as items land — one or two lines + a screenshot path per redesigned surface.)_
@@ -543,6 +560,11 @@ _(Fill in as items land — one or two lines + a screenshot path per redesigned 
   **Analysis** (Analyse ｜ Results ｜ Design), each a cluster of text-under-icon buttons under
   an eyebrow caption, with separators between groups. `phase21_outputs/loads_ux/S2_ribbon_light.png`,
   `…_dark.png` (offscreen box-glyph text as above; the grouped captioned buttons + icons are the
+  record).
+- **S3 unified ribbon band** — the scattered icon toolbars became one cohesive captioned ribbon:
+  a **Home** row (File · Model · Edit · View · Tools) over the **Loads** and **Analysis** rows,
+  with the modal draw/select palette below. `phase21_outputs/loads_ux/S3_ribbon_band_light.png`,
+  `…_dark.png` (offscreen box-glyph text; the grouped captioned rows, icons and separators are the
   record).
 - **Q2 density record** — every redesigned dialog now has a 2×2 montage
   (`phase21_outputs/loads_ux/Q2_<surface>.png`) showing light｜dark × comfortable｜compact in one

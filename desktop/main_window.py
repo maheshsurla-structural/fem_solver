@@ -320,30 +320,6 @@ class MainWindow(QMainWindow):
                 tb.addSeparator() if a is None else tb.addAction(a)
             return tb
 
-        _toolbar("File", (self.act_new, self.act_open, self.act_save))
-        _toolbar("Edit", (self.act_undo, self.act_redo, None, self.act_add_node,
-                          self.act_add_member, self.act_add_section,
-                          self.act_delete, None,
-                          self.act_move, self.act_copy, self.act_mirror,
-                          self.act_rotate, self.act_extrude))
-        _toolbar("Generate", (self.act_gen,))
-        _toolbar("Select", (self.act_select, self.act_sel_window,
-                            self.act_sel_poly, self.act_deselect))
-        tb_draw = _toolbar("Draw", (self.act_draw_node, self.act_draw_member,
-                                    self.act_snap))
-        tb_draw.addWidget(self.snap_spin)
-        _toolbar("View", (self.act_fit, self.act_v_iso, self.act_v_top,
-                          self.act_v_front, None, self.act_drawings))
-        _toolbar("Tools", (self.act_sectiondesigner,))
-
-        # Captioned, text-under-icon Loads & Analysis ribbon band (plan S2).
-        # Its own rows below the icon toolbars so the tall text buttons don't
-        # stretch them; Loads and Analysis each take a full row (the Analysis
-        # groups are too wide to share one without overflowing into a "»"
-        # menu). Each group carries an eyebrow caption + separators, reading
-        # define -> combine (Loads) and analyse -> view -> design (Analysis).
-        self.addToolBarBreak()
-
         def _ribbon_toolbar(name, groups):
             tb = self.addToolBar(name)
             tb.setObjectName("ribbonBar")
@@ -355,6 +331,26 @@ class MainWindow(QMainWindow):
                 tb.addWidget(_ribbon_group(caption, items))
             return tb
 
+        # One cohesive, captioned ribbon band across the top (plan S3): a Home
+        # row over the S2 Loads and Analysis rows, each a set of grouped,
+        # text-under-icon buttons with eyebrow captions — evoking the
+        # CSiBridge/Midas ribbon without a tab framework. It replaces the old
+        # scattered icon toolbars (File/Edit/Generate/View/Tools); their full
+        # action sets stay in the menus (plan S1) and the ribbon carries the
+        # common ones. The modal draw/select tool palettes stay icon-only on
+        # their own row below the band. Loads and Analysis keep their own rows
+        # (the Analysis groups are too wide to share one — see S2).
+        _ribbon_toolbar("Home", (
+            ("File", ((self.act_new, "New"), (self.act_open, "Open"),
+                      (self.act_save, "Save"))),
+            ("Model", ((self.act_add_node, "Node"),
+                       (self.act_add_member, "Member"),
+                       (self.act_add_section, "Section"))),
+            ("Edit", ((self.act_undo, "Undo"), (self.act_redo, "Redo"))),
+            ("View", ((self.act_fit, "Fit"), (self.act_v_iso, "Iso"))),
+            ("Tools", ((self.act_sectiondesigner, "Designer"),)),
+        ))
+        self.addToolBarBreak()
         _ribbon_toolbar("Loads", (
             ("Loads", ((self.act_loadcases, "Cases"),
                        (self.act_add_load, "Nodal"),
@@ -375,6 +371,13 @@ class MainWindow(QMainWindow):
             ("Design", ((self.act_design, "Design"),
                         (self.act_checkmodel, "Check"))),
         ))
+        self.addToolBarBreak()
+        # Modal drafting/selection tool palettes — checkable, icon-only.
+        _toolbar("Select", (self.act_select, self.act_sel_window,
+                            self.act_sel_poly, self.act_deselect))
+        tb_draw = _toolbar("Draw", (self.act_draw_node, self.act_draw_member,
+                                    self.act_snap))
+        tb_draw.addWidget(self.snap_spin)
 
     # ---------------------------------------------------------------- analysis
     def _solve(self):

@@ -95,13 +95,15 @@ def test_ribbon_buttons_text_under_icon_but_menu_text_kept(win):
     assert win.act_loadcases.text() == "Load &cases…"
 
 
-def test_load_actions_left_edit_and_generate_toolbars(win):
-    edit = _toolbar(win, "Edit")
-    assert win.act_add_load not in edit.actions()
-    assert win.act_add_lineload not in edit.actions()
-    gen = _toolbar(win, "Generate")
-    assert win.act_genloads not in gen.actions()
-    assert win.act_gen in gen.actions()          # geometry generation stays
+def test_load_actions_gathered_only_in_loads_ribbon(win):
+    # The load actions live in the Loads ribbon group and are not duplicated in
+    # the Home band (S2 pulled them off the Edit/Generate toolbars; S3 then
+    # folded those bars into the ribbon — see test_desktop_ribbon.py).
+    loads = set(_ribbon_actions(_toolbar(win, "Loads")))
+    home = set(_ribbon_actions(_toolbar(win, "Home")))
+    for attr in ("act_add_load", "act_add_lineload", "act_genloads"):
+        assert getattr(win, attr) in loads, attr
+        assert getattr(win, attr) not in home, attr
 
 
 def test_ctrl_r_rides_a_ribbon_button(win):
