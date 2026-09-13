@@ -136,6 +136,8 @@ class MainWindow(QMainWindow):
 
         self.act_analysiscases = _action(self, "Analysis &cases…", None,
                                          self.manage_analysis_cases, "run")
+        self.act_runanalysis = _action(self, "Run &analysis…", None,
+                                       self.run_analysis, "run")
         self.act_run = _action(self, "&Run (linear static)", "Ctrl+R",
                                self.run_linear_static, "run")
         self.act_nlcases = _action(self, "Nonlinear &cases…", None,
@@ -257,6 +259,7 @@ class MainWindow(QMainWindow):
         analysis_menu.addAction(self.act_gencombos)
         analysis_menu.addSeparator()
         analysis_menu.addAction(self.act_analysiscases)
+        analysis_menu.addAction(self.act_runanalysis)
         analysis_menu.addAction(self.act_run)
         analysis_menu.addAction(self.act_nlcases)
         analysis_menu.addAction(self.act_pushover)
@@ -333,10 +336,10 @@ class MainWindow(QMainWindow):
         from femsolver import LinearStaticAnalysis
         return LinearStaticAnalysis(self._model).run()
 
-    def run_linear_static(self) -> None:
+    def run_linear_static(self):
         info = self._solve()
         if info is None:
-            return
+            return None
         dmax = mg.max_translation(self._model)
         span = mg.model_span(self._model)
         scale = (0.08 * span / dmax) if dmax > 0 else 1.0
@@ -346,6 +349,7 @@ class MainWindow(QMainWindow):
             f"max|u| = {dmax:.4e} m, deformation ×{scale:.0f}")
         self.statusBar().showMessage(
             f"Solved · max|u| {dmax:.3e} m · deformation ×{scale:.0f}")
+        return info
 
     def run_pushover_dialog(self, preselect_case=None) -> None:
         from pushover_dialog import PushoverDialog
@@ -895,6 +899,21 @@ class MainWindow(QMainWindow):
                 if mid in by_id:
                     by_id[mid].hinge = hid
         self._apply_edit("Assign hinges", _apply)
+
+    def run_analysis(self) -> None:
+        """Open the Run-analysis control (plan A4): choose which cases to run,
+        run the batchable linear-static inline (live status), then open the
+        interactive dialogs for any queued nonlinear / time-history cases."""
+        if self._project is None:
+            return
+        from run_analysis_dialog import RunAnalysisDialog
+        requests = RunAnalysisDialog.run(self, self._project,
+                                         self.run_linear_static)
+        for req in requests:
+            if req[0] == "nonlinear":
+                self.run_pushover_dialog(preselect_case=req[1])
+            elif req[0] == "timehistory":
+                self.run_timehistory_dialog()
 
     def manage_analysis_cases(self) -> None:
         """Open the unified analysis-cases home (plan A1): one list of every

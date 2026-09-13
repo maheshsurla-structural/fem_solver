@@ -320,7 +320,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
 | A1 | Unified analysis-cases manager (NEW) | L1, A2 | [x] | `feat(loads-ux A1)` · 2026-09-13 |
 | A2 | Redesign `NonlinearCaseDialog` (screenshot fix) | L1 | [x] | `feat(loads-ux A2)` · 2026-09-13 |
 | A3 | Redesign Pushover + Time-History panels | L1 | [x] | `feat(loads-ux A3)` · 2026-09-13 |
-| A4 | "Run Analysis" control (NEW) | L1, A1 | [ ] | |
+| A4 | "Run Analysis" control (NEW) | L1, A1 | [x] | `feat(loads-ux A4)` · 2026-09-13 |
 | A5 | Polish `NonlinearCaseManagerDialog` | A1 | [ ] | |
 | S1 | Menu reorg (Loads menu) | L2, L5, A1, A4 | [ ] | |
 | S2 | Loads & Analysis toolbar groups | S1 | [ ] | |
@@ -400,6 +400,16 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
   6 offscreen tests in `test_desktop_analysis_cases.py` (list composition, button gating, Run
   dispatch, delete-guard, wiring). The existing `Nonlinear cases…` action stays until A5 folds
   it in. Screenshots `phase21_outputs/loads_ux/A1_analysis_cases_*.png`. No solver changes.
+- 2026-09-13 — **A4 done.** New `desktop/run_analysis_dialog.py` — CSiBridge *Run Analysis*
+  control: a table (Case · Type · Action · Status) of the runnable cases, each with a
+  **Run / Do not run** combo and a live **Status**. **Run Now** runs the batchable Linear
+  Static inline (Running → Done / Failed / No model) via an injected `run_linear` callback, and
+  *queues* flagged nonlinear / time-history cases (they need their interactive dialogs). Wired
+  into Analysis ▸ **Run analysis…** (`main_window.run_analysis`): opens the control, then opens
+  the pushover / time-history dialogs for the queued requests on close. `run_linear_static` now
+  returns its info dict (was `None`) so the control can show status; callers that ignored the
+  return are unaffected. 6 offscreen tests in `test_desktop_run_analysis.py`. Screenshots
+  `phase21_outputs/loads_ux/A4_run_analysis_*.png`. No solver changes.
 
 ---
 
@@ -433,3 +443,6 @@ _(Fill in as items land — one or two lines + a screenshot path per redesigned 
 - **A1 analysis-cases home** — one CSiBridge-style list of every analysis case: Linear Static +
   nonlinear cases + Time History launchers, and greyed Modal / Response-Spectrum / Buckling /
   Moving-Load roadmap rows. `phase21_outputs/loads_ux/A1_analysis_cases_light.png`, `…_dark.png`.
+- **A4 run-analysis control** — a Case/Type/Action/Status table with Run/Do-not-run toggles;
+  linear static runs inline with live status, nonlinear/time-history are queued.
+  `phase21_outputs/loads_ux/A4_run_analysis_light.png`, `…_dark.png`.
