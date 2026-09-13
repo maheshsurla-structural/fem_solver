@@ -17,6 +17,7 @@ from pyvistaqt import QtInteractor
 
 import model_geometry as mg
 import style
+from nav_cube import NavCube, camera_basis_from
 
 
 # Model-entity inks live in the theme (``style.V_*``) and are read at render
@@ -163,6 +164,10 @@ class ModelView(QtInteractor):
         self._highlight = []
         self._poly_overlay = _PolygonOverlay(self, self._polygon_select)
         self._poly_overlay.hide()
+        # orientation cube — a CAD-style navigation gizmo pinned top-right; it
+        # reads ``camera_basis`` and drives ``set_view`` / ``orbit`` (see nav_cube).
+        self._nav_cube = NavCube(self, self)
+        self._position_nav_cube()
         # empty-state hint — shown (centred) whenever there is no model to draw,
         # instead of a blank canvas (charter §F). Themed via the #canvasHint QSS.
         self._hint = QLabel(
@@ -312,6 +317,41 @@ class ModelView(QtInteractor):
             self._poly_overlay.setGeometry(self.rect())
         if self._hint.isVisible():
             self._hint.setGeometry(self.rect())
+        self._position_nav_cube()
+
+    def _position_nav_cube(self) -> None:
+        """Pin the orientation cube to the top-right corner of the viewport."""
+        cube = getattr(self, "_nav_cube", None)
+        if cube is None:
+            return
+        margin = 12
+        cube.move(self.width() - cube.width() - margin, margin)
+        cube.raise_()
+
+    def camera_basis(self):
+        """Screen basis (right, up, forward) as unit world vectors for the
+        active camera — consumed by the navigation cube. ``None`` if unready."""
+        try:
+            cam = self.camera
+            return camera_basis_from(cam.position, cam.focal_point, cam.up)
+        except Exception:
+            return None
+
+    def orbit(self, d_azimuth: float, d_elevation: float) -> None:
+        """Rotate the camera about the model by the given degrees (azimuth /
+        elevation), keep the up-vector sane, then re-fit — used by the cube's
+        orbit chevrons to bring a hidden face round to the front."""
+        try:
+            cam = self.camera
+            if d_azimuth:
+                cam.Azimuth(float(d_azimuth))
+            if d_elevation:
+                cam.Elevation(float(d_elevation))
+            cam.OrthogonalizeViewUp()
+        except Exception:
+            return
+        self.reset_camera()
+        self.render()
 
     def _sync_hint(self) -> None:
         """Show the centred empty-state hint when there is no model to draw."""
@@ -320,6 +360,7 @@ class ModelView(QtInteractor):
         if empty:
             self._hint.setGeometry(self.rect())
             self._hint.raise_()
+        self._position_nav_cube()             # keep the cube above the hint
 
     def set_mode(self, mode: str) -> None:
         self._mode = mode
@@ -461,6 +502,10 @@ class ModelView(QtInteractor):
             except Exception:
                 pass
         self.render()
+        try:
+            self._nav_cube.apply_theme()     # restyle the cube with the app
+        except Exception:
+            pass
 
     def set_model(self, model) -> None:
         self._model = model
