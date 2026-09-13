@@ -322,7 +322,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
 | A3 | Redesign Pushover + Time-History panels | L1 | [x] | `feat(loads-ux A3)` · 2026-09-13 |
 | A4 | "Run Analysis" control (NEW) | L1, A1 | [x] | `feat(loads-ux A4)` · 2026-09-13 |
 | A5 | Fold `NonlinearCaseManagerDialog` into A1 | A1 | [x] | `feat(loads-ux A5)` · 2026-09-13 |
-| S1 | Menu reorg (Loads menu) | L2, L5, A1, A4 | [ ] | |
+| S1 | Menu reorg (Loads menu) | L2, L5, A1, A4 | [x] | `feat(loads-ux S1)` · 2026-09-13 |
 | S2 | Loads & Analysis toolbar groups | S1 | [ ] | |
 | S3 | (Optional) ribbon-style top bar | S2 | [ ] | |
 | Q1 | Smoke-test sweep | all above | [ ] | |
@@ -436,6 +436,22 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
 
 ---
 
+- 2026-09-13 — **S1 done.** Menu reorg in `main_window.py`, no new dialogs — pure
+  information architecture. A dedicated **Loads** menu (between Generate and Analysis) now
+  gathers every load-definition surface that L1–L6 built or moved: *Load cases…* · *Add
+  load…* · *Add line load…* · *Generate loads…* · *Load combinations…* · *Generate ASCE-7
+  combinations* (the §2.1 complaint that "Add load" lived under Edit and "Generate loads"
+  under Generate — both now removed from those menus). The **Analysis** menu is slimmed to
+  the define → run → view spine: *Analysis cases…* (A1 home) · *Run analysis…* (A4 control) ·
+  a **Results & diagrams** submenu (Undeformed · Axial N / Shear V / Moment M · Run history…) ·
+  *Design (DCR)* · *Check model…*. The direct *Run (linear static)* / *Nonlinear pushover* /
+  *Nonlinear time history* actions left the menu — they are reached through the A1 cases home
+  and the A4 run control now; every action object is kept (no `hasattr` regressions) and
+  `act_run` stays in the Analysis toolbar so **Ctrl+R** is still live. Toolbars are untouched
+  (that is S2). 5 offscreen tests in `test_desktop_menus.py`; full desktop suite green (167
+  passed, 1 skipped). Screenshots `phase21_outputs/loads_ux/S1_menus_light.png`, `…_dark.png`.
+  No `project.py` / solver changes.
+
 ## 10. Before / after notes
 
 _(Fill in as items land — one or two lines + a screenshot path per redesigned surface.)_
@@ -473,3 +489,9 @@ _(Fill in as items land — one or two lines + a screenshot path per redesigned 
   each row and a hint line. `phase21_outputs/loads_ux/L3_load_cases_light.png`, `…_dark.png`.
 - **L6 load-generator dialog** — grouped card with a live preview of how many loads / total
   force will be generated. `phase21_outputs/loads_ux/L6_loadgen_light.png`, `…_dark.png`.
+- **S1 menu reorg** — loads/analysis actions were scattered (Add load under Edit, Generate
+  loads under Generate, combos + a long run list piled into one Analysis menu). Now a dedicated
+  **Loads** menu gathers all load definition, and **Analysis** is a slim cases → run →
+  Results-&-diagrams submenu → design/check spine. `phase21_outputs/loads_ux/S1_menus_light.png`,
+  `…_dark.png` (text renders as boxes in the headless `offscreen` grab — an artifact only; the
+  icons, grouping and separators are the record here).

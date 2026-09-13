@@ -238,7 +238,7 @@ class MainWindow(QMainWindow):
         edit_menu.addSeparator()
         for a in (self.act_add_node, self.act_add_member, self.act_add_section,
                   self.act_materials, self.act_hinges, self.act_assign_hinges,
-                  self.act_add_load, self.act_add_lineload, self.act_delete):
+                  self.act_delete):
             edit_menu.addAction(a)
         edit_menu.addSeparator()
         edit_menu.addAction(self.act_deselect)
@@ -249,25 +249,40 @@ class MainWindow(QMainWindow):
         edit_menu.addAction(self.act_extrude)
         gen_menu = self.menuBar().addMenu("&Generate")
         gen_menu.addAction(self.act_gen)
-        gen_menu.addAction(self.act_genloads)
+
+        # Loads home (plan S1) — every load-definition surface in one place,
+        # instead of "Add load" buried under Edit and "Generate loads" under
+        # Generate. Reads: define cases -> apply loads -> combine.
+        loads_menu = self.menuBar().addMenu("&Loads")
+        loads_menu.addAction(self.act_loadcases)
+        loads_menu.addSeparator()
+        loads_menu.addAction(self.act_add_load)
+        loads_menu.addAction(self.act_add_lineload)
+        loads_menu.addAction(self.act_genloads)
+        loads_menu.addSeparator()
+        loads_menu.addAction(self.act_editcombos)
+        loads_menu.addAction(self.act_gencombos)
+
+        # Analysis — slimmed to define -> run -> view (plan S1). The direct
+        # pushover / time-history launchers now live in the Analysis-cases
+        # home (act_analysiscases); linear static keeps its Ctrl+R via the
+        # Run-analysis control and the Analysis toolbar.
         analysis_menu = self.menuBar().addMenu("&Analysis")
-        analysis_menu.addAction(self.act_loadcases)
-        analysis_menu.addAction(self.act_editcombos)
-        analysis_menu.addAction(self.act_gencombos)
-        analysis_menu.addSeparator()
         analysis_menu.addAction(self.act_analysiscases)
         analysis_menu.addAction(self.act_runanalysis)
-        analysis_menu.addAction(self.act_run)
-        analysis_menu.addAction(self.act_pushover)
-        analysis_menu.addAction(self.act_timehistory)
-        analysis_menu.addAction(self.act_runhistory)
         analysis_menu.addSeparator()
+        results_menu = analysis_menu.addMenu(icons.icon("undeformed"),
+                                             "&Results && diagrams")
+        results_menu.addAction(self.act_undef)
+        results_menu.addSeparator()
+        results_menu.addAction(self.act_diag_n)
+        results_menu.addAction(self.act_diag_v)
+        results_menu.addAction(self.act_diag_m)
+        results_menu.addSeparator()
+        results_menu.addAction(self.act_runhistory)
+        analysis_menu.addSeparator()
+        analysis_menu.addAction(self.act_design)
         analysis_menu.addAction(self.act_checkmodel)
-        analysis_menu.addAction(self.act_undef)
-        analysis_menu.addSeparator()
-        for a in (self.act_diag_n, self.act_diag_v, self.act_diag_m,
-                  self.act_design):
-            analysis_menu.addAction(a)
         select_menu = self.menuBar().addMenu("&Select")
         select_menu.addAction(self.act_select)
         select_menu.addAction(self.act_sel_window)
