@@ -317,7 +317,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
 | L4 | Redesign nodal `LoadDialog` | L1 | [x] | `feat(loads-ux L4)` · 2026-09-13 |
 | L5 | Member/line-load dialog (NEW) | L1 | [x] | `feat(loads-ux L5)` · 2026-09-13 |
 | L6 | Redesign `LoadGenDialog` | L1 | [ ] | |
-| A1 | Unified analysis-cases manager (NEW) | L1, A2 | [ ] | |
+| A1 | Unified analysis-cases manager (NEW) | L1, A2 | [x] | `feat(loads-ux A1)` · 2026-09-13 |
 | A2 | Redesign `NonlinearCaseDialog` (screenshot fix) | L1 | [x] | `feat(loads-ux A2)` · 2026-09-13 |
 | A3 | Redesign Pushover + Time-History panels | L1 | [x] | `feat(loads-ux A3)` · 2026-09-13 |
 | A4 | "Run Analysis" control (NEW) | L1, A1 | [ ] | |
@@ -388,6 +388,18 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
   invisible before). 4 offscreen tests in `test_desktop_member_load.py` (2-D/3-D + wiring +
   tree). Screenshots `phase21_outputs/loads_ux/L5_lineload_*.png`. No `project.py`/solver
   changes.
+- 2026-09-13 — **A1 done.** New `desktop/analysis_cases_dialog.py` — the unified analysis-cases
+  home (CSiBridge *Define ▸ Load Cases*): one table (Case · Type · Details) listing the
+  built-in **Linear Static** launcher, every saved **Nonlinear Static** case, a **Time History**
+  launcher, and greyed roadmap rows (Modal / Response Spectrum / Buckling / Moving Load). Add /
+  Modify / Delete operate on nonlinear cases (delegating to `NonlinearCaseDialog`); **Run**
+  records a request and closes. Wired into Analysis ▸ **Analysis cases…**
+  (`main_window.manage_analysis_cases`): commits case edits, then dispatches the run — linear →
+  `run_linear_static`, nonlinear → `run_pushover_dialog(preselect_case=…)` (new optional arg),
+  time-history → `run_timehistory_dialog`. Decoupled: the dialog never runs anything itself.
+  6 offscreen tests in `test_desktop_analysis_cases.py` (list composition, button gating, Run
+  dispatch, delete-guard, wiring). The existing `Nonlinear cases…` action stays until A5 folds
+  it in. Screenshots `phase21_outputs/loads_ux/A1_analysis_cases_*.png`. No solver changes.
 
 ---
 
@@ -418,3 +430,6 @@ _(Fill in as items land — one or two lines + a screenshot path per redesigned 
 - **L5 member/line-load dialog** — a surface with no UI before: *Applied to* + *Uniform line
   load* cards with local-axis hints; line loads now also show in the model tree.
   `phase21_outputs/loads_ux/L5_lineload_light.png`, `…_dark.png`, `L5_lineload_3d_light.png`.
+- **A1 analysis-cases home** — one CSiBridge-style list of every analysis case: Linear Static +
+  nonlinear cases + Time History launchers, and greyed Modal / Response-Spectrum / Buckling /
+  Moving-Load roadmap rows. `phase21_outputs/loads_ux/A1_analysis_cases_light.png`, `…_dark.png`.

@@ -134,6 +134,8 @@ class MainWindow(QMainWindow):
         self.act_extrude = _action(self, "E&xtrude…", None, self.extrude_selected,
                                    "extrude")
 
+        self.act_analysiscases = _action(self, "Analysis &cases…", None,
+                                         self.manage_analysis_cases, "run")
         self.act_run = _action(self, "&Run (linear static)", "Ctrl+R",
                                self.run_linear_static, "run")
         self.act_nlcases = _action(self, "Nonlinear &cases…", None,
@@ -254,6 +256,7 @@ class MainWindow(QMainWindow):
         analysis_menu.addAction(self.act_editcombos)
         analysis_menu.addAction(self.act_gencombos)
         analysis_menu.addSeparator()
+        analysis_menu.addAction(self.act_analysiscases)
         analysis_menu.addAction(self.act_run)
         analysis_menu.addAction(self.act_nlcases)
         analysis_menu.addAction(self.act_pushover)
@@ -344,7 +347,7 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(
             f"Solved · max|u| {dmax:.3e} m · deformation ×{scale:.0f}")
 
-    def run_pushover_dialog(self) -> None:
+    def run_pushover_dialog(self, preselect_case=None) -> None:
         from pushover_dialog import PushoverDialog
         p = self._project
         if not p.members:
@@ -357,6 +360,10 @@ class MainWindow(QMainWindow):
                 "on a member.")
             return
         dlg = PushoverDialog(self, p)
+        if preselect_case is not None:                 # from the Analysis-cases home
+            i = dlg.case_combo.findData(preselect_case)
+            if i >= 0:
+                dlg.case_combo.setCurrentIndex(i)
         dlg.exec()
         res = getattr(dlg, "_results", None)
         if res is not None and res.n_curve:
@@ -888,6 +895,32 @@ class MainWindow(QMainWindow):
                 if mid in by_id:
                     by_id[mid].hinge = hid
         self._apply_edit("Assign hinges", _apply)
+
+    def manage_analysis_cases(self) -> None:
+        """Open the unified analysis-cases home (plan A1): one list of every
+        analysis case (linear static, nonlinear, time history, + roadmap
+        placeholders). Commits any nonlinear-case edits, then dispatches a Run
+        request to the matching runner."""
+        if self._project is None:
+            return
+        from analysis_cases_dialog import AnalysisCasesDialog
+        res = AnalysisCasesDialog.manage(self, self._project)
+        if res is None:
+            return
+        cases, run = res
+        if cases != self._project.nonlinear_cases:
+            self._apply_edit(
+                "Edit analysis cases",
+                lambda: setattr(self._project, "nonlinear_cases", cases))
+        if run is None:
+            return
+        kind = run[0]
+        if kind == "linear":
+            self.run_linear_static()
+        elif kind == "nonlinear":
+            self.run_pushover_dialog(preselect_case=run[1])
+        elif kind == "timehistory":
+            self.run_timehistory_dialog()
 
     def manage_nonlinear_cases(self) -> None:
         result = NonlinearCaseManagerDialog.manage(self, self._project)
