@@ -109,6 +109,7 @@ class MainWindow(QMainWindow):
         # would otherwise reset the outline on every edit. Keyed per branch
         # (super-group / category / element-type); seeded on first run.
         self._building_tree = False
+        self._last_tree_sig = None       # structure signature for the N5 fast path
         saved = self._settings.value("nav/expanded", None)
         self._expanded = (set(saved) if saved is not None
                           else set(_DEFAULT_EXPANDED))
@@ -1129,6 +1130,7 @@ class MainWindow(QMainWindow):
         self._project = project
         self._path = path
         self._undo_stack.clear()
+        self._last_tree_sig = None       # a new document → always a full rebuild
         self._rebuild()
         self._update_title()
         self.log.appendPlainText(
@@ -1826,7 +1828,7 @@ class MainWindow(QMainWindow):
             self.view.mark_hinges(self._project)
         except Exception as exc:                       # noqa: BLE001
             QMessageBox.critical(self, "Model error", str(exc))
-        self._populate_tree()
+        self._refresh_tree()
         self._refresh_status()
 
     def _update_title(self) -> None:
@@ -1872,9 +1874,48 @@ class MainWindow(QMainWindow):
         it.setData(0, Qt.ItemDataRole.UserRole, ref)
         return it
 
+    # --- leaf label builders (shared by the full build and the in-place N5
+    # refresh, so the two paths can never drift apart) -----------------------
+    @staticmethod
+    def _node_leaf_label(n, labels, ndm) -> str:
+        sup = ([labels[k] for k in range(min(len(n.supports), len(labels)))
+                if n.supports[k]] if n.supports else [])
+        tag = f"  [{','.join(sup)}]" if sup else ""
+        coord = (f"{n.x:g}, {n.y:g}" if ndm == 2
+                 else f"{n.x:g}, {n.y:g}, {n.z:g}")
+        return f"{n.id}:  ({coord}){tag}"
+
+    @staticmethod
+    def _support_leaf_label(n, labels) -> str:
+        mask = [labels[k] for k in range(min(len(n.supports), len(labels)))
+                if n.supports[k]]
+        return f"{n.id}:  [{','.join(mask)}]"
+
+    @staticmethod
+    def _section_leaf_label(s) -> str:
+        shape = f"  [{s.shape}]" if s.shape else ""
+        return f"{s.id}:  {s.name}{shape}"
+
+    @staticmethod
+    def _member_leaf_label(m) -> str:
+        return (f"{m.id}:  {m.n1} → {m.n2}  "
+                f"(sec {m.section}, mat {m.material})")
+
+    @staticmethod
+    def _load_leaf_label(ld) -> str:
+        vals = ", ".join(f"{v:g}" for v in ld.values)
+        return f"node {ld.node}:  ({vals})"
+
+    @staticmethod
+    def _mload_leaf_label(ml, ndm) -> str:
+        comps = f"wy={ml.wy:g}" + (f", wz={ml.wz:g}" if ndm == 3 else "")
+        return f"member {ml.member}:  ({comps})"
+
     def _populate_tree(self) -> None:
         p = self._project
         labels = dof_labels(p.ndm, p.ndf)
+        scroll = self.tree.verticalScrollBar().value()   # keep the view steady
+        keep_sel = self._selected_refs()
         self.tree.clear()
 
         # ---- Properties -------------------------------------------------
@@ -1884,8 +1925,7 @@ class MainWindow(QMainWindow):
         sections = self._category(props, "Sections", len(p.sections),
                                   "sections", "section")
         for s in p.sections:
-            shape = f"  [{s.shape}]" if s.shape else ""
-            self._leaf(sections, f"{s.id}:  {s.name}{shape}", ("section", s.id))
+            self._leaf(sections, self._section_leaf_label(s), ("section", s.id))
         self._category(props, "Hinge properties", len(p.hinges),
                        "hinges", "run")
 
@@ -1893,12 +1933,8 @@ class MainWindow(QMainWindow):
         struct = self._super("Structures")
         nodes = self._category(struct, "Nodes", len(p.nodes), "nodes", "node")
         for n in p.nodes:
-            sup = ([labels[k] for k in range(min(len(n.supports), len(labels)))
-                    if n.supports[k]] if n.supports else [])
-            tag = f"  [{','.join(sup)}]" if sup else ""
-            coord = (f"{n.x:g}, {n.y:g}" if p.ndm == 2
-                     else f"{n.x:g}, {n.y:g}, {n.z:g}")
-            self._leaf(nodes, f"{n.id}:  ({coord}){tag}", ("node", n.id))
+            self._leaf(nodes, self._node_leaf_label(n, labels, p.ndm),
+                       ("node", n.id))
         # Elements, grouped by element type (charter B3).
         elements = self._category(struct, "Elements", len(p.members),
                                   "elements", "member")
@@ -1910,17 +1946,13 @@ class MainWindow(QMainWindow):
             trow = self._category(elements, etype, len(bucket),
                                   ("elements", etype), "member")
             for m in bucket:
-                self._leaf(
-                    trow,
-                    f"{m.id}:  {m.n1} → {m.n2}  (sec {m.section}, "
-                    f"mat {m.material})", ("member", m.id))
+                self._leaf(trow, self._member_leaf_label(m), ("member", m.id))
         supported = [n for n in p.nodes if n.supports and any(n.supports)]
         supports = self._category(struct, "Supports", len(supported),
                                   "supports", "node")
         for n in supported:
-            mask = [labels[k] for k in range(min(len(n.supports), len(labels)))
-                    if n.supports[k]]
-            self._leaf(supports, f"{n.id}:  [{','.join(mask)}]", ("node", n.id))
+            self._leaf(supports, self._support_leaf_label(n, labels),
+                       ("node", n.id))
 
         # ---- Loads ------------------------------------------------------
         loadgrp = self._super("Loads")
@@ -1929,13 +1961,11 @@ class MainWindow(QMainWindow):
         loads = self._category(loadgrp, "Nodal loads", len(p.loads),
                                "loads", "load")
         for i, ld in enumerate(p.loads):
-            vals = ", ".join(f"{v:g}" for v in ld.values)
-            self._leaf(loads, f"node {ld.node}:  ({vals})", ("load", i))
+            self._leaf(loads, self._load_leaf_label(ld), ("load", i))
         mloads = self._category(loadgrp, "Line loads", len(p.member_loads),
                                 "member_loads", "load")
         for i, ml in enumerate(p.member_loads):
-            comps = f"wy={ml.wy:g}" + (f", wz={ml.wz:g}" if p.ndm == 3 else "")
-            self._leaf(mloads, f"member {ml.member}:  ({comps})",
+            self._leaf(mloads, self._mload_leaf_label(ml, p.ndm),
                        ("member_load", i))
         self._category(loadgrp, "Load combinations", len(p.combinations),
                        "combinations", "load")
@@ -1957,9 +1987,76 @@ class MainWindow(QMainWindow):
         # (nav N3) so an edit-triggered rebuild keeps the user's outline; then
         # re-apply any active filter (nav N4) to the fresh items.
         self._restore_expansion()
+        for ref in keep_sel:                             # keep prior selection
+            item = self._find_item(ref)
+            if item is not None:
+                item.setSelected(True)
+        self.tree.verticalScrollBar().setValue(scroll)
         flt = getattr(self, "_nav_filter", None)
         if flt is not None and flt.text().strip():
             self._apply_filter(flt.text())
+        self._last_tree_sig = self._tree_signature(p)
+
+    @staticmethod
+    def _tree_signature(p):
+        """A hashable of everything that determines the tree's *structure* — the
+        set of branches/leaves and every count. When two builds share it, only
+        leaf *values* changed, so the N5 fast path can refresh labels in place
+        instead of tearing the tree down. Ref-less leaves (analysis-case / run
+        names) are folded in so they never go stale under the fast path."""
+        by_type: dict[str, list] = {}
+        for m in p.members:
+            by_type.setdefault(_element_type(m), []).append(m.id)
+        return (
+            tuple(s.id for s in p.sections),
+            tuple(n.id for n in p.nodes),
+            tuple(sorted((t, tuple(ids)) for t, ids in by_type.items())),
+            tuple(n.id for n in p.nodes if n.supports and any(n.supports)),
+            len(p.materials), len(p.hinges), len(p.loads), len(p.member_loads),
+            len(p.load_cases), len(p.combinations),
+            tuple(c.name for c in p.nonlinear_cases),
+            tuple(getattr(r, "name", "") for r in p.runs),
+        )
+
+    def _refresh_tree(self) -> None:
+        """Entry point from a rebuild (N5): refresh leaf labels + counts in
+        place when the structure is unchanged, else do a full rebuild. Keeps
+        expansion, scroll and selection when nothing structural moved."""
+        if (self._last_tree_sig is not None
+                and self._tree_signature(self._project) == self._last_tree_sig):
+            self._refresh_labels_in_place()
+        else:
+            self._populate_tree()
+
+    def _refresh_labels_in_place(self) -> None:
+        """Update only the leaf label text from the current project — no
+        teardown, so scroll / selection / transient expansion all survive.
+        Only reached when the structure signature is unchanged, so counts and
+        branch membership are already correct."""
+        p = self._project
+        labels = dof_labels(p.ndm, p.ndf)
+        nodes = {n.id: n for n in p.nodes}
+        secs = {s.id: s for s in p.sections}
+        mems = {m.id: m for m in p.members}
+        for it in self._iter_tree_items():
+            ref = it.data(0, Qt.ItemDataRole.UserRole)
+            if not ref:
+                continue
+            kind, key = ref
+            parent = it.parent()
+            pkey = parent.data(0, KEY_ROLE) if parent is not None else None
+            if kind == "node" and key in nodes:
+                it.setText(0, self._support_leaf_label(nodes[key], labels)
+                           if pkey == "cat:supports"
+                           else self._node_leaf_label(nodes[key], labels, p.ndm))
+            elif kind == "member" and key in mems:
+                it.setText(0, self._member_leaf_label(mems[key]))
+            elif kind == "section" and key in secs:
+                it.setText(0, self._section_leaf_label(secs[key]))
+            elif kind == "load" and 0 <= key < len(p.loads):
+                it.setText(0, self._load_leaf_label(p.loads[key]))
+            elif kind == "member_load" and 0 <= key < len(p.member_loads):
+                it.setText(0, self._mload_leaf_label(p.member_loads[key], p.ndm))
 
     def _iter_tree_items(self, parent=None):
         """Depth-first walk of every item (used by the recursive finder)."""

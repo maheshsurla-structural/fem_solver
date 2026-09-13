@@ -22,6 +22,11 @@ from project import (Load, LoadCase, Material, Member, MemberLoad,  # noqa: E402
                      Node, Project, Section)
 
 
+def _node_leaf(w, nid):
+    from main_window import CAT_ROLE  # noqa: F401
+    return w._find_item(("node", nid))
+
+
 @pytest.fixture(scope="module")
 def qapp():
     pytest.importorskip("PySide6")
@@ -203,3 +208,38 @@ def test_filter_clear_restores(qapp):
     w._apply_filter("")                                # clear
     assert not _top(w, "Properties").isHidden()
     assert not _cat(w, "Properties", "Materials").isHidden()
+
+
+def test_value_edit_refreshes_label_in_place(qapp):
+    from main_window import MainWindow
+    w = MainWindow()
+    w.load_project(_project())
+    node_item = _node_leaf(w, 2)
+    id_before = id(node_item)
+    w._project.nodes[1].x = 9.0                        # move node 2, no structure change
+    w._refresh_tree()                                  # the rebuild entry point
+    same_item = _node_leaf(w, 2)
+    assert id(same_item) == id_before                  # item reused, not rebuilt
+    assert "9" in same_item.text(0)                    # label updated in place
+
+
+def test_structural_edit_updates_counts(qapp):
+    from main_window import MainWindow
+    w = MainWindow()
+    w.load_project(_project())
+    assert _cat(w, "Structures", "Nodes").text(1) == "3"
+    w._project.nodes.append(Node(4, 12, 0))            # add a node → structure change
+    w._refresh_tree()
+    assert _cat(w, "Structures", "Nodes").text(1) == "4"
+    assert w._find_item(("node", 4)) is not None
+
+
+def test_refresh_preserves_selection_and_scroll(qapp):
+    from main_window import MainWindow
+    w = MainWindow()
+    w.load_project(_project())
+    w._select(("member", 1))
+    assert w._selected_refs() == [("member", 1)]
+    w._project.sections[0].name = "W14x90"             # value-only edit
+    w._refresh_tree()
+    assert w._selected_refs() == [("member", 1)]       # selection kept

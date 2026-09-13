@@ -150,8 +150,12 @@ Legend: `[x]` done · `[ ]` open. Do the lowest open item whose deps are met.
   matches (matched containers force their descendants visible + expand), and clearing restores the
   saved outline via `_restore_expansion`. Re-applied after an edit-rebuild. — `feat(nav N4)`,
   2026-09-13.
-- [ ] **N5 — Live counts / partial refresh.** Update counts + affected branch in place after an
-  edit instead of a full `clear()`+rebuild, preserving expansion and scroll. Deps: N1, N3.
+- [x] **N5 — Live counts / partial refresh.** `_rebuild` now calls `_refresh_tree`, which compares
+  a `_tree_signature` (branch/leaf set + all counts + ref-less leaf names) against the last build:
+  unchanged → `_refresh_labels_in_place` updates only leaf text (no teardown, so scroll / selection
+  / transient expansion survive natively); changed → a full `_populate_tree` that now also preserves
+  scroll + reselects surviving refs. Leaf labels factored into shared `_*_leaf_label` builders. —
+  `feat(nav N5)`, 2026-09-13.
 - [ ] **N6 — Pure-summary option.** A toggle that drops individual leaves entirely (tree = counts
   only), moving all item selection to the viewport + tables — the full Midas "clean tree". Requires
   routing move/copy/delete/Properties off the tree's leaves onto a viewport-owned selection set.
@@ -164,6 +168,20 @@ Legend: `[x]` done · `[ ]` open. Do the lowest open item whose deps are met.
 ## 6. Change log
 
 _(prepend newest)_
+
+- **2026-09-13 — N5.** Edits no longer tear the tree down. `_rebuild` calls the new `_refresh_tree`,
+  which compares `_tree_signature(project)` — a hashable of the section/node ids, the element-type
+  buckets, the supported-node set, every category count, and the ref-less leaf names (analysis-case
+  / run) — against `self._last_tree_sig` (reset to `None` by `load_project` so a document load is
+  always a full build). Match → `_refresh_labels_in_place` rewrites only the leaf text from the
+  project (parent `KEY_ROLE` distinguishes a Nodes leaf from its Supports twin), leaving scroll,
+  selection and transient expansion untouched. Mismatch → `_populate_tree`, which now snapshots the
+  scrollbar value + `_selected_refs()` before `clear()` and restores them after. All leaf labels are
+  now built by shared static `_node_leaf_label` / `_support_leaf_label` / `_section_leaf_label` /
+  `_member_leaf_label` / `_load_leaf_label` / `_mload_leaf_label` so the full and fast paths can't
+  drift. Verified through the real `_apply_edit` → `_restore` → `_rebuild` path (item reused, label
+  updated, undo restores, selection kept). Tests: +3 in `tests/test_desktop_nav.py`. Desktop suite:
+  406 passed, 1 skipped. (No screenshot — behaviour, not appearance.)
 
 - **2026-09-13 — N4.** Live search/filter. `_build_nav_panel` now tops the panel with a `navFilter`
   `QLineEdit` (placeholder "Search model…", clear button) whose `textChanged` drives
