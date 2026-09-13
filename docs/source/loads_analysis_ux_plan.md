@@ -314,7 +314,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
 | L1 | Shared scaffold `analysis_ui.py` | — | [x] | `feat(loads-ux L1)` · 2026-09-13 |
 | L2 | Load-combination editor (NEW) | L1 | [x] | `feat(loads-ux L2)` · 2026-09-13 |
 | L3 | Redesign `LoadCaseDialog` | L1 | [ ] | |
-| L4 | Redesign nodal `LoadDialog` | L1 | [ ] | |
+| L4 | Redesign nodal `LoadDialog` | L1 | [x] | `feat(loads-ux L4)` · 2026-09-13 |
 | L5 | Member/line-load dialog (NEW) | L1 | [ ] | |
 | L6 | Redesign `LoadGenDialog` | L1 | [ ] | |
 | A1 | Unified analysis-cases manager (NEW) | L1, A2 | [ ] | |
@@ -373,6 +373,12 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
   are all test-referenced attributes (`case_combo`, `node`, `n_steps`, `_kwargs`, `_accel`,
   `in_g`, `scale`, `_selected_case`, …). Pure layout refactor: pushover + timehistory +
   nlcases suites green (29 tests). Screenshots `phase21_outputs/loads_ux/A3_*.png`.
+- 2026-09-13 — **L4 done.** Nodal `LoadDialog` (`editing.py`) rebuilt from the scaffold: an
+  *Applied to* card (node + load case) over a *Components [force-unit]* card whose rows each
+  pair the force/moment spin with a per-DOF `direction_glyph` sign hint (→ +X, ↑ +Y, ⊙ +Z,
+  ↻ about axes). `.edit()`/`.data()` and `node`/`case`/`vals` preserved. 4 offscreen tests
+  in `test_desktop_load_dialog.py` (2-D + 3-D). Screenshots
+  `phase21_outputs/loads_ux/L4_load_*.png`. No `project.py`/solver changes.
 
 ---
 
@@ -397,3 +403,6 @@ _(Fill in as items land — one or two lines + a screenshot path per redesigned 
   right-side plot and run controls are unchanged.
   `phase21_outputs/loads_ux/A3_pushover_light.png`, `…_dark.png`,
   `A3_timehistory_light.png`, `…_dark.png`.
+- **L4 nodal load dialog** — flat form became an *Applied to* card + a *Components* card with a
+  sign-convention hint on every DOF row. `phase21_outputs/loads_ux/L4_load_light.png`,
+  `…_dark.png`, `L4_load_3d_light.png`.

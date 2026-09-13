@@ -13,6 +13,8 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox,
                                QTableWidget, QTableWidgetItem, QVBoxLayout,
                                QWidget)
 
+import analysis_ui as ui
+import style
 from project import (Load, LoadCase, Member, NATURE_LABELS, Node, Section)
 
 
@@ -156,28 +158,49 @@ class MemberDialog(QDialog):
 
 
 class LoadDialog(QDialog):
+    """Add / edit a nodal load, laid out as grouped cards (plan L4): an
+    *Applied to* card (node + load case) over a *Components* card whose rows
+    each pair a force/moment spin with a sign-convention hint. Built from the
+    L1 scaffold; ``.edit()`` return contract unchanged."""
+
     def __init__(self, parent, project, load=None):
         super().__init__(parent)
         self.setWindowTitle("Edit load" if load else "Add load")
-        form = QFormLayout(self)
+        fu = project.force_unit
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(style.SP_LG, style.SP_LG,
+                                 style.SP_LG, style.SP_LG)
+        outer.setSpacing(style.SP_MD)
 
         self.node = _combo([(str(n.id), n.id) for n in project.nodes])
         if load:
             _select(self.node, load.node)
-        form.addRow("Node", self.node)
-
         self.case = _combo([(c.name, c.id) for c in project.load_cases])
         if load is not None:
             _select(self.case, getattr(load, "case", project.default_case_id()))
-        form.addRow("Load case", self.case)
 
+        applied = ui.GroupCard("Applied to")
+        applied.add_row("Node", self.node)
+        applied.add_row("Load case", self.case)
+
+        comps = ui.GroupCard(f"Components  [{fu}]")
         self.vals = []
         vec = tuple(load.values) if load else ()
         for k, lbl in enumerate(dof_labels(project.ndm, project.ndf)):
             spin = _force_spin(vec[k] if k < len(vec) else 0.0)
             self.vals.append(spin)
-            form.addRow(f"{lbl}  [{project.force_unit}]", spin)
-        form.addRow(_buttons(self))
+            host = QWidget()
+            h = QHBoxLayout(host)
+            h.setContentsMargins(0, 0, 0, 0)
+            h.setSpacing(style.SP_SM)
+            h.addWidget(spin, 1)
+            h.addWidget(ui.direction_glyph(lbl))
+            comps.add_row(lbl, host)
+
+        outer.addWidget(applied)
+        outer.addWidget(comps)
+        outer.addWidget(_buttons(self))
+        style.apply(self)
 
     def data(self) -> Load:
         return Load(node=self.node.currentData(),
