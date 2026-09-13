@@ -172,9 +172,9 @@ Pick the lowest-numbered unchecked item whose deps are met.
 
 | ID | Title | Deps | Status | Commit / date |
 |----|-------|------|--------|---------------|
-| T1 | Theme the shell's icons (`main_window` → `style.ICON`, re-colour on theme change) | — | [ ] | |
-| T2 | Wire **theme + density toggles** into the shell (View menu + header chip; persist choice) | T1 | [ ] | |
-| T3 | Product **window icon** (`setWindowIcon(monogram_icon())`) + title-case audit | — | [ ] | |
+| T1 | Theme the shell's icons (`main_window` → `style.ICON`, re-colour on theme change) | — | [x] | `feat(gui-polish T1-T3)` · 2026-09-13 |
+| T2 | Wire **theme + density toggles** into the shell (View menu + status-bar chip; persist choice) | T1 | [x] | `feat(gui-polish T1-T3)` · 2026-09-13 |
+| T3 | Product **window icon** (`setWindowIcon(monogram_icon())`) + title-case audit | — | [x] | `feat(gui-polish T1-T3)` · 2026-09-13 |
 | T4 | **Status bar** with real context (units · selection · coords · theme/density) | T2 | [ ] | |
 | T5 | **Empty states** for viewport / tree / properties (no model · no results) | — | [ ] | |
 | V1 | Viewport **themes** (bg/grid/axis + entity colours from tokens; repaint on theme change) | — | [x] | `feat(gui-polish V1)` · 2026-09-13 |
@@ -226,3 +226,26 @@ different, finished product.
   Visual record `phase21_outputs/gui_polish/V2_ground_grid_{light,dark}` (2-D) and
   `V2_ground_grid_3d_{light,dark}` (the floor reads correctly under an isometric 3-D frame). No
   `project.py` / solver changes. **Phase V (viewport) complete.**
+- 2026-09-13 — **T1–T3 done** (shipped together — T1 is the infra T2 rides on, T3 is a one-liner).
+  The desktop **shell now themes end-to-end and dark mode is finally reachable** (`main_window.py`).
+  **T1:** the shell was the last place calling bare `icons.icon(name)` at the hard-coded `#3a3a3a`
+  (near-invisible on dark). A new `_set_icon(act, name)` helper inks every action from `style.ICON`
+  and stores the icon name on the action; `_action`, the ~10 direct `QAction`s and the Results
+  submenu all route through it. `_retheme_icons()` walks `findChildren(QAction)` and re-inks by the
+  stored name (the ribbon buttons mirror their action, so they follow). **T2:** `QSettings`
+  ("MidasStructural"/"Desktop", mirroring the Section Designer) restores theme + density in
+  `__init__` *before* the viewport is built (it reads `VIEW_BG` at construction); a **Toggle theme**
+  + **Compact density** pair in the **View menu** and an always-visible **status-bar theme chip**
+  (`_theme_btn`) call `toggle_theme`/`toggle_density`, which persist the choice and run
+  `_apply_theme_density()` — `style.apply(self)` (QSS cascade) + `_retheme_icons()` +
+  `self.view.apply_theme()` (viewport repaint) + `_sync_theme_ui()`. **T3:** `setWindowIcon` with a
+  product monogram (`FS`, stable brand blue) — the mark was authored but never used as chrome.
+  Title-case audit: every `setWindowTitle` already follows a consistent sentence-case convention
+  (lowercase "femsolver" is the deliberate brand name) — no changes. 8 offscreen tests in
+  `test_desktop_shell_theme.py` (icon-name coverage + no theme-blind `icons.icon()` left; retheme
+  re-inks; theme/density toggle flips + persists + syncs the action; controls reachable in View
+  menu + status bar; persisted theme restored on construction; branded window icon). Full desktop
+  suite green (204 passed, 1 skipped). Visual record
+  `phase21_outputs/gui_polish/T_shell_{light,dark}` (native grab — the whole window, viewport
+  included, in both themes). No `project.py` / solver changes. **Phase T's theming-reach items
+  (T1–T3) complete; T4 status-bar content + T5 empty states remain.**

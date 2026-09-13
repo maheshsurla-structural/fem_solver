@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import copy
 
-from PySide6.QtCore import QItemSelectionModel, Qt
+from PySide6.QtCore import QItemSelectionModel, QSettings, QSize, Qt
 from PySide6.QtGui import QAction, QActionGroup, QUndoStack
 from PySide6.QtWidgets import (QAbstractItemView, QApplication, QComboBox,
                                QDockWidget, QDoubleSpinBox, QFileDialog,
@@ -30,11 +30,21 @@ from model_view import ModelView
 from project import Material, Member, Node, Project, Section
 from properties import PropertiesPanel
 
+PRODUCT_MONO = "FS"              # femsolver desktop — titlebar / taskbar mark
+PRODUCT_ACCENT = "#2563eb"       # stable brand blue (independent of theme)
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.resize(1280, 820)
+        # restore the persisted theme + density BEFORE any widget (the viewport
+        # reads style.VIEW_BG in its own __init__), so the app comes up right.
+        self._settings = QSettings("MidasStructural", "Desktop")
+        style.set_theme(str(self._settings.value("theme", "light")))
+        style.set_density(str(self._settings.value("density", "comfortable")))
+        self.setWindowIcon(icons.monogram_icon(PRODUCT_MONO, "#ffffff",
+                                               PRODUCT_ACCENT))
         self._model = None
         self._project = None
         self._path = None
@@ -83,8 +93,55 @@ class MainWindow(QMainWindow):
         self.view.set_region_callback(self._on_region_select)
 
         self._build_menu()
+        # an always-visible theme switch in the status-bar corner (the "chip")
+        self._theme_btn = QToolButton()
+        self._theme_btn.setAutoRaise(True)
+        self._theme_btn.setIconSize(QSize(18, 18))
+        self._theme_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._theme_btn.clicked.connect(self.toggle_theme)
+        self.statusBar().addPermanentWidget(self._theme_btn)
         style.apply(self)                    # unified light/blue theme
+        self._sync_theme_ui()
         self.statusBar().showMessage("Ready")
+
+    def toggle_theme(self) -> None:
+        style.toggle_theme()
+        self._settings.setValue("theme", style.current_theme())
+        self._apply_theme_density()
+
+    def toggle_density(self) -> None:
+        new = "comfortable" if style.current_density() == "compact" else "compact"
+        style.set_density(new)
+        self._settings.setValue("density", new)
+        self.act_density.setChecked(new == "compact")
+        self._apply_theme_density()
+
+    def _apply_theme_density(self) -> None:
+        """Re-skin the whole shell after a theme/density change: QSS cascade,
+        re-inked icons, and a viewport repaint — so nothing is left behind."""
+        style.apply(self)
+        self._retheme_icons()
+        self.view.apply_theme()
+        self._sync_theme_ui()
+
+    def _sync_theme_ui(self) -> None:
+        """Point the theme controls at the theme they switch TO."""
+        dark = style.current_theme() == "dark"
+        nxt = "theme_light" if dark else "theme_dark"
+        tip = "Switch to light theme" if dark else "Switch to dark theme"
+        self._theme_btn.setIcon(icons.icon(nxt, style.ICON))
+        self._theme_btn.setToolTip(tip)
+        self.act_theme.setIcon(icons.icon(nxt, style.ICON))
+        self.act_theme.setToolTip(tip)
+
+    def _retheme_icons(self) -> None:
+        """Recolour every icon-bearing action to the current theme's ink
+        (``style.ICON``). Actions remember their icon name via ``_set_icon``, so
+        the ribbon buttons that mirror them follow automatically."""
+        for act in self.findChildren(QAction):
+            name = act.property("iconName")
+            if name:
+                act.setIcon(icons.icon(name, style.ICON))
 
     # --------------------------------------------------------------- menu / UI
     def _build_menu(self) -> None:
@@ -165,13 +222,13 @@ class MainWindow(QMainWindow):
         self.act_deselect = _action(self, "Deselect &all", "Escape",
                                     self.deselect_all, "deselect")
 
-        self.act_diag_n = QAction(icons.icon("axial"), "Axial &N", self)
+        self.act_diag_n = _set_icon(QAction("Axial &N", self), "axial")
         self.act_diag_n.triggered.connect(lambda *_: self.show_diagram("N"))
-        self.act_diag_v = QAction(icons.icon("shear"), "Shear &V", self)
+        self.act_diag_v = _set_icon(QAction("Shear &V", self), "shear")
         self.act_diag_v.triggered.connect(lambda *_: self.show_diagram("V"))
-        self.act_diag_m = QAction(icons.icon("moment"), "Moment &M", self)
+        self.act_diag_m = _set_icon(QAction("Moment &M", self), "moment")
         self.act_diag_m.triggered.connect(lambda *_: self.show_diagram("M"))
-        self.act_design = QAction(icons.icon("design"), "&Design (DCR)", self)
+        self.act_design = _set_icon(QAction("&Design (DCR)", self), "design")
         self.act_design.triggered.connect(self.show_design)
         self.act_loadcases = _action(self, "Load &cases…", None,
                                      self.manage_load_cases, "load")
@@ -184,24 +241,30 @@ class MainWindow(QMainWindow):
         self.act_sectiondesigner = _action(
             self, "&Section Designer…", None, self.open_section_designer,
             "sectiondesigner")
+        self.act_theme = _action(self, "Toggle &theme (light / dark)", None,
+                                 self.toggle_theme)
+        self.act_density = _action(self, "Compact &density", None,
+                                   self.toggle_density)
+        self.act_density.setCheckable(True)
+        self.act_density.setChecked(style.current_density() == "compact")
 
-        self.act_select = QAction(icons.icon("single"), "&Single select", self)
+        self.act_select = _set_icon(QAction("&Single select", self), "single")
         self.act_select.setCheckable(True)
         self.act_select.setChecked(True)
         self.act_select.triggered.connect(lambda: self._set_mode("select"))
-        self.act_sel_window = QAction(icons.icon("window"), "&Window select",
-                                      self)
+        self.act_sel_window = _set_icon(QAction("&Window select", self),
+                                        "window")
         self.act_sel_window.setCheckable(True)
         self.act_sel_window.triggered.connect(lambda: self._set_mode("window"))
-        self.act_sel_poly = QAction(icons.icon("polygon"), "&Polygon select",
-                                    self)
+        self.act_sel_poly = _set_icon(QAction("&Polygon select", self),
+                                      "polygon")
         self.act_sel_poly.setCheckable(True)
         self.act_sel_poly.triggered.connect(lambda: self._set_mode("polygon"))
-        self.act_draw_node = QAction(icons.icon("drawnode"), "Draw n&ode", self)
+        self.act_draw_node = _set_icon(QAction("Draw n&ode", self), "drawnode")
         self.act_draw_node.setCheckable(True)
         self.act_draw_node.triggered.connect(lambda: self._set_mode("draw_node"))
-        self.act_draw_member = QAction(icons.icon("drawmember"), "Draw m&ember",
-                                       self)
+        self.act_draw_member = _set_icon(QAction("Draw m&ember", self),
+                                         "drawmember")
         self.act_draw_member.setCheckable(True)
         self.act_draw_member.triggered.connect(
             lambda: self._set_mode("draw_member"))
@@ -209,7 +272,7 @@ class MainWindow(QMainWindow):
         for a in (self.act_select, self.act_sel_window, self.act_sel_poly,
                   self.act_draw_node, self.act_draw_member):
             self._mode_group.addAction(a)
-        self.act_snap = QAction(icons.icon("snap"), "&Snap to grid", self)
+        self.act_snap = _set_icon(QAction("&Snap to grid", self), "snap")
         self.act_snap.setCheckable(True)
         self.act_snap.setChecked(True)
         self.act_snap.toggled.connect(self._update_snap)
@@ -272,8 +335,9 @@ class MainWindow(QMainWindow):
         analysis_menu.addAction(self.act_analysiscases)
         analysis_menu.addAction(self.act_runanalysis)
         analysis_menu.addSeparator()
-        results_menu = analysis_menu.addMenu(icons.icon("undeformed"),
+        results_menu = analysis_menu.addMenu(icons.icon("undeformed", style.ICON),
                                              "&Results && diagrams")
+        _set_icon(results_menu.menuAction(), "undeformed")
         results_menu.addAction(self.act_undef)
         results_menu.addSeparator()
         results_menu.addAction(self.act_diag_n)
@@ -309,6 +373,9 @@ class MainWindow(QMainWindow):
             view_menu.addAction(a)
         view_menu.addSeparator()
         view_menu.addAction(self.act_drawings)
+        view_menu.addSeparator()
+        view_menu.addAction(self.act_theme)
+        view_menu.addAction(self.act_density)
         tools_menu = self.menuBar().addMenu("&Tools")
         tools_menu.addAction(self.act_sectiondesigner)
 
@@ -1418,10 +1485,19 @@ class MainWindow(QMainWindow):
             self.tree.setCurrentItem(item)
 
 
+def _set_icon(act, icon_name):
+    """Give an action the themed icon ink (``style.ICON``) and remember the icon
+    name on it, so ``MainWindow._retheme_icons()`` can recolour it when the theme
+    changes (the ribbon buttons that mirror the action follow automatically)."""
+    act.setIcon(icons.icon(icon_name, style.ICON))
+    act.setProperty("iconName", icon_name)
+    return act
+
+
 def _action(parent, text, shortcut, slot, icon_name=None) -> QAction:
     act = QAction(text, parent)
     if icon_name:
-        act.setIcon(icons.icon(icon_name))
+        _set_icon(act, icon_name)
     if shortcut:
         act.setShortcut(shortcut)
     act.triggered.connect(slot)
