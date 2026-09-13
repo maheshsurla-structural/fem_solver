@@ -40,6 +40,21 @@ PRODUCT_ACCENT = "#2563eb"       # stable brand blue (independent of theme)
 # so the context menu / double-click know which table or manager to open,
 # without carrying a selection ref (which lives in Qt.UserRole on the leaves).
 CAT_ROLE = Qt.ItemDataRole.UserRole + 1
+# Stable per-branch key (nav plan N3) for persisting expand/collapse state
+# across rebuilds and sessions — set on every expandable branch item.
+KEY_ROLE = Qt.ItemDataRole.UserRole + 2
+# Branches expanded on first run (before the user has chosen): the four
+# super-groups + Elements (so its by-type rows show). Everything else collapsed.
+_DEFAULT_EXPANDED = {"grp:Properties", "grp:Structures", "grp:Loads",
+                     "grp:Analysis", "cat:elements"}
+
+
+def _cat_key_str(cat_key) -> str:
+    """Flatten a category key (str or ``("elements", "Beam")``) into a stable
+    string for the persisted expand/collapse set (nav N3)."""
+    if isinstance(cat_key, tuple):
+        return ":".join(str(x) for x in cat_key)
+    return str(cat_key)
 
 
 def _element_type(m) -> str:
@@ -90,8 +105,18 @@ class MainWindow(QMainWindow):
         self.tree.setContextMenuPolicy(
             Qt.ContextMenuPolicy.CustomContextMenu)
         self.tree.customContextMenuRequested.connect(self._on_tree_menu)
+        # Persist which branches the user expands (nav plan N3): a full rebuild
+        # would otherwise reset the outline on every edit. Keyed per branch
+        # (super-group / category / element-type); seeded on first run.
+        self._building_tree = False
+        saved = self._settings.value("nav/expanded", None)
+        self._expanded = (set(saved) if saved is not None
+                          else set(_DEFAULT_EXPANDED))
+        self.tree.itemExpanded.connect(self._on_branch_expanded)
+        self.tree.itemCollapsed.connect(self._on_branch_collapsed)
+
         dock_tree = QDockWidget("Model", self)
-        dock_tree.setWidget(self.tree)
+        dock_tree.setWidget(self._build_nav_panel())
         dock_tree.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea
                                   | Qt.DockWidgetArea.RightDockWidgetArea)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, dock_tree)
@@ -1820,6 +1845,7 @@ class MainWindow(QMainWindow):
         it.setFont(0, f)
         it.setFlags(Qt.ItemFlag.ItemIsEnabled)      # not selectable
         it.setFirstColumnSpanned(True)
+        it.setData(0, KEY_ROLE, f"grp:{title}")     # persist expand state (N3)
         return it
 
     def _category(self, parent, title, count, cat_key, icon_name=None):
@@ -1829,6 +1855,7 @@ class MainWindow(QMainWindow):
         what the model lacks (charter B2)."""
         it = QTreeWidgetItem(parent, [title, str(count)])
         it.setData(0, CAT_ROLE, ("cat", cat_key))
+        it.setData(0, KEY_ROLE, f"cat:{_cat_key_str(cat_key)}")   # N3
         it.setFlags(Qt.ItemFlag.ItemIsEnabled)      # header, not a selectable ref
         if icon_name:
             it.setIcon(0, icons.icon(icon_name, style.ICON))
@@ -1848,6 +1875,7 @@ class MainWindow(QMainWindow):
     def _populate_tree(self) -> None:
         p = self._project
         labels = dof_labels(p.ndm, p.ndf)
+        self._building_tree = True          # ignore programmatic expand signals
         self.tree.clear()
 
         # ---- Properties -------------------------------------------------
@@ -1887,7 +1915,6 @@ class MainWindow(QMainWindow):
                     trow,
                     f"{m.id}:  {m.n1} → {m.n2}  (sec {m.section}, "
                     f"mat {m.material})", ("member", m.id))
-            trow.setExpanded(False)
         supported = [n for n in p.nodes if n.supports and any(n.supports)]
         supports = self._category(struct, "Supports", len(supported),
                                   "supports", "node")
@@ -1927,11 +1954,13 @@ class MainWindow(QMainWindow):
         for i, r in enumerate(p.runs):
             self._leaf(runs, getattr(r, "name", f"Run {i + 1}"), None)
 
-        # Expand the super-groups + Elements (so the type rows show); leave the
-        # long leaf lists collapsed so the default view is a compact outline.
-        for i in range(self.tree.topLevelItemCount()):
-            self.tree.topLevelItem(i).setExpanded(True)
-        elements.setExpanded(True)
+        # Restore each branch's expand/collapse state from the persisted set
+        # (nav N3) so an edit-triggered rebuild keeps the user's outline.
+        for it in self._iter_tree_items():
+            key = it.data(0, KEY_ROLE)
+            if key is not None:
+                it.setExpanded(key in self._expanded)
+        self._building_tree = False
 
     def _iter_tree_items(self, parent=None):
         """Depth-first walk of every item (used by the recursive finder)."""
@@ -1962,6 +1991,78 @@ class MainWindow(QMainWindow):
             item.setSelected(True)
             self.tree.setCurrentItem(item)
             self.tree.scrollToItem(item)
+
+    # --------------------------------------------------- expand/collapse (N3)
+    def _build_nav_panel(self):
+        """Wrap the tree in a panel with an Expand-all / Collapse-all header
+        (nav plan N3) so the whole outline is one click away either way."""
+        panel = QWidget()
+        col = QVBoxLayout(panel)
+        col.setContentsMargins(0, 0, 0, 0)
+        col.setSpacing(0)
+        bar = QHBoxLayout()
+        bar.setContentsMargins(style.SP_XS, style.SP_XS, style.SP_XS, 0)
+        bar.setSpacing(style.SP_XS)
+        # Nav-panel-local actions (not app commands) — kept off the ``act_*``
+        # namespace the ribbon "homed exactly once" test guards.
+        self._nav_expand_act = _action(self, "Expand all", None,
+                                       self.expand_all_tree, "fit")
+        self._nav_collapse_act = _action(self, "Collapse all", None,
+                                         self.collapse_all_tree, "fitsel")
+        for act in (self._nav_expand_act, self._nav_collapse_act):
+            btn = QToolButton()
+            btn.setDefaultAction(act)
+            btn.setToolButtonStyle(
+                Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+            btn.setAutoRaise(True)
+            bar.addWidget(btn)
+        bar.addStretch(1)
+        col.addLayout(bar)
+        col.addWidget(self.tree)
+        return panel
+
+    def _on_branch_expanded(self, item) -> None:
+        if self._building_tree:
+            return
+        key = item.data(0, KEY_ROLE)
+        if key is not None:
+            self._expanded.add(key)
+            self._persist_expanded()
+
+    def _on_branch_collapsed(self, item) -> None:
+        if self._building_tree:
+            return
+        key = item.data(0, KEY_ROLE)
+        if key is not None:
+            self._expanded.discard(key)
+            self._persist_expanded()
+
+    def _persist_expanded(self) -> None:
+        self._settings.setValue("nav/expanded", sorted(self._expanded))
+
+    def expand_all_tree(self) -> None:
+        self._building_tree = True
+        self.tree.expandAll()
+        self._building_tree = False
+        for it in self._iter_tree_items():
+            key = it.data(0, KEY_ROLE)
+            if key is not None:
+                self._expanded.add(key)
+        self._persist_expanded()
+
+    def collapse_all_tree(self) -> None:
+        """Collapse every category/type row but keep the four super-groups open
+        so the category list stays visible (the useful 'collapsed' outline)."""
+        self._building_tree = True
+        for it in self._iter_tree_items():
+            key = it.data(0, KEY_ROLE)
+            if key is None:
+                continue
+            keep = key.startswith("grp:")
+            it.setExpanded(keep)
+            (self._expanded.add if keep else self._expanded.discard)(key)
+        self._building_tree = False
+        self._persist_expanded()
 
 
 def _set_icon(act, icon_name):

@@ -140,9 +140,11 @@ Legend: `[x]` done · `[ ]` open. Do the lowest open item whose deps are met.
   analysis-cases/results). Double-click a header runs its primary action (`_category_primary`);
   double-click a table row drills to the existing editor via `_table_activate`. — `feat(nav N2)`,
   2026-09-13.
-- [ ] **N3 — Expand/collapse state persistence.** Remember which categories the user expanded
-  across a rebuild (edits currently reset it) and across sessions via `QSettings`; a toolbar
-  "Expand all / Collapse all" pair. Deps: N1.
+- [x] **N3 — Expand/collapse state persistence.** Each branch carries a stable `KEY_ROLE` key
+  (`grp:…` / `cat:…`); `_populate_tree` restores expansion from `self._expanded`, kept in sync by
+  `_on_branch_expanded/collapsed` and persisted to `QSettings("nav/expanded")` (seeded with
+  `_DEFAULT_EXPANDED` on first run). Nav panel gains an **Expand all / Collapse all** header
+  (`_build_nav_panel`, `expand_all_tree` / `collapse_all_tree`). — `feat(nav N3)`, 2026-09-13.
 - [ ] **N4 — Search / filter box.** A filter field above the tree that live-hides non-matching
   categories/leaves (by id, name, type). Deps: N1.
 - [ ] **N5 — Live counts / partial refresh.** Update counts + affected branch in place after an
@@ -159,6 +161,19 @@ Legend: `[x]` done · `[ ]` open. Do the lowest open item whose deps are met.
 ## 6. Change log
 
 _(prepend newest)_
+
+- **2026-09-13 — N3.** Expand/collapse state now survives edit-rebuilds and sessions. Every
+  expandable branch carries a stable key in `KEY_ROLE` (`UserRole+2`): `grp:<title>` for
+  super-groups, `cat:<key>` for categories/element-types (`_cat_key_str` flattens the tuple keys).
+  `self._expanded` (a set) is loaded from `QSettings("nav/expanded")` at init — seeded with
+  `_DEFAULT_EXPANDED` (the four super-groups + Elements) on first run — restored in `_populate_tree`
+  under a `self._building_tree` guard so the programmatic pass doesn't churn the signals;
+  `_on_branch_expanded/_on_branch_collapsed` keep the set in sync and `_persist_expanded` writes it
+  back. The tree is now wrapped by `_build_nav_panel`, which adds an **Expand all / Collapse all**
+  header (nav-panel-local actions `_nav_expand_act` / `_nav_collapse_act`, deliberately off the
+  `act_*` namespace the ribbon "homed once" test guards); `collapse_all_tree` keeps the four
+  super-groups open so the category list stays visible. Tests: +3 in `tests/test_desktop_nav.py`
+  (temp-`QSettings` isolated). Screenshot `N3_nav_panel.png`. Desktop suite: 391 passed, 1 skipped.
 
 - **2026-09-13 — N1 + N2.** The model tree became a compact table-of-contents. `_populate_tree`
   (in `desktop/main_window.py`) now builds four super-groups (Properties / Structures / Loads /

@@ -120,3 +120,46 @@ def test_tables_build_for_every_category(qapp):
         assert isinstance(headers, list) and headers
         for cells, _ref in rows:
             assert len(cells) == len(headers), cat
+
+
+def _cat(w, group, name):
+    top = next(w.tree.topLevelItem(i)
+               for i in range(w.tree.topLevelItemCount())
+               if w.tree.topLevelItem(i).text(0) == group)
+    return next(top.child(j) for j in range(top.childCount())
+                if top.child(j).text(0) == name)
+
+
+def _temp_settings(w, tmp_path):
+    """Redirect the window's persisted-expansion writes to a throwaway file so
+    the tests don't touch the user's real QSettings."""
+    from PySide6.QtCore import QSettings
+    w._settings = QSettings(str(tmp_path / "nav.ini"),
+                            QSettings.Format.IniFormat)
+
+
+def test_expand_and_collapse_all(qapp, tmp_path):
+    from main_window import MainWindow
+    w = MainWindow()
+    _temp_settings(w, tmp_path)
+    w.load_project(_project())
+    w.expand_all_tree()
+    assert _cat(w, "Structures", "Nodes").isExpanded()
+    w.collapse_all_tree()
+    # super-groups stay open (category list visible); categories collapse
+    assert not _cat(w, "Structures", "Nodes").isExpanded()
+    struct = next(w.tree.topLevelItem(i)
+                  for i in range(w.tree.topLevelItemCount())
+                  if w.tree.topLevelItem(i).text(0) == "Structures")
+    assert struct.isExpanded()
+
+
+def test_expansion_survives_rebuild(qapp, tmp_path):
+    from main_window import MainWindow
+    w = MainWindow()
+    _temp_settings(w, tmp_path)
+    w.load_project(_project())
+    _cat(w, "Structures", "Nodes").setExpanded(True)   # user expands Nodes
+    assert "cat:nodes" in w._expanded
+    w._populate_tree()                                 # an edit rebuilds the tree
+    assert _cat(w, "Structures", "Nodes").isExpanded()
