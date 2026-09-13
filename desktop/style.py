@@ -209,6 +209,29 @@ QStatusBar {{ background: {PANEL}; border-top: 1px solid {BORDER};
 QSplitter::handle {{ background: {BORDER}; }}
 QSplitter::handle:horizontal {{ width: 1px; }}
 
+/* ---- ribbon-style Loads/Analysis toolbar groups (plan S2) ---- */
+QToolBar#ribbonBar {{ spacing: {SP_XS}px; }}
+QWidget#ribbonGroup {{ background: transparent; }}
+QToolButton#ribbonBtn {{
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: {R_SM}px;
+    color: {TEXT};
+    font-size: {FS_MICRO}px;
+    padding: {SP_XS}px {SP_SM}px;
+}}
+QToolButton#ribbonBtn:hover {{
+    background: {ACCENT_SOFT}; border-color: {BORDER}; color: {ACCENT};
+}}
+QToolButton#ribbonBtn:pressed, QToolButton#ribbonBtn:checked {{
+    background: {ACCENT_SOFT}; border-color: {ACCENT}; color: {ACCENT};
+}}
+QToolButton#ribbonBtn:disabled {{ color: {MUTED}; }}
+QLabel#ribbonCap {{
+    color: {MUTED}; font-size: {FS_MICRO}px; font-weight: 600;
+    letter-spacing: {LS_LABEL};
+}}
+
 /* ---- scrollbars ---- */
 QScrollBar:vertical {{ background: transparent; width: 10px; margin: 2px; }}
 QScrollBar::handle:vertical {{

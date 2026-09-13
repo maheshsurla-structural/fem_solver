@@ -323,7 +323,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
 | A4 | "Run Analysis" control (NEW) | L1, A1 | [x] | `feat(loads-ux A4)` · 2026-09-13 |
 | A5 | Fold `NonlinearCaseManagerDialog` into A1 | A1 | [x] | `feat(loads-ux A5)` · 2026-09-13 |
 | S1 | Menu reorg (Loads menu) | L2, L5, A1, A4 | [x] | `feat(loads-ux S1)` · 2026-09-13 |
-| S2 | Loads & Analysis toolbar groups | S1 | [ ] | |
+| S2 | Loads & Analysis toolbar groups | S1 | [x] | `feat(loads-ux S2)` · 2026-09-13 |
 | S3 | (Optional) ribbon-style top bar | S2 | [ ] | |
 | Q1 | Smoke-test sweep | all above | [ ] | |
 | Q2 | Visual record (screenshots) | all above | [ ] | |
@@ -452,6 +452,27 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
   passed, 1 skipped). Screenshots `phase21_outputs/loads_ux/S1_menus_light.png`, `…_dark.png`.
   No `project.py` / solver changes.
 
+- 2026-09-13 — **S2 done.** Captioned, text-under-icon **ribbon band** for Loads & Analysis
+  in `main_window.py` (+ a ribbon QSS block in `style.py`, tokens only). A new
+  module helper `_ribbon_group(caption, items)` builds one group = a row of `QToolButton`s
+  (`ToolButtonTextUnderIcon`, each mirroring its action via `setDefaultAction`) under an
+  eyebrow-style caption; groups are separated by toolbar separators. Two ribbon toolbars sit
+  on their own rows below the icon toolbars (`addToolBarBreak`): **Loads** = *Loads* (Cases ·
+  Nodal · Line · Generate) ｜ *Combinations* (Combos · ASCE-7); **Analysis** = *Analyse*
+  (Cases · Run · Linear) ｜ *Results* (Undeformed · Axial · Shear · Moment) ｜ *Design*
+  (Design · Check). Each toolbar takes a full row because the Analysis groups (≈1064px) are
+  too wide to share one row with Loads (≈710px) without collapsing into a "»" overflow menu;
+  verified all 6 + 9 buttons stay visible down to a 1280px window. The load actions were
+  pulled off the **Edit** and **Generate** toolbars (mirroring the S1 menu move); the old
+  icon-only Analysis toolbar is replaced by the ribbon. Short `iconText` labels ride the
+  ribbon while the menus keep each action's full text. `act_run` stays a ribbon button's
+  default action, so **Ctrl+R** is still live. New `style.py` tokens reused only (no literals):
+  `#ribbonBtn` / `#ribbonCap` / `#ribbonGroup`. 5 offscreen tests in
+  `test_desktop_toolbars.py`; the S1 `test_desktop_menus.py` Ctrl+R check updated to the
+  button's default-action (its toolbar home changed). Full desktop suite green (172 passed, 1
+  skipped). Screenshots `phase21_outputs/loads_ux/S2_ribbon_light.png`, `…_dark.png`. No
+  `project.py` / solver changes.
+
 ## 10. Before / after notes
 
 _(Fill in as items land — one or two lines + a screenshot path per redesigned surface.)_
@@ -495,3 +516,9 @@ _(Fill in as items land — one or two lines + a screenshot path per redesigned 
   Results-&-diagrams submenu → design/check spine. `phase21_outputs/loads_ux/S1_menus_light.png`,
   `…_dark.png` (text renders as boxes in the headless `offscreen` grab — an artifact only; the
   icons, grouping and separators are the record here).
+- **S2 ribbon toolbars** — the icon-only, terse-tooltip toolbars gave no captioned Loads/
+  Analysis home. Now a two-row captioned ribbon band: **Loads** (Loads ｜ Combinations) and
+  **Analysis** (Analyse ｜ Results ｜ Design), each a cluster of text-under-icon buttons under
+  an eyebrow caption, with separators between groups. `phase21_outputs/loads_ux/S2_ribbon_light.png`,
+  `…_dark.png` (offscreen box-glyph text as above; the grouped captioned buttons + icons are the
+  record).

@@ -14,8 +14,9 @@ from PySide6.QtGui import QAction, QActionGroup, QUndoStack
 from PySide6.QtWidgets import (QAbstractItemView, QApplication, QComboBox,
                                QDockWidget, QDoubleSpinBox, QFileDialog,
                                QHBoxLayout, QLabel, QMainWindow, QMessageBox,
-                               QPlainTextEdit, QSlider, QTreeWidget,
-                               QTreeWidgetItem, QWidget)
+                               QPlainTextEdit, QSlider, QToolButton,
+                               QTreeWidget, QTreeWidgetItem, QVBoxLayout,
+                               QWidget)
 
 import icons
 import model_geometry as mg
@@ -322,22 +323,58 @@ class MainWindow(QMainWindow):
         _toolbar("File", (self.act_new, self.act_open, self.act_save))
         _toolbar("Edit", (self.act_undo, self.act_redo, None, self.act_add_node,
                           self.act_add_member, self.act_add_section,
-                          self.act_add_load, self.act_add_lineload,
                           self.act_delete, None,
                           self.act_move, self.act_copy, self.act_mirror,
                           self.act_rotate, self.act_extrude))
-        _toolbar("Generate", (self.act_gen, self.act_genloads))
+        _toolbar("Generate", (self.act_gen,))
         _toolbar("Select", (self.act_select, self.act_sel_window,
                             self.act_sel_poly, self.act_deselect))
         tb_draw = _toolbar("Draw", (self.act_draw_node, self.act_draw_member,
                                     self.act_snap))
         tb_draw.addWidget(self.snap_spin)
-        _toolbar("Analysis", (self.act_run, self.act_undef, None,
-                              self.act_diag_n, self.act_diag_v, self.act_diag_m,
-                              self.act_design))
         _toolbar("View", (self.act_fit, self.act_v_iso, self.act_v_top,
                           self.act_v_front, None, self.act_drawings))
         _toolbar("Tools", (self.act_sectiondesigner,))
+
+        # Captioned, text-under-icon Loads & Analysis ribbon band (plan S2).
+        # Its own rows below the icon toolbars so the tall text buttons don't
+        # stretch them; Loads and Analysis each take a full row (the Analysis
+        # groups are too wide to share one without overflowing into a "»"
+        # menu). Each group carries an eyebrow caption + separators, reading
+        # define -> combine (Loads) and analyse -> view -> design (Analysis).
+        self.addToolBarBreak()
+
+        def _ribbon_toolbar(name, groups):
+            tb = self.addToolBar(name)
+            tb.setObjectName("ribbonBar")
+            tb.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
+            tb.setMovable(False)
+            for i, (caption, items) in enumerate(groups):
+                if i:
+                    tb.addSeparator()
+                tb.addWidget(_ribbon_group(caption, items))
+            return tb
+
+        _ribbon_toolbar("Loads", (
+            ("Loads", ((self.act_loadcases, "Cases"),
+                       (self.act_add_load, "Nodal"),
+                       (self.act_add_lineload, "Line"),
+                       (self.act_genloads, "Generate"))),
+            ("Combinations", ((self.act_editcombos, "Combos"),
+                              (self.act_gencombos, "ASCE-7"))),
+        ))
+        self.addToolBarBreak()
+        _ribbon_toolbar("Analysis", (
+            ("Analyse", ((self.act_analysiscases, "Cases"),
+                         (self.act_runanalysis, "Run"),
+                         (self.act_run, "Linear"))),
+            ("Results", ((self.act_undef, "Undeformed"),
+                         (self.act_diag_n, "Axial"),
+                         (self.act_diag_v, "Shear"),
+                         (self.act_diag_m, "Moment"))),
+            ("Design", ((self.act_design, "Design"),
+                        (self.act_checkmodel, "Check"))),
+        ))
 
     # ---------------------------------------------------------------- analysis
     def _solve(self):
@@ -1388,6 +1425,37 @@ def _action(parent, text, shortcut, slot, icon_name=None) -> QAction:
     label = text.replace("&", "").rstrip("…")
     act.setToolTip(f"{label}  ({shortcut})" if shortcut else label)
     return act
+
+
+def _ribbon_group(caption, items) -> QWidget:
+    """A captioned, text-under-icon tool-button cluster — one ribbon group
+    (plan S2). ``items`` is a list of ``(QAction, short_label)`` pairs; the
+    short label is the caption shown under the icon, while the menus keep the
+    action's full text. Buttons mirror their action via ``setDefaultAction`` so
+    enabled state and Ctrl-shortcuts (e.g. act_run's Ctrl+R) stay live.
+    """
+    box = QWidget()
+    box.setObjectName("ribbonGroup")
+    col = QVBoxLayout(box)
+    col.setContentsMargins(style.SP_SM, style.SP_XS, style.SP_SM, 0)
+    col.setSpacing(style.SP_XS)
+    row = QHBoxLayout()
+    row.setContentsMargins(0, 0, 0, 0)
+    row.setSpacing(style.SP_XS)
+    for act, label in items:
+        act.setIconText(label)
+        btn = QToolButton()
+        btn.setObjectName("ribbonBtn")
+        btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
+        btn.setDefaultAction(act)
+        btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        row.addWidget(btn)
+    col.addLayout(row)
+    cap = QLabel(caption.upper())
+    cap.setObjectName("ribbonCap")
+    cap.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+    col.addWidget(cap)
+    return box
 
 
 def _find(items, item_id):

@@ -110,14 +110,15 @@ def test_load_actions_left_edit_and_generate(win):
 
 
 def test_no_action_lost_and_ctrl_r_survives(win):
-    from PySide6.QtWidgets import QToolBar
+    from PySide6.QtWidgets import QToolButton
     # Every action the reorg touched still exists on the window.
     for attr in ("act_run", "act_pushover", "act_timehistory", "act_loadcases",
                  "act_add_load", "act_add_lineload", "act_genloads",
                  "act_editcombos", "act_gencombos"):
         assert hasattr(win, attr), attr
-    # act_run left the menu but stays in a toolbar, so Ctrl+R is still live.
-    in_toolbar = any(win.act_run in tb.actions()
-                     for tb in win.findChildren(QToolBar))
-    assert in_toolbar
+    # act_run left the menu but a toolbar button still carries it (a ribbon
+    # button's default action after S2), so Ctrl+R stays live window-wide.
+    carried = any(b.defaultAction() is win.act_run
+                  for b in win.findChildren(QToolButton))
+    assert carried
     assert win.act_run.shortcut().toString() == "Ctrl+R"
