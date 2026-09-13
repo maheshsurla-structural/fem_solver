@@ -10,10 +10,12 @@ from __future__ import annotations
 import copy
 
 from PySide6.QtCore import QItemSelectionModel, QSettings, QSize, Qt
-from PySide6.QtGui import QAction, QActionGroup, QUndoStack
+from PySide6.QtGui import (QAction, QActionGroup, QBrush, QColor, QFont,
+                           QUndoStack)
 from PySide6.QtWidgets import (QAbstractItemView, QApplication, QComboBox,
                                QDockWidget, QDoubleSpinBox, QFileDialog,
-                               QFrame, QHBoxLayout, QLabel, QMainWindow,
+                               QFrame, QHBoxLayout, QHeaderView, QLabel,
+                               QMainWindow,
                                QMenu, QMessageBox, QPlainTextEdit, QSizePolicy,
                                QSlider, QStackedWidget, QTabBar, QToolButton,
                                QTreeWidget, QTreeWidgetItem, QVBoxLayout,
@@ -33,6 +35,23 @@ from properties import PropertiesPanel
 
 PRODUCT_MONO = "FS"              # femsolver desktop — titlebar / taskbar mark
 PRODUCT_ACCENT = "#2563eb"       # stable brand blue (independent of theme)
+
+# Category rows in the model tree tag themselves with ("cat", key) in this role
+# so the context menu / double-click know which table or manager to open,
+# without carrying a selection ref (which lives in Qt.UserRole on the leaves).
+CAT_ROLE = Qt.ItemDataRole.UserRole + 1
+
+
+def _element_type(m) -> str:
+    """Friendly element-type label for the tree's by-type grouping (nav B3)."""
+    if getattr(m, "hinge", None) is not None:
+        return "Fiber hinge"
+    kind = (getattr(m, "kind", "") or "").lower()
+    if kind.startswith("truss"):
+        return "Truss"
+    if kind.startswith("beam"):
+        return "Beam"
+    return (kind.replace("2d", "").replace("3d", "").title() or "Element")
 
 
 class MainWindow(QMainWindow):
@@ -54,11 +73,23 @@ class MainWindow(QMainWindow):
         self.view = ModelView(self)
         self.setCentralWidget(self.view)
 
+        # Model tree — a compact *table of contents* (nav plan N1): category
+        # rows with a count in a narrow second column, individual items as
+        # collapsed leaves. Header hidden; the count column hugs its content.
         self.tree = QTreeWidget()
-        self.tree.setHeaderLabels(["Model"])
+        self.tree.setColumnCount(2)
+        self.tree.setHeaderHidden(True)
+        self.tree.setUniformRowHeights(True)
+        hdr = self.tree.header()
+        hdr.setStretchLastSection(False)
+        hdr.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        hdr.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         self.tree.setSelectionMode(
             QAbstractItemView.SelectionMode.ExtendedSelection)
         self.tree.itemDoubleClicked.connect(self._on_double_click)
+        self.tree.setContextMenuPolicy(
+            Qt.ContextMenuPolicy.CustomContextMenu)
+        self.tree.customContextMenuRequested.connect(self._on_tree_menu)
         dock_tree = QDockWidget("Model", self)
         dock_tree.setWidget(self.tree)
         dock_tree.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea
@@ -1295,12 +1326,83 @@ class MainWindow(QMainWindow):
 
     def _on_double_click(self, item, _col) -> None:
         ref = item.data(0, Qt.ItemDataRole.UserRole)
+        if ref:
+            kind, key = ref
+            handler = {"node": self._edit_node, "member": self._edit_member,
+                       "section": self._edit_section, "load": self._edit_load,
+                       "member_load": self._edit_member_load}.get(kind)
+            if handler:
+                handler(key)
+            return
+        cat = item.data(0, CAT_ROLE)          # a category header → primary action
+        if cat:
+            self._category_primary(cat[1])
+
+    # Category "primary" action (double-click / context-menu default): open the
+    # category's manager where one exists, else its read-only table.
+    def _category_primary(self, key) -> None:
+        base = key[0] if isinstance(key, tuple) else key
+        managers = {
+            "materials": self.manage_materials,
+            "hinges": self.manage_hinges,
+            "load_cases": self.manage_load_cases,
+            "combinations": self.manage_combinations,
+            "analysis_cases": self.manage_analysis_cases,
+        }
+        if base in managers:
+            managers[base]()
+        else:
+            self._open_category_table(key)
+
+    def _on_tree_menu(self, pos) -> None:
+        item = self.tree.itemAt(pos)
+        if item is None:
+            return
+        cat = item.data(0, CAT_ROLE)
+        if not cat:
+            return
+        key = cat[1]
+        base = key[0] if isinstance(key, tuple) else key
+        menu = QMenu(self)
+        menu.addAction(_action(self, "Show Table…", None,
+                               lambda: self._open_category_table(key)))
+        extra = {
+            "materials": ("Manage materials…", self.manage_materials),
+            "sections": ("New section…", self.add_section),
+            "hinges": ("Manage hinges…", self.manage_hinges),
+            "nodes": ("New node…", self.add_node),
+            "loads": ("New load…", self.add_load),
+            "member_loads": ("New line load…", self.add_line_load),
+            "load_cases": ("Manage load cases…", self.manage_load_cases),
+            "combinations": ("Manage combinations…", self.manage_combinations),
+            "analysis_cases": ("Manage analysis cases…",
+                               self.manage_analysis_cases),
+        }.get(base)
+        if extra:
+            menu.addSeparator()
+            menu.addAction(_action(self, extra[0], None, extra[1]))
+        menu.exec(self.tree.viewport().mapToGlobal(pos))
+
+    def _open_category_table(self, key) -> None:
+        from model_tables import ModelTableDialog
+        base = key[0] if isinstance(key, tuple) else key
+        efilter = key[1] if isinstance(key, tuple) and len(key) > 1 else None
+        ModelTableDialog.show_category(self, self._project, base,
+                                       on_activate=self._table_activate,
+                                       type_filter=efilter)
+
+    def _table_activate(self, ref) -> None:
+        """A row was double-clicked in a table → select it (and, for editable
+        kinds, open its editor)."""
         if not ref:
             return
+        self._select(ref)
         kind, key = ref
-        {"node": self._edit_node, "member": self._edit_member,
-         "section": self._edit_section, "load": self._edit_load,
-         "member_load": self._edit_member_load}[kind](key)
+        handler = {"node": self._edit_node, "member": self._edit_member,
+                   "section": self._edit_section, "load": self._edit_load,
+                   "member_load": self._edit_member_load}.get(kind)
+        if handler:
+            handler(key)
 
     def _edit_node(self, nid) -> None:
         new = NodeDialog.edit(self, self._project, _find(self._project.nodes, nid))
@@ -1708,59 +1810,158 @@ class MainWindow(QMainWindow):
         where = f" — {self._path}" if self._path else ""
         self.setWindowTitle(f"{star}{name}{where} — femsolver desktop (preview)")
 
+    # ------------------------------------------------------------- model tree
+    def _super(self, title):
+        """A bold, un-selectable top-level super-group header (Properties /
+        Structures / Loads / Analysis) — pure organisation, carries no ref."""
+        it = QTreeWidgetItem(self.tree, [title])
+        f = it.font(0)
+        f.setBold(True)
+        it.setFont(0, f)
+        it.setFlags(Qt.ItemFlag.ItemIsEnabled)      # not selectable
+        it.setFirstColumnSpanned(True)
+        return it
+
+    def _category(self, parent, title, count, cat_key, icon_name=None):
+        """A category row: name in col 0, count badge in col 1, a ``("cat",
+        key)`` tag (so the context menu / double-click know what to open) but
+        **no** selection ref. Empty categories are muted so the tree also shows
+        what the model lacks (charter B2)."""
+        it = QTreeWidgetItem(parent, [title, str(count)])
+        it.setData(0, CAT_ROLE, ("cat", cat_key))
+        it.setFlags(Qt.ItemFlag.ItemIsEnabled)      # header, not a selectable ref
+        if icon_name:
+            it.setIcon(0, icons.icon(icon_name, style.ICON))
+        it.setTextAlignment(1, Qt.AlignmentFlag.AlignRight
+                            | Qt.AlignmentFlag.AlignVCenter)
+        muted = QBrush(QColor(style.MUTED))
+        it.setForeground(1, muted)
+        if not count:
+            it.setForeground(0, muted)              # grey the whole empty slot
+        return it
+
+    def _leaf(self, parent, label, ref):
+        it = QTreeWidgetItem(parent, [label])
+        it.setData(0, Qt.ItemDataRole.UserRole, ref)
+        return it
+
     def _populate_tree(self) -> None:
         p = self._project
         labels = dof_labels(p.ndm, p.ndf)
         self.tree.clear()
-        nodes = QTreeWidgetItem(self.tree, [f"Nodes ({len(p.nodes)})"])
+
+        # ---- Properties -------------------------------------------------
+        props = self._super("Properties")
+        self._category(props, "Materials", len(p.materials),
+                       "materials", "design")
+        sections = self._category(props, "Sections", len(p.sections),
+                                  "sections", "section")
+        for s in p.sections:
+            shape = f"  [{s.shape}]" if s.shape else ""
+            self._leaf(sections, f"{s.id}:  {s.name}{shape}", ("section", s.id))
+        self._category(props, "Hinge properties", len(p.hinges),
+                       "hinges", "run")
+
+        # ---- Structures -------------------------------------------------
+        struct = self._super("Structures")
+        nodes = self._category(struct, "Nodes", len(p.nodes), "nodes", "node")
         for n in p.nodes:
             sup = ([labels[k] for k in range(min(len(n.supports), len(labels)))
                     if n.supports[k]] if n.supports else [])
             tag = f"  [{','.join(sup)}]" if sup else ""
             coord = (f"{n.x:g}, {n.y:g}" if p.ndm == 2
                      else f"{n.x:g}, {n.y:g}, {n.z:g}")
-            it = QTreeWidgetItem(nodes, [f"{n.id}:  ({coord}){tag}"])
-            it.setData(0, Qt.ItemDataRole.UserRole, ("node", n.id))
-        members = QTreeWidgetItem(self.tree, [f"Members ({len(p.members)})"])
+            self._leaf(nodes, f"{n.id}:  ({coord}){tag}", ("node", n.id))
+        # Elements, grouped by element type (charter B3).
+        elements = self._category(struct, "Elements", len(p.members),
+                                  "elements", "member")
+        by_type: dict[str, list] = {}
         for m in p.members:
-            it = QTreeWidgetItem(members, [
-                f"{m.id}:  {m.n1} → {m.n2}  (sec {m.section}, mat {m.material})"])
-            it.setData(0, Qt.ItemDataRole.UserRole, ("member", m.id))
-        sections = QTreeWidgetItem(self.tree, [f"Sections ({len(p.sections)})"])
-        for s in p.sections:
-            shape = f"  [{s.shape}]" if s.shape else ""
-            it = QTreeWidgetItem(sections, [f"{s.id}:  {s.name}{shape}"])
-            it.setData(0, Qt.ItemDataRole.UserRole, ("section", s.id))
-        loads = QTreeWidgetItem(self.tree, [f"Loads ({len(p.loads)})"])
+            by_type.setdefault(_element_type(m), []).append(m)
+        for etype in sorted(by_type):
+            bucket = by_type[etype]
+            trow = self._category(elements, etype, len(bucket),
+                                  ("elements", etype), "member")
+            for m in bucket:
+                self._leaf(
+                    trow,
+                    f"{m.id}:  {m.n1} → {m.n2}  (sec {m.section}, "
+                    f"mat {m.material})", ("member", m.id))
+            trow.setExpanded(False)
+        supported = [n for n in p.nodes if n.supports and any(n.supports)]
+        supports = self._category(struct, "Supports", len(supported),
+                                  "supports", "node")
+        for n in supported:
+            mask = [labels[k] for k in range(min(len(n.supports), len(labels)))
+                    if n.supports[k]]
+            self._leaf(supports, f"{n.id}:  [{','.join(mask)}]", ("node", n.id))
+
+        # ---- Loads ------------------------------------------------------
+        loadgrp = self._super("Loads")
+        self._category(loadgrp, "Load cases", len(p.load_cases),
+                       "load_cases", "load")
+        loads = self._category(loadgrp, "Nodal loads", len(p.loads),
+                               "loads", "load")
         for i, ld in enumerate(p.loads):
             vals = ", ".join(f"{v:g}" for v in ld.values)
-            it = QTreeWidgetItem(loads, [f"node {ld.node}:  ({vals})"])
-            it.setData(0, Qt.ItemDataRole.UserRole, ("load", i))
-        mloads = QTreeWidgetItem(
-            self.tree, [f"Line loads ({len(p.member_loads)})"])
+            self._leaf(loads, f"node {ld.node}:  ({vals})", ("load", i))
+        mloads = self._category(loadgrp, "Line loads", len(p.member_loads),
+                                "member_loads", "load")
         for i, ml in enumerate(p.member_loads):
             comps = f"wy={ml.wy:g}" + (f", wz={ml.wz:g}" if p.ndm == 3 else "")
-            it = QTreeWidgetItem(mloads, [f"member {ml.member}:  ({comps})"])
-            it.setData(0, Qt.ItemDataRole.UserRole, ("member_load", i))
-        for grp in (nodes, members, sections, loads, mloads):
-            grp.setExpanded(True)
+            self._leaf(mloads, f"member {ml.member}:  ({comps})",
+                       ("member_load", i))
+        self._category(loadgrp, "Load combinations", len(p.combinations),
+                       "combinations", "load")
+
+        # ---- Analysis ---------------------------------------------------
+        an = self._super("Analysis")
+        case_rows = (["Linear Static"]
+                     + [f"{c.name} (nonlinear)" for c in p.nonlinear_cases]
+                     + ["Modal", "Response Spectrum", "Buckling", "Time History"])
+        cases = self._category(an, "Analysis cases", len(case_rows),
+                               "analysis_cases", "run")
+        for name in case_rows:
+            self._leaf(cases, name, None)
+        runs = self._category(an, "Results", len(p.runs), "results", "run")
+        for i, r in enumerate(p.runs):
+            self._leaf(runs, getattr(r, "name", f"Run {i + 1}"), None)
+
+        # Expand the super-groups + Elements (so the type rows show); leave the
+        # long leaf lists collapsed so the default view is a compact outline.
+        for i in range(self.tree.topLevelItemCount()):
+            self.tree.topLevelItem(i).setExpanded(True)
+        elements.setExpanded(True)
+
+    def _iter_tree_items(self, parent=None):
+        """Depth-first walk of every item (used by the recursive finder)."""
+        if parent is None:
+            tops = [self.tree.topLevelItem(i)
+                    for i in range(self.tree.topLevelItemCount())]
+        else:
+            tops = [parent.child(i) for i in range(parent.childCount())]
+        for it in tops:
+            yield it
+            yield from self._iter_tree_items(it)
 
     def _find_item(self, ref):
         target = tuple(ref)
-        for i in range(self.tree.topLevelItemCount()):
-            grp = self.tree.topLevelItem(i)
-            for j in range(grp.childCount()):
-                child = grp.child(j)
-                if child.data(0, Qt.ItemDataRole.UserRole) == target:
-                    return child
+        for it in self._iter_tree_items():
+            if it.data(0, Qt.ItemDataRole.UserRole) == target:
+                return it
         return None
 
     def _select(self, ref) -> None:
         item = self._find_item(ref)
         if item is not None:
             self.tree.clearSelection()
+            parent = item.parent()          # reveal a collapsed-by-default leaf
+            while parent is not None:
+                parent.setExpanded(True)
+                parent = parent.parent()
             item.setSelected(True)
             self.tree.setCurrentItem(item)
+            self.tree.scrollToItem(item)
 
 
 def _set_icon(act, icon_name):
