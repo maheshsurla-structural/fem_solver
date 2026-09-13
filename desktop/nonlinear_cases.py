@@ -22,6 +22,8 @@ from PySide6.QtWidgets import (QComboBox, QDialog, QDialogButtonBox,
                                QTableWidget, QTableWidgetItem, QVBoxLayout,
                                QWidget)
 
+import analysis_ui as ui
+import style
 from project import NonlinearCase
 
 _DOFS = [("Ux", 0), ("Uy", 1), ("Rz", 2)]
@@ -57,12 +59,19 @@ def _parse_amplitudes(text: str, fallback) -> list:
 
 
 class NonlinearCaseDialog(QDialog):
+    """Edit one nonlinear (fiber) analysis case, laid out as CSiBridge-style
+    *Load Case Data* panels (plan A2): a Name / Notes / Type header over a
+    two-column grid of **Control**, **Protocol**, **Initial conditions** and
+    **Solver** cards. The monotonic vs cyclic fields swap in place inside the
+    Protocol card (``mono_host`` / ``cyc_host``). Built entirely from the L1
+    scaffold (:mod:`analysis_ui`); pure Qt, headless-constructible.
+    """
+
     def __init__(self, parent, project, case=None):
         super().__init__(parent)
         self.setWindowTitle("Edit nonlinear case" if case else
                             "Add nonlinear case")
         self._project = project
-        form = QFormLayout(self)
         node_ids = [n.id for n in project.nodes]
         free = [n.id for n in project.nodes
                 if not (n.supports and any(n.supports))]
@@ -70,32 +79,39 @@ class NonlinearCaseDialog(QDialog):
                         (node_ids[-1] if node_ids else 0))
         lu, fu = project.length_unit, project.force_unit
 
+        # ---- header: Name / Notes / Type ----
+        self.header = ui.CaseHeader(
+            name=(case.name if case else "Pushover"),
+            type_label="Nonlinear Static",
+            notes=(getattr(case, "notes", "") if case else ""))
+
+        # ---- Control ----
+        control = ui.GroupCard("Control")
         self.id_spin = QSpinBox()
         self.id_spin.setRange(1, 10_000_000)
         self.id_spin.setValue(case.id if case
                               else _next_id([c.id for c in
                                              project.nonlinear_cases]))
         self.id_spin.setEnabled(case is None)
-        form.addRow("Case id", self.id_spin)
-
-        self.name = QLineEdit(case.name if case else "Pushover")
-        form.addRow("Name", self.name)
-
         self.node = _combo([(str(i), i) for i in node_ids],
                            default=(case.control_node if case else default_node))
         self.dof = _combo(_DOFS, default=(case.control_dof if case else 1))
-        form.addRow("Control node", self.node)
-        form.addRow("Control DOF", self.dof)
+        self.dof.currentIndexChanged.connect(self._on_dof)
+        self.target = self._spin(case.target if case else 0.05, decimals=4)
+        control.add_row("Case id", self.id_spin)
+        control.add_row("Control node", self.node)
+        control.add_row("Control DOF", self.dof)
+        control.add_row(f"Target [{lu}]", self.target)
+        self._dir_hint = ui.direction_glyph(self.dof.currentText())
+        control.add_full_row(self._dir_hint)
 
+        # ---- Protocol (monotonic <-> cyclic fields swap in place) ----
+        protocol = ui.GroupCard("Protocol")
         self.protocol = _combo(_PROTOCOLS,
                                default=(case.protocol if case else "monotonic"))
         self.protocol.currentIndexChanged.connect(self._on_protocol)
-        form.addRow("Protocol", self.protocol)
+        protocol.add_row("Protocol", self.protocol)
 
-        self.target = self._spin(case.target if case else 0.05, decimals=4)
-        form.addRow(f"Target [{lu}]", self.target)
-
-        # monotonic-only: number of steps
         self.mono_host = QWidget()
         mono = QFormLayout(self.mono_host)
         mono.setContentsMargins(0, 0, 0, 0)
@@ -103,9 +119,8 @@ class NonlinearCaseDialog(QDialog):
         self.n_steps.setRange(2, 5000)
         self.n_steps.setValue(case.n_steps if case else 40)
         mono.addRow("Steps", self.n_steps)
-        form.addRow(self.mono_host)
+        protocol.add_full_row(self.mono_host)
 
-        # cyclic-only: amplitudes / cycles / points per cycle
         self.cyc_host = QWidget()
         cyc = QFormLayout(self.cyc_host)
         cyc.setContentsMargins(0, 0, 0, 0)
@@ -120,9 +135,15 @@ class NonlinearCaseDialog(QDialog):
         cyc.addRow("Amplitudes (× target)", self.amplitudes)
         cyc.addRow("Cycles / amplitude", self.cycles)
         cyc.addRow("Points / cycle", self.pts)
-        form.addRow(self.cyc_host)
+        protocol.add_full_row(self.cyc_host)
 
-        # axial preload (held constant)
+        # ---- Initial conditions (staged continuation + held axial preload) ----
+        init = ui.GroupCard("Initial conditions")
+        others = [(f"{c.id}: {c.name}", c.id) for c in project.nonlinear_cases
+                  if not case or c.id != case.id]
+        self.continue_from = _combo([("— none —", None)] + others,
+                                    default=(case.continue_from if case
+                                             else None))
         self.axial = self._spin(case.axial if case else 0.0, decimals=1,
                                 big=True)
         self.axial_node = _combo([(str(i), i) for i in node_ids],
@@ -131,32 +152,31 @@ class NonlinearCaseDialog(QDialog):
                                           default_node))
         self.axial_dof = _combo(_DOFS,
                                 default=(case.axial_dof if case else 0))
-        form.addRow(f"Axial preload [{fu}]", self.axial)
-        form.addRow("Axial node", self.axial_node)
-        form.addRow("Axial DOF", self.axial_dof)
+        init.add_row("Continue from", self.continue_from)
+        init.add_row(f"Axial preload [{fu}]", self.axial)
+        init.add_row("Axial node", self.axial_node)
+        init.add_row("Axial DOF", self.axial_dof)
 
-        # continue-from (other cases only)
-        others = [(f"{c.id}: {c.name}", c.id) for c in project.nonlinear_cases
-                  if not case or c.id != case.id]
-        self.continue_from = _combo([("— none —", None)] + others,
-                                    default=(case.continue_from if case
-                                             else None))
-        form.addRow("Continue from", self.continue_from)
-
+        # ---- Solver (Newton controls) ----
+        solver = ui.GroupCard("Solver")
         self.tol = _combo([(f"{t:.0e}", t) for t in
                            (1e-4, 1e-5, 1e-6, 1e-7, 1e-8)],
                           default=(case.tol if case else 1e-6))
         self.max_iter = QSpinBox()
         self.max_iter.setRange(10, 1000)
         self.max_iter.setValue(case.max_iter if case else 60)
-        form.addRow("Convergence tol", self.tol)
-        form.addRow("Max iterations", self.max_iter)
+        solver.add_row("Convergence tol", self.tol)
+        solver.add_row("Max iterations", self.max_iter)
 
-        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        btns.accepted.connect(self.accept)
-        btns.rejected.connect(self.reject)
-        form.addRow(btns)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(style.SP_LG, style.SP_LG,
+                                 style.SP_LG, style.SP_LG)
+        outer.setSpacing(style.SP_MD)
+        outer.addWidget(self.header)
+        outer.addWidget(ui.two_column(control, protocol, init, solver))
+        outer.addWidget(ui.dialog_buttons(self))
         self._on_protocol()
+        style.apply(self)
 
     @staticmethod
     def _spin(value, *, decimals=4, big=False) -> QDoubleSpinBox:
@@ -171,11 +191,14 @@ class NonlinearCaseDialog(QDialog):
         self.mono_host.setVisible(not cyclic)
         self.cyc_host.setVisible(cyclic)
 
+    def _on_dof(self, *_) -> None:
+        self._dir_hint.setText(ui.direction_glyph(self.dof.currentText()).text())
+
     def data(self) -> NonlinearCase:
         axial = float(self.axial.value())
         return NonlinearCase(
             id=self.id_spin.value(),
-            name=self.name.text().strip() or f"Case {self.id_spin.value()}",
+            name=self.header.name() or f"Case {self.id_spin.value()}",
             control_node=self.node.currentData(),
             control_dof=self.dof.currentData(),
             target=float(self.target.value()),
@@ -190,7 +213,8 @@ class NonlinearCaseDialog(QDialog):
             axial_dof=self.axial_dof.currentData(),
             continue_from=self.continue_from.currentData(),
             tol=float(self.tol.currentData()),
-            max_iter=int(self.max_iter.value()))
+            max_iter=int(self.max_iter.value()),
+            notes=self.header.notes())
 
     @classmethod
     def edit(cls, parent, project, case=None):

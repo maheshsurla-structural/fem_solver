@@ -144,6 +144,35 @@ def test_case_dialog_monotonic_and_cyclic(qapp):
     assert c.cycles == 2
 
 
+def test_case_dialog_uses_scaffold_panels(qapp):
+    """A2: the dialog is built from the L1 scaffold — a CaseHeader plus a
+    two-column grid of GroupCards — not a flat form."""
+    import analysis_ui as ui
+    from nonlinear_cases import NonlinearCaseDialog
+    p = _gsd_column_project()
+    dlg = NonlinearCaseDialog(None, p)
+    assert isinstance(dlg.header, ui.CaseHeader)
+    assert dlg.header.type_label() == "Nonlinear Static"
+    # at least one GroupCard and a two-column grid are present
+    from PySide6.QtWidgets import QGridLayout
+    assert dlg.findChild(ui.GroupCard) is not None
+    assert dlg.findChild(QGridLayout) is not None
+
+
+def test_case_dialog_notes_roundtrip(qapp):
+    """Notes typed in the header are carried on the NonlinearCase and survive a
+    JSON round-trip (the notes field added for A2)."""
+    from nonlinear_cases import NonlinearCaseDialog
+    p = _gsd_column_project()
+    src = NonlinearCase(id=1, name="N", control_node=2, notes="hold P then push")
+    p.nonlinear_cases = [src]
+    dlg = NonlinearCaseDialog(None, p, src)
+    assert dlg.header.notes() == "hold P then push"
+    assert dlg.data().notes == "hold P then push"
+    q = Project.from_json(p.to_json())
+    assert q.nonlinear_case(1).notes == "hold P then push"
+
+
 def test_case_dialog_edit_seeds_existing(qapp):
     from nonlinear_cases import NonlinearCaseDialog
     p = _gsd_column_project()

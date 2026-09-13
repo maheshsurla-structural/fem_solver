@@ -318,7 +318,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
 | L5 | Member/line-load dialog (NEW) | L1 | [ ] | |
 | L6 | Redesign `LoadGenDialog` | L1 | [ ] | |
 | A1 | Unified analysis-cases manager (NEW) | L1, A2 | [ ] | |
-| A2 | Redesign `NonlinearCaseDialog` (screenshot fix) | L1 | [ ] | |
+| A2 | Redesign `NonlinearCaseDialog` (screenshot fix) | L1 | [x] | `feat(loads-ux A2)` · 2026-09-13 |
 | A3 | Redesign Pushover + Time-History panels | L1 | [ ] | |
 | A4 | "Run Analysis" control (NEW) | L1, A1 | [ ] | |
 | A5 | Polish `NonlinearCaseManagerDialog` | A1 | [ ] | |
@@ -344,6 +344,16 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
   `two_column` honours a `full_width` attribute so a Loads-Applied table spans both columns.
   Note for later phases: `CaseHeader` exposes `type_label()` (additive getter) alongside the
   §5 `name()`/`notes()`. No `project.py` / solver changes.
+- 2026-09-13 — **A2 done.** `NonlinearCaseDialog` (`desktop/nonlinear_cases.py`) rebuilt from
+  the L1 scaffold: a `CaseHeader` (Name/Notes/Type = "Nonlinear Static") over
+  `two_column(Control, Protocol, Initial conditions, Solver)`. Monotonic/cyclic fields still
+  swap in place via `mono_host`/`cyc_host`; the Control card carries a live `direction_glyph`
+  that updates with the DOF. `.data()`/`.edit()` and every test-referenced attribute preserved.
+  **§4.4 exception used:** added `notes: str = ""` to `NonlinearCase` (`project.py`) so the
+  header's Notes control persists — backward/forward compatible (`NonlinearCase(**c)` + `asdict`).
+  Tests: 2 new in `test_desktop_nlcases.py` (scaffold panels + notes round-trip); full
+  nlcases + scaffold + pushover/nonlinear/runs suites green (62 tests). Screenshots under
+  `phase21_outputs/loads_ux/A2_nonlinear_case_*.png`.
 
 ---
 
@@ -356,3 +366,7 @@ _(Fill in as items land — one or two lines + a screenshot path per redesigned 
   `phase21_outputs/loads_ux/L1_scaffold_light.png`, `…_dark.png`. (Text glyphs show as boxes in
   the headless `offscreen` renderer — a screenshot artifact only; the app renders text
   normally on Windows.)
+- **A2 nonlinear-case dialog** — was a flat 14-row form; now a Name/Notes/Type header over a
+  2×2 grid of Control / Protocol / Initial-conditions / Solver cards, matching CSiBridge *Load
+  Case Data*. `phase21_outputs/loads_ux/A2_nonlinear_case_light.png`, `…_dark.png`,
+  `…_cyclic_light.png` (cyclic shows the in-place protocol-field swap).

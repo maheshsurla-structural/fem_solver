@@ -144,6 +144,7 @@ class NonlinearCase:
     continue_from: int | None = None      # id of a prior NonlinearCase
     tol: float = 1.0e-6
     max_iter: int = 60
+    notes: str = ""                        # free-text case notes (GUI only)
 
 
 @dataclass
