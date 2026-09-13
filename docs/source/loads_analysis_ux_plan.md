@@ -315,7 +315,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
 | L2 | Load-combination editor (NEW) | L1 | [x] | `feat(loads-ux L2)` · 2026-09-13 |
 | L3 | Redesign `LoadCaseDialog` | L1 | [ ] | |
 | L4 | Redesign nodal `LoadDialog` | L1 | [x] | `feat(loads-ux L4)` · 2026-09-13 |
-| L5 | Member/line-load dialog (NEW) | L1 | [ ] | |
+| L5 | Member/line-load dialog (NEW) | L1 | [x] | `feat(loads-ux L5)` · 2026-09-13 |
 | L6 | Redesign `LoadGenDialog` | L1 | [ ] | |
 | A1 | Unified analysis-cases manager (NEW) | L1, A2 | [ ] | |
 | A2 | Redesign `NonlinearCaseDialog` (screenshot fix) | L1 | [x] | `feat(loads-ux A2)` · 2026-09-13 |
@@ -379,6 +379,15 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
   ↻ about axes). `.edit()`/`.data()` and `node`/`case`/`vals` preserved. 4 offscreen tests
   in `test_desktop_load_dialog.py` (2-D + 3-D). Screenshots
   `phase21_outputs/loads_ux/L4_load_*.png`. No `project.py`/solver changes.
+- 2026-09-13 — **L5 done.** New `desktop/member_load_dialog.py` — the previously UI-less
+  `MemberLoad` (uniform line/UDL load in local axes) now has a grouped add/edit dialog
+  (*Applied to* + *Uniform line load [force/length]* with per-component local-axis hints;
+  `wz` in 3-D only). Wired into `main_window`: an **Add line load…** action (Edit menu +
+  toolbar), `add_line_load` / `_edit_member_load` handlers (undoable), tree double-click, and
+  delete. Line loads now also appear in the model tree under a **Line loads** group (they were
+  invisible before). 4 offscreen tests in `test_desktop_member_load.py` (2-D/3-D + wiring +
+  tree). Screenshots `phase21_outputs/loads_ux/L5_lineload_*.png`. No `project.py`/solver
+  changes.
 
 ---
 
@@ -406,3 +415,6 @@ _(Fill in as items land — one or two lines + a screenshot path per redesigned 
 - **L4 nodal load dialog** — flat form became an *Applied to* card + a *Components* card with a
   sign-convention hint on every DOF row. `phase21_outputs/loads_ux/L4_load_light.png`,
   `…_dark.png`, `L4_load_3d_light.png`.
+- **L5 member/line-load dialog** — a surface with no UI before: *Applied to* + *Uniform line
+  load* cards with local-axis hints; line loads now also show in the model tree.
+  `phase21_outputs/loads_ux/L5_lineload_light.png`, `…_dark.png`, `L5_lineload_3d_light.png`.

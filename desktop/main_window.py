@@ -111,6 +111,8 @@ class MainWindow(QMainWindow):
                                       self.add_member, "member")
         self.act_add_load = _action(self, "Add &load…", None, self.add_load,
                                     "load")
+        self.act_add_lineload = _action(self, "Add l&ine load…", None,
+                                        self.add_line_load, "load")
         self.act_add_section = _action(self, "Add &section…", None,
                                        self.add_section, "section")
         self.act_materials = _action(self, "&Materials…", None,
@@ -235,7 +237,7 @@ class MainWindow(QMainWindow):
         edit_menu.addSeparator()
         for a in (self.act_add_node, self.act_add_member, self.act_add_section,
                   self.act_materials, self.act_hinges, self.act_assign_hinges,
-                  self.act_add_load, self.act_delete):
+                  self.act_add_load, self.act_add_lineload, self.act_delete):
             edit_menu.addAction(a)
         edit_menu.addSeparator()
         edit_menu.addAction(self.act_deselect)
@@ -303,7 +305,8 @@ class MainWindow(QMainWindow):
         _toolbar("File", (self.act_new, self.act_open, self.act_save))
         _toolbar("Edit", (self.act_undo, self.act_redo, None, self.act_add_node,
                           self.act_add_member, self.act_add_section,
-                          self.act_add_load, self.act_delete, None,
+                          self.act_add_load, self.act_add_lineload,
+                          self.act_delete, None,
                           self.act_move, self.act_copy, self.act_mirror,
                           self.act_rotate, self.act_extrude))
         _toolbar("Generate", (self.act_gen, self.act_genloads))
@@ -833,6 +836,19 @@ class MainWindow(QMainWindow):
                          lambda: self._project.loads.append(load),
                          ("load", idx))
 
+    def add_line_load(self) -> None:
+        if not self._project.members:
+            QMessageBox.information(self, "Add line load", "Add a member first.")
+            return
+        from member_load_dialog import MemberLoadDialog
+        ml = MemberLoadDialog.edit(self, self._project)
+        if ml is None:
+            return
+        idx = len(self._project.member_loads)
+        self._apply_edit("Add line load",
+                         lambda: self._project.member_loads.append(ml),
+                         ("member_load", idx))
+
     def add_section(self) -> None:
         section = SectionDialog.edit(self, self._project)
         if section is None:
@@ -887,7 +903,8 @@ class MainWindow(QMainWindow):
             return
         kind, key = ref
         {"node": self._edit_node, "member": self._edit_member,
-         "section": self._edit_section, "load": self._edit_load}[kind](key)
+         "section": self._edit_section, "load": self._edit_load,
+         "member_load": self._edit_member_load}[kind](key)
 
     def _edit_node(self, nid) -> None:
         new = NodeDialog.edit(self, self._project, _find(self._project.nodes, nid))
@@ -922,6 +939,18 @@ class MainWindow(QMainWindow):
                 lambda: self._project.loads.__setitem__(index, new),
                 ("load", index))
 
+    def _edit_member_load(self, index) -> None:
+        if not 0 <= index < len(self._project.member_loads):
+            return
+        from member_load_dialog import MemberLoadDialog
+        new = MemberLoadDialog.edit(self, self._project,
+                                    self._project.member_loads[index])
+        if new is not None:
+            self._apply_edit(
+                "Edit line load",
+                lambda: self._project.member_loads.__setitem__(index, new),
+                ("member_load", index))
+
     def delete_selected(self) -> None:
         item = self.tree.currentItem()
         ref = item.data(0, Qt.ItemDataRole.UserRole) if item else None
@@ -945,6 +974,8 @@ class MainWindow(QMainWindow):
                 p.sections = [s for s in p.sections if s.id != key]
             elif kind == "load" and 0 <= key < len(p.loads):
                 del p.loads[key]
+            elif kind == "member_load" and 0 <= key < len(p.member_loads):
+                del p.member_loads[key]
         self._apply_edit(f"Delete {kind}", mutate)
 
     def _on_selection_changed(self) -> None:
@@ -1265,7 +1296,13 @@ class MainWindow(QMainWindow):
             vals = ", ".join(f"{v:g}" for v in ld.values)
             it = QTreeWidgetItem(loads, [f"node {ld.node}:  ({vals})"])
             it.setData(0, Qt.ItemDataRole.UserRole, ("load", i))
-        for grp in (nodes, members, sections, loads):
+        mloads = QTreeWidgetItem(
+            self.tree, [f"Line loads ({len(p.member_loads)})"])
+        for i, ml in enumerate(p.member_loads):
+            comps = f"wy={ml.wy:g}" + (f", wz={ml.wz:g}" if p.ndm == 3 else "")
+            it = QTreeWidgetItem(mloads, [f"member {ml.member}:  ({comps})"])
+            it.setData(0, Qt.ItemDataRole.UserRole, ("member_load", i))
+        for grp in (nodes, members, sections, loads, mloads):
             grp.setExpanded(True)
 
     def _find_item(self, ref):
