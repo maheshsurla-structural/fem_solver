@@ -25,7 +25,9 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDoubleSpinBox,
                                QSlider, QSpinBox, QTabWidget, QVBoxLayout,
                                QWidget)
 
+import analysis_ui as ui
 import nonlinear as NL
+import style
 from nl_results import NonlinearResults
 
 _DOFS_2D = [("Ux", 0), ("Uy", 1), ("Rz", 2)]
@@ -86,9 +88,12 @@ class PushoverDialog(QDialog):
         self._protocol: str = "monotonic"
         outer = QHBoxLayout(self)
 
-        # ---- left: inputs + progress ----
+        # ---- left: grouped inputs + run controls (plan A3) ----
         left = QWidget()
-        form = QFormLayout(left)
+        left.setMaximumWidth(380)
+        lv = QVBoxLayout(left)
+        lv.setContentsMargins(0, 0, 0, 0)
+        lv.setSpacing(style.SP_MD)
         node_ids = [n.id for n in project.nodes]
         free = [n.id for n in project.nodes if not (n.supports and any(n.supports))]
         self.node = self._combo([(str(i), i) for i in node_ids],
@@ -96,6 +101,7 @@ class PushoverDialog(QDialog):
                                          (node_ids[-1] if node_ids else None)))
         dof_items = _dof_items(project.ndf)
         self.dof = self._combo(dof_items, default=1)
+        self.dof.currentIndexChanged.connect(self._on_dof)
         self.target = self._spin(0.05, unit=project.length_unit, decimals=4)
         self.n_steps = QSpinBox()
         self.n_steps.setRange(2, 2000)
@@ -121,28 +127,39 @@ class PushoverDialog(QDialog):
             + [(f"{c.id}: {c.name}", c.id)
                for c in getattr(project, "nonlinear_cases", [])])
         self.case_combo.currentIndexChanged.connect(self._on_case_changed)
-        form.addRow("Case", self.case_combo)
-        form.addRow("Control node", self.node)
-        form.addRow("Push DOF", self.dof)
-        form.addRow(f"Target [{project.length_unit}]", self.target)
-        form.addRow("Steps", self.n_steps)
-        form.addRow("Convergence tol", self.tol)
-        form.addRow("Max iterations", self.max_iter)
-        form.addRow(f"Axial preload [{project.force_unit}]", self.axial)
-        form.addRow("Axial node", self.axial_node)
-        form.addRow("Axial DOF", self.axial_dof)
-        form.addRow(self.capture)
+
+        control = ui.GroupCard("Control")
+        control.add_row("Case", self.case_combo)
+        control.add_row("Control node", self.node)
+        control.add_row("Push DOF", self.dof)
+        control.add_row(f"Target [{project.length_unit}]", self.target)
+        control.add_row("Steps", self.n_steps)
+        self._dir_hint = ui.direction_glyph(self.dof.currentText())
+        control.add_full_row(self._dir_hint)
+
+        init = ui.GroupCard("Initial conditions")
+        init.add_row(f"Axial preload [{project.force_unit}]", self.axial)
+        init.add_row("Axial node", self.axial_node)
+        init.add_row("Axial DOF", self.axial_dof)
+
+        solver = ui.GroupCard("Solver")
+        solver.add_row("Convergence tol", self.tol)
+        solver.add_row("Max iterations", self.max_iter)
+        solver.add_full_row(self.capture)
+
+        for card in (control, init, solver):
+            lv.addWidget(card)
         # manual inputs disabled while a saved case drives the run
         self._manual = [self.node, self.dof, self.target, self.n_steps,
                         self.tol, self.max_iter, self.axial, self.axial_node,
                         self.axial_dof]
 
         self.bar = QProgressBar()
-        form.addRow(self.bar)
+        lv.addWidget(self.bar)
         self.log = QPlainTextEdit()
         self.log.setReadOnly(True)
         self.log.setMaximumHeight(120)
-        form.addRow(self.log)
+        lv.addWidget(self.log)
 
         row = QHBoxLayout()
         self.check_btn = QPushButton("Check")
@@ -160,7 +177,8 @@ class PushoverDialog(QDialog):
         row.addWidget(self.cancel_btn)
         row.addStretch(1)
         row.addWidget(self.close_btn)
-        form.addRow(row)
+        lv.addLayout(row)
+        lv.addStretch(1)
         outer.addWidget(left, 0)
 
         # ---- right: tabs (curve | fiber stress | deformed shape) + shared step controls ----
@@ -239,10 +257,14 @@ class PushoverDialog(QDialog):
         self._draw_curve()
         self._draw_fibers()
         self._draw_shape()
+        style.apply(self)
 
     def _on_step(self, *_) -> None:
         self._draw_fibers()
         self._draw_shape()
+
+    def _on_dof(self, *_) -> None:
+        self._dir_hint.setText(ui.direction_glyph(self.dof.currentText()).text())
 
     # ------------------------------------------------ step animation
     def _toggle_play(self, on: bool) -> None:

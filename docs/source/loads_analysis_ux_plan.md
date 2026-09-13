@@ -319,7 +319,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
 | L6 | Redesign `LoadGenDialog` | L1 | [ ] | |
 | A1 | Unified analysis-cases manager (NEW) | L1, A2 | [ ] | |
 | A2 | Redesign `NonlinearCaseDialog` (screenshot fix) | L1 | [x] | `feat(loads-ux A2)` · 2026-09-13 |
-| A3 | Redesign Pushover + Time-History panels | L1 | [ ] | |
+| A3 | Redesign Pushover + Time-History panels | L1 | [x] | `feat(loads-ux A3)` · 2026-09-13 |
 | A4 | "Run Analysis" control (NEW) | L1, A1 | [ ] | |
 | A5 | Polish `NonlinearCaseManagerDialog` | A1 | [ ] | |
 | S1 | Menu reorg (Loads menu) | L2, L5, A1, A4 | [ ] | |
@@ -364,6 +364,15 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
   `_append_generated()` so it is testable without the modal. 6 offscreen tests in
   `test_desktop_combinations.py` (all green; 29 across the scaffold-dependent suites).
   Screenshots `phase21_outputs/loads_ux/L2_combinations_*.png`. No solver changes.
+- 2026-09-13 — **A3 done.** Pushover (`pushover_dialog.py`) and Time-History
+  (`timehistory_dialog.py`) left input panels regrouped into scaffold GroupCards —
+  pushover: *Control* (case/node/DOF/target/steps + live `direction_glyph`) · *Initial
+  conditions* (axial) · *Solver* (tol/max-iter/record-fibers); time-history: *Monitor* ·
+  *Ground motion* (record/dt/scale/units) · *Damping & mass*. The right-side live plot,
+  tabs, step scrubber, progress bar, log, export row and every run control are unchanged, as
+  are all test-referenced attributes (`case_combo`, `node`, `n_steps`, `_kwargs`, `_accel`,
+  `in_g`, `scale`, `_selected_case`, …). Pure layout refactor: pushover + timehistory +
+  nlcases suites green (29 tests). Screenshots `phase21_outputs/loads_ux/A3_*.png`.
 
 ---
 
@@ -383,3 +392,8 @@ _(Fill in as items land — one or two lines + a screenshot path per redesigned 
 - **L2 combination editor** — a surface that did not exist before: combinations list on the
   left, a per-case factor grid + ASCE-7 generator on the right.
   `phase21_outputs/loads_ux/L2_combinations_light.png`, `…_dark.png`.
+- **A3 pushover / time-history** — flat left forms became Control / Initial-conditions / Solver
+  (pushover) and Monitor / Ground-motion / Damping-&-mass (time-history) cards; the live
+  right-side plot and run controls are unchanged.
+  `phase21_outputs/loads_ux/A3_pushover_light.png`, `…_dark.png`,
+  `A3_timehistory_light.png`, `…_dark.png`.

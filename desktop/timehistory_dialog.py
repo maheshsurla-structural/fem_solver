@@ -20,7 +20,9 @@ from PySide6.QtWidgets import (QComboBox, QDialog, QDoubleSpinBox, QFileDialog,
                                QProgressBar, QPushButton, QSpinBox, QVBoxLayout,
                                QWidget)
 
+import analysis_ui as ui
 import nonlinear as NL
+import style
 
 # direction label -> (direction string, translational DOF index)
 _DIRS = [("X", ("x", 0)), ("Y", ("y", 1)), ("Z", ("z", 2))]
@@ -82,9 +84,12 @@ class TimeHistoryDialog(QDialog):
         self._result: dict | None = None
         outer = QHBoxLayout(self)
 
-        # ---- left: inputs ----
+        # ---- left: grouped inputs + run controls (plan A3) ----
         left = QWidget()
-        form = QFormLayout(left)
+        left.setMaximumWidth(380)
+        lv = QVBoxLayout(left)
+        lv.setContentsMargins(0, 0, 0, 0)
+        lv.setSpacing(style.SP_MD)
         node_ids = [n.id for n in project.nodes]
         free = [n.id for n in project.nodes
                 if not (n.supports and any(n.supports))]
@@ -92,32 +97,44 @@ class TimeHistoryDialog(QDialog):
                                 default=(free[-1] if free else
                                          (node_ids[-1] if node_ids else None)))
         self.direction = self._combo(_DIRS, default=("y", 1))
-        form.addRow("Monitor node", self.node)
-        form.addRow("Direction", self.direction)
-
         self.rec_btn = QPushButton("Load record…")
         self.rec_btn.clicked.connect(self._load_record)
         self.rec_lbl = QLabel("(no record)")
-        form.addRow(self.rec_btn, self.rec_lbl)
-
         self.dt = self._spin(0.01, decimals=5, step=0.001)
         self.scale = self._spin(1.0, decimals=4, step=0.1)
         self.in_g = QComboBox()
         self.in_g.addItems(["record in m/s²", "record in g"])
         self.zeta = self._spin(0.05, decimals=3, step=0.01)
         self.density = self._spin(2400.0, decimals=1, step=100.0, big=True)
-        form.addRow("dt [s]", self.dt)
-        form.addRow("Scale factor", self.scale)
-        form.addRow("Units", self.in_g)
-        form.addRow("Damping ζ", self.zeta)
-        form.addRow(f"Density [kg/{project.length_unit}³]", self.density)
+
+        monitor = ui.GroupCard("Monitor")
+        monitor.add_row("Monitor node", self.node)
+        monitor.add_row("Direction", self.direction)
+
+        gm = ui.GroupCard("Ground motion")
+        rec_host = QWidget()
+        rh = QHBoxLayout(rec_host)
+        rh.setContentsMargins(0, 0, 0, 0)
+        rh.addWidget(self.rec_btn)
+        rh.addWidget(self.rec_lbl, 1)
+        gm.add_row("Record", rec_host)
+        gm.add_row("dt [s]", self.dt)
+        gm.add_row("Scale factor", self.scale)
+        gm.add_row("Units", self.in_g)
+
+        model = ui.GroupCard("Damping & mass")
+        model.add_row("Damping ζ", self.zeta)
+        model.add_row(f"Density [kg/{project.length_unit}³]", self.density)
+
+        for card in (monitor, gm, model):
+            lv.addWidget(card)
 
         self.bar = QProgressBar()
-        form.addRow(self.bar)
+        lv.addWidget(self.bar)
         self.log = QPlainTextEdit()
         self.log.setReadOnly(True)
         self.log.setMaximumHeight(110)
-        form.addRow(self.log)
+        lv.addWidget(self.log)
 
         row = QHBoxLayout()
         self.run_btn = QPushButton("Run")
@@ -132,7 +149,8 @@ class TimeHistoryDialog(QDialog):
         row.addWidget(self.cancel_btn)
         row.addStretch(1)
         row.addWidget(close_btn)
-        form.addRow(row)
+        lv.addLayout(row)
+        lv.addStretch(1)
         outer.addWidget(left, 0)
 
         # ---- right: response-history plot ----
@@ -153,6 +171,7 @@ class TimeHistoryDialog(QDialog):
         rv.addLayout(qrow)
         outer.addWidget(rightw, 1)
         self._draw()
+        style.apply(self)
 
     # ------------------------------------------------ helpers
     @staticmethod
