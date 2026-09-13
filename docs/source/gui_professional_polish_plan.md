@@ -178,7 +178,7 @@ Pick the lowest-numbered unchecked item whose deps are met.
 | T4 | **Status bar** with real context (units · selection · coords · theme/density) | T2 | [ ] | |
 | T5 | **Empty states** for viewport / tree / properties (no model · no results) | — | [ ] | |
 | V1 | Viewport **themes** (bg/grid/axis + entity colours from tokens; repaint on theme change) | — | [x] | `feat(gui-polish V1)` · 2026-09-13 |
-| V2 | Replace plot-style `show_grid()` with a **CAD ground grid + origin triad** | V1 | [ ] | |
+| V2 | Replace plot-style `show_grid()` with a **CAD ground grid + origin triad** | V1 | [x] | `feat(gui-polish V2)` · 2026-09-13 |
 | D1 | Redesign **Material editor** onto the scaffold | — | [ ] | |
 | D2 | Redesign **Hinge editor / assignment** onto the scaffold | — | [ ] | |
 | D3 | Polish **Model-checks · Section-import · Run-history · Design · Drawings** dialogs | — | [ ] | |
@@ -213,3 +213,16 @@ different, finished product.
   `V1_after_light`, `V1_after_dark` (off_screen pyvista render of the same scene, since the
   Qt `offscreen` platform can push meshes but can't read pixels back). No `project.py` / solver
   changes; `ModelView` is imported only by `main_window.py`, whose call sites are untouched.
+- 2026-09-13 — **V2 done.** `_draw_grid()` (`desktop/model_view.py`) no longer draws PyVista's
+  plot-style bounds box. It now lays a **CAD ground grid** — line segments in the model's ground
+  plane (`z = base`), spanning the model bounds at a "nice" 1/2/5×10ⁿ step (`_nice_step`), a hair
+  behind the model plane so it reads as a floor — plus a **corner XYZ orientation triad**
+  (`add_axes`, label ink themed). Grid colour from `style.VIEW_GRID`. The builder is a pure
+  module function `_build_ground_grid(model)` (returns a lines `PolyData`, `None` for an empty
+  model) so it's testable without GL and reusable by the screenshot harness. 4 offscreen tests in
+  `test_desktop_viewport_grid.py` (`_nice_step` snapping + line-count sanity, the grid brackets
+  the frame in x/y and sits at z ≤ 0, empty-model guard, and a live `set_model`→`_draw_grid`
+  rebuild leaving a stable `groundgrid` actor). Full desktop suite green (196 passed, 1 skipped).
+  Visual record `phase21_outputs/gui_polish/V2_ground_grid_{light,dark}` (2-D) and
+  `V2_ground_grid_3d_{light,dark}` (the floor reads correctly under an isometric 3-D frame). No
+  `project.py` / solver changes. **Phase V (viewport) complete.**

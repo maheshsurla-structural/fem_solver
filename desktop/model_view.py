@@ -6,6 +6,7 @@ one entry point: clear, draw members / nodes / supports, frame the camera.
 """
 from __future__ import annotations
 
+import math
 from functools import partial
 
 import numpy as np
@@ -24,6 +25,59 @@ import style
 def _diagram_color(kind: str) -> str:
     return {"N": style.V_DIAG_N, "V": style.V_DIAG_V,
             "M": style.V_DIAG_M}.get(kind, style.V_DIAG_N)
+
+
+def _nice_step(span: float) -> float:
+    """A tidy grid spacing ≈ span/10, snapped to 1 / 2 / 5 × 10ⁿ."""
+    if span <= 0:
+        return 1.0
+    raw = span / 10.0
+    mag = 10.0 ** math.floor(math.log10(raw))
+    for m in (1.0, 2.0, 5.0):
+        if m * mag >= raw:
+            return m * mag
+    return 10.0 * mag
+
+
+def _build_ground_grid(model):
+    """A CAD ground grid — line segments in the model's ground plane (z = base),
+    spanning the model bounds at a 'nice' step. This is the professional floor
+    grid that replaces PyVista's plot-style bounds box. Returns a lines
+    ``PolyData``, or ``None`` for an empty model."""
+    import pyvista as pv
+    if model is None or not len(getattr(model, "nodes", {})):
+        return None
+    _t, pts, _i = mg.node_points(model)
+    pts = np.asarray(pts, dtype=float)
+    if not len(pts):
+        return None
+    lo, hi = pts.min(axis=0), pts.max(axis=0)
+    span = float(max(hi[0] - lo[0], hi[1] - lo[1], 1.0))
+    step = _nice_step(span)
+    x0 = math.floor((lo[0] - step) / step) * step
+    x1 = math.ceil((hi[0] + step) / step) * step
+    y0 = math.floor((lo[1] - step) / step) * step
+    y1 = math.ceil((hi[1] + step) / step) * step
+    z = float(lo[2]) - 0.01 * span               # a hair behind the model plane
+    verts, lines = [], []
+
+    def _seg(a, b):
+        i = len(verts)
+        verts.append(a)
+        verts.append(b)
+        lines.extend((2, i, i + 1))
+
+    n = x0
+    while n <= x1 + step * 0.5:                   # lines of constant x
+        _seg((n, y0, z), (n, y1, z))
+        n += step
+    n = y0
+    while n <= y1 + step * 0.5:                   # lines of constant y
+        _seg((x0, n, z), (x1, n, z))
+        n += step
+    poly = pv.PolyData(np.asarray(verts, dtype=float))
+    poly.lines = np.asarray(lines, dtype=np.int64)
+    return poly
 
 
 def _deformed_point(node, scale: float) -> np.ndarray:
@@ -317,17 +371,21 @@ class ModelView(QtInteractor):
         self.render()
 
     def _draw_grid(self) -> None:
-        """A themed bounds grid — coloured from the palette, with the plot-style
-        axis *titles* removed (V2 replaces this with a CAD ground grid + origin
-        triad)."""
+        """A CAD ground grid in the model plane plus a corner orientation triad —
+        the professional replacement for PyVista's plot-style bounds box (the old
+        'X Axis / Y Axis' frame). Colours come from the palette."""
+        self.remove_actor("groundgrid", render=False)
         try:
-            self.show_grid(color=style.VIEW_AXIS, xtitle="", ytitle="",
-                           ztitle="")
-        except Exception:                    # keep rendering across PyVista drift
-            try:
-                self.show_grid()
-            except Exception:
-                pass
+            grid = _build_ground_grid(self._model)
+        except Exception:
+            grid = None
+        if grid is not None:
+            self.add_mesh(grid, color=style.VIEW_GRID, line_width=1,
+                          name="groundgrid", pickable=False)
+        try:                                 # corner XYZ orientation gizmo
+            self.add_axes(color=style.TEXT, line_width=2)
+        except Exception:
+            pass
 
     def apply_theme(self) -> None:
         """Re-read the palette (background + entity inks) and repaint the current
