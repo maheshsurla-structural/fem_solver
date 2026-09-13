@@ -312,6 +312,37 @@ class BeamColumn2D(Element):
         K_loc = self._K_local_numerical(use_current_state=True)
         return T.T @ K_loc @ T
 
+    def K_geometric_global(self) -> np.ndarray:
+        """Consistent geometric (stress-stiffening) stiffness in global
+        coordinates, evaluated at the element's current axial force ``N``
+        (tension positive). DOF order ``[u1, v1, theta1, u2, v2, theta2]``.
+
+        This is the standard matrix eigenvalue buckling uses: the tangent is
+        ``K_T = K + K_g`` and the critical load factor solves
+        ``(K + lambda K_g) phi = 0``. ``N`` is read from the current
+        displacement state, which a preceding linear-static analysis under the
+        reference load establishes. The classic axial-force geometric
+        stiffness (cubic-Hermite consistent form) is used — it recovers the
+        Euler load as the member is refined, so global-frame and (with
+        sub-division) member buckling are both captured.
+        """
+        L, _, _ = self.length_and_angle()
+        T = self.transform_matrix()
+        u_l = T @ self.gather_u()
+        # axial force from the current local axial elongation (tension +)
+        N = self.material.E * self.area / L * (u_l[3] - u_l[0])
+        c = N / L
+        L2 = L * L
+        kg = c * np.array([
+            [0.0, 0.0,      0.0,         0.0, 0.0,      0.0     ],
+            [0.0, 6.0 / 5,  L / 10,      0.0, -6.0 / 5, L / 10  ],
+            [0.0, L / 10,   2 * L2 / 15, 0.0, -L / 10,  -L2 / 30],
+            [0.0, 0.0,      0.0,         0.0, 0.0,      0.0     ],
+            [0.0, -6.0 / 5, -L / 10,     0.0, 6.0 / 5,  -L / 10 ],
+            [0.0, L / 10,   -L2 / 30,    0.0, -L / 10,  2 * L2 / 15],
+        ])
+        return T.T @ kg @ T
+
     def f_int_global(self) -> np.ndarray:
         """Internal nodal force at the current state.
 

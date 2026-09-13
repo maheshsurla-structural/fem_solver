@@ -445,6 +445,254 @@ class MainWindow(QMainWindow):
             f"Solved · max|u| {dmax:.3e} m · deformation ×{scale:.0f}")
         return info
 
+    def run_modal(self, num_modes=None, lumped=None):
+        """Free-vibration modal analysis (Analysis-cases ▸ Modal).
+
+        Builds the model (geometry + supports; loads are irrelevant to an
+        eigen solve), extracts the lowest modes via
+        :class:`femsolver.analysis.eigen.EigenAnalysis`, and opens the
+        results table whose selection previews each mode shape on the view.
+        Mass comes from material density — a zero-mass model is reported
+        with a pointer to the Material editor rather than a solver error.
+        """
+        import numpy as np
+
+        from femsolver import EigenAnalysis
+
+        ready = self._modal_ready_model()
+        if ready is None:
+            return None
+        model, neq = ready
+
+        max_modes = max(1, neq - 1)
+        if num_modes is None:
+            from modal_dialog import ModalDialog
+            cfg = ModalDialog.configure(self, max_modes=max_modes,
+                                        default_modes=min(6, max_modes))
+            if cfg is None:
+                return None
+            num_modes, lumped = cfg
+        num_modes = max(1, min(int(num_modes), max_modes))
+        lumped = bool(lumped)
+
+        try:
+            info = EigenAnalysis(model, num_modes=num_modes,
+                                 lumped=lumped).run()
+        except Exception as exc:                           # noqa: BLE001
+            QMessageBox.warning(
+                self, "Modal analysis",
+                f"The eigen solve failed:\n\n{exc}")
+            return None
+
+        def _show_mode(k: int) -> None:
+            for node in model.nodes.values():
+                md = getattr(node, "mode_disp", None)
+                if md is None:
+                    continue
+                node.disp = np.asarray(md, dtype=float)[:, k].copy()
+            dmax = mg.max_translation(model)
+            span = mg.model_span(model)
+            scale = (0.08 * span / dmax) if dmax > 0 else 1.0
+            self.view.show_deformed(model, scale)
+            self.statusBar().showMessage(
+                f"Mode {k + 1}: T = {info['periods_s'][k]:.4g} s, "
+                f"f = {info['frequencies_hz'][k]:.4g} Hz")
+
+        from modal_results_dialog import ModalResultsDialog
+        # hold a reference — the dialog is non-modal so the view updates live
+        self._modal_results_dlg = ModalResultsDialog.show_results(
+            self, info, _show_mode)
+
+        periods = info.get("periods_s", [])
+        t1 = next((t for t in periods if t and t not in (float("inf"),)), None)
+        self.log.appendPlainText(
+            f"Modal solved: {info.get('num_modes', '?')} modes, "
+            + (f"T₁ = {t1:.4g} s" if t1 else "no finite modes"))
+        return info
+
+    def _modal_ready_model(self):
+        """Build the model for a modal-based analysis and validate it carries
+        mass. Returns ``(model, neq)`` or ``None`` (after showing why)."""
+        import numpy as np
+
+        from femsolver.analysis.assembler import assemble_mass
+
+        p = self._project
+        if p is None or not p.members:
+            self.statusBar().showMessage("Add members first.")
+            return None
+        model = p.build_model(with_loads=False)
+        if not model.elements:
+            self.statusBar().showMessage("Nothing to solve — add members first.")
+            return None
+        model.number_dofs()
+        if model.neq < 2:
+            QMessageBox.information(
+                self, "Analysis",
+                "The model has too few free DOFs — release some supports "
+                "or add members.")
+            return None
+        if abs(assemble_mass(model)).max() <= 0.0:
+            QMessageBox.information(
+                self, "Analysis",
+                "The model has no mass — every material's density is zero.\n\n"
+                "Open the Material editor and set a density (ρ, kg/m³) on the "
+                "materials your members use, then run again.")
+            return None
+        return model, model.neq
+
+    def run_response_spectrum(self, config=None):
+        """Response-spectrum (modal-superposition) seismic analysis
+        (Analysis-cases ▸ Response Spectrum).
+
+        Extracts modes, samples the design spectrum, combines the modal peaks
+        (SRSS / CQC) into a single peak response drawn on the view, and reports
+        per-mode participation. ``config`` = ``(spectrum, num_modes, direction,
+        combination)`` bypasses the setup dialog (for tests / scripting).
+        """
+        import numpy as np
+
+        from femsolver import ResponseSpectrumAnalysis
+        from femsolver.analysis.assembler import assemble_mass
+
+        ready = self._modal_ready_model()
+        if ready is None:
+            return None
+        model, neq = ready
+        max_modes = max(1, neq - 1)
+
+        if config is None:
+            from response_spectrum_dialog import ResponseSpectrumDialog
+            config = ResponseSpectrumDialog.configure(
+                self, ndm=self._project.ndm, max_modes=max_modes,
+                default_modes=min(6, max_modes))
+            if config is None:
+                return None
+        spectrum, num_modes, direction, combination = config
+        num_modes = max(1, min(int(num_modes), max_modes))
+
+        try:
+            info = ResponseSpectrumAnalysis(
+                model, spectrum, num_modes=num_modes, direction=direction,
+                combination=combination).run()
+        except Exception as exc:                           # noqa: BLE001
+            QMessageBox.warning(
+                self, "Response spectrum",
+                f"The response-spectrum solve failed:\n\n{exc}")
+            return None
+
+        # total in-direction mass ιᵀMι → turns effective modal masses into %
+        M = assemble_mass(model)
+        idx = {"x": 0, "y": 1, "z": 2}.get(direction, 0)
+        iota = np.zeros(model.neq)
+        for node in model.nodes.values():
+            if idx < node.ndf:
+                eq = int(node.eqn[idx])
+                if eq >= 0:
+                    iota[eq] = 1.0
+        total_dir_mass = float(iota @ (M @ iota))
+
+        # the engine scattered the combined peak into Node.disp — draw it
+        dmax = mg.max_translation(model)
+        span = mg.model_span(model)
+        scale = (0.08 * span / dmax) if dmax > 0 else 1.0
+        self.view.show_deformed(model, scale)
+
+        from response_spectrum_results_dialog import \
+            ResponseSpectrumResultsDialog
+        self._rs_results_dlg = ResponseSpectrumResultsDialog.show_results(
+            self, info, total_dir_mass)
+
+        pct = (100.0 * info.get("total_participating_mass", 0.0)
+               / total_dir_mass) if total_dir_mass > 0 else 0.0
+        self.log.appendPlainText(
+            f"Response spectrum solved: {info.get('num_modes', '?')} modes, "
+            f"dir {direction.upper()}, {combination.upper()}, "
+            f"participating mass {pct:.1f}%, max|u| = {dmax:.4e} m")
+        self.statusBar().showMessage(
+            f"Response spectrum · {combination.upper()} {direction.upper()} · "
+            f"participating mass {pct:.1f}% · max|u| {dmax:.3e} m")
+        return info
+
+    def _reference_load_label(self, selection) -> str:
+        kind = selection[0] if selection else "all"
+        if kind == "case":
+            c = self._project.load_case(selection[1])
+            return f"case {c.name}" if c else f"case {selection[1]}"
+        if kind == "combination":
+            c = self._project.combination(selection[1])
+            return f"combo {c.name}" if c else f"combo {selection[1]}"
+        return "all load cases"
+
+    def run_buckling(self, config=None):
+        """Linear (eigenvalue) buckling analysis (Analysis-cases ▸ Buckling).
+
+        Builds a member-sub-divided model under a chosen reference load, forms
+        the dedicated geometric stiffness on the elastic beams, and solves
+        ``(K + λ·K_g)·φ = 0`` via
+        :class:`femsolver.analysis.buckling.LinearBucklingAnalysis`. The
+        critical factor λ multiplies the reference load. ``config`` =
+        ``(selection, num_modes, subdivisions)`` bypasses the setup dialog.
+        """
+        import numpy as np
+
+        from femsolver import LinearBucklingAnalysis
+
+        p = self._project
+        if p is None or not p.members:
+            self.statusBar().showMessage("Add members first.")
+            return None
+        if p.ndm != 2:
+            QMessageBox.information(
+                self, "Buckling",
+                "Linear buckling is currently 2-D only.")
+            return None
+
+        if config is None:
+            from buckling_dialog import BucklingDialog
+            config = BucklingDialog.configure(self, p)
+            if config is None:
+                return None
+        selection, num_modes, subdivisions = config
+
+        model, _subs = p.build_buckling_model(selection=selection,
+                                              subdivisions=subdivisions)
+        model.number_dofs()
+        max_modes = max(1, model.neq - 2)
+        num_modes = max(1, min(int(num_modes), max_modes))
+
+        try:
+            info = LinearBucklingAnalysis(model, num_modes=num_modes).run()
+        except Exception as exc:                           # noqa: BLE001
+            QMessageBox.warning(
+                self, "Buckling",
+                f"The buckling solve did not find a critical load:\n\n{exc}")
+            return None
+
+        def _show_mode(k: int) -> None:
+            for node in model.nodes.values():
+                md = getattr(node, "mode_disp", None)
+                if md is None or md.shape[1] <= k:
+                    continue
+                node.disp = np.asarray(md, dtype=float)[:, k].copy()
+            dmax = mg.max_translation(model)
+            span = mg.model_span(model)
+            scale = (0.08 * span / dmax) if dmax > 0 else 1.0
+            self.view.show_deformed(model, scale)
+            self.statusBar().showMessage(
+                f"Buckling mode {k + 1}: λ = {info['load_factors'][k]:.4g}")
+
+        ref_label = self._reference_load_label(selection)
+        from buckling_results_dialog import BucklingResultsDialog
+        self._buckling_results_dlg = BucklingResultsDialog.show_results(
+            self, info, ref_label, _show_mode)
+
+        self.log.appendPlainText(
+            f"Buckling solved: {info.get('num_modes', '?')} modes, "
+            f"critical λ = {info.get('critical_load_factor', float('nan')):.4g} "
+            f"× ({ref_label})")
+        return info
+
     def run_pushover_dialog(self, preselect_case=None) -> None:
         from pushover_dialog import PushoverDialog
         p = self._project
@@ -1034,6 +1282,12 @@ class MainWindow(QMainWindow):
             self.run_pushover_dialog(preselect_case=run[1])
         elif kind == "timehistory":
             self.run_timehistory_dialog()
+        elif kind == "modal":
+            self.run_modal()
+        elif kind == "responsespectrum":
+            self.run_response_spectrum()
+        elif kind == "buckling":
+            self.run_buckling()
 
     def _on_double_click(self, item, _col) -> None:
         ref = item.data(0, Qt.ItemDataRole.UserRole)

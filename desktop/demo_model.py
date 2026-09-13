@@ -13,7 +13,7 @@ def demo_project(bays: int = 2, storeys: int = 2,
                  bay: float = 4.0, storey: float = 3.0) -> Project:
     """A 2-D moment frame (fixed base) with an inverted-triangle lateral load."""
     p = Project(name="Demo portal frame", ndm=2, ndf=3)
-    p.materials.append(Material(id=1, name="A992", E=200e9, nu=0.3))
+    p.materials.append(Material(id=1, name="A992", E=200e9, nu=0.3, rho=7850.0))
     p.sections.append(Section(id=1, name="W12x65", A=0.012323, Iz=2.2185e-4,
                               shape="W12x65"))
 
@@ -48,7 +48,7 @@ def demo_project_3d(L: float = 5.0, H: float = 4.0) -> Project:
     """A single-storey 3-D moment frame (fixed base, box roof) with a lateral
     load in +x — exercises 3-D build / solve / design."""
     p = Project(name="Demo 3-D frame", ndm=3, ndf=6)
-    p.materials.append(Material(id=1, name="A992", E=200e9, nu=0.3))
+    p.materials.append(Material(id=1, name="A992", E=200e9, nu=0.3, rho=7850.0))
     p.sections.append(Section(id=1, name="W12x65", A=0.012323, Iz=2.2185e-4,
                               shape="W12x65"))
     corners = [(0.0, 0.0), (L, 0.0), (L, L), (0.0, L)]

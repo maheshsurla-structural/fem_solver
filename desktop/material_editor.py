@@ -84,6 +84,14 @@ class MaterialDialog(QDialog):
         self.name = QLineEdit(material.name if material else "New material")
         self.name.textChanged.connect(self._redraw)
         ident.add_row("Name", self.name)
+        # density drives element self-mass — required for Modal / Response
+        # Spectrum. Applies to every kind, so it lives on the Identity card.
+        self.rho = QDoubleSpinBox()
+        self.rho.setRange(0.0, 1.0e6)
+        self.rho.setDecimals(1)
+        self.rho.setSingleStep(50.0)
+        self.rho.setValue(material.rho if material else 7850.0)   # steel default
+        ident.add_row("Density ρ [kg/m³]", self.rho)
         self.kind = QComboBox()
         for key, label in M.MATERIAL_KINDS.items():
             self.kind.addItem(label, key)
@@ -168,10 +176,12 @@ class MaterialDialog(QDialog):
     def data(self) -> Material:
         kind = self._current_kind()
         p = self._read_params()
+        rho = float(self.rho.value())
         if kind == "elastic_isotropic":
             return Material(id=self.id_spin.value(), name=self.name.text(),
                             E=float(p.get("E", 200e9)),
-                            nu=float(p.get("nu", 0.3)), kind=kind, params={})
+                            nu=float(p.get("nu", 0.3)), kind=kind, rho=rho,
+                            params={})
         # representative modulus for the linear frame stiffness fallback
         if kind == "concrete_kentpark":
             E_rep = 2.0 * p["fc"] / p["eps_c0"]
@@ -181,7 +191,8 @@ class MaterialDialog(QDialog):
             E_rep = p.get("E", 200e9)
         params = {k: v for k, v in p.items() if k not in ("E", "nu")}
         mat = Material(id=self.id_spin.value(), name=self.name.text(),
-                       E=float(E_rep), nu=0.2, kind=kind, params=params)
+                       E=float(E_rep), nu=0.2, kind=kind, rho=rho,
+                       params=params)
         if kind in ("reinforcing_steel", "cyclic_steel"):
             mat.fy, mat.fu = float(p["fy"]), float(p["fu"])
             mat.params["E"] = float(p.get("E", 200e9))

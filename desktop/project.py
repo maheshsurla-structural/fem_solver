@@ -27,6 +27,7 @@ class Material:
     E: float
     nu: float = 0.3
     kind: str = "elastic_isotropic"
+    rho: float = 0.0              # mass density (kg/m³) — self-mass for modal/RS
     fy: float = 345.0e6           # yield (A992 = 345 MPa) — for design checks
     fu: float = 448.0e6           # ultimate (A992 = 448 MPa)
     # Inelastic (fiber) constitutive parameters, per ``kind`` — e.g. concrete
@@ -339,7 +340,8 @@ class Project:
         m = Model(ndm=self.ndm, ndf=self.ndf)
         mats = {}
         for mat in self.materials:
-            obj = ElasticIsotropic(mat.id, E=mat.E, nu=mat.nu)
+            obj = ElasticIsotropic(mat.id, E=mat.E, nu=mat.nu,
+                                   rho=getattr(mat, "rho", 0.0))
             m.add_material(obj)
             mats[mat.id] = obj
         secs = {s.id: s for s in self.sections}
@@ -362,7 +364,8 @@ class Project:
                     except Exception:
                         Ec = None
                     if Ec:
-                        cm = ElasticIsotropic(10_000 + sec.id, E=Ec, nu=0.2)
+                        cm = ElasticIsotropic(10_000 + sec.id, E=Ec, nu=0.2,
+                                              rho=getattr(material, "rho", 0.0))
                         m.add_material(cm)
                         gsd_mats[sec.id] = cm
                 if cm is not None:
@@ -379,6 +382,89 @@ class Project:
         if with_loads:
             self.apply_loads(m, ("all", None))
         return m
+
+    def build_buckling_model(self, selection=("all", None),
+                             subdivisions: int = 6):
+        """Compile a model for linear (eigenvalue) buckling: each member is
+        meshed into ``subdivisions`` sub-elements so member (Euler) buckling
+        between joints is captured, not just global sway. The reference load
+        ``selection`` (``("all", None)`` / ``("case", id)`` /
+        ``("combination", id)``) is applied — the buckling factor λ multiplies
+        it. 2-D only for now (``BeamColumn2D`` carries the geometric stiffness).
+
+        Returns ``(model, member_subelems)`` where ``member_subelems`` maps
+        each original member id to its list of sub-element ids."""
+        from femsolver import BeamColumn2D, ElasticIsotropic, Model
+
+        if self.ndm != 2:
+            raise ValueError("linear buckling is currently 2-D only")
+        k = max(1, int(subdivisions))
+
+        m = Model(ndm=2, ndf=3)
+        mats = {}
+        for mat in self.materials:
+            obj = ElasticIsotropic(mat.id, E=mat.E, nu=mat.nu,
+                                   rho=getattr(mat, "rho", 0.0))
+            m.add_material(obj)
+            mats[mat.id] = obj
+        secs = {s.id: s for s in self.sections}
+        gsd_mats: dict = {}
+
+        coord = {}
+        for nd in self.nodes:
+            m.add_node(nd.id, nd.x, nd.y)
+            coord[nd.id] = (nd.x, nd.y)
+        nid = max((nd.id for nd in self.nodes), default=0) + 1
+        eid = max((mb.id for mb in self.members), default=0) + 1
+
+        member_subelems: dict = {}
+        for mb in self.members:
+            sec = secs[mb.section]
+            A, Iz, _Iy, _J = _resolve_section(sec)
+            material = mats[mb.material]
+            if getattr(sec, "gsd_spec", None):
+                cm = gsd_mats.get(sec.id)
+                if cm is None:
+                    try:
+                        Ec = _gsd_modulus(sec.gsd_spec)
+                    except Exception:
+                        Ec = None
+                    if Ec:
+                        cm = ElasticIsotropic(10_000 + sec.id, E=Ec, nu=0.2,
+                                              rho=getattr(material, "rho", 0.0))
+                        m.add_material(cm)
+                        gsd_mats[sec.id] = cm
+                if cm is not None:
+                    material = cm
+            x1, y1 = coord[mb.n1]
+            x2, y2 = coord[mb.n2]
+            chain = [mb.n1]
+            for j in range(1, k):
+                t = j / k
+                m.add_node(nid, x1 + t * (x2 - x1), y1 + t * (y2 - y1))
+                chain.append(nid)
+                nid += 1
+            chain.append(mb.n2)
+            subs = []
+            for a, b in zip(chain[:-1], chain[1:]):
+                m.add_element(BeamColumn2D(eid, (a, b), material, A, Iz))
+                subs.append(eid)
+                eid += 1
+            member_subelems[mb.id] = subs
+
+        for nd in self.nodes:
+            if nd.supports and any(nd.supports):
+                m.fix(nd.id, list(nd.supports))
+
+        nodal, member = self.resolved_loads(selection)
+        for node_id, comps in nodal.items():
+            m.add_nodal_load(node_id, list(comps))
+        for mid, (wy, _wz) in member.items():
+            for sid in member_subelems.get(mid, []):
+                el = m.element(sid)
+                if hasattr(el, "add_uniform_load"):
+                    el.add_uniform_load(wy)
+        return m, member_subelems
 
     # ------------------------------------------------- load application
     def _selection_factors(self, selection) -> dict:

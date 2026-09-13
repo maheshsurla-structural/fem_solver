@@ -61,7 +61,8 @@ from scipy.linalg import eigh
 from scipy.sparse.linalg import eigsh
 
 from femsolver.analysis.assembler import assemble_stiffness
-from femsolver.analysis.static_integrator import _assemble_tangent
+from femsolver.analysis.static_integrator import (_assemble_geometric,
+                                                   _assemble_tangent)
 from femsolver.analysis.linear_static import LinearStaticAnalysis
 from femsolver.numerics.dof_numbering import rcm_renumber
 
@@ -131,18 +132,26 @@ class LinearBucklingAnalysis:
         # geometric softening from the induced internal forces).
         LinearStaticAnalysis(m).run()
 
-        # Step 3: assemble K (initial) and K_T (tangent at loaded state).
+        # Step 3: assemble K (initial) and the geometric stiffness K_g.
+        # Elements that expose a dedicated K_geometric_global (the elastic
+        # beams, and corotational elements via their override) get the
+        # geometric stiffness assembled directly — this is the standard
+        # commercial formulation and works on ordinary linear frame models.
+        # Otherwise fall back to differencing the tangent at the loaded
+        # state (K_T - K), which recovers K_g for any element that only
+        # supplies a state-dependent K_tangent_global (e.g. shells).
         K_sparse = assemble_stiffness(m)
-        K_T_sparse = _assemble_tangent(m)
-        K_g_sparse = (K_T_sparse - K_sparse).tocsc()
+        elements = list(m.elements.values())
+        if elements and all(hasattr(e, "K_geometric_global") for e in elements):
+            K_g_sparse = _assemble_geometric(m).tocsc()
+        else:
+            K_g_sparse = (_assemble_tangent(m) - K_sparse).tocsc()
         if abs(K_g_sparse).max() < 1.0e-12 * max(1.0, abs(K_sparse).max()):
             raise RuntimeError(
-                "geometric stiffness K_g is essentially zero — the model "
-                "has no elements with a state-dependent K_tangent_global, "
-                "or the loads do not create internal forces. For linear "
-                "buckling, use corotational elements (Truss2DCorotational, "
-                "BeamColumn2DCorotational) and an axial / compressive "
-                "load pattern."
+                "geometric stiffness K_g is essentially zero — the reference "
+                "load induces no axial force, so there is nothing to buckle. "
+                "Apply a compressive axial load path (and, for member "
+                "buckling, ensure the members carry compression)."
             )
 
         # Step 4: solve K_g v = nu K v. Sparse (eigsh + shift-invert)

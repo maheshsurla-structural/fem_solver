@@ -8,13 +8,19 @@ One table lists **every** analysis case with a Type column and icon:
 * **Nonlinear Static** — each saved :class:`project.NonlinearCase`; add / modify
   / delete these here (delegating to :class:`nonlinear_cases.NonlinearCaseDialog`).
 * **Time History** — a built-in launcher for the nonlinear dynamic dialog.
-* **Modal / Response Spectrum / Buckling / Moving Load** — greyed roadmap rows
-  so the list signals where the product is going (matching the reference tools).
+* **Modal** — a built-in launcher for the free-vibration eigen-analysis.
+* **Response Spectrum** — a built-in launcher for the modal-superposition
+  seismic analysis (design spectrum → SRSS / CQC).
+* **Buckling** — a built-in launcher for linear (eigenvalue) buckling
+  ``(K + λ·K_g)·φ = 0`` on a member-sub-divided model.
+* **Moving Load** — greyed roadmap row so the list signals where the product
+  is going (matching the reference tools).
 
 The dialog never runs anything itself: **Run** records a request and closes;
 the owning window dispatches it (linear-static run, or opening the pushover /
-time-history dialog). :meth:`manage` returns ``(nonlinear_cases, run_request)``
-or ``None`` if cancelled. Built from the L1 scaffold; headless-constructible.
+time-history / modal runner). :meth:`manage` returns
+``(nonlinear_cases, run_request)`` or ``None`` if cancelled. Built from the L1
+scaffold; headless-constructible.
 """
 from __future__ import annotations
 
@@ -31,7 +37,7 @@ from project import NonlinearCase
 _DOF = {0: "Ux", 1: "Uy", 2: "Rz", 3: "Rx", 4: "Ry", 5: "Rz"}
 
 # roadmap placeholders — shown greyed so the list previews the plan
-_PLANNED = ["Modal", "Response Spectrum", "Buckling", "Moving Load"]
+_PLANNED = ["Moving Load"]
 
 
 def _icon(name: str):
@@ -120,6 +126,16 @@ class AnalysisCasesDialog(QDialog):
                      "type": "Time History",
                      "detail": "ground-motion record", "icon": "run",
                      "runnable": True})
+        rows.append({"kind": "modal", "name": "Modal", "type": "Modal",
+                     "detail": "eigen · free vibration", "icon": "undeformed",
+                     "runnable": True})
+        rows.append({"kind": "responsespectrum", "name": "Response Spectrum",
+                     "type": "Response Spectrum",
+                     "detail": "modal superposition · SRSS/CQC", "icon": "run",
+                     "runnable": True})
+        rows.append({"kind": "buckling", "name": "Buckling", "type": "Buckling",
+                     "detail": "eigenvalue · (K + λ·K_g)", "icon": "run",
+                     "runnable": True})
         for name in _PLANNED:
             rows.append({"kind": "planned", "name": name, "type": name,
                          "detail": "planned", "icon": None, "runnable": False})
@@ -207,6 +223,12 @@ class AnalysisCasesDialog(QDialog):
             self._run_request = ("nonlinear", m["case_id"])
         elif m["kind"] == "timehistory":
             self._run_request = ("timehistory",)
+        elif m["kind"] == "modal":
+            self._run_request = ("modal",)
+        elif m["kind"] == "responsespectrum":
+            self._run_request = ("responsespectrum",)
+        elif m["kind"] == "buckling":
+            self._run_request = ("buckling",)
         self.accept()
 
     @classmethod

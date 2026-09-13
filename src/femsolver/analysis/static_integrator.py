@@ -639,6 +639,42 @@ def _assemble_tangent(model) -> sp.csc_matrix:
     ).tocsc()
 
 
+def _assemble_geometric(model) -> sp.csc_matrix:
+    """Assemble the global geometric (stress-stiffening) stiffness ``K_g``
+    from each element's :meth:`Element.K_geometric_global`. Mirrors
+    :func:`_assemble_tangent`; used by eigenvalue buckling on element types
+    that expose a dedicated geometric stiffness (e.g. the elastic beams)."""
+    neq = model.neq
+    elements = list(model.elements.values())
+    if not elements:
+        return sp.csc_matrix((neq, neq))
+
+    total = 0
+    cache: list[tuple] = []
+    for e in elements:
+        Kg = e.K_geometric_global()
+        dofs = model.element_dof_map(e)
+        cache.append((dofs, Kg))
+        total += dofs.size * dofs.size
+    rows = np.empty(total, dtype=np.int64)
+    cols = np.empty(total, dtype=np.int64)
+    vals = np.empty(total, dtype=float)
+    pos = 0
+    for (dofs, Kg) in cache:
+        n = dofs.size
+        nn = n * n
+        rows[pos : pos + nn] = np.repeat(dofs, n)
+        cols[pos : pos + nn] = np.tile(dofs, n)
+        vals[pos : pos + nn] = np.asarray(Kg, dtype=float).ravel()
+        pos += nn
+    mask = (rows >= 0) & (cols >= 0)
+    if not mask.any():
+        return sp.csc_matrix((neq, neq))
+    return sp.coo_matrix(
+        (vals[mask], (rows[mask], cols[mask])), shape=(neq, neq)
+    ).tocsc()
+
+
 def _assemble_internal_force(model) -> np.ndarray:
     """Assemble ``f_int = sum_e gather(f_int_e)`` over free DOFs."""
     neq = model.neq

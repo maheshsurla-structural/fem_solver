@@ -177,21 +177,24 @@ def test_buckling_rejects_unknown_numberer():
         LinearBucklingAnalysis(model=None, num_modes=1, numberer="banana")
 
 
-def test_buckling_raises_when_no_corotational_elements():
-    """A model built entirely from linear (non-corotational) elements
-    has K_T = K, so K_g is zero — buckling is undefined. The analysis
-    must raise a helpful error explaining the cause."""
+def test_linear_beam_buckles_via_dedicated_geometric_stiffness():
+    """Linear (non-corotational) beams now carry a dedicated geometric
+    stiffness ``K_geometric_global``, so eigenvalue buckling works on an
+    ordinary linear frame model — the standard commercial formulation. A
+    cantilever column recovers the Euler load at effective length ``2L``."""
     E, A, Iz, L = 2.0e11, 1.0e-3, 1.0e-7, 5.0
     mat = ElasticIsotropic(1, E=E, nu=0.3)
     m = Model(ndm=2, ndf=3); m.add_material(mat)
-    m.add_node(1, 0.0, 0.0); m.add_node(2, L, 0.0)
-    # *Linear* beam, not corotational. No geometric stiffness.
-    m.add_element(BeamColumn2D(1, (1, 2), mat, A, Iz))
-    m.fix(1, [1, 1, 1])
-    m.fix(2, [0, 1, 0])
-    m.add_nodal_load(2, [-1.0, 0.0, 0.0])
-    with pytest.raises(RuntimeError, match="geometric stiffness"):
-        LinearBucklingAnalysis(m, num_modes=1).run()
+    n_elem = 8
+    for i in range(n_elem + 1):
+        m.add_node(i + 1, i * L / n_elem, 0.0)
+    for i in range(n_elem):
+        m.add_element(BeamColumn2D(i + 1, (i + 1, i + 2), mat, A, Iz))
+    m.fix(1, [1, 1, 1])                       # fixed base → cantilever
+    m.add_nodal_load(n_elem + 1, [-1.0, 0.0, 0.0])
+    res = LinearBucklingAnalysis(m, num_modes=1).run()
+    P_euler = _euler_load(E=E, Iz=Iz, L=L, effective_length_factor=2.0)
+    assert res["critical_load_factor"] == pytest.approx(P_euler, rel=1.0e-3)
 
 
 def test_buckling_raises_when_no_compression():

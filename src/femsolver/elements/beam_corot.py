@@ -275,6 +275,17 @@ class BeamColumn2DCorotational(BeamColumn2D):
         K_geo = self._K_geometric(c, s, L, f_nat[0], f_nat[1] + f_nat[2])
         return K_mat + K_geo
 
+    def K_geometric_global(self) -> np.ndarray:
+        """Geometric part of the corotational tangent for eigenvalue buckling.
+
+        Overrides the linear consistent form of :class:`BeamColumn2D` with the
+        full corotational geometric stiffness (axial + moment, large-rotation
+        aware): ``K_g = K_tangent_global - K_global``. Summed over the model
+        this reproduces exactly the ``K_T - K`` matrix the buckling driver used
+        historically, so a corotational model's buckling result is unchanged.
+        """
+        return self.K_tangent_global() - self.K_global()
+
     # K_global() inherits from BeamColumn2D and returns the initial
     # elastic stiffness — used by LinearStaticAnalysis and as the first
     # iterate in modified Newton. At u = 0 it coincides with
