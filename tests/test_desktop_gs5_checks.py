@@ -144,6 +144,21 @@ def test_checks_dialog_lists_findings(qapp):
     assert "error" in dlg.summary.text().lower()
 
 
+def test_checks_dialog_colours_by_severity(qapp):
+    """D3: error rows use the themed BAD ink (not a raw hex / default)."""
+    from PySide6.QtGui import QColor
+
+    import style
+    from model_checks_dialog import ModelChecksDialog
+    p = _clean_fiber_column()
+    p.nodes[0] = Node(1, 0.0, 0.0)                  # forces an error finding
+    checks = MC.check_project(p)
+    dlg = ModelChecksDialog(None, checks)
+    err = next(i for i in range(dlg.list.count())
+               if dlg.list.item(i).data(0x0100) == "error")   # UserRole
+    assert dlg.list.item(err).foreground().color() == QColor(style.BAD)
+
+
 def test_pushover_dialog_check_and_advice(qapp):
     pytest.importorskip("matplotlib")
     from pushover_dialog import PushoverDialog

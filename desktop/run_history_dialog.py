@@ -15,10 +15,11 @@ import copy
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as Canvas
 from matplotlib.figure import Figure
-from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QHBoxLayout,
-                               QInputDialog, QLabel, QListWidget, QPushButton,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QDialog, QHBoxLayout, QInputDialog, QLabel,
+                               QListWidget, QPushButton, QVBoxLayout, QWidget)
 
+import style
+from analysis_ui import dialog_buttons
 from femsolver.performance.acceptance import LEVEL_COLORS, LEVELS
 
 
@@ -33,7 +34,9 @@ class RunHistoryDialog(QDialog):
         # ---- left: the list + actions ----
         left = QWidget()
         lv = QVBoxLayout(left)
-        lv.addWidget(QLabel("Saved runs"))
+        hdr = QLabel("Saved runs")
+        hdr.setObjectName("h3")
+        lv.addWidget(hdr)
         self.list = QListWidget()
         self.list.setMinimumWidth(240)
         self.list.currentRowChanged.connect(lambda *_: self._draw())
@@ -56,15 +59,13 @@ class RunHistoryDialog(QDialog):
         self._canvas.setMinimumWidth(440)
         rv.addWidget(self._canvas, 1)
         self._summary = QLabel("")
+        self._summary.setObjectName("sub")
         self._summary.setWordWrap(True)
         rv.addWidget(self._summary)
         outer.addWidget(rightw, 1)
 
-        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        btns.accepted.connect(self.accept)
-        btns.rejected.connect(self.reject)
-        rv.addWidget(btns)
-
+        rv.addWidget(dialog_buttons(self))
+        style.apply(self)
         self._refresh()
 
     # ---------------------------------------------------------- list
@@ -106,15 +107,15 @@ class RunHistoryDialog(QDialog):
         if run is None or not run.x:
             self._ax.text(0.5, 0.5, "(no run selected)", ha="center",
                           va="center", transform=self._ax.transAxes,
-                          fontsize=9, color="0.5")
+                          fontsize=9, color=style.MUTED)
             self._summary.setText("")
         else:
             cyclic = run.protocol == "cyclic"
             self._ax.plot(run.x, run.y, "-" if cyclic else "-o",
-                          ms=3, lw=1.3, color="#1f5f8b")
+                          ms=3, lw=1.3, color=style.C_PRIMARY)
             if cyclic:
-                self._ax.axhline(0, color="0.6", lw=0.6)
-                self._ax.axvline(0, color="0.6", lw=0.6)
+                self._ax.axhline(0, color=style.AX_SPINE, lw=0.6)
+                self._ax.axvline(0, color=style.AX_SPINE, lw=0.6)
             # ASCE 41 first-reach markers (IO/LS/CP), if captured
             for lvl, d in run.milestones.items():
                 if lvl in LEVELS:
@@ -131,7 +132,7 @@ class RunHistoryDialog(QDialog):
             meta = "  ".join(f"{k}: {v}" for k, v in run.meta.items())
             self._summary.setText(f"{run.summary()}\n{meta}"
                                   f"\nrun {run.created}")
-        self._ax.grid(True, alpha=0.25)
+        style.beautify_axes(self._ax)
         self._canvas.draw_idle()
 
     # ---------------------------------------------------------- result

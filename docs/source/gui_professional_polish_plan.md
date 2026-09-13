@@ -181,7 +181,7 @@ Pick the lowest-numbered unchecked item whose deps are met.
 | V2 | Replace plot-style `show_grid()` with a **CAD ground grid + origin triad** | V1 | [x] | `feat(gui-polish V2)` · 2026-09-13 |
 | D1 | Redesign **Material editor** onto the scaffold | — | [x] | `feat(gui-polish D1)` · 2026-09-13 |
 | D2 | Redesign **Hinge editor / assignment** onto the scaffold | — | [x] | `feat(gui-polish D2)` · 2026-09-13 |
-| D3 | Polish **Model-checks · Section-import · Run-history · Design · Drawings** dialogs | — | [ ] | |
+| D3 | Polish **Model-checks · Section-import · Run-history · Design · Drawings** dialogs | — | [x] | `feat(gui-polish D3)` · 2026-09-13 |
 | G1 | **Charter sweep test** — every top-level surface builds + themes in all 4 combos | T1–T5, V1, D1–D3 | [ ] | |
 | G2 | **Visual record** — light/dark (+ density) screenshots of every polished surface | most above | [ ] | |
 
@@ -290,3 +290,18 @@ different, finished product.
   `_combos`/`_all_combo`/`_set_all`. 1 new structure test (`test_hinge_dialog_uses_scaffold_cards`);
   full desktop suite green (215 passed, 1 skipped). Visual record
   `phase21_outputs/gui_polish/D2_hinge_{light,dark}`. No `project.py` / solver changes.
+- 2026-09-13 — **D3 done. Phase D complete.** Of the five D3 names, two are pure logic with no
+  dialog — `section_import.py` (DXF/CSV parser) and `design.py` (DCR compute; the Design *view*
+  renders in the viewport, already themed in V1), so D3 polished the three real dialogs:
+  **Model checks** (`model_checks_dialog.py`) — dropped the dead hard-coded `_COLOR` hex; findings
+  now ink by severity from `style` (`_sev_color`: error=`BAD`, warning=`WARN`, else muted), an
+  `#h3` summary, token margins, `style.apply(self)`. **Run history** (`run_history_dialog.py`) —
+  the matplotlib curve now runs through `style.beautify_axes` + `C_PRIMARY`/`AX_SPINE`/`MUTED`
+  (was raw `#1f5f8b` / `"0.6"`), an `#h3` "Saved runs" header, `#sub` summary,
+  `dialog_buttons(self)`, `style.apply(self)`. **Drawings** (`drawing_window.py`) —
+  `style.apply(self)` themes the window chrome; the GA sheet stays white (it is a print drawing).
+  Contracts preserved (`summary`/`list`/`show_for`; `list`/`_draw`/`result_runs`; export actions).
+  1 new severity-colour test in `test_desktop_gs5_checks.py`; full desktop suite green (216
+  passed, 1 skipped). Visual record `phase21_outputs/gui_polish/D3_checks_{light,dark}`. No
+  `project.py` / solver changes. **Phases V + T + D all complete — only G1 (charter sweep test) +
+  G2 (visual record) remain.**

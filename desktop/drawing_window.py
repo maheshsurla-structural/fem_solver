@@ -10,6 +10,7 @@ from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QFileDialog, QMainWindow, QMessageBox
 
 import drawing
+import style
 
 
 class DrawingWindow(QMainWindow):
@@ -32,7 +33,8 @@ class DrawingWindow(QMainWindow):
         tb.addAction(act_pdf)
         tb.addAction(act_dxf)
 
-        self._redraw()
+        style.apply(self)            # theme the window chrome (the GA sheet
+        self._redraw()               # stays white — it is a print drawing)
 
     def _redraw(self) -> None:
         drawing.draw_sheet(self._project, self.fig)
