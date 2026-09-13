@@ -933,6 +933,24 @@ Legend: ☐ todo ◐ in progress ☑ done. Update the row, add `commit` + `date`
   equivalent, 16/16); `test_desktop_gs4_corecover.py` (6) incl. a **preview‑zoning‑matches‑the‑run**
   contract test (a fibre's material zone in the built section agrees with the preview polygon). Next ◐:
   G‑S5 model checks / diagnostics.
+- 2026‑09‑13 — **G‑S5 shipped (in‑app model checks + non‑convergence guidance).** New Qt‑free
+  `desktop/model_checks.py`: `check_project(project)` runs static sanity checks — topology
+  (empty model, duplicate node ids, members referencing missing nodes/sections/materials, zero‑length
+  members), restraint (unsupported ⇒ rigid‑body mechanism; too‑few DOFs), **unit‑scale plausibility**
+  (an `E`/`Ec`/`Es` outside ~1e9–1e12 Pa, an `f'c`/`f_y` below 1 MPa, or a strain ≥ 1 — the classic
+  "typed MPa/‰ instead of Pa/fraction" blunder), section/fiber readiness (each `gsd_spec` actually
+  builds; cover‑leaves‑no‑core warning; a note when no fiber section ⇒ no nonlinear analysis), and
+  nonlinear‑case wiring (control node/DOF in range, non‑zero target/steps, axial + continue‑from
+  references resolve). Findings are `Check(level, message, hint)` sorted error→warning→info, with
+  `summarize()` counts and `convergence_advice(...)` giving actionable post‑run tips (singular tangent,
+  smaller steps, looser tol in N, more iterations; and a "stopped at step k/N — likely capacity or
+  singular tangent" note, honestly pointing at the already‑enabled C4 adaptive step‑cutting). UI:
+  `model_checks_dialog.ModelChecksDialog` groups findings by severity with icons + fix hints;
+  main window gains **Analysis ▸ Check model…** (`check_model`, logs a one‑line summary); the pushover
+  dialog gains a **Check** button (pre‑run) and surfaces `convergence_advice` in its log on a failed or
+  short run (`_advise` from `_on_done`/`_on_failed`). `test_desktop_gs5_checks.py` (11); broader desktop
+  suite 117 pass / 1 skip, no regressions. **This closes the last G‑S ◐** — the productization S‑series
+  (scrub, persistence, run history, confinement input + core/cover preview, model checks) is complete.
 
 ---
 
@@ -1094,7 +1112,7 @@ current tree, not aspirational. Legend: ☐ todo · ◐ partial · ☑ done.
 | **G‑S2** | **Nonlinear results persistence + re‑open + run history** | ☑ | 2026‑09‑12 — a completed pushover/cyclic/case/time‑history run is now saved to the project as a lean `nl_runs.RunRecord` (curve + summary + ASCE 41 first‑reach milestones + descriptive meta; JSON‑safe, no heavy per‑step frames), carried on `Project.runs` and round‑tripped through the `.fsproj` file (`_load_runs`). The main window records each run as one undoable edit and offers **Analysis → Run history…** (`desktop/run_history_dialog.py`) to re‑view a saved run's curve (with IO/LS/CP markers), rename, or delete. Session‑level scrubbing (`set_nl_results`) unchanged; heavy frames stay session‑only (re‑run to scrub the model). `test_desktop_nl_runs.py` (8). |
 | **G‑S3** | **Run comparison / envelopes** | ☐ | Overlay pushovers, build cyclic backbone/envelope across runs. |
 | **G‑S4** | **Confinement input bridge + core/cover preview** | ☑ | 2026‑09‑12 — the Section Designer **Fibres** tab gained a **"Core / cover"** colour‑by mode: concrete fibres split into a **confined Mander core** (teal) and an **unconfined cover** ring (tan), rebar on top, with the core boundary traced — a CSiBridge‑style two‑zone view. The zoning uses a new engine helper `section_gui_core.confined_core_polygon` (outline inset by the cover), which `_confined_fiber_section` now also uses, so the **preview shows exactly the zones the confined M‑φ / pushover integrate** (regression‑guarded: a fibre's material zone in the built section agrees with the preview polygon). Honestly labelled — "unconfined" when there is no tie group, and "no distinct core" when the cover ≥ half‑dimension. `test_desktop_gs4_corecover.py` (6). Input bridge (tie Link group drives the pushover) was already done under C1. |
-| **G‑S5** | **In‑app model checks / diagnostics** | ◐ | Convergence dock exists; add units/section/material sanity + non‑convergence guidance surfaced pre‑ and post‑run. |
+| **G‑S5** | **In‑app model checks / diagnostics** | ☑ | 2026‑09‑13 — Qt‑free `desktop/model_checks.py` (`check_project`: topology, restraint/mechanism, **unit‑scale plausibility** for E/f'c/f_y/strain, section‑builds + fiber readiness, nonlinear‑case wiring) → `Check(level,message,hint)` + `summarize` + `convergence_advice` (post‑run guidance). `ModelChecksDialog` (grouped by severity, with hints); **Analysis ▸ Check model…** and a **Check** button + post‑run advice in the pushover dialog. `test_desktop_gs5_checks.py` (11). |
 
 ### 16.3 Cross‑cutting product infra
 | ID | Item | State | Notes |
@@ -1124,7 +1142,7 @@ persistence + main‑view scrubbing — makes the tool feel finished) → **C4**
 | G‑S2 results persistence | ☑ | 2026‑09‑12 — RunRecord curve+milestones on Project.runs (JSON round-trip); Run-history dialog (re-view/rename/delete) |
 | G‑S3 run comparison | ☐ | |
 | G‑S4 confinement input + preview | ☑ | 2026‑09‑12 — Fibres-tab "Core / cover" mode (confined core vs unconfined cover) on shared confined_core_polygon; preview = run |
-| G‑S5 model checks | ◐ | |
+| G‑S5 model checks | ☑ | 2026‑09‑13 — model_checks.check_project (topology/restraint/unit-scale/section/NL-case) + convergence_advice; ModelChecksDialog + Analysis ▸ Check model… + pushover Check button & post-run advice |
 | X1 performance | ☐ | |
 | X2 verification manual | ☐ | |
 | X3 packaging/docs | ☐ | |

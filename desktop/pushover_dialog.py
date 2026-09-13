@@ -145,6 +145,9 @@ class PushoverDialog(QDialog):
         form.addRow(self.log)
 
         row = QHBoxLayout()
+        self.check_btn = QPushButton("Check")
+        self.check_btn.setToolTip("Run model sanity checks before analysing")
+        self.check_btn.clicked.connect(self._check_model)
         self.run_btn = QPushButton("Run")
         self.run_btn.clicked.connect(self._start)
         self.cancel_btn = QPushButton("Cancel")
@@ -152,6 +155,7 @@ class PushoverDialog(QDialog):
         self.cancel_btn.clicked.connect(self._cancel)
         self.close_btn = QPushButton("Close")
         self.close_btn.clicked.connect(self.reject)
+        row.addWidget(self.check_btn)
         row.addWidget(self.run_btn)
         row.addWidget(self.cancel_btn)
         row.addStretch(1)
@@ -374,9 +378,29 @@ class PushoverDialog(QDialog):
             self.log.appendPlainText("ASCE 41: " + "; ".join(parts))
         self._finish(f"done — {len(self._disp)} steps, "
                      f"V_max = {max(self._shear) if self._shear else 0:.4g}")
+        self._advise(got=len(self._disp))
 
     def _on_failed(self, msg: str) -> None:
         self._finish(f"FAILED: {msg}")
+        self._advise(error=msg)
+
+    def _requested_steps(self) -> int:
+        case = self._selected_case()
+        return (NL.case_total_steps(self._project, case) if case is not None
+                else int(self.n_steps.value()))
+
+    def _advise(self, *, error=None, got: int = 0) -> None:
+        """Post-run non-convergence guidance (plan §16 G-S5)."""
+        import model_checks as MC
+        tips = MC.convergence_advice(error=error, got_steps=got,
+                                     requested_steps=self._requested_steps())
+        for t in tips:
+            self.log.appendPlainText(f"• {t}")
+
+    def _check_model(self) -> None:
+        """Pre-run model sanity checks (plan §16 G-S5)."""
+        from model_checks_dialog import ModelChecksDialog
+        ModelChecksDialog.show_for(self, self._project)
 
     def _finish(self, msg: str) -> None:
         self.log.appendPlainText(msg)

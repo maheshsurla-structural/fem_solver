@@ -142,6 +142,8 @@ class MainWindow(QMainWindow):
                                        self.run_timehistory_dialog, "run")
         self.act_runhistory = _action(self, "Run &history…", None,
                                       self.show_run_history)
+        self.act_checkmodel = _action(self, "&Check model…", None,
+                                      self.check_model)
         self.act_undef = _action(self, "&Undeformed", None,
                                  self._show_undeformed, "undeformed")
         self.act_fit = _action(self, "&Fit", "F", self.view.fit, "fit")
@@ -252,6 +254,8 @@ class MainWindow(QMainWindow):
         analysis_menu.addAction(self.act_pushover)
         analysis_menu.addAction(self.act_timehistory)
         analysis_menu.addAction(self.act_runhistory)
+        analysis_menu.addSeparator()
+        analysis_menu.addAction(self.act_checkmodel)
         analysis_menu.addAction(self.act_undef)
         analysis_menu.addSeparator()
         for a in (self.act_diag_n, self.act_diag_v, self.act_diag_m,
@@ -454,6 +458,21 @@ class MainWindow(QMainWindow):
         if result is not None:
             self._apply_edit("Edit run history",
                              lambda: setattr(self._project, "runs", result))
+
+    def check_model(self) -> None:
+        """Run the static model checks (plan §16 G-S5) and show them; also log a
+        one-line summary to the Output dock."""
+        import model_checks as MC
+        from model_checks_dialog import ModelChecksDialog
+        checks = MC.check_project(self._project)
+        n_err, n_warn, n_info = MC.summarize(checks)
+        self.log.appendPlainText(
+            f"Model checks: {n_err} error(s), {n_warn} warning(s), "
+            f"{n_info} note(s).")
+        ModelChecksDialog(self, checks).exec()
+        self.statusBar().showMessage(
+            "Model OK" if n_err == 0 and n_warn == 0
+            else f"Model checks: {n_err} error(s), {n_warn} warning(s)")
 
     def _on_nl_scale(self, val: float) -> None:
         self._nl_scale = float(val)
