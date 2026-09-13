@@ -10,7 +10,7 @@ import math
 from functools import partial
 
 import numpy as np
-from PySide6.QtCore import QPoint, QRect, QSize, Qt
+from PySide6.QtCore import QPoint, QRect, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QPainter, QPen, QPolygon
 from PySide6.QtWidgets import QApplication, QLabel, QRubberBand, QWidget
 from pyvistaqt import QtInteractor
@@ -18,6 +18,7 @@ from pyvistaqt import QtInteractor
 import model_geometry as mg
 import style
 from nav_cube import NavCube, camera_basis_from
+from nav_toolbar import NavToolbar
 
 
 # Model-entity inks live in the theme (``style.V_*``) and are read at render
@@ -143,6 +144,11 @@ class _PolygonOverlay(QWidget):
 
 
 class ModelView(QtInteractor):
+    # emitted when the interaction tool changes / the 2-D rotation lock flips,
+    # so the shell can keep the ribbon + the on-viewport toolbar in sync.
+    mode_changed = Signal(str)
+    rotation_lock_changed = Signal(bool)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.set_background(style.VIEW_BG)
@@ -162,12 +168,19 @@ class ModelView(QtInteractor):
         self._band_origin = None
         self._band_additive = False
         self._highlight = []
+        self._nav = None                     # active drag: (kind, last QPointF)
+        self._zoom_anchor = None             # fixed anchor for a right-drag zoom
+        self._rot_locked = False             # 2-D lock: no interactive tumbling
         self._poly_overlay = _PolygonOverlay(self, self._polygon_select)
         self._poly_overlay.hide()
         # orientation cube — a CAD-style navigation gizmo pinned top-right; it
         # reads ``camera_basis`` and drives ``set_view`` / ``orbit`` (see nav_cube).
         self._nav_cube = NavCube(self, self)
+        # on-viewport navigation toolbar (orbit / pan / zoom-window / fit …),
+        # pinned top-left; drives this view's tools + camera helpers.
+        self._nav_bar = NavToolbar(self, self)
         self._position_nav_cube()
+        self._position_nav_bar()
         # empty-state hint — shown (centred) whenever there is no model to draw,
         # instead of a blank canvas (charter §F). Themed via the #canvasHint QSS.
         self._hint = QLabel(
@@ -205,44 +218,214 @@ class ModelView(QtInteractor):
         model's ground plane (z = 0), for a live status-bar readout."""
         self._coord_cb = fn
 
-    # --- window (box) selection: intercept the drag in "window" mode so VTK
-    #     doesn't orbit; project nodes to screen and test against the box.
+    # --- navigation & selection input (Midas/SAP-style scheme) --------------
+    #     All camera motion is handled here at the Qt level so we own the
+    #     bindings (middle = pan · wheel = zoom-to-cursor · right = dynamic
+    #     zoom · left = the active tool). Native VTK move events are never
+    #     forwarded, so the trackball never rotates behind our back; left
+    #     press/release is forwarded only for select/draw so the picker fires.
+    def _start_band(self, pos, ev) -> None:
+        self._band_origin = pos.toPoint()
+        self._band_additive = bool(ev.modifiers() & (
+            Qt.KeyboardModifier.ShiftModifier
+            | Qt.KeyboardModifier.ControlModifier))
+        if self._rubber is None:
+            self._rubber = QRubberBand(QRubberBand.Shape.Rectangle, self)
+        self._rubber.setGeometry(QRect(self._band_origin, QSize()))
+        self._rubber.show()
+
     def mousePressEvent(self, ev):
-        if self._mode == "window" and ev.button() == Qt.MouseButton.LeftButton:
-            self._band_origin = ev.position().toPoint()
-            self._band_additive = bool(ev.modifiers() & (
-                Qt.KeyboardModifier.ShiftModifier
-                | Qt.KeyboardModifier.ControlModifier))
-            if self._rubber is None:
-                self._rubber = QRubberBand(QRubberBand.Shape.Rectangle, self)
-            self._rubber.setGeometry(QRect(self._band_origin, QSize()))
-            self._rubber.show()
+        pos = ev.position()
+        b = ev.button()
+        if b == Qt.MouseButton.MiddleButton or (
+                b == Qt.MouseButton.LeftButton and self._mode == "pan"):
+            self._nav = ("pan", pos)                      # pan (middle / Pan tool)
+            return
+        if b == Qt.MouseButton.RightButton:
+            self._nav = ("zoom", pos)                     # dynamic zoom (drag)
+            self._zoom_anchor = pos
+            return
+        if b == Qt.MouseButton.LeftButton and self._mode == "orbit":
+            if not self._rot_locked:
+                self._nav = ("orbit", pos)
+            return
+        if b == Qt.MouseButton.LeftButton and self._mode in ("window", "zoomwin"):
+            self._start_band(pos, ev)
+            return
+        if b == Qt.MouseButton.LeftButton:                # select / draw → picker
+            super().mousePressEvent(ev)
             return
         super().mousePressEvent(ev)
 
     def mouseMoveEvent(self, ev):
+        pos = ev.position()
         if self._coord_cb is not None:
-            wc = self._world_on_ground(ev.position())
+            wc = self._world_on_ground(pos)
             if wc is not None:
                 self._coord_cb(*wc)
-        if self._mode == "window" and self._band_origin is not None:
-            self._rubber.setGeometry(
-                QRect(self._band_origin, ev.position().toPoint()).normalized())
+        if self._nav is not None:
+            kind, last = self._nav
+            if kind == "pan":
+                self._pan_pixels(last, pos)
+            elif kind == "orbit":
+                self._orbit_pixels(pos.x() - last.x(), pos.y() - last.y())
+            elif kind == "zoom":
+                a = self._zoom_anchor or pos
+                self._zoom(1.0 - (pos.y() - last.y()) * 0.01, a.x(), a.y())
+            self._nav = (kind, pos)
             return
-        super().mouseMoveEvent(ev)
+        if self._band_origin is not None and self._mode in ("window", "zoomwin"):
+            self._rubber.setGeometry(
+                QRect(self._band_origin, pos.toPoint()).normalized())
+            return
+        # swallow every other move — never let VTK's trackball rotate/pan
 
     def mouseReleaseEvent(self, ev):
-        if (self._mode == "window" and self._band_origin is not None
+        if self._nav is not None:
+            self._nav = None
+            return
+        if (self._band_origin is not None
                 and ev.button() == Qt.MouseButton.LeftButton):
             rect = QRect(self._band_origin,
                          ev.position().toPoint()).normalized()
+            mode = self._mode
             self._band_origin = None
             if self._rubber is not None:
                 self._rubber.hide()
             if rect.width() > 3 and rect.height() > 3:
-                self._window_select(rect, self._band_additive)
+                if mode == "zoomwin":
+                    self._zoom_to_box(rect)
+                else:
+                    self._window_select(rect, self._band_additive)
+            return
+        if ev.button() == Qt.MouseButton.LeftButton:      # complete a pick
+            super().mouseReleaseEvent(ev)
             return
         super().mouseReleaseEvent(ev)
+
+    def wheelEvent(self, ev):
+        """Zoom toward the cursor (replaces VTK's zoom-about-centre)."""
+        d = ev.angleDelta().y()
+        if d == 0:
+            return
+        pos = ev.position()
+        self._zoom(1.15 if d > 0 else 1.0 / 1.15, pos.x(), pos.y())
+        ev.accept()
+
+    # --- camera navigation helpers -----------------------------------------
+    def _focal_world(self, x_px, y_px):
+        """Widget pixel → world point on the camera's focal plane (parallel
+        projection). Panning / zoom-to-cursor use it to keep the point under
+        the cursor fixed while the camera moves."""
+        ren = self.renderer
+        dpr = self.devicePixelRatioF() or 1.0
+        fp = self.camera.focal_point
+        ren.SetWorldPoint(float(fp[0]), float(fp[1]), float(fp[2]), 1.0)
+        ren.WorldToDisplay()
+        fz = ren.GetDisplayPoint()[2]
+        ren.SetDisplayPoint(x_px * dpr, (self.height() - y_px) * dpr, fz)
+        ren.DisplayToWorld()
+        w = ren.GetWorldPoint()
+        h = w[3] if w[3] else 1.0
+        return np.array([w[0] / h, w[1] / h, w[2] / h])
+
+    def _translate_camera(self, delta) -> None:
+        cam = self.camera
+        cam.SetPosition(*(np.asarray(cam.position, float) + delta))
+        cam.SetFocalPoint(*(np.asarray(cam.focal_point, float) + delta))
+
+    def _render_nav(self) -> None:
+        """Recompute the near/far clipping planes for the whole scene, then
+        render. Camera moves done by hand (orbit / pan / zoom) don't refresh
+        the clipping range on their own, so without this a rotated model gets
+        sliced by a stale near plane (part of it disappears)."""
+        try:
+            self.renderer.ResetCameraClippingRange()
+        except Exception:
+            pass
+        self.render()
+
+    def _pan_pixels(self, last, cur) -> None:
+        d = (self._focal_world(last.x(), last.y())
+             - self._focal_world(cur.x(), cur.y()))
+        self._translate_camera(d)
+        self._render_nav()
+
+    def _orbit_pixels(self, dx, dy) -> None:
+        if self._rot_locked:
+            return
+        cam = self.camera
+        cam.Azimuth(-dx * 0.35)
+        cam.Elevation(dy * 0.35)
+        cam.OrthogonalizeViewUp()
+        self._render_nav()
+
+    def _zoom(self, factor, ax=None, ay=None) -> None:
+        """Parallel-projection zoom by ``factor`` (>1 zooms in) about the pixel
+        (ax, ay), which is held fixed under the cursor."""
+        factor = max(1e-3, float(factor))
+        cam = self.camera
+        if ax is None:
+            ax, ay = self.width() / 2.0, self.height() / 2.0
+        before = self._focal_world(ax, ay)
+        cam.SetParallelScale(cam.parallel_scale / factor)
+        after = self._focal_world(ax, ay)
+        self._translate_camera(before - after)
+        self._render_nav()
+
+    def _zoom_to_box(self, rect) -> None:
+        center = self._focal_world(rect.center().x(), rect.center().y())
+        cam = self.camera
+        frac = max(rect.width() / max(self.width(), 1),
+                   rect.height() / max(self.height(), 1), 1e-3)
+        self._translate_camera(center - np.asarray(cam.focal_point, float))
+        cam.SetParallelScale(cam.parallel_scale * frac)
+        self._render_nav()
+
+    def zoom_in(self) -> None:
+        self._zoom(1.25)
+
+    def zoom_out(self) -> None:
+        self._zoom(1.0 / 1.25)
+
+    def fit_selected(self) -> None:
+        """Frame the current selection (falls back to fit-all when nothing is
+        selected)."""
+        pts = []
+        if self._model is not None:
+            for kind, ident in self._highlight:
+                if kind == "node" and ident in self._model.nodes:
+                    pts.append(mg.to_xyz(self._model.nodes[ident].coords))
+                elif kind == "member" and ident in self._model.elements:
+                    for c in self._model.element(ident).node_coords():
+                        pts.append(mg.to_xyz(c))
+        if not pts:
+            self.reset_camera()
+            self.render()
+            return
+        p = np.asarray(pts, float)
+        lo, hi = p.min(axis=0), p.max(axis=0)
+        pad = 0.1 * (float(np.linalg.norm(hi - lo)) or 1.0)
+        self.renderer.ResetCamera(lo[0] - pad, hi[0] + pad, lo[1] - pad,
+                                  hi[1] + pad, lo[2] - pad, hi[2] + pad)
+        self.render()
+
+    def current_mode(self) -> str:
+        return self._mode
+
+    def set_rotation_locked(self, locked: bool) -> None:
+        """Lock/unlock interactive tumbling (default on for planar models).
+        Locking mid-orbit falls back to the select tool."""
+        locked = bool(locked)
+        if locked == self._rot_locked:
+            return
+        self._rot_locked = locked
+        if locked and self._mode == "orbit":
+            self.set_mode("select")
+        self.rotation_lock_changed.emit(locked)
+
+    def rotation_locked(self) -> bool:
+        return self._rot_locked
 
     def _project(self, world):
         """World coords -> widget (logical) pixels, y down."""
@@ -318,6 +501,7 @@ class ModelView(QtInteractor):
         if self._hint.isVisible():
             self._hint.setGeometry(self.rect())
         self._position_nav_cube()
+        self._position_nav_bar()
 
     def _position_nav_cube(self) -> None:
         """Pin the orientation cube to the top-right corner of the viewport."""
@@ -327,6 +511,15 @@ class ModelView(QtInteractor):
         margin = 12
         cube.move(self.width() - cube.width() - margin, margin)
         cube.raise_()
+
+    def _position_nav_bar(self) -> None:
+        """Pin the navigation toolbar to the top-left corner of the viewport."""
+        bar = getattr(self, "_nav_bar", None)
+        if bar is None:
+            return
+        bar.adjustSize()
+        bar.move(12, 12)
+        bar.raise_()
 
     def camera_basis(self):
         """Screen basis (right, up, forward) as unit world vectors for the
@@ -361,10 +554,21 @@ class ModelView(QtInteractor):
             self._hint.setGeometry(self.rect())
             self._hint.raise_()
         self._position_nav_cube()             # keep the cube above the hint
+        self._position_nav_bar()
+
+    _TOOL_CURSORS = {
+        "pan": Qt.CursorShape.OpenHandCursor,
+        "orbit": Qt.CursorShape.SizeAllCursor,
+        "zoomwin": Qt.CursorShape.CrossCursor,
+        "window": Qt.CursorShape.CrossCursor,
+        "draw_node": Qt.CursorShape.CrossCursor,
+        "draw_member": Qt.CursorShape.CrossCursor,
+    }
 
     def set_mode(self, mode: str) -> None:
         self._mode = mode
         self._member_start = None
+        self._nav = None
         self.remove_actor("groundplane", render=False)
         if mode == "draw_node":
             self._add_ground_plane()
@@ -375,7 +579,9 @@ class ModelView(QtInteractor):
             self._poly_overlay.show()
         else:
             self._poly_overlay.hide()
+        self.setCursor(self._TOOL_CURSORS.get(mode, Qt.CursorShape.ArrowCursor))
         self.render()
+        self.mode_changed.emit(mode)
 
     def _add_ground_plane(self) -> None:
         import pyvista as pv
@@ -504,6 +710,7 @@ class ModelView(QtInteractor):
         self.render()
         try:
             self._nav_cube.apply_theme()     # restyle the cube with the app
+            self._nav_bar.apply_theme()
         except Exception:
             pass
 
@@ -534,6 +741,9 @@ class ModelView(QtInteractor):
         self._draw_highlight()
         if self._mode == "draw_node":
             self._add_ground_plane()
+        # planar models lock rotation by default (no accidental tumbling); the
+        # toolbar / nav-cube can still switch to a named view or unlock.
+        self.set_rotation_locked(getattr(model, "ndm", 3) == 2)
         self._sync_hint()
 
     def mark_hinges(self, project) -> None:

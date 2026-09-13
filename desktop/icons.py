@@ -64,6 +64,30 @@ _ICONS = {
     "design": '<path d="M12 3l7 3v6c0 5-3 7.5-7 9-4-1.5-7-4-7-9V6z"/>'
               '<path d="M9 12l2 2 4-4"/>',
     "fit": '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+    # --- viewport navigation tools ---
+    "pan": '<path d="M9 11V6.5a1.5 1.5 0 0 1 3 0V11m0-.5V5.5a1.5 1.5 0 0 1 3 0'
+           'V11m0-.5a1.5 1.5 0 0 1 3 0V15a5 5 0 0 1-5 5h-1.5a5 5 0 0 1-3.6-1.6'
+           'L4 14.5a1.5 1.5 0 0 1 2.3-1.9L8 14V8a1.5 1.5 0 0 1 1-1.4"/>',
+    "orbit": '<ellipse cx="12" cy="12" rx="9" ry="3.6"/>'
+             '<ellipse cx="12" cy="12" rx="3.6" ry="9"/>'
+             '<circle cx="12" cy="12" r="1.6" fill="{c}" stroke="none"/>',
+    "zoomwin": '<rect x="3" y="4" width="13" height="10" rx="1" '
+               'stroke-dasharray="3 2.4"/><circle cx="14.5" cy="15.5" r="4.2"/>'
+               '<path d="M17.6 18.6l2.9 2.9"/>',
+    "zoomin": '<circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/>'
+              '<path d="M8 10.5h5M10.5 8v5"/>',
+    "zoomout": '<circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/>'
+               '<path d="M8 10.5h5"/>',
+    "fitsel": '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>'
+              '<circle cx="12" cy="12" r="2.4" fill="{c}" stroke="none"/>',
+    "customize": '<path d="M4 7h9M4 12h5M4 17h11"/>'
+                 '<circle cx="16" cy="7" r="2.3"/>'
+                 '<circle cx="12" cy="12" r="2.3"/>'
+                 '<circle cx="18" cy="17" r="2.3"/>',
+    "lock2d": '<rect x="5" y="11" width="14" height="9" rx="2"/>'
+              '<path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+    "unlock2d": '<rect x="5" y="11" width="14" height="9" rx="2"/>'
+                '<path d="M8 11V8a4 4 0 0 1 7.5-2"/>',
     "iso": '<path d="M12 3l7 4v10l-7 4-7-4V7z"/><path d="M12 12v9M5 7l7 5 7-5"/>',
     "top": '<rect x="5" y="5" width="14" height="14" rx="1"/>'
            '<circle cx="12" cy="12" r="1.6" fill="{c}" stroke="none"/>',

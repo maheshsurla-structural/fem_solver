@@ -92,8 +92,12 @@ class MainWindow(QMainWindow):
         self.view.set_add_node_callback(self._draw_add_node)
         self.view.set_add_member_callback(self._draw_add_member)
         self.view.set_region_callback(self._on_region_select)
+        # keep the ribbon's selection group in step with the viewport's own
+        # navigation toolbar (orbit / pan / zoom-window have no ribbon entry).
+        self.view.mode_changed.connect(self._sync_ribbon_mode)
 
         self._build_menu()
+        self._register_toolbar_commands()    # model/edit cmds for Customize…
         self._build_status_items()           # persistent context (right side)
         # an always-visible theme switch in the status-bar corner (the "chip")
         self._theme_btn = QToolButton()
@@ -1510,6 +1514,51 @@ class MainWindow(QMainWindow):
 
     def _update_snap(self, *_) -> None:
         self.view.set_snap(self.act_snap.isChecked(), self.snap_spin.value())
+
+    def _register_toolbar_commands(self) -> None:
+        """Expose the common model/edit commands so they can be pinned onto the
+        viewport toolbar via right-click → Customize Toolbar (the view already
+        registers the tool/orient/zoom commands itself)."""
+        from toolbar_commands import ToolCommand
+        specs = [
+            ("cmd_node", self.act_add_node, "node", "Model"),
+            ("cmd_member", self.act_add_member, "member", "Model"),
+            ("cmd_section", self.act_add_section, "section", "Model"),
+            ("cmd_materials", self.act_materials, "section", "Model"),
+            ("cmd_undo", self.act_undo, "undo", "Edit"),
+            ("cmd_redo", self.act_redo, "redo", "Edit"),
+            ("cmd_delete", self.act_delete, "delete", "Edit"),
+            ("cmd_move", self.act_move, "move", "Edit"),
+            ("cmd_copy", self.act_copy, "copy", "Edit"),
+            ("cmd_mirror", self.act_mirror, "mirror", "Edit"),
+            ("cmd_rotate", self.act_rotate, "rotate", "Edit"),
+            ("cmd_extrude", self.act_extrude, "extrude", "Edit"),
+            ("cmd_run", self.act_run, "run", "Analysis"),
+            ("cmd_undeformed", self.act_undef, "undeformed", "Results"),
+            ("cmd_design", self.act_design, "design", "Results"),
+        ]
+        cmds = []
+        for cid, act, icon, grp in specs:
+            label = act.text().replace("&", "").replace("…", "").strip()
+            cmds.append(ToolCommand(cid, label, icon, group=grp, kind="action",
+                                    activate=act.trigger))
+        self.view._nav_bar.register_many(cmds)
+        self.view._nav_bar.rebuild()
+
+    def _sync_ribbon_mode(self, mode: str) -> None:
+        """Reflect the viewport's active tool in the ribbon's selection group.
+        Viewport-only nav tools (orbit / pan / zoom-window) leave none checked."""
+        ribbon = {"select": self.act_select, "window": self.act_sel_window,
+                  "polygon": self.act_sel_poly, "draw_node": self.act_draw_node,
+                  "draw_member": self.act_draw_member}
+        act = ribbon.get(mode)
+        if act is not None:
+            act.setChecked(True)
+        else:
+            self._mode_group.setExclusive(False)
+            for a in self._mode_group.actions():
+                a.setChecked(False)
+            self._mode_group.setExclusive(True)
 
     def _set_mode(self, mode: str) -> None:
         self.view.set_mode(mode)
