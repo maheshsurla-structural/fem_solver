@@ -109,17 +109,12 @@ def test_density_toggle_flips_and_syncs_action(win):
 def test_theme_controls_are_reachable(win):
     from PySide6.QtWidgets import QToolButton
 
-    def _menu(title):
-        for a in win.menuBar().actions():
-            if a.menu() is not None and a.text().replace("&", "") == title:
-                return a.menu()
-        return None
-
-    view = _menu("View")
-    assert view is not None
-    labels = [a.text().replace("&", "") for a in view.actions()]
-    assert any("theme" in s.lower() for s in labels), labels
-    assert any("density" in s.lower() for s in labels), labels
+    # theme + density live on the ribbon's View tab (Appearance group)
+    view_acts = {b.defaultAction() for b in
+                 win._ribbon.page("View").findChildren(QToolButton)
+                 if b.objectName() == "ribbonBtn"}
+    assert win.act_theme in view_acts
+    assert win.act_density in view_acts
     # the always-visible status-bar chip
     assert isinstance(win._theme_btn, QToolButton)
     assert win._theme_btn in win.statusBar().findChildren(QToolButton)

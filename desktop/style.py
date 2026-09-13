@@ -245,6 +245,23 @@ QLabel#ribbonCap {{
     letter-spacing: {LS_LABEL};
 }}
 
+/* ---- tabbed ribbon shell (plan ribbon R1) ---- */
+/* one compact strip = File button + tab strip + a single swapping group row,
+   replacing the classic menu bar and the old three stacked ribbon rows. */
+QToolBar#ribbonHost {{ background: {PANEL}; border-bottom: 1px solid {BORDER};
+    padding: 0; spacing: 0; }}
+QWidget#ribbonRoot, QWidget#ribbonStrip, QWidget#ribbonPage,
+QStackedWidget#ribbonStack {{ background: {PANEL}; }}
+QToolButton#ribbonFile {{
+    background: {ACCENT}; color: #ffffff; font-weight: 600;
+    border: none; border-radius: {R_SM}px; padding: 6px 16px; margin: 5px 0;
+}}
+QToolButton#ribbonFile:hover {{ background: {ACCENT_HOVER}; }}
+QToolButton#ribbonFile::menu-indicator {{ image: none; width: 0; }}
+QTabBar#ribbonTabs {{ background: transparent; }}
+QFrame#ribbonVSep {{ color: {BORDER}; background: {BORDER};
+    max-width: 1px; margin: {SP_XS}px {SP_XS}px; }}
+
 /* ---- scrollbars ---- */
 QScrollBar:vertical {{ background: transparent; width: 10px; margin: 2px; }}
 QScrollBar::handle:vertical {{
@@ -444,6 +461,8 @@ QHeaderView::section { padding: 3px 6px; }
 QListWidget::item { padding: 2px 6px; }
 QTabBar::tab { padding: 5px 12px; }
 QGroupBox { margin-top: 13px; padding: 8px 8px 6px 8px; }
+QToolButton#ribbonBtn { padding: 2px 6px; }
+QToolButton#ribbonFile { padding: 4px 12px; margin: 3px 0; }
 """
 
 

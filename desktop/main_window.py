@@ -13,8 +13,9 @@ from PySide6.QtCore import QItemSelectionModel, QSettings, QSize, Qt
 from PySide6.QtGui import QAction, QActionGroup, QUndoStack
 from PySide6.QtWidgets import (QAbstractItemView, QApplication, QComboBox,
                                QDockWidget, QDoubleSpinBox, QFileDialog,
-                               QHBoxLayout, QLabel, QMainWindow, QMessageBox,
-                               QPlainTextEdit, QSlider, QToolButton,
+                               QFrame, QHBoxLayout, QLabel, QMainWindow,
+                               QMenu, QMessageBox, QPlainTextEdit, QSizePolicy,
+                               QSlider, QStackedWidget, QTabBar, QToolButton,
                                QTreeWidget, QTreeWidgetItem, QVBoxLayout,
                                QWidget)
 
@@ -333,133 +334,52 @@ class MainWindow(QMainWindow):
         self.snap_spin.setSuffix(" m")
         self.snap_spin.valueChanged.connect(lambda _v: self._update_snap())
 
-        file_menu = self.menuBar().addMenu("&File")
+        # ---- CSiBridge-style tabbed ribbon (plan ribbon R1) ---------------
+        # One compact strip replaces BOTH the classic menu bar and the old
+        # three stacked ribbon rows. A File "backstage" button plus a tab strip
+        # (Home · Draw · Loads · Analysis · Results · View) whose active tab
+        # swaps a single row of captioned tool-groups. Every command that used
+        # to be menu-only is re-homed onto a tab here, so nothing is lost — the
+        # whole top chrome drops from ~four rows to one. Buttons mirror their
+        # QAction (setDefaultAction), so enabled state, re-inked icons and the
+        # Ctrl-shortcuts (e.g. act_run's Ctrl+R) all stay live window-wide.
+        self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+        self.menuBar().hide()          # the ribbon tabs are the top-level nav
+
+        rb = self._ribbon = RibbonBar(self)
+        # File backstage — the classic File menu, reached from the File button.
         for a in (self.act_new, self.act_new3d, self.act_open, self.act_save,
                   self.act_saveas):
-            file_menu.addAction(a)
-        edit_menu = self.menuBar().addMenu("&Edit")
-        edit_menu.addAction(self.act_undo)
-        edit_menu.addAction(self.act_redo)
-        edit_menu.addSeparator()
-        for a in (self.act_add_node, self.act_add_member, self.act_add_section,
-                  self.act_materials, self.act_hinges, self.act_assign_hinges,
-                  self.act_delete):
-            edit_menu.addAction(a)
-        edit_menu.addSeparator()
-        edit_menu.addAction(self.act_deselect)
-        edit_menu.addAction(self.act_move)
-        edit_menu.addAction(self.act_copy)
-        edit_menu.addAction(self.act_mirror)
-        edit_menu.addAction(self.act_rotate)
-        edit_menu.addAction(self.act_extrude)
-        gen_menu = self.menuBar().addMenu("&Generate")
-        gen_menu.addAction(self.act_gen)
+            rb.file_menu.addAction(a)
 
-        # Loads home (plan S1) — every load-definition surface in one place,
-        # instead of "Add load" buried under Edit and "Generate loads" under
-        # Generate. Reads: define cases -> apply loads -> combine.
-        loads_menu = self.menuBar().addMenu("&Loads")
-        loads_menu.addAction(self.act_loadcases)
-        loads_menu.addSeparator()
-        loads_menu.addAction(self.act_add_load)
-        loads_menu.addAction(self.act_add_lineload)
-        loads_menu.addAction(self.act_genloads)
-        loads_menu.addSeparator()
-        loads_menu.addAction(self.act_editcombos)
-        loads_menu.addAction(self.act_gencombos)
-
-        # Analysis — slimmed to define -> run -> view (plan S1). The direct
-        # pushover / time-history launchers now live in the Analysis-cases
-        # home (act_analysiscases); linear static keeps its Ctrl+R via the
-        # Run-analysis control and the Analysis toolbar.
-        analysis_menu = self.menuBar().addMenu("&Analysis")
-        analysis_menu.addAction(self.act_analysiscases)
-        analysis_menu.addAction(self.act_runanalysis)
-        analysis_menu.addSeparator()
-        results_menu = analysis_menu.addMenu(icons.icon("undeformed", style.ICON),
-                                             "&Results && diagrams")
-        _set_icon(results_menu.menuAction(), "undeformed")
-        results_menu.addAction(self.act_undef)
-        results_menu.addSeparator()
-        results_menu.addAction(self.act_diag_n)
-        results_menu.addAction(self.act_diag_v)
-        results_menu.addAction(self.act_diag_m)
-        results_menu.addSeparator()
-        results_menu.addAction(self.act_runhistory)
-        analysis_menu.addSeparator()
-        analysis_menu.addAction(self.act_design)
-        analysis_menu.addAction(self.act_checkmodel)
-        select_menu = self.menuBar().addMenu("&Select")
-        select_menu.addAction(self.act_select)
-        select_menu.addAction(self.act_sel_window)
-        select_menu.addAction(self.act_sel_poly)
-        select_menu.addSeparator()
-        select_menu.addAction(self.act_sel_all_nodes)
-        select_menu.addAction(self.act_sel_all_members)
-        select_menu.addAction(self.act_sel_all)
-        select_menu.addAction(self.act_sel_by_section)
-        select_menu.addSeparator()
-        select_menu.addAction(self.act_deselect)
-        draw_menu = self.menuBar().addMenu("&Draw")
-        for a in (self.act_draw_node, self.act_draw_member):
-            draw_menu.addAction(a)
-        draw_menu.addSeparator()
-        draw_menu.addAction(self.act_snap)
-        view_menu = self.menuBar().addMenu("&View")
-        view_menu.addAction(self.act_fit)
-        view_menu.addSeparator()
-        for a in (self.act_v_iso, self.act_v_top, self.act_v_bottom,
-                  self.act_v_front, self.act_v_back, self.act_v_left,
-                  self.act_v_right):
-            view_menu.addAction(a)
-        view_menu.addSeparator()
-        view_menu.addAction(self.act_drawings)
-        view_menu.addSeparator()
-        view_menu.addAction(self.act_theme)
-        view_menu.addAction(self.act_density)
-        tools_menu = self.menuBar().addMenu("&Tools")
-        tools_menu.addAction(self.act_sectiondesigner)
-
-        self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
-
-        def _toolbar(name, items):
-            tb = self.addToolBar(name)
-            for a in items:
-                tb.addSeparator() if a is None else tb.addAction(a)
-            return tb
-
-        def _ribbon_toolbar(name, groups):
-            tb = self.addToolBar(name)
-            tb.setObjectName("ribbonBar")
-            tb.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
-            tb.setMovable(False)
-            for i, (caption, items) in enumerate(groups):
-                if i:
-                    tb.addSeparator()
-                tb.addWidget(_ribbon_group(caption, items))
-            return tb
-
-        # One cohesive, captioned ribbon band across the top (plan S3): a Home
-        # row over the S2 Loads and Analysis rows, each a set of grouped,
-        # text-under-icon buttons with eyebrow captions — evoking the
-        # CSiBridge/Midas ribbon without a tab framework. It replaces the old
-        # scattered icon toolbars (File/Edit/Generate/View/Tools); their full
-        # action sets stay in the menus (plan S1) and the ribbon carries the
-        # common ones. The modal draw/select tool palettes stay icon-only on
-        # their own row below the band. Loads and Analysis keep their own rows
-        # (the Analysis groups are too wide to share one — see S2).
-        _ribbon_toolbar("Home", (
-            ("File", ((self.act_new, "New"), (self.act_open, "Open"),
-                      (self.act_save, "Save"))),
+        rb.add_tab("Home", (
             ("Model", ((self.act_add_node, "Node"),
                        (self.act_add_member, "Member"),
-                       (self.act_add_section, "Section"))),
-            ("Edit", ((self.act_undo, "Undo"), (self.act_redo, "Redo"))),
-            ("View", ((self.act_fit, "Fit"), (self.act_v_iso, "Iso"))),
+                       (self.act_add_section, "Section"),
+                       (self.act_materials, "Materials"))),
+            ("Edit", ((self.act_undo, "Undo"), (self.act_redo, "Redo"),
+                      (self.act_delete, "Delete"))),
+            ("Modify", ((self.act_move, "Move"), (self.act_copy, "Copy"),
+                        (self.act_mirror, "Mirror"),
+                        (self.act_rotate, "Rotate"),
+                        (self.act_extrude, "Extrude"))),
+            ("Generate", ((self.act_gen, "Frame"),)),
             ("Tools", ((self.act_sectiondesigner, "Designer"),)),
         ))
-        self.addToolBarBreak()
-        _ribbon_toolbar("Loads", (
+        rb.add_tab("Draw", (
+            ("Draw", ((self.act_draw_node, "Node"),
+                      (self.act_draw_member, "Member"),
+                      (self.act_snap, "Snap"), self.snap_spin)),
+            ("Select", ((self.act_select, "Select"),
+                        (self.act_sel_window, "Window"),
+                        (self.act_sel_poly, "Poly"),
+                        (self.act_deselect, "Deselect"))),
+            ("Select by", ((self.act_sel_all_nodes, "Nodes"),
+                           (self.act_sel_all_members, "Members"),
+                           (self.act_sel_all, "All"),
+                           (self.act_sel_by_section, "Section"))),
+        ))
+        rb.add_tab("Loads", (
             ("Loads", ((self.act_loadcases, "Cases"),
                        (self.act_add_load, "Nodal"),
                        (self.act_add_lineload, "Line"),
@@ -467,25 +387,40 @@ class MainWindow(QMainWindow):
             ("Combinations", ((self.act_editcombos, "Combos"),
                               (self.act_gencombos, "ASCE-7"))),
         ))
-        self.addToolBarBreak()
-        _ribbon_toolbar("Analysis", (
+        rb.add_tab("Analysis", (
             ("Analyse", ((self.act_analysiscases, "Cases"),
                          (self.act_runanalysis, "Run"),
                          (self.act_run, "Linear"))),
-            ("Results", ((self.act_undef, "Undeformed"),
-                         (self.act_diag_n, "Axial"),
-                         (self.act_diag_v, "Shear"),
-                         (self.act_diag_m, "Moment"))),
+            ("Hinges", ((self.act_hinges, "Define"),
+                        (self.act_assign_hinges, "Assign"))),
+        ))
+        rb.add_tab("Results", (
+            ("Diagrams", ((self.act_undef, "Undeformed"),
+                          (self.act_diag_n, "Axial"),
+                          (self.act_diag_v, "Shear"),
+                          (self.act_diag_m, "Moment"))),
+            ("Reports", ((self.act_runhistory, "History"),)),
             ("Design", ((self.act_design, "Design"),
                         (self.act_checkmodel, "Check"))),
         ))
-        self.addToolBarBreak()
-        # Modal drafting/selection tool palettes — checkable, icon-only.
-        _toolbar("Select", (self.act_select, self.act_sel_window,
-                            self.act_sel_poly, self.act_deselect))
-        tb_draw = _toolbar("Draw", (self.act_draw_node, self.act_draw_member,
-                                    self.act_snap))
-        tb_draw.addWidget(self.snap_spin)
+        rb.add_tab("View", (
+            ("Navigate", ((self.act_fit, "Fit"),)),
+            ("Orient", ((self.act_v_iso, "Iso"), (self.act_v_top, "Top"),
+                        (self.act_v_front, "Front"),
+                        (self.act_v_right, "Right"), (self.act_v_left, "Left"),
+                        (self.act_v_back, "Back"),
+                        (self.act_v_bottom, "Bottom"))),
+            ("Display", ((self.act_drawings, "Drawings"),)),
+            ("Appearance", ((self.act_theme, "Theme"),
+                            (self.act_density, "Compact"))),
+        ))
+        rb.set_current("Home")
+
+        host = self.addToolBar("Ribbon")
+        host.setObjectName("ribbonHost")
+        host.setMovable(False)
+        host.setFloatable(False)
+        host.addWidget(rb)
 
     # ---------------------------------------------------------------- analysis
     def _solve(self):
@@ -1546,12 +1481,101 @@ def _action(parent, text, shortcut, slot, icon_name=None) -> QAction:
     return act
 
 
+class RibbonBar(QWidget):
+    """CSiBridge-style tabbed ribbon (plan ribbon R1).
+
+    A File "backstage" button plus a tab strip whose active tab swaps a single
+    row of captioned tool-groups (:func:`_ribbon_group`). This one compact
+    widget replaces both the classic menu bar and the old three stacked ribbon
+    rows, so the top chrome is a single strip. Buttons mirror their ``QAction``
+    (``setDefaultAction``), so enabled state, re-inked icons and Ctrl-shortcuts
+    stay live. Selecting a tab is a pure view swap — no model state.
+    """
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        self.setObjectName("ribbonRoot")
+        self.setSizePolicy(QSizePolicy.Policy.Preferred,
+                           QSizePolicy.Policy.Fixed)
+        self._tab_titles: list[str] = []
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
+        # tab strip: [ File ▾ ]  Home  Draw  Loads  Analysis  Results  View
+        strip = QWidget()
+        strip.setObjectName("ribbonStrip")
+        srow = QHBoxLayout(strip)
+        srow.setContentsMargins(style.SP_SM, 0, style.SP_SM, 0)
+        srow.setSpacing(style.SP_SM)
+        self.file_btn = QToolButton()
+        self.file_btn.setObjectName("ribbonFile")
+        self.file_btn.setText("File")
+        self.file_btn.setPopupMode(
+            QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.file_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.file_menu = QMenu(self.file_btn)
+        self.file_btn.setMenu(self.file_menu)
+        srow.addWidget(self.file_btn)
+        self.tabs = QTabBar()
+        self.tabs.setObjectName("ribbonTabs")
+        self.tabs.setDrawBase(False)
+        self.tabs.setExpanding(False)
+        self.tabs.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        srow.addWidget(self.tabs)
+        srow.addStretch(1)
+        outer.addWidget(strip)
+
+        # the single group row, swapped per tab
+        self.stack = QStackedWidget()
+        self.stack.setObjectName("ribbonStack")
+        outer.addWidget(self.stack)
+        self.tabs.currentChanged.connect(self.stack.setCurrentIndex)
+
+    def add_tab(self, title, groups) -> QWidget:
+        """Add a ribbon tab whose body is a row of captioned groups."""
+        page = _ribbon_page(groups)
+        self.tabs.addTab(title)
+        self.stack.addWidget(page)
+        self._tab_titles.append(title)
+        return page
+
+    def set_current(self, which) -> None:
+        idx = which if isinstance(which, int) else self._tab_titles.index(which)
+        self.tabs.setCurrentIndex(idx)
+        self.stack.setCurrentIndex(idx)
+
+    def page(self, title) -> QWidget:
+        """The group-row widget behind ``title`` (for tests / lookups)."""
+        return self.stack.widget(self._tab_titles.index(title))
+
+
+def _ribbon_page(groups) -> QWidget:
+    """One ribbon tab's body: a single left-aligned row of captioned tool-groups
+    (:func:`_ribbon_group`) separated by thin vertical rules (plan ribbon R1)."""
+    page = QWidget()
+    page.setObjectName("ribbonPage")
+    row = QHBoxLayout(page)
+    row.setContentsMargins(style.SP_SM, style.SP_XS, style.SP_SM, style.SP_XS)
+    row.setSpacing(0)
+    for i, (caption, items) in enumerate(groups):
+        if i:
+            sep = QFrame()
+            sep.setObjectName("ribbonVSep")
+            sep.setFrameShape(QFrame.Shape.VLine)
+            row.addWidget(sep)
+        row.addWidget(_ribbon_group(caption, items))
+    row.addStretch(1)
+    return page
+
+
 def _ribbon_group(caption, items) -> QWidget:
     """A captioned, text-under-icon tool-button cluster — one ribbon group
-    (plan S2). ``items`` is a list of ``(QAction, short_label)`` pairs; the
-    short label is the caption shown under the icon, while the menus keep the
-    action's full text. Buttons mirror their action via ``setDefaultAction`` so
-    enabled state and Ctrl-shortcuts (e.g. act_run's Ctrl+R) stay live.
+    (plan ribbon R1). Each item is either a ``(QAction, short_label)`` pair —
+    the short label is shown under the icon (the action keeps its full text) —
+    or a bare ``QWidget`` (e.g. the grid-snap spin box) added as-is. Buttons
+    mirror their action via ``setDefaultAction`` so enabled state and
+    Ctrl-shortcuts (e.g. act_run's Ctrl+R) stay live.
     """
     box = QWidget()
     box.setObjectName("ribbonGroup")
@@ -1561,14 +1585,18 @@ def _ribbon_group(caption, items) -> QWidget:
     row = QHBoxLayout()
     row.setContentsMargins(0, 0, 0, 0)
     row.setSpacing(style.SP_XS)
-    for act, label in items:
-        act.setIconText(label)
-        btn = QToolButton()
-        btn.setObjectName("ribbonBtn")
-        btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
-        btn.setDefaultAction(act)
-        btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        row.addWidget(btn)
+    for it in items:
+        if isinstance(it, tuple):
+            act, label = it
+            act.setIconText(label)
+            btn = QToolButton()
+            btn.setObjectName("ribbonBtn")
+            btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
+            btn.setDefaultAction(act)
+            btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            row.addWidget(btn)
+        else:
+            row.addWidget(it)          # a bare widget, e.g. the grid-snap spin
     col.addLayout(row)
     cap = QLabel(caption.upper())
     cap.setObjectName("ribbonCap")
