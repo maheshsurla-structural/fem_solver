@@ -316,7 +316,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
 | L3 | Redesign `LoadCaseDialog` | L1 | [x] | `feat(loads-ux L3)` · 2026-09-13 |
 | L4 | Redesign nodal `LoadDialog` | L1 | [x] | `feat(loads-ux L4)` · 2026-09-13 |
 | L5 | Member/line-load dialog (NEW) | L1 | [x] | `feat(loads-ux L5)` · 2026-09-13 |
-| L6 | Redesign `LoadGenDialog` | L1 | [ ] | |
+| L6 | Redesign `LoadGenDialog` | L1 | [x] | `feat(loads-ux L6)` · 2026-09-13 |
 | A1 | Unified analysis-cases manager (NEW) | L1, A2 | [x] | `feat(loads-ux A1)` · 2026-09-13 |
 | A2 | Redesign `NonlinearCaseDialog` (screenshot fix) | L1 | [x] | `feat(loads-ux A2)` · 2026-09-13 |
 | A3 | Redesign Pushover + Time-History panels | L1 | [x] | `feat(loads-ux A3)` · 2026-09-13 |
@@ -417,6 +417,13 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
   generator. `.edit()`/`result_cases`, id preservation and add/remove unchanged. 4 offscreen
   tests in `test_desktop_load_cases.py`. Screenshots `phase21_outputs/loads_ux/L3_load_cases_*.png`.
   No `project.py`/solver changes.
+- 2026-09-13 — **L6 done.** `LoadGenDialog` (`editing.py`) rebuilt into a *Load pattern*
+  GroupCard with a **live preview** line that runs the actual generator
+  (`generators.gravity_loads` / `lateral_loads`) to report how many loads will be created and
+  the total force / base shear, updating as pattern or magnitude changes (empty-state message
+  when no nodes are above the base). `.get()`/`params()` unchanged. 4 offscreen tests in
+  `test_desktop_load_gen.py`. Screenshots `phase21_outputs/loads_ux/L6_loadgen_*.png`. No
+  `project.py`/solver changes. **All six Loads-phase (L) items complete.**
 
 ---
 
@@ -455,3 +462,5 @@ _(Fill in as items land — one or two lines + a screenshot path per redesigned 
   `phase21_outputs/loads_ux/A4_run_analysis_light.png`, `…_dark.png`.
 - **L3 load-cases dialog** — bare table became a titled card with a per-nature ASCE-key badge on
   each row and a hint line. `phase21_outputs/loads_ux/L3_load_cases_light.png`, `…_dark.png`.
+- **L6 load-generator dialog** — grouped card with a live preview of how many loads / total
+  force will be generated. `phase21_outputs/loads_ux/L6_loadgen_light.png`, `…_dark.png`.

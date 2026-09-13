@@ -518,23 +518,62 @@ class LoadGenDialog(QDialog):
     def __init__(self, parent, project):
         super().__init__(parent)
         self.setWindowTitle("Generate loads")
-        form = QFormLayout(self)
+        self._project = project
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(style.SP_LG, style.SP_LG,
+                                 style.SP_LG, style.SP_LG)
+        outer.setSpacing(style.SP_MD)
+
+        card = ui.GroupCard("Load pattern")
         self.kind = QComboBox()
         self.kind.addItem("Gravity (downward, per node)", "gravity")
         self.kind.addItem("Lateral X (storey forces)", "lateral_x")
         if project.ndm == 3:
             self.kind.addItem("Lateral Y (storey forces)", "lateral_y")
         self.kind.currentIndexChanged.connect(self._relabel)
-        form.addRow("Pattern", self.kind)
+        card.add_row("Pattern", self.kind)
         self.mag = _force_spin(50000.0)
-        self._label = QLabel()
-        form.addRow(self._label, self.mag)
-        form.addRow(_buttons(self))
+        self.mag.valueChanged.connect(self._update_preview)
+        self._label = QLabel()               # dynamic label (per-node / shear)
+        card.body_layout().addRow(self._label, self.mag)
+        self._preview = QLabel()
+        self._preview.setObjectName("hintLabel")
+        self._preview.setWordWrap(True)
+        card.add_full_row(self._preview)
+
+        outer.addWidget(card)
+        outer.addWidget(_buttons(self))
+        style.apply(self)
         self._relabel()
 
-    def _relabel(self) -> None:
+    def _relabel(self, *_) -> None:
         gravity = self.kind.currentData() == "gravity"
-        self._label.setText("Load per node [N]" if gravity else "Base shear [N]")
+        unit = self._project.force_unit
+        self._label.setText(f"Load per node [{unit}]" if gravity
+                            else f"Base shear [{unit}]")
+        self._update_preview()
+
+    def _update_preview(self, *_) -> None:
+        import generators
+        kind, mag = self.kind.currentData(), self.mag.value()
+        fu = self._project.force_unit
+        try:
+            if kind == "gravity":
+                loads = generators.gravity_loads(self._project, mag)
+                total = sum(abs(v) for ld in loads for v in ld.values)
+                msg = (f"→ {len(loads)} nodal load(s), total ≈ "
+                       f"{total:,.0f} {fu} downward")
+            else:
+                direction = "Y" if kind == "lateral_y" else "X"
+                loads = generators.lateral_loads(self._project, mag, direction)
+                total = sum(abs(v) for ld in loads for v in ld.values)
+                msg = (f"→ {len(loads)} storey force(s), base shear ≈ "
+                       f"{total:,.0f} {fu} ({direction}-direction)")
+            if not loads:
+                msg = "→ no loads (need nodes above the base level)"
+        except Exception:                                # noqa: BLE001
+            msg = ""
+        self._preview.setText(msg)
 
     def params(self):
         return self.kind.currentData(), self.mag.value()
