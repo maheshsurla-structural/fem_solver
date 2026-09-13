@@ -311,7 +311,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
 
 | Item | Title | Deps | Status | Commit / date |
 |------|-------|------|--------|---------------|
-| L1 | Shared scaffold `analysis_ui.py` | — | [ ] | |
+| L1 | Shared scaffold `analysis_ui.py` | — | [x] | `feat(loads-ux L1)` · 2026-09-13 |
 | L2 | Load-combination editor (NEW) | L1 | [ ] | |
 | L3 | Redesign `LoadCaseDialog` | L1 | [ ] | |
 | L4 | Redesign nodal `LoadDialog` | L1 | [ ] | |
@@ -337,9 +337,22 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
 
 - 2026-09-13 — Plan created (audit of `desktop/` Loads & Analysis surfaces; scaffold API
   frozen in §5; 16-item tracker). No code yet.
+- 2026-09-13 — **L1 done.** `desktop/analysis_ui.py` implements the frozen §5 API
+  (`GroupCard`, `CaseHeader`, `LoadsAppliedTable`, `two_column`, `dialog_buttons`,
+  `direction_glyph`) plus a `_demo_dialog` for the visual record. 10 offscreen smoke tests in
+  `tests/test_desktop_analysis_ui.py` (all green). `GroupCard` wraps a themed `QGroupBox`;
+  `two_column` honours a `full_width` attribute so a Loads-Applied table spans both columns.
+  Note for later phases: `CaseHeader` exposes `type_label()` (additive getter) alongside the
+  §5 `name()`/`notes()`. No `project.py` / solver changes.
 
 ---
 
 ## 10. Before / after notes
 
 _(Fill in as items land — one or two lines + a screenshot path per redesigned surface.)_
+
+- **L1 scaffold demo** — a dialog assembled purely from the scaffold renders as grouped,
+  two-column, boxed panels with a full-width Loads-Applied table and OK/Cancel, in both themes.
+  `phase21_outputs/loads_ux/L1_scaffold_light.png`, `…_dark.png`. (Text glyphs show as boxes in
+  the headless `offscreen` renderer — a screenshot artifact only; the app renders text
+  normally on Windows.)
