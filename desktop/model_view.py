@@ -6,6 +6,8 @@ one entry point: clear, draw members / nodes / supports, frame the camera.
 """
 from __future__ import annotations
 
+from functools import partial
+
 import numpy as np
 from PySide6.QtCore import QPoint, QRect, QSize, Qt
 from PySide6.QtGui import QColor, QPainter, QPen, QPolygon
@@ -13,16 +15,15 @@ from PySide6.QtWidgets import QApplication, QRubberBand, QWidget
 from pyvistaqt import QtInteractor
 
 import model_geometry as mg
+import style
 
-MEMBER_COLOR = "#3b6d11"      # green
-NODE_COLOR = "#185fa5"        # blue
-SUPPORT_COLOR = "#a32d2d"     # red
-REFERENCE_COLOR = "#c9c9c9"   # grey (undeformed ghost)
-DEFORMED_COLOR = "#d85a30"    # coral
-DEFORMED_NODE = "#993c1d"     # dark coral
-DIAGRAM_COLOR = {"N": "#1d4ed8", "V": "#0f766e", "M": "#b45309"}
-SELECTION_COLOR = "#f59e0b"   # amber — current selection highlight
-HINGE_COLOR = "#e11d9c"       # magenta — fiber plastic-hinge marker
+
+# Model-entity inks live in the theme (``style.V_*``) and are read at render
+# time, so the viewport restyles with the rest of the app on a theme switch.
+# Diagram colour keys off the component (N / V / M):
+def _diagram_color(kind: str) -> str:
+    return {"N": style.V_DIAG_N, "V": style.V_DIAG_V,
+            "M": style.V_DIAG_M}.get(kind, style.V_DIAG_N)
 
 
 def _deformed_point(node, scale: float) -> np.ndarray:
@@ -76,11 +77,12 @@ class _PolygonOverlay(QWidget):
     def paintEvent(self, ev):
         if not self._pts:
             return
+        sel = QColor(style.V_SELECTION)
         p = QPainter(self)
-        p.setPen(QPen(QColor(SELECTION_COLOR), 1.5, Qt.PenStyle.DashLine))
-        p.setBrush(QColor(245, 158, 11, 40))
+        p.setPen(QPen(sel, 1.5, Qt.PenStyle.DashLine))
+        p.setBrush(QColor(sel.red(), sel.green(), sel.blue(), 40))
         p.drawPolygon(QPolygon(self._pts + ([self._cur] if self._cur else [])))
-        p.setBrush(QColor(SELECTION_COLOR))
+        p.setBrush(sel)
         for pt in self._pts:
             p.drawEllipse(pt, 2, 2)
 
@@ -88,9 +90,10 @@ class _PolygonOverlay(QWidget):
 class ModelView(QtInteractor):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.set_background("white")
+        self.set_background(style.VIEW_BG)
         self.enable_parallel_projection()   # orthographic — CAD-style elevations
         self._model = None
+        self._replay = None                  # redraws the last scene on restyle
         self._pick_cb = None
         self._add_node_cb = None
         self._add_member_cb = None
@@ -237,7 +240,7 @@ class ModelView(QtInteractor):
             size = 20.0
         plane = pv.Plane(center=(cx, cy, 0.0), direction=(0.0, 0.0, 1.0),
                          i_size=size, j_size=size)
-        self.add_mesh(plane, color="#9ec5ff", opacity=0.12, name="groundplane",
+        self.add_mesh(plane, color=style.ACCENT, opacity=0.12, name="groundplane",
                       pickable=True)
 
     def _on_point_picked(self, *args) -> None:
@@ -306,35 +309,70 @@ class ModelView(QtInteractor):
         if lines:
             merged = lines[0] if len(lines) == 1 else pv.merge(lines)
             self.add_mesh(merged.tube(radius=max(span * 0.006, 2e-3)),
-                          color=SELECTION_COLOR, name="selection")
+                          color=style.V_SELECTION, name="selection")
         if pts:
-            self.add_points(np.asarray(pts, dtype=float), color=SELECTION_COLOR,
+            self.add_points(np.asarray(pts, dtype=float), color=style.V_SELECTION,
                             render_points_as_spheres=True, point_size=20,
                             name="selection_nodes")
         self.render()
 
+    def _draw_grid(self) -> None:
+        """A themed bounds grid — coloured from the palette, with the plot-style
+        axis *titles* removed (V2 replaces this with a CAD ground grid + origin
+        triad)."""
+        try:
+            self.show_grid(color=style.VIEW_AXIS, xtitle="", ytitle="",
+                           ztitle="")
+        except Exception:                    # keep rendering across PyVista drift
+            try:
+                self.show_grid()
+            except Exception:
+                pass
+
+    def apply_theme(self) -> None:
+        """Re-read the palette (background + entity inks) and repaint the current
+        scene in place, keeping the camera. Mirrors ``SectionCanvas.apply_theme``
+        so the shell can restyle every canvas the same way on a theme switch."""
+        self.set_background(style.VIEW_BG)
+        try:
+            cpos = self.camera_position
+        except Exception:
+            cpos = None
+        if self._replay is not None:
+            try:
+                self._replay()               # redraw meshes with fresh tokens
+            except Exception:
+                pass
+        if cpos is not None:                 # _replay reframes; restore the view
+            try:
+                self.camera_position = cpos
+            except Exception:
+                pass
+        self.render()
+
     def set_model(self, model) -> None:
         self._model = model
+        self._replay = partial(self.set_model, model)
         self.clear()
 
         span = mg.model_span(model)
         mesh = mg.members_mesh(model)
         if mesh is not None:
             self.add_mesh(mesh.tube(radius=max(span * 0.004, 1e-3)),
-                          color=MEMBER_COLOR, name="members")
+                          color=style.V_MEMBER, name="members")
 
         _tags, pts, _index = mg.node_points(model)
         if len(pts):
-            self.add_points(pts, color=NODE_COLOR, render_points_as_spheres=True,
+            self.add_points(pts, color=style.V_NODE, render_points_as_spheres=True,
                             point_size=14, name="nodes")
 
         supports = mg.support_points(model)
         if len(supports):
-            self.add_points(supports, color=SUPPORT_COLOR,
+            self.add_points(supports, color=style.V_SUPPORT,
                             render_points_as_spheres=True, point_size=22,
                             name="supports")
 
-        self.show_grid()
+        self._draw_grid()
         self._frame(model)
         self._draw_highlight()
         if self._mode == "draw_node":
@@ -362,38 +400,39 @@ class ModelView(QtInteractor):
             pts.append(a + u * (0.5 * lp_i))
             pts.append(b - u * (0.5 * lp_j))
         if pts:
-            self.add_points(np.asarray(pts, dtype=float), color=HINGE_COLOR,
+            self.add_points(np.asarray(pts, dtype=float), color=style.V_HINGE,
                             render_points_as_spheres=True, point_size=20,
                             name="hinges")
 
     def show_deformed(self, model, scale: float) -> None:
         """Draw the deformed shape (coral) over a grey ghost of the model."""
         self._model = model
+        self._replay = partial(self.show_deformed, model, scale)
         self.clear()
         span = mg.model_span(model)
 
         ref = mg.members_mesh(model)
         if ref is not None:
             self.add_mesh(ref.tube(radius=max(span * 0.0025, 1e-3)),
-                          color=REFERENCE_COLOR, name="reference")
+                          color=style.V_REFERENCE, name="reference")
 
         mesh = mg.deformed_members_mesh(model, scale)
         if mesh is not None:
             self.add_mesh(mesh.tube(radius=max(span * 0.004, 1e-3)),
-                          color=DEFORMED_COLOR, name="deformed")
+                          color=style.V_DEFORMED, name="deformed")
 
         pts = mg.deformed_points(model, scale)
         if len(pts):
-            self.add_points(pts, color=DEFORMED_NODE,
+            self.add_points(pts, color=style.V_DEFORMED_NODE,
                             render_points_as_spheres=True, point_size=12,
                             name="deformed_nodes")
 
         supports = mg.support_points(model)
         if len(supports):
-            self.add_points(supports, color=SUPPORT_COLOR,
+            self.add_points(supports, color=style.V_SUPPORT,
                             render_points_as_spheres=True, point_size=20,
                             name="supports")
-        self.show_grid()
+        self._draw_grid()
         self._frame(model)
 
     def show_nl_step(self, model, node_disp, member_damage, scale: float,
@@ -408,6 +447,9 @@ class ModelView(QtInteractor):
         ``color_mode`` = ``"strain"`` colours by the continuous peak fiber
         strain (YlOrRd); ``"acceptance"`` colours by the discrete IO/LS/CP
         performance level (§16 C5) when ``member_state`` is supplied."""
+        self._replay = partial(self.show_nl_step, model, node_disp,
+                               member_damage, scale, member_state=member_state,
+                               color_mode=color_mode)
         import pyvista as pv
         from matplotlib import colormaps
         from matplotlib.colors import Normalize
@@ -426,7 +468,7 @@ class ModelView(QtInteractor):
         ref = mg.members_mesh(model)
         if ref is not None:
             self.add_mesh(ref.tube(radius=max(span * 0.0025, 1e-3)),
-                          color=REFERENCE_COLOR, name="reference")
+                          color=style.V_REFERENCE, name="reference")
 
         dmg = member_damage or {}
         state = member_state or {}
@@ -455,45 +497,47 @@ class ModelView(QtInteractor):
 
         pts = mg.deformed_points(model, scale)
         if len(pts):
-            self.add_points(pts, color=DEFORMED_NODE,
+            self.add_points(pts, color=style.V_DEFORMED_NODE,
                             render_points_as_spheres=True, point_size=10,
                             name="nl_nodes")
         supports = mg.support_points(model)
         if len(supports):
-            self.add_points(supports, color=SUPPORT_COLOR,
+            self.add_points(supports, color=style.V_SUPPORT,
                             render_points_as_spheres=True, point_size=18,
                             name="supports")
-        self.show_grid()
+        self._draw_grid()
         self._frame(model)
 
     def show_diagram(self, model, kind: str):
         """Draw the N / V / M diagram over grey members; return max |value|."""
+        self._replay = partial(self.show_diagram, model, kind)
         self.clear()
         span = mg.model_span(model)
         ref = mg.members_mesh(model)
         if ref is not None:
             self.add_mesh(ref.tube(radius=max(span * 0.003, 1e-3)),
-                          color="#8a8a8a", name="members")
+                          color=style.V_REFERENCE, name="members")
         vmax = mg.diagram_extreme(model, kind)
         scale = (0.16 * span / vmax) if vmax > 0 else 0.0
         fill, outline = mg.diagram_meshes(model, kind, scale)
-        color = DIAGRAM_COLOR.get(kind, "#1d4ed8")
+        color = _diagram_color(kind)
         if fill is not None:
             self.add_mesh(fill, color=color, opacity=0.35, name="diagram_fill")
         if outline is not None:
             self.add_mesh(outline, color=color, line_width=2, name="diagram_outline")
         supports = mg.support_points(model)
         if len(supports):
-            self.add_points(supports, color=SUPPORT_COLOR,
+            self.add_points(supports, color=style.V_SUPPORT,
                             render_points_as_spheres=True, point_size=18,
                             name="supports")
-        self.show_grid()
+        self._draw_grid()
         self._frame(model)
         return vmax
 
     def show_design(self, model, dcrs) -> None:
         """Colour each member by its AISC demand/capacity ratio and label it
         with the value (grey / '—' = no steel shape assigned)."""
+        self._replay = partial(self.show_design, model, dcrs)
         self.clear()
         span = mg.model_span(model)
         radius = max(span * 0.004, 1e-3)
@@ -511,17 +555,17 @@ class ModelView(QtInteractor):
             lab_txt.append(f"{dcr:.2f}" if dcr is not None else "—")
         _tags, pts, _index = mg.node_points(model)
         if len(pts):
-            self.add_points(pts, color=NODE_COLOR, render_points_as_spheres=True,
+            self.add_points(pts, color=style.V_NODE, render_points_as_spheres=True,
                             point_size=10, name="nodes")
         supports = mg.support_points(model)
         if len(supports):
-            self.add_points(supports, color=SUPPORT_COLOR,
+            self.add_points(supports, color=style.V_SUPPORT,
                             render_points_as_spheres=True, point_size=20,
                             name="supports")
         if lab_pts:
             try:
                 self.add_point_labels(np.array(lab_pts), lab_txt, font_size=12,
-                                      text_color="black", shape_opacity=0.15,
+                                      text_color=style.TEXT, shape_opacity=0.15,
                                       always_visible=True, name="dcr_labels")
             except Exception:
                 pass
@@ -530,10 +574,10 @@ class ModelView(QtInteractor):
                 [["DCR <= 0.50", "#2f9e44"], ["0.50 - 0.90", "#f59e0b"],
                  ["0.90 - 1.00", "#ea580c"], ["> 1.00  fail", "#dc2626"],
                  ["no section", "#9aa0a6"]],
-                bcolor="white", size=(0.24, 0.26), loc="upper right")
+                bcolor=style.PANEL, size=(0.24, 0.26), loc="upper right")
         except Exception:
             pass
-        self.show_grid()
+        self._draw_grid()
         self._frame(model)
 
     def _frame(self, model) -> None:
