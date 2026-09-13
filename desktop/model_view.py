@@ -12,7 +12,7 @@ from functools import partial
 import numpy as np
 from PySide6.QtCore import QPoint, QRect, QSize, Qt
 from PySide6.QtGui import QColor, QPainter, QPen, QPolygon
-from PySide6.QtWidgets import QApplication, QRubberBand, QWidget
+from PySide6.QtWidgets import QApplication, QLabel, QRubberBand, QWidget
 from pyvistaqt import QtInteractor
 
 import model_geometry as mg
@@ -156,12 +156,22 @@ class ModelView(QtInteractor):
         self._snap_on = True
         self._snap_grid = 0.5
         self._region_cb = None
+        self._coord_cb = None
         self._rubber = None
         self._band_origin = None
         self._band_additive = False
         self._highlight = []
         self._poly_overlay = _PolygonOverlay(self, self._polygon_select)
         self._poly_overlay.hide()
+        # empty-state hint — shown (centred) whenever there is no model to draw,
+        # instead of a blank canvas (charter §F). Themed via the #canvasHint QSS.
+        self._hint = QLabel(
+            "No model yet — draw a node, or open a project  (Ctrl+O)", self)
+        self._hint.setObjectName("canvasHint")
+        self._hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._hint.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self._sync_hint()
         try:
             self.enable_point_picking(callback=self._on_point_picked,
                                       left_clicking=True, show_message=False,
@@ -185,6 +195,11 @@ class ModelView(QtInteractor):
     def set_region_callback(self, fn) -> None:
         self._region_cb = fn
 
+    def set_coord_callback(self, fn) -> None:
+        """``fn(x, y)`` receives the world coordinate under the cursor on the
+        model's ground plane (z = 0), for a live status-bar readout."""
+        self._coord_cb = fn
+
     # --- window (box) selection: intercept the drag in "window" mode so VTK
     #     doesn't orbit; project nodes to screen and test against the box.
     def mousePressEvent(self, ev):
@@ -201,6 +216,10 @@ class ModelView(QtInteractor):
         super().mousePressEvent(ev)
 
     def mouseMoveEvent(self, ev):
+        if self._coord_cb is not None:
+            wc = self._world_on_ground(ev.position())
+            if wc is not None:
+                self._coord_cb(*wc)
         if self._mode == "window" and self._band_origin is not None:
             self._rubber.setGeometry(
                 QRect(self._band_origin, ev.position().toPoint()).normalized())
@@ -228,6 +247,31 @@ class ModelView(QtInteractor):
         dx, dy, _dz = ren.GetDisplayPoint()
         dpr = self.devicePixelRatioF() or 1.0
         return dx / dpr, self.height() - dy / dpr
+
+    def _world_on_ground(self, pos):
+        """Widget pixel → world (x, y) on the z = 0 ground plane, by intersecting
+        the cursor ray with that plane. Works for ortho and iso views; returns
+        None if the ray is parallel to the plane or the transform is unready."""
+        try:
+            ren = self.renderer
+            dpr = self.devicePixelRatioF() or 1.0
+            dx = pos.x() * dpr
+            dy = (self.height() - pos.y()) * dpr
+            ray = []
+            for zd in (0.0, 1.0):                # near + far display points
+                ren.SetDisplayPoint(dx, dy, zd)
+                ren.DisplayToWorld()
+                w = ren.GetWorldPoint()
+                h = w[3] if w[3] else 1.0
+                ray.append((w[0] / h, w[1] / h, w[2] / h))
+            (x0, y0, z0), (x1, y1, z1) = ray
+            dz = z1 - z0
+            if abs(dz) < 1e-12:
+                return None
+            t = -z0 / dz
+            return x0 + t * (x1 - x0), y0 + t * (y1 - y0)
+        except Exception:
+            return None
 
     def _window_select(self, rect, additive=False) -> None:
         if self._model is None or self._region_cb is None:
@@ -266,6 +310,16 @@ class ModelView(QtInteractor):
         super().resizeEvent(ev)
         if self._poly_overlay.isVisible():
             self._poly_overlay.setGeometry(self.rect())
+        if self._hint.isVisible():
+            self._hint.setGeometry(self.rect())
+
+    def _sync_hint(self) -> None:
+        """Show the centred empty-state hint when there is no model to draw."""
+        empty = self._model is None or not len(getattr(self._model, "nodes", {}))
+        self._hint.setVisible(empty)
+        if empty:
+            self._hint.setGeometry(self.rect())
+            self._hint.raise_()
 
     def set_mode(self, mode: str) -> None:
         self._mode = mode
@@ -435,6 +489,7 @@ class ModelView(QtInteractor):
         self._draw_highlight()
         if self._mode == "draw_node":
             self._add_ground_plane()
+        self._sync_hint()
 
     def mark_hinges(self, project) -> None:
         """Overlay a magenta marker inside each end of every member that has a

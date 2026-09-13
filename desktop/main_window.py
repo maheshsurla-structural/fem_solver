@@ -93,6 +93,7 @@ class MainWindow(QMainWindow):
         self.view.set_region_callback(self._on_region_select)
 
         self._build_menu()
+        self._build_status_items()           # persistent context (right side)
         # an always-visible theme switch in the status-bar corner (the "chip")
         self._theme_btn = QToolButton()
         self._theme_btn.setAutoRaise(True)
@@ -100,8 +101,10 @@ class MainWindow(QMainWindow):
         self._theme_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._theme_btn.clicked.connect(self.toggle_theme)
         self.statusBar().addPermanentWidget(self._theme_btn)
+        self.view.set_coord_callback(self._on_cursor_coords)
         style.apply(self)                    # unified light/blue theme
         self._sync_theme_ui()
+        self._refresh_status()
         self.statusBar().showMessage("Ready")
 
     def toggle_theme(self) -> None:
@@ -123,6 +126,44 @@ class MainWindow(QMainWindow):
         self._retheme_icons()
         self.view.apply_theme()
         self._sync_theme_ui()
+
+    def _build_status_items(self) -> None:
+        """Persistent context on the right of the status bar (model summary ·
+        selection · cursor coords · units), separate from the transient
+        ``showMessage`` hints on the left."""
+        sb = self.statusBar()
+
+        def _lbl():
+            w = QLabel("")
+            w.setObjectName("sub")
+            return w
+
+        self._st_model = _lbl()
+        self._st_sel = _lbl()
+        self._st_coord = _lbl()
+        self._st_units = _lbl()
+        for w in (self._st_model, self._st_sel, self._st_coord, self._st_units):
+            sb.addPermanentWidget(w)
+
+    def _refresh_status(self) -> None:
+        """Update the persistent model-summary + units readouts from the project."""
+        p = self._project
+        if p is None:
+            self._st_model.setText("")
+            self._st_units.setText("")
+            return
+        self._st_model.setText(
+            f"{len(p.nodes)} nodes · {len(p.members)} members · "
+            f"{len(p.loads)} loads")
+        self._st_units.setText(f"{p.force_unit} · {p.length_unit}")
+        self._update_sel_status(len(self._selected_refs()))   # stay consistent
+
+    def _update_sel_status(self, n: int) -> None:
+        self._st_sel.setText(f"{n} selected" if n else "")
+
+    def _on_cursor_coords(self, x, y) -> None:
+        unit = self._project.length_unit if self._project else "m"
+        self._st_coord.setText(f"X {x:.2f}  Y {y:.2f} {unit}")
 
     def _sync_theme_ui(self) -> None:
         """Point the theme controls at the theme they switch TO."""
@@ -1142,6 +1183,7 @@ class MainWindow(QMainWindow):
 
     def _on_selection_changed(self) -> None:
         refs = self._selected_refs()
+        self._update_sel_status(len(refs))
         geom = [r for r in refs if r[0] in ("node", "member")]
         if geom:
             self.view.highlight(geom)
@@ -1420,9 +1462,7 @@ class MainWindow(QMainWindow):
         except Exception as exc:                       # noqa: BLE001
             QMessageBox.critical(self, "Model error", str(exc))
         self._populate_tree()
-        self.statusBar().showMessage(
-            f"{len(self._project.nodes)} nodes · {len(self._project.members)} "
-            f"members · {len(self._project.loads)} loads")
+        self._refresh_status()
 
     def _update_title(self) -> None:
         name = self._project.name if self._project else "Untitled"

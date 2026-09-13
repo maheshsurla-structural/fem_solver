@@ -175,8 +175,8 @@ Pick the lowest-numbered unchecked item whose deps are met.
 | T1 | Theme the shell's icons (`main_window` → `style.ICON`, re-colour on theme change) | — | [x] | `feat(gui-polish T1-T3)` · 2026-09-13 |
 | T2 | Wire **theme + density toggles** into the shell (View menu + status-bar chip; persist choice) | T1 | [x] | `feat(gui-polish T1-T3)` · 2026-09-13 |
 | T3 | Product **window icon** (`setWindowIcon(monogram_icon())`) + title-case audit | — | [x] | `feat(gui-polish T1-T3)` · 2026-09-13 |
-| T4 | **Status bar** with real context (units · selection · coords · theme/density) | T2 | [ ] | |
-| T5 | **Empty states** for viewport / tree / properties (no model · no results) | — | [ ] | |
+| T4 | **Status bar** with real context (units · selection · coords · theme/density) | T2 | [x] | `feat(gui-polish T4-T5)` · 2026-09-13 |
+| T5 | **Empty states** for viewport / tree / properties (no model · no results) | — | [x] | `feat(gui-polish T4-T5)` · 2026-09-13 |
 | V1 | Viewport **themes** (bg/grid/axis + entity colours from tokens; repaint on theme change) | — | [x] | `feat(gui-polish V1)` · 2026-09-13 |
 | V2 | Replace plot-style `show_grid()` with a **CAD ground grid + origin triad** | V1 | [x] | `feat(gui-polish V2)` · 2026-09-13 |
 | D1 | Redesign **Material editor** onto the scaffold | — | [ ] | |
@@ -249,3 +249,21 @@ different, finished product.
   `phase21_outputs/gui_polish/T_shell_{light,dark}` (native grab — the whole window, viewport
   included, in both themes). No `project.py` / solver changes. **Phase T's theming-reach items
   (T1–T3) complete; T4 status-bar content + T5 empty states remain.**
+- 2026-09-13 — **T4–T5 done** (`main_window.py` + `model_view.py`). **Phase T complete.**
+  **T4:** the status bar used to only `showMessage` a transient model count that any other
+  message clobbered. It now carries persistent right-side context as permanent widgets —
+  **model summary** (`N nodes · M members · L loads`), **selection** count, live **cursor
+  coords**, and **units** — beside the T2 theme chip, with `showMessage` freed for transient
+  hints. A `_build_status_items()` builds the labels; `_refresh_status()` (called from `_rebuild`)
+  fills model + units and re-derives the selection count so it stays consistent;
+  `_on_selection_changed` updates it live. The viewport gained `set_coord_callback` +
+  `_world_on_ground(pos)` — a cursor-ray/`z=0`-plane intersection (works ortho *and* iso, guarded)
+  — feeding `_on_cursor_coords`. **T5:** `ModelView` now shows a centred `#canvasHint` overlay
+  ("No model yet — draw a node, or open a project (Ctrl+O)") whenever the model is absent or has
+  no nodes (e.g. right after File ▸ New, which makes a project with a section but no geometry),
+  hiding once a model with nodes is drawn; it's click-through (`WA_TransparentForMouseEvents`) and
+  themes via QSS. (The Properties panel already had its own "select…" empty state.) 9 offscreen
+  tests (`test_desktop_statusbar.py` ×6, `test_desktop_empty_state.py` ×3). Full desktop suite
+  green (213 passed, 1 skipped). Visual record `phase21_outputs/gui_polish/T4_statusbar_light`,
+  `T5_empty_{light,dark}`. No `project.py` / solver changes. **All of Phase T (T1–T5) done; V + T
+  complete — remaining: D1–D3 dialog tail, G1–G2 sweep + record.**
