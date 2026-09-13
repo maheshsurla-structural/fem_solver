@@ -325,7 +325,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
 | S1 | Menu reorg (Loads menu) | L2, L5, A1, A4 | [x] | `feat(loads-ux S1)` · 2026-09-13 |
 | S2 | Loads & Analysis toolbar groups | S1 | [x] | `feat(loads-ux S2)` · 2026-09-13 |
 | S3 | (Optional) ribbon-style top bar | S2 | [ ] | |
-| Q1 | Smoke-test sweep | all above | [ ] | |
+| Q1 | Smoke-test sweep | all above | [x] | `feat(loads-ux Q1)` · 2026-09-13 |
 | Q2 | Visual record (screenshots) | all above | [ ] | |
 
 **Suggested order for the first three sessions:** L1 → A2 (fixes the screenshot everyone sees)
@@ -472,6 +472,17 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
   button's default-action (its toolbar home changed). Full desktop suite green (172 passed, 1
   skipped). Screenshots `phase21_outputs/loads_ux/S2_ribbon_light.png`, `…_dark.png`. No
   `project.py` / solver changes.
+
+- 2026-09-13 — **Q1 done.** Consolidated offscreen construction **sweep** in
+  `tests/test_desktop_loads_ux_sweep.py`: one parametrized guard that builds every redesigned
+  Loads/Analysis dialog (`CombinationsDialog`, `LoadCaseDialog`, `LoadDialog`, `MemberLoadDialog`,
+  `LoadGenDialog`, `AnalysisCasesDialog`, `NonlinearCaseDialog`, `PushoverDialog`,
+  `TimeHistoryDialog`, `RunAnalysisDialog`) from one representative fiber-column project, plus an
+  inventory-guard test so the list can't silently drift. Imports are deferred to run time so
+  collection is safe without PySide6. Per-surface behaviour stays in each dialog's own
+  `test_desktop_*.py`; L1 scaffold and the S1/S2 shell keep their tests. 11 offscreen tests
+  (all green); the whole desktop suite now stands at 183 passed, 1 skipped. No `project.py` /
+  solver changes.
 
 ## 10. Before / after notes
 
