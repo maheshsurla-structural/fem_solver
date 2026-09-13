@@ -138,6 +138,26 @@ def monogram_icon(text: str = "ASA", fg: str = "#ffffff",
     return QIcon(pm)
 
 
+@lru_cache(maxsize=None)
+def letter_icon(text: str, color: str = "#3a3a3a") -> QIcon:
+    """A crisp badge rendering a short label (1-2 chars, e.g. an ASCE load key
+    'D' / 'L' / 'Lr') as a themable QIcon — for list/table rows."""
+    svg = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">'
+           f'<text x="12" y="18" font-size="13" font-family="sans-serif" '
+           f'font-weight="700" text-anchor="middle" fill="{color}">'
+           f'{text}</text></svg>')
+    renderer = QSvgRenderer(QByteArray(svg.encode("utf-8")))
+    scale = 4
+    pm = QPixmap(24 * scale, 24 * scale)
+    pm.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(pm)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    renderer.render(painter)
+    painter.end()
+    pm.setDevicePixelRatio(scale)
+    return QIcon(pm)
+
+
 def svg_markup(name: str, color: str = "#3a3a3a") -> str:
     """The raw ``<svg>…</svg>`` string for an icon, for embedding in HTML
     (e.g. the calc report brand mark). Empty string for an unknown name."""

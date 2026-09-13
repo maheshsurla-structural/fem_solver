@@ -313,7 +313,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
 |------|-------|------|--------|---------------|
 | L1 | Shared scaffold `analysis_ui.py` | — | [x] | `feat(loads-ux L1)` · 2026-09-13 |
 | L2 | Load-combination editor (NEW) | L1 | [x] | `feat(loads-ux L2)` · 2026-09-13 |
-| L3 | Redesign `LoadCaseDialog` | L1 | [ ] | |
+| L3 | Redesign `LoadCaseDialog` | L1 | [x] | `feat(loads-ux L3)` · 2026-09-13 |
 | L4 | Redesign nodal `LoadDialog` | L1 | [x] | `feat(loads-ux L4)` · 2026-09-13 |
 | L5 | Member/line-load dialog (NEW) | L1 | [x] | `feat(loads-ux L5)` · 2026-09-13 |
 | L6 | Redesign `LoadGenDialog` | L1 | [ ] | |
@@ -410,6 +410,13 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
   returns its info dict (was `None`) so the control can show status; callers that ignored the
   return are unaffected. 6 offscreen tests in `test_desktop_run_analysis.py`. Screenshots
   `phase21_outputs/loads_ux/A4_run_analysis_*.png`. No solver changes.
+- 2026-09-13 — **L3 done.** `LoadCaseDialog` (`editing.py`) rebuilt into a scaffold GroupCard:
+  the Name/Nature table now carries a per-nature **ASCE-key badge** (D / L / Lr / S / R / W / E)
+  on each name cell — a new `icons.letter_icon(text, color)` helper renders the badge — updated
+  live when the nature combo changes; plus a hint line explaining natures drive the ASCE 7-22
+  generator. `.edit()`/`result_cases`, id preservation and add/remove unchanged. 4 offscreen
+  tests in `test_desktop_load_cases.py`. Screenshots `phase21_outputs/loads_ux/L3_load_cases_*.png`.
+  No `project.py`/solver changes.
 
 ---
 
@@ -446,3 +453,5 @@ _(Fill in as items land — one or two lines + a screenshot path per redesigned 
 - **A4 run-analysis control** — a Case/Type/Action/Status table with Run/Do-not-run toggles;
   linear static runs inline with live status, nonlinear/time-history are queued.
   `phase21_outputs/loads_ux/A4_run_analysis_light.png`, `…_dark.png`.
+- **L3 load-cases dialog** — bare table became a titled card with a per-nature ASCE-key badge on
+  each row and a hint line. `phase21_outputs/loads_ux/L3_load_cases_light.png`, `…_dark.png`.

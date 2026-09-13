@@ -14,8 +14,10 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox,
                                QWidget)
 
 import analysis_ui as ui
+import icons
 import style
-from project import (Load, LoadCase, Member, NATURE_LABELS, Node, Section)
+from project import (Load, LoadCase, Member, NATURE_ASCE, NATURE_LABELS, Node,
+                     Section)
 
 
 def dof_labels(ndm: int, ndf: int) -> list[str]:
@@ -221,38 +223,65 @@ class LoadCaseDialog(QDialog):
     def __init__(self, parent, project):
         super().__init__(parent)
         self.setWindowTitle("Load cases")
-        self.resize(380, 300)
+        self.resize(440, 360)
         self._project = project
         self.result_cases = None
         # working rows: [id, name, nature]; id 0 => new (assigned on accept)
         self._rows = [[c.id, c.name, c.nature] for c in project.load_cases]
 
-        v = QVBoxLayout(self)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(style.SP_LG, style.SP_LG,
+                                 style.SP_LG, style.SP_LG)
+        outer.setSpacing(style.SP_MD)
+        card = ui.GroupCard("Load cases", form=False)
         self.tbl = QTableWidget(0, 2)
         self.tbl.setHorizontalHeaderLabels(["Name", "Nature"])
         self.tbl.horizontalHeader().setStretchLastSection(True)
         self.tbl.verticalHeader().setVisible(False)
-        v.addWidget(self.tbl)
+        card.body_layout().addWidget(self.tbl)
         row = QHBoxLayout()
-        add = QPushButton("+ Case")
+        add = QPushButton("＋ Case")
         add.clicked.connect(self._add)
         rem = QPushButton("Remove")
         rem.clicked.connect(self._remove)
         row.addWidget(add)
         row.addWidget(rem)
-        v.addLayout(row)
-        v.addWidget(_buttons(self))
+        row.addStretch(1)
+        card.body_layout().addLayout(row)
+        outer.addWidget(card)
+
+        hint = QLabel("Each case's nature (Dead / Live / Wind …) drives the "
+                      "ASCE 7-22 generator in Analysis ▸ Load combinations.")
+        hint.setObjectName("hintLabel")
+        hint.setWordWrap(True)
+        outer.addWidget(hint)
+        outer.addWidget(_buttons(self))
+        style.apply(self)
         self._reload()
+
+    @staticmethod
+    def _nature_icon(nature: str):
+        key = NATURE_ASCE.get(nature) or "·"        # ASCE load key badge
+        return icons.letter_icon(key, style.ACCENT)
+
+    def _on_nature(self, r: int, combo: QComboBox) -> None:
+        it = self.tbl.item(r, 0)
+        if it is not None:
+            it.setIcon(self._nature_icon(combo.currentData()))
 
     def _reload(self) -> None:
         self.tbl.setRowCount(len(self._rows))
         for r, (_id, name, nature) in enumerate(self._rows):
-            self.tbl.setItem(r, 0, QTableWidgetItem(name))
+            item = QTableWidgetItem(name)
+            item.setIcon(self._nature_icon(nature))
+            self.tbl.setItem(r, 0, item)
             combo = QComboBox()
             for key, lbl in NATURE_LABELS.items():
                 combo.addItem(lbl, key)
             i = combo.findData(nature)
             combo.setCurrentIndex(i if i >= 0 else 0)
+            combo.currentIndexChanged.connect(
+                lambda _i, rr=r, cc=combo: self._on_nature(rr, cc))
             self.tbl.setCellWidget(r, 1, combo)
 
     def _add(self) -> None:
