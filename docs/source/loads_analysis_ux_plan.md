@@ -312,7 +312,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
 | Item | Title | Deps | Status | Commit / date |
 |------|-------|------|--------|---------------|
 | L1 | Shared scaffold `analysis_ui.py` | — | [x] | `feat(loads-ux L1)` · 2026-09-13 |
-| L2 | Load-combination editor (NEW) | L1 | [ ] | |
+| L2 | Load-combination editor (NEW) | L1 | [x] | `feat(loads-ux L2)` · 2026-09-13 |
 | L3 | Redesign `LoadCaseDialog` | L1 | [ ] | |
 | L4 | Redesign nodal `LoadDialog` | L1 | [ ] | |
 | L5 | Member/line-load dialog (NEW) | L1 | [ ] | |
@@ -354,6 +354,16 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
   Tests: 2 new in `test_desktop_nlcases.py` (scaffold panels + notes round-trip); full
   nlcases + scaffold + pushover/nonlinear/runs suites green (62 tests). Screenshots under
   `phase21_outputs/loads_ux/A2_nonlinear_case_*.png`.
+- 2026-09-13 — **L2 done.** New `desktop/combinations_dialog.py` — the missing
+  load-combination editor: a combinations list (＋ Combo / Delete) on the left, and for the
+  selected combo a **factor grid over every load case** (Load case · Nature · Scale-factor spin)
+  plus a "Generate ASCE 7-22 LRFD" button that folds in `generate_asce7_combinations()` via a
+  proxy project (so generated ids continue from the working list). Factor 0 ⇒ case excluded.
+  `.manage()` returns `list[LoadCombination]`. Wired into Analysis ▸ **Load combinations…**
+  (`main_window.manage_combinations`, undoable). The generate *logic* is split into a UI-free
+  `_append_generated()` so it is testable without the modal. 6 offscreen tests in
+  `test_desktop_combinations.py` (all green; 29 across the scaffold-dependent suites).
+  Screenshots `phase21_outputs/loads_ux/L2_combinations_*.png`. No solver changes.
 
 ---
 
@@ -370,3 +380,6 @@ _(Fill in as items land — one or two lines + a screenshot path per redesigned 
   2×2 grid of Control / Protocol / Initial-conditions / Solver cards, matching CSiBridge *Load
   Case Data*. `phase21_outputs/loads_ux/A2_nonlinear_case_light.png`, `…_dark.png`,
   `…_cyclic_light.png` (cyclic shows the in-place protocol-field swap).
+- **L2 combination editor** — a surface that did not exist before: combinations list on the
+  left, a per-case factor grid + ASCE-7 generator on the right.
+  `phase21_outputs/loads_ux/L2_combinations_light.png`, `…_dark.png`.

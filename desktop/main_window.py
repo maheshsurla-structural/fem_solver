@@ -171,6 +171,8 @@ class MainWindow(QMainWindow):
         self.act_design.triggered.connect(self.show_design)
         self.act_loadcases = _action(self, "Load &cases…", None,
                                      self.manage_load_cases, "load")
+        self.act_editcombos = _action(self, "Load com&binations…", None,
+                                      self.manage_combinations, "loadsgen")
         self.act_gencombos = _action(self, "Generate ASCE-7 &combinations", None,
                                      self.generate_combinations, "loadsgen")
         self.act_drawings = _action(self, "&Drawings…", None, self.open_drawings,
@@ -247,6 +249,7 @@ class MainWindow(QMainWindow):
         gen_menu.addAction(self.act_genloads)
         analysis_menu = self.menuBar().addMenu("&Analysis")
         analysis_menu.addAction(self.act_loadcases)
+        analysis_menu.addAction(self.act_editcombos)
         analysis_menu.addAction(self.act_gencombos)
         analysis_menu.addSeparator()
         analysis_menu.addAction(self.act_run)
@@ -569,6 +572,26 @@ class MainWindow(QMainWindow):
         self._apply_edit("Edit load cases", _mut)
         self.log.appendPlainText(
             f"Load cases: {', '.join(c.name for c in cases)}")
+
+    def manage_combinations(self) -> None:
+        """Open the load-combination editor (plan L2): add / rename / delete
+        combinations and set each case's factor, with a one-click ASCE 7-22
+        generator folded in. Replaces the project's combinations on OK."""
+        if self._project is None:
+            return
+        from combinations_dialog import CombinationsDialog
+        result = CombinationsDialog.manage(self, self._project)
+        if result is None:
+            return
+
+        def _mut():
+            self._project.combinations = result
+        self._apply_edit("Edit load combinations", _mut)
+        self.log.appendPlainText(
+            f"Load combinations: {len(result)} defined"
+            + (f" — {', '.join(c.name for c in result)}" if result else ""))
+        self.statusBar().showMessage(
+            f"{len(result)} load combination(s) · run Design to envelope them")
 
     def generate_combinations(self) -> None:
         """Replace the project's combinations with the ASCE 7-22 LRFD strength
