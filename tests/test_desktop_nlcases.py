@@ -186,16 +186,6 @@ def test_case_dialog_edit_seeds_existing(qapp):
     assert c.target == pytest.approx(0.03) and c.tol == 1e-5
 
 
-def test_case_manager_returns_cases(qapp):
-    from nonlinear_cases import NonlinearCaseManagerDialog
-    p = _gsd_column_project()
-    p.nonlinear_cases = [NonlinearCase(id=1, name="m", control_node=2)]
-    dlg = NonlinearCaseManagerDialog(None, p)
-    assert dlg.table.rowCount() == 1
-    out = dlg.result_cases()
-    assert len(out) == 1 and out is not p.nonlinear_cases
-
-
 def test_pushover_dialog_case_selector(qapp):
     from pushover_dialog import PushoverDialog, PushoverWorker
     p = _gsd_column_project()
@@ -218,9 +208,14 @@ def test_pushover_dialog_case_selector(qapp):
     assert dlg.node.isEnabled() and dlg._selected_case() is None
 
 
-def test_main_window_wires_nonlinear_cases(qapp):
+def test_nonlinear_cases_folded_into_analysis_home(qapp):
+    # A5: the standalone nonlinear-case manager is retired; the unified
+    # Analysis-cases home (A1) is the single place to manage them.
     from main_window import MainWindow
+    import nonlinear_cases
     w = MainWindow()
     w.load_project(_gsd_column_project())
-    assert hasattr(w, "act_nlcases")
-    assert callable(w.manage_nonlinear_cases)
+    assert hasattr(w, "act_analysiscases")
+    assert callable(w.manage_analysis_cases)
+    assert not hasattr(w, "act_nlcases")
+    assert not hasattr(nonlinear_cases, "NonlinearCaseManagerDialog")

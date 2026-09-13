@@ -321,7 +321,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
 | A2 | Redesign `NonlinearCaseDialog` (screenshot fix) | L1 | [x] | `feat(loads-ux A2)` · 2026-09-13 |
 | A3 | Redesign Pushover + Time-History panels | L1 | [x] | `feat(loads-ux A3)` · 2026-09-13 |
 | A4 | "Run Analysis" control (NEW) | L1, A1 | [x] | `feat(loads-ux A4)` · 2026-09-13 |
-| A5 | Polish `NonlinearCaseManagerDialog` | A1 | [ ] | |
+| A5 | Fold `NonlinearCaseManagerDialog` into A1 | A1 | [x] | `feat(loads-ux A5)` · 2026-09-13 |
 | S1 | Menu reorg (Loads menu) | L2, L5, A1, A4 | [ ] | |
 | S2 | Loads & Analysis toolbar groups | S1 | [ ] | |
 | S3 | (Optional) ribbon-style top bar | S2 | [ ] | |
@@ -424,6 +424,15 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done (add `commit` + date).
   when no nodes are above the base). `.get()`/`params()` unchanged. 4 offscreen tests in
   `test_desktop_load_gen.py`. Screenshots `phase21_outputs/loads_ux/L6_loadgen_*.png`. No
   `project.py`/solver changes. **All six Loads-phase (L) items complete.**
+- 2026-09-13 — **A5 done (fold, not polish).** Retired the standalone
+  `NonlinearCaseManagerDialog` — the A1 Analysis-cases home already lists and does
+  Add/Modify/Delete for nonlinear cases, so a second manager was redundant. Removed the class
+  from `nonlinear_cases.py` (pruned its now-unused imports; `NonlinearCaseDialog` stays and is
+  driven by the home), and removed the `Nonlinear cases…` action + `manage_nonlinear_cases`
+  from `main_window.py`. Tests updated: dropped the manager test, and
+  `test_nonlinear_cases_folded_into_analysis_home` now asserts the home is wired and the old
+  manager/action are gone. nlcases + analysis-cases + pushover suites green (27 tests). No new
+  screenshot (the A1 home is the surface). **All five Analysis-phase (A) items complete.**
 
 ---
 

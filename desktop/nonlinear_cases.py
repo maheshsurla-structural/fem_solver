@@ -7,20 +7,18 @@ protocol (monotonic ramp or reversed-cyclic), a held axial preload, an optional
 the Newton controls (tolerance, max iterations).
 
 * :class:`NonlinearCaseDialog` edits one case (protocol-dependent fields toggle).
-* :class:`NonlinearCaseManagerDialog` is the list / add / edit / delete manager.
+
+The list / add / edit / delete of nonlinear cases now lives in the unified
+Analysis-cases home (:class:`analysis_cases_dialog.AnalysisCasesDialog`, plan
+A1/A5), which drives this dialog for add / modify.
 
 Cases are run by ``nonlinear.run_case`` (wired into the pushover dialog's Case
 selector). Pure Qt — headless-constructible under ``QT_QPA_PLATFORM=offscreen``.
 """
 from __future__ import annotations
 
-import copy
-
-from PySide6.QtWidgets import (QComboBox, QDialog, QDialogButtonBox,
-                               QDoubleSpinBox, QFormLayout, QHBoxLayout, QLabel,
-                               QLineEdit, QMessageBox, QPushButton, QSpinBox,
-                               QTableWidget, QTableWidgetItem, QVBoxLayout,
-                               QWidget)
+from PySide6.QtWidgets import (QComboBox, QDialog, QDoubleSpinBox, QFormLayout,
+                               QLineEdit, QSpinBox, QVBoxLayout, QWidget)
 
 import analysis_ui as ui
 import style
@@ -220,96 +218,3 @@ class NonlinearCaseDialog(QDialog):
     def edit(cls, parent, project, case=None):
         dlg = cls(parent, project, case)
         return dlg.data() if dlg.exec() else None
-
-
-class NonlinearCaseManagerDialog(QDialog):
-    """List / add / edit / delete nonlinear cases. Returns the edited list via
-    :meth:`result_cases` after a successful close."""
-
-    def __init__(self, parent, project):
-        super().__init__(parent)
-        self.setWindowTitle("Nonlinear cases")
-        self._project = project
-        self._cases = copy.deepcopy(project.nonlinear_cases)
-        v = QVBoxLayout(self)
-
-        self.table = QTableWidget(0, 4)
-        self.table.setHorizontalHeaderLabels(
-            ["id", "name", "protocol", "control"])
-        self.table.horizontalHeader().setStretchLastSection(True)
-        self.table.setMinimumSize(480, 240)
-        v.addWidget(self.table)
-
-        row = QHBoxLayout()
-        for label, cb in (("Add…", self._add), ("Edit…", self._edit),
-                          ("Delete", self._delete)):
-            b = QPushButton(label)
-            b.clicked.connect(cb)
-            row.addWidget(b)
-        row.addStretch(1)
-        v.addLayout(row)
-
-        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        btns.accepted.connect(self.accept)
-        btns.rejected.connect(self.reject)
-        v.addWidget(btns)
-        self._refresh()
-
-    def _refresh(self) -> None:
-        dof = {0: "Ux", 1: "Uy", 2: "Rz"}
-        self.table.setRowCount(len(self._cases))
-        for r, c in enumerate(self._cases):
-            self.table.setItem(r, 0, QTableWidgetItem(str(c.id)))
-            self.table.setItem(r, 1, QTableWidgetItem(c.name))
-            proto = c.protocol + (" ↩" if c.continue_from else "")
-            self.table.setItem(r, 2, QTableWidgetItem(proto))
-            self.table.setItem(r, 3, QTableWidgetItem(
-                f"node {c.control_node} {dof.get(c.control_dof, '?')}"))
-
-    def _proxy_project(self):
-        proxy = copy.copy(self._project)
-        proxy.nonlinear_cases = self._cases
-        return proxy
-
-    def _add(self) -> None:
-        c = NonlinearCaseDialog.edit(self, self._proxy_project())
-        if c is None:
-            return
-        if any(x.id == c.id for x in self._cases):
-            QMessageBox.warning(self, "Duplicate",
-                                f"Case {c.id} already exists.")
-            return
-        self._cases.append(c)
-        self._refresh()
-
-    def _edit(self) -> None:
-        r = self.table.currentRow()
-        if r < 0:
-            return
-        c = NonlinearCaseDialog.edit(self, self._proxy_project(),
-                                     self._cases[r])
-        if c is not None:
-            self._cases[r] = c
-            self._refresh()
-
-    def _delete(self) -> None:
-        r = self.table.currentRow()
-        if r < 0:
-            return
-        cid = self._cases[r].id
-        used = [c.id for c in self._cases if c.continue_from == cid]
-        if used:
-            QMessageBox.warning(self, "In use",
-                                f"Case {cid} is continued-from by case(s) "
-                                f"{', '.join(map(str, used))}.")
-            return
-        del self._cases[r]
-        self._refresh()
-
-    def result_cases(self) -> list:
-        return self._cases
-
-    @classmethod
-    def manage(cls, parent, project):
-        dlg = cls(parent, project)
-        return dlg.result_cases() if dlg.exec() else None
