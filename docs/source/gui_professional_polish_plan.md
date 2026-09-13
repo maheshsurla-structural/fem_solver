@@ -182,8 +182,8 @@ Pick the lowest-numbered unchecked item whose deps are met.
 | D1 | Redesign **Material editor** onto the scaffold | — | [x] | `feat(gui-polish D1)` · 2026-09-13 |
 | D2 | Redesign **Hinge editor / assignment** onto the scaffold | — | [x] | `feat(gui-polish D2)` · 2026-09-13 |
 | D3 | Polish **Model-checks · Section-import · Run-history · Design · Drawings** dialogs | — | [x] | `feat(gui-polish D3)` · 2026-09-13 |
-| G1 | **Charter sweep test** — every top-level surface builds + themes in all 4 combos | T1–T5, V1, D1–D3 | [ ] | |
-| G2 | **Visual record** — light/dark (+ density) screenshots of every polished surface | most above | [ ] | |
+| G1 | **Charter sweep test** — every top-level surface builds + themes in all 4 combos | T1–T5, V1, D1–D3 | [x] | `feat(gui-polish G1-G2)` · 2026-09-13 |
+| G2 | **Visual record** — light/dark (+ density) screenshots of every polished surface | most above | [x] | `feat(gui-polish G1-G2)` · 2026-09-13 |
 
 **Suggested first three sessions:** T1 (icons theme) → T2 (reach dark mode / compact from the
 shell) → V1 (viewport themes) — after these three, opening the app in dark mode looks like a
@@ -305,3 +305,17 @@ different, finished product.
   passed, 1 skipped). Visual record `phase21_outputs/gui_polish/D3_checks_{light,dark}`. No
   `project.py` / solver changes. **Phases V + T + D all complete — only G1 (charter sweep test) +
   G2 (visual record) remain.**
+- 2026-09-13 — **G1 + G2 done. WORK STREAM COMPLETE (12/12).** **G1:** a cross-cutting charter
+  sweep in `tests/test_desktop_gui_polish_sweep.py` — every D-phase dialog (`MaterialDialog`,
+  `MaterialManagerDialog`, `HingeDialog`, `HingeManagerDialog`, `HingeAssignmentDialog`,
+  `ModelChecksDialog`, `RunHistoryDialog`) builds in all four light/dark × comfortable/compact
+  combos, and `MainWindow` + the viewport restyle (`_apply_theme_density`) in every combo with the
+  empty-state overlay correctly hidden once a model loads; plus an inventory-guard so the surface
+  list can't silently drift (9 tests). **G2:** consolidated light|dark montages per surface
+  (`phase21_outputs/gui_polish/G2_{viewport,shell,empty,material,hinge,checks}.png`) alongside the
+  per-item before/after shots the V/T/D items saved. Full desktop suite green (**225 passed, 1
+  skipped**; the stream added ~37 offscreen tests). No `project.py` / solver changes across the
+  entire stream. **Definition of done (§7) met: every surface is grouped/boxed and themes in both
+  light and dark and both densities; the viewport is a first-class themed CAD canvas; the shell
+  reaches dark/compact and persists the choice; the status bar carries live context; empty states
+  replace blank voids; and the pre-scaffold dialog tail is on the scaffold.**
