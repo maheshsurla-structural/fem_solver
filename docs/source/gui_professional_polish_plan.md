@@ -179,7 +179,7 @@ Pick the lowest-numbered unchecked item whose deps are met.
 | T5 | **Empty states** for viewport / tree / properties (no model · no results) | — | [x] | `feat(gui-polish T4-T5)` · 2026-09-13 |
 | V1 | Viewport **themes** (bg/grid/axis + entity colours from tokens; repaint on theme change) | — | [x] | `feat(gui-polish V1)` · 2026-09-13 |
 | V2 | Replace plot-style `show_grid()` with a **CAD ground grid + origin triad** | V1 | [x] | `feat(gui-polish V2)` · 2026-09-13 |
-| D1 | Redesign **Material editor** onto the scaffold | — | [ ] | |
+| D1 | Redesign **Material editor** onto the scaffold | — | [x] | `feat(gui-polish D1)` · 2026-09-13 |
 | D2 | Redesign **Hinge editor / assignment** onto the scaffold | — | [ ] | |
 | D3 | Polish **Model-checks · Section-import · Run-history · Design · Drawings** dialogs | — | [ ] | |
 | G1 | **Charter sweep test** — every top-level surface builds + themes in all 4 combos | T1–T5, V1, D1–D3 | [ ] | |
@@ -267,3 +267,15 @@ different, finished product.
   green (213 passed, 1 skipped). Visual record `phase21_outputs/gui_polish/T4_statusbar_light`,
   `T5_empty_{light,dark}`. No `project.py` / solver changes. **All of Phase T (T1–T5) done; V + T
   complete — remaining: D1–D3 dialog tail, G1–G2 sweep + record.**
+- 2026-09-13 — **D1 done.** `MaterialDialog` (`desktop/material_editor.py`) rebuilt from the flat
+  `QFormLayout` stack onto the shared scaffold (`analysis_ui`): an **Identity** GroupCard (id /
+  name / kind) over a **Parameters** GroupCard whose dynamic per-kind rows rebuild in place, a
+  one-line hint, and `dialog_buttons(self)`; the σ-ε preview keeps its live matplotlib canvas but
+  now runs through `style.beautify_axes` + `style.C_PRIMARY`/`AX_SPINE`, so it themes with the app
+  (dark panel, blue curve) instead of raw matplotlib. `MaterialManagerDialog` gained an
+  `#h2`/`#sub` header and a right-side Add/Edit/Delete column (double-click to edit). Both call
+  `style.apply(self)` so they theme standalone. Every contract preserved — `.data()`/`.edit()`/
+  `.manage()`/`result_materials()` and `kind`/`id_spin`/`name`/`_spins`/`table`. 1 new structure
+  test (`test_dialog_uses_scaffold_cards`) added to `test_desktop_materials.py` (12 there now);
+  full desktop suite green (214 passed, 1 skipped). Visual record
+  `phase21_outputs/gui_polish/D1_material_{light,dark}`. No `project.py` / solver changes.

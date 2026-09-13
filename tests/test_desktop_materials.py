@@ -111,6 +111,16 @@ def test_dialog_constructs_and_switches_kind(qapp):
     assert mat.E > 0                          # representative modulus set
 
 
+def test_dialog_uses_scaffold_cards(qapp):
+    """D1: the flat form was rebuilt onto GroupCard panels (Identity / Parameters)."""
+    from PySide6.QtWidgets import QGroupBox
+
+    from material_editor import MaterialDialog
+    dlg = MaterialDialog(None, _project())
+    titles = {b.title() for b in dlg.findChildren(QGroupBox)}
+    assert {"Identity", "Parameters"} <= titles
+
+
 def test_dialog_edit_roundtrips_steel(qapp):
     from material_editor import MaterialDialog
     steel = Material(id=5, name="rebar", E=200e9, kind="cyclic_steel",

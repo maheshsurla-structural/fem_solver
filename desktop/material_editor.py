@@ -1,15 +1,16 @@
 """Material editor — define elastic **and inelastic (fiber)** materials with a
 live stress-strain preview (GUI-1, plan §14).
 
-``MaterialDialog`` edits one :class:`project.Material`: a kind selector
-(elastic / Kent-Park or Mander concrete / Park or cyclic reinforcing steel),
-kind-specific parameter fields, and a matplotlib σ-ε curve that redraws as you
-type — the curve is computed by the engine via
-:func:`materials.stress_strain_curve`, so what you see is exactly the fiber
-law. ``MaterialManagerDialog`` is the list/add/edit/delete manager.
+``MaterialDialog`` edits one :class:`project.Material`: an *Identity* card (id /
+name / kind) over a *Parameters* card of kind-specific fields, beside a
+matplotlib σ-ε curve that redraws as you type — the curve is computed by the
+engine via :func:`materials.stress_strain_curve`, so what you see is exactly the
+fiber law. ``MaterialManagerDialog`` is the list/add/edit/delete manager.
 
-Pure Qt + matplotlib (Agg canvas) — headless-constructible under
-``QT_QPA_PLATFORM=offscreen``.
+Rebuilt onto the shared card scaffold (:mod:`analysis_ui`) for the GUI-polish
+work stream (plan gui-polish D1); the `.data()` / `.edit()` / `.manage()`
+contracts and every test-referenced attribute are unchanged. Pure Qt +
+matplotlib (Agg canvas) — headless-constructible under ``QT_QPA_PLATFORM=offscreen``.
 """
 from __future__ import annotations
 
@@ -17,13 +18,14 @@ import copy
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as Canvas
 from matplotlib.figure import Figure
-from PySide6.QtWidgets import (QComboBox, QDialog, QDialogButtonBox,
-                               QDoubleSpinBox, QFormLayout, QHBoxLayout, QLabel,
-                               QLineEdit, QMessageBox, QPushButton, QSpinBox,
-                               QTableWidget, QTableWidgetItem, QVBoxLayout,
-                               QWidget)
+from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDialog,
+                               QDoubleSpinBox, QHBoxLayout, QLabel, QLineEdit,
+                               QMessageBox, QPushButton, QSpinBox, QTableWidget,
+                               QTableWidgetItem, QVBoxLayout, QWidget)
 
 import materials as M
+import style
+from analysis_ui import GroupCard, dialog_buttons
 from project import Material
 
 # param key -> (label, unit, factor): the spin shows value/factor, reads value*factor
@@ -62,20 +64,26 @@ class MaterialDialog(QDialog):
         self.setWindowTitle("Edit material" if material else "Add material")
         self._project = project
         outer = QHBoxLayout(self)
+        outer.setContentsMargins(style.SP_LG, style.SP_LG, style.SP_LG,
+                                 style.SP_LG)
+        outer.setSpacing(style.SP_MD)
 
-        # ---- left: form ----
+        # ---- left: grouped input cards ----
         left = QWidget()
-        self._form = QFormLayout(left)
+        lv = QVBoxLayout(left)
+        lv.setContentsMargins(0, 0, 0, 0)
+        lv.setSpacing(style.SP_MD)
+
+        ident = GroupCard("Identity")
         self.id_spin = QSpinBox()
         self.id_spin.setRange(1, 10_000_000)
         self.id_spin.setValue(material.id if material
                               else _next_id([m.id for m in project.materials]))
         self.id_spin.setEnabled(material is None)
-        self._form.addRow("Material id", self.id_spin)
-
+        ident.add_row("Material id", self.id_spin)
         self.name = QLineEdit(material.name if material else "New material")
-        self._form.addRow("Name", self.name)
-
+        self.name.textChanged.connect(self._redraw)
+        ident.add_row("Name", self.name)
         self.kind = QComboBox()
         for key, label in M.MATERIAL_KINDS.items():
             self.kind.addItem(label, key)
@@ -83,21 +91,24 @@ class MaterialDialog(QDialog):
             i = self.kind.findData(material.kind)
             if i >= 0:
                 self.kind.setCurrentIndex(i)
-        self._form.addRow("Type", self.kind)
+        ident.add_row("Type", self.kind)
+        lv.addWidget(ident)
 
-        # dynamic parameter rows live under a container we rebuild on kind change
-        self._param_host = QWidget()
-        self._param_form = QFormLayout(self._param_host)
-        self._param_form.setContentsMargins(0, 0, 0, 0)
-        self._form.addRow(self._param_host)
+        # dynamic parameter rows live on the Parameters card's form; we clear +
+        # rebuild them on a kind change.
+        self._param_card = GroupCard("Parameters")
+        self._param_form = self._param_card.body_layout()
         self._spins: dict[str, QDoubleSpinBox] = {}
         self._seed = material          # source values while (re)building rows
         self._build_param_rows()
+        lv.addWidget(self._param_card)
 
-        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        btns.accepted.connect(self.accept)
-        btns.rejected.connect(self.reject)
-        self._form.addRow(btns)
+        hint = QLabel("The σ-ε curve is the actual fiber law the engine will use.")
+        hint.setObjectName("hintLabel")
+        hint.setWordWrap(True)
+        lv.addWidget(hint)
+        lv.addStretch(1)
+        lv.addWidget(dialog_buttons(self))
         outer.addWidget(left, 0)
 
         # ---- right: σ-ε preview ----
@@ -108,6 +119,7 @@ class MaterialDialog(QDialog):
         outer.addWidget(self._canvas, 1)
 
         self.kind.currentIndexChanged.connect(self._on_kind_changed)
+        style.apply(self)
         self._redraw()
 
     # ------------------------------------------------ dynamic parameter rows
@@ -179,16 +191,18 @@ class MaterialDialog(QDialog):
         self._ax.clear()
         try:
             eps, sig = M.stress_strain_curve(self.data(), n=200)
-            self._ax.plot(eps * 1.0e3, sig / 1.0e6, "-", lw=1.8)
-            self._ax.axhline(0, color="0.6", lw=0.6)
-            self._ax.axvline(0, color="0.6", lw=0.6)
+            self._ax.plot(eps * 1.0e3, sig / 1.0e6, "-", lw=1.8,
+                          color=style.C_PRIMARY)
+            self._ax.axhline(0, color=style.AX_SPINE, lw=0.6)
+            self._ax.axvline(0, color=style.AX_SPINE, lw=0.6)
             self._ax.set_xlabel("strain (‰)")
             self._ax.set_ylabel("stress (MPa)")
-            self._ax.set_title(self.name.text(), fontsize=9)
-            self._ax.grid(True, alpha=0.25)
+            self._ax.set_title(self.name.text())
+            style.beautify_axes(self._ax)
         except Exception as exc:                       # noqa: BLE001
             self._ax.text(0.5, 0.5, f"({exc})", ha="center", va="center",
-                          transform=self._ax.transAxes, fontsize=8, color="0.5")
+                          transform=self._ax.transAxes, fontsize=8,
+                          color=style.MUTED)
         self._canvas.draw_idle()
 
     @classmethod
@@ -207,25 +221,44 @@ class MaterialManagerDialog(QDialog):
         self._project = project
         self._materials = copy.deepcopy(project.materials)
         v = QVBoxLayout(self)
+        v.setContentsMargins(style.SP_LG, style.SP_LG, style.SP_LG, style.SP_LG)
+        v.setSpacing(style.SP_SM)
 
+        head = QLabel("Material library")
+        head.setObjectName("h2")
+        v.addWidget(head)
+        sub = QLabel("Elastic and inelastic (fiber) materials used by members.")
+        sub.setObjectName("sub")
+        v.addWidget(sub)
+
+        body = QHBoxLayout()
+        body.setSpacing(style.SP_MD)
         self.table = QTableWidget(0, 3)
         self.table.setHorizontalHeaderLabels(["id", "name", "type"])
-        self.table.setMinimumSize(420, 220)
-        v.addWidget(self.table)
+        self.table.setMinimumSize(440, 240)
+        self.table.verticalHeader().setVisible(False)
+        self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setSelectionMode(
+            QAbstractItemView.SelectionMode.SingleSelection)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.doubleClicked.connect(lambda *_: self._edit())
+        body.addWidget(self.table, 1)
 
-        row = QHBoxLayout()
+        col = QVBoxLayout()
+        col.setSpacing(style.SP_SM)
         for label, cb in (("Add…", self._add), ("Edit…", self._edit),
                           ("Delete", self._delete)):
             b = QPushButton(label)
             b.clicked.connect(cb)
-            row.addWidget(b)
-        row.addStretch(1)
-        v.addLayout(row)
+            col.addWidget(b)
+        col.addStretch(1)
+        body.addLayout(col)
+        v.addLayout(body)
 
-        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        btns.accepted.connect(self.accept)
-        btns.rejected.connect(self.reject)
-        v.addWidget(btns)
+        v.addWidget(dialog_buttons(self))
+        style.apply(self)
         self._refresh()
 
     def _refresh(self) -> None:
