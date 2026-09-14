@@ -15,6 +15,10 @@ One table lists **every** analysis case with a Type column and icon:
   ``(K + λ·K_g)·φ = 0`` on a member-sub-divided model.
 * **Moving Load** — a built-in launcher for the influence-line / moving-load
   analysis (HL-93 / IRC vehicle envelopes on a lane of girder nodes).
+* **Temperature Gradient** — a built-in launcher for a vertical
+  temperature-gradient load (AASHTO / linear → self-stress + continuity).
+* **Construction Stages** — a built-in launcher for the incremental erection
+  sequence under self-weight, reporting the camber (geometry control).
 
 The dialog never runs anything itself: **Run** records a request and closes;
 the owning window dispatches it (linear-static run, or opening the pushover /
@@ -140,6 +144,14 @@ class AnalysisCasesDialog(QDialog):
                      "type": "Moving Load",
                      "detail": "influence line · HL-93 / IRC envelope",
                      "icon": "run", "runnable": True})
+        rows.append({"kind": "tempgradient", "name": "Temperature Gradient",
+                     "type": "Temperature Gradient",
+                     "detail": "AASHTO / linear vertical gradient",
+                     "icon": "run", "runnable": True})
+        rows.append({"kind": "stages", "name": "Construction Stages",
+                     "type": "Construction Stages",
+                     "detail": "incremental erection · camber",
+                     "icon": "run", "runnable": True})
         for name in _PLANNED:
             rows.append({"kind": "planned", "name": name, "type": name,
                          "detail": "planned", "icon": None, "runnable": False})
@@ -235,6 +247,10 @@ class AnalysisCasesDialog(QDialog):
             self._run_request = ("buckling",)
         elif m["kind"] == "movingload":
             self._run_request = ("movingload",)
+        elif m["kind"] == "tempgradient":
+            self._run_request = ("tempgradient",)
+        elif m["kind"] == "stages":
+            self._run_request = ("stages",)
         self.accept()
 
     @classmethod

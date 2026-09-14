@@ -174,6 +174,17 @@ class LoadCombination:
 
 
 @dataclass
+class Stage:
+    """One construction stage: the members that become active ("born") in it,
+    in construction order. Members in no stage are treated as built before the
+    sequence (initially active). Drives the incremental staged analysis + camber
+    (bridge GUI plan G3)."""
+    id: int
+    name: str
+    add_members: list = field(default_factory=list)   # member ids born this stage
+
+
+@dataclass
 class Project:
     name: str = "Untitled"
     ndm: int = 2
@@ -190,6 +201,7 @@ class Project:
     loads: list = field(default_factory=list)          # nodal Load
     member_loads: list = field(default_factory=list)   # MemberLoad (line loads)
     combinations: list = field(default_factory=list)   # LoadCombination
+    stages: list = field(default_factory=list)          # Stage (construction seq)
     nonlinear_cases: list = field(default_factory=list)  # NonlinearCase (GUI-4)
     # Saved nonlinear-run results (plan §16 G-S2) — the expensive, run-specific
     # exception to "results are recomputed": each is a lean ``nl_runs.RunRecord``
@@ -310,6 +322,9 @@ class Project:
                 id=c["id"], name=c["name"],
                 factors={int(k): v for k, v in c.get("factors", {}).items()})
                 for c in d.get("combinations", [])],
+            stages=[Stage(id=s["id"], name=s.get("name", ""),
+                          add_members=list(s.get("add_members", [])))
+                    for s in d.get("stages", [])],
             nonlinear_cases=[NonlinearCase(**c)
                              for c in d.get("nonlinear_cases", [])],
             runs=_load_runs(d.get("runs", [])),

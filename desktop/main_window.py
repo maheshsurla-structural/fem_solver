@@ -995,6 +995,220 @@ class MainWindow(QMainWindow):
             f"Moving load · {veh_label} · max {emax:.3g} {units}")
         return {"il": il, "env": env}
 
+    def run_temperature_gradient(self, config=None):
+        """Temperature-gradient load case (Analysis-cases ▸ Temperature
+        Gradient).
+
+        Reduces a vertical temperature gradient on each selected member's
+        section (rectangular-equivalent depth/width from A, Iz) to an axial
+        strain + curvature, applies the equivalent beam actions, and solves —
+        giving the self-equilibrated section stress plus the frame deflection
+        and continuity moments. ``config`` bypasses the setup dialog (tests).
+        2-D girder-line models only.
+        """
+        import numpy as np
+
+        from femsolver import LinearStaticAnalysis
+        from femsolver.bridges import (aashto_gradient,
+                                       apply_beam_thermal_actions,
+                                       equivalent_thermal_actions,
+                                       linear_gradient)
+
+        p = self._project
+        if p is None or not p.members:
+            self.statusBar().showMessage("Add members first.")
+            return None
+        if p.ndm != 2:
+            QMessageBox.information(
+                self, "Temperature gradient",
+                "Temperature-gradient analysis is currently 2-D only.")
+            return None
+
+        if config is None:
+            from temperature_gradient_dialog import TemperatureGradientDialog
+            config = TemperatureGradientDialog.configure(self, p)
+            if config is None:
+                return None
+        member_ids = config["members"]
+        if not member_ids:
+            self.statusBar().showMessage("Select at least one member.")
+            return None
+        alpha = config["alpha"]
+
+        model = p.build_model(with_loads=False)
+
+        def _gradient(depth):
+            if config["source"] == "aashto":
+                return aashto_gradient(config["zone"], depth, alpha=alpha)
+            return linear_gradient(config["dt_top"], config["dt_bot"], depth,
+                                   alpha=alpha)
+
+        governing = None                                # (|σ|, gradient, act, h, label)
+        applied = 0
+        for tag in member_ids:
+            try:
+                el = model.element(tag)
+            except KeyError:
+                continue
+            A, Iz, E = el.area, el.Iz, el.material.E
+            if A <= 0 or Iz <= 0:
+                continue
+            h = float(np.sqrt(12.0 * Iz / A))           # rectangular-equivalent
+            b = A / h
+            grad = _gradient(h)
+            act = equivalent_thermal_actions(grad, height=h, width=b, E=E)
+            apply_beam_thermal_actions(model, eps0=act.eps0,
+                                       kappa=act.curvature, elements=[tag])
+            applied += 1
+            peak = max(abs(act.self_stress_top), abs(act.self_stress_bottom))
+            if governing is None or peak > governing[0]:
+                governing = (peak, grad, act, h,
+                             f"member {tag} (h≈{h:.2f} m)")
+        if governing is None:
+            self.statusBar().showMessage("No valid members to load.")
+            return None
+
+        LinearStaticAnalysis(model).run()
+
+        dmax = mg.max_translation(model)
+        span = mg.model_span(model)
+        scale = (0.08 * span / dmax) if dmax > 0 else 1.0
+        self.view.show_deformed(model, scale)
+
+        max_moment = 0.0
+        for tag in member_ids:
+            try:
+                efl = model.element(tag).end_forces_local
+            except KeyError:
+                continue
+            if efl is not None and len(efl) >= 6:
+                max_moment = max(max_moment, abs(efl[2]), abs(efl[5]))
+
+        _peak, grad, act, h, label = governing
+        from temperature_gradient_results_dialog import \
+            TemperatureGradientResultsDialog
+        self._temp_gradient_results_dlg = \
+            TemperatureGradientResultsDialog.show_results(
+                self, grad, act, h, max_deflection=dmax, max_moment=max_moment,
+                section_label=label)
+        self.log.appendPlainText(
+            f"Temperature gradient solved: {applied} member(s), "
+            f"ΔT_uniform={act.dT_uniform:.2f}°C, self-stress "
+            f"{act.self_stress_top / 1e6:.2f}/{act.self_stress_bottom / 1e6:.2f} "
+            f"MPa, max|u|={dmax:.4e} m, max M={max_moment / 1e3:.2f} kN·m")
+        self.statusBar().showMessage(
+            f"Temperature gradient · self-stress "
+            f"{act.self_stress_top / 1e6:.2f} MPa · max|u| {dmax:.3e} m")
+        return {"actions": act, "gradient": grad, "max_deflection": dmax,
+                "max_moment": max_moment}
+
+    def run_construction_stages(self, config=None):
+        """Construction-stage (incremental erection) analysis + camber
+        (Analysis-cases ▸ Construction Stages).
+
+        Opens the stage manager (unless ``config`` — a list of
+        :class:`project.Stage` — is given), builds each stage's members under
+        their self-weight via
+        :class:`femsolver.bridges.IncrementalStagedAnalysis`, and reports the
+        camber (:func:`femsolver.bridges.staged_camber`). 2-D only.
+        """
+        G = 9.80665
+
+        from femsolver.bridges import (ErectionStage,
+                                       IncrementalStagedAnalysis, staged_camber)
+
+        p = self._project
+        if p is None or not p.members:
+            self.statusBar().showMessage("Add members first.")
+            return None
+        if p.ndm != 2:
+            QMessageBox.information(
+                self, "Construction stages",
+                "Construction-stage analysis is currently 2-D only.")
+            return None
+
+        if config is not None:
+            stages = config
+        else:
+            from stage_dialog import StageManagerDialog
+            stages = StageManagerDialog.manage(self, p)
+            if stages is None:
+                return None
+            if stages != p.stages:
+                self._apply_edit("Edit construction stages",
+                                 lambda: setattr(p, "stages", stages))
+
+        model = p.build_model(with_loads=False)
+        all_ids = [m.id for m in p.members]
+        assigned = set()
+        for s in stages:
+            assigned.update(s.add_members)
+        unassigned = [i for i in all_ids if i not in assigned]
+
+        def _self_weight(member_ids):
+            loads: dict = {}
+            for tag in member_ids:
+                try:
+                    el = model.element(tag)
+                except KeyError:
+                    continue
+                L = el.length_and_angle()[0]
+                w = getattr(el.material, "rho", 0.0) * el.area * L * G
+                if w <= 0.0:
+                    continue
+                for nd in el.node_tags:
+                    loads.setdefault(nd, [0.0, 0.0, 0.0])[1] += -w / 2.0
+            return loads
+
+        erection = []
+        if not stages:
+            erection = [ErectionStage("All", add_elements=all_ids,
+                                      loads=_self_weight(all_ids))]
+        else:
+            for i, s in enumerate(stages):
+                ids = list(s.add_members)
+                if i == 0 and unassigned:
+                    ids = unassigned + ids
+                erection.append(ErectionStage(
+                    s.name or f"Stage {i + 1}", add_elements=ids,
+                    loads=_self_weight(ids)))
+
+        total_w = sum(abs(v[1]) for st in erection for v in st.loads.values())
+        if total_w <= 0.0:
+            QMessageBox.information(
+                self, "Construction stages",
+                "No self-weight — set a material density (ρ) so the staged "
+                "self-weight (and camber) is non-zero.")
+            return None
+
+        try:
+            res = IncrementalStagedAnalysis(model, erection).run()
+        except Exception as exc:                           # noqa: BLE001
+            QMessageBox.warning(
+                self, "Construction stages",
+                f"A stage could not be solved (an intermediate structure may "
+                f"be unstable — check the build order):\n\n{exc}")
+            return None
+
+        camber = staged_camber(res, model, erection, dof=1)
+        dmax = mg.max_translation(model)
+        span = mg.model_span(model)
+        scale = (0.08 * span / dmax) if dmax > 0 else 1.0
+        self.view.show_deformed(model, scale)
+
+        from construction_stage_results_dialog import \
+            ConstructionStageResultsDialog
+        self._stage_results_dlg = ConstructionStageResultsDialog.show_results(
+            self, camber, n_stages=len(erection))
+        self.log.appendPlainText(
+            f"Construction stages solved: {len(erection)} stages, "
+            f"max final deflection {dmax * 1e3:.2f} mm → camber {dmax * 1e3:.2f} "
+            f"mm high")
+        self.statusBar().showMessage(
+            f"Construction stages · {len(erection)} stages · camber "
+            f"{dmax * 1e3:.2f} mm")
+        return {"camber": camber, "stages": len(erection)}
+
     def run_pushover_dialog(self, preselect_case=None) -> None:
         from pushover_dialog import PushoverDialog
         p = self._project
@@ -1642,6 +1856,10 @@ class MainWindow(QMainWindow):
             self.run_buckling()
         elif kind == "movingload":
             self.run_moving_load()
+        elif kind == "tempgradient":
+            self.run_temperature_gradient()
+        elif kind == "stages":
+            self.run_construction_stages()
 
     def _on_double_click(self, item, _col) -> None:
         ref = item.data(0, Qt.ItemDataRole.UserRole)

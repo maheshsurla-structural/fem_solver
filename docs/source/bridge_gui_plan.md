@@ -28,12 +28,28 @@ runs; the first increments keep config transient (like Modal/RS/Buckling).
   (`InfluenceLineEngine` + `aashto_hl93_envelope` / `moving_load_envelope`).
   Analysis-cases "Moving Load" row now **live** (`_PLANNED` empty — every row
   runnable). 2-D girder line. `tests/test_desktop_moving_load.py` (6).
-- [ ] **G2 — Temperature-gradient load** — a load type in the Loads UI (AASHTO
-  zone / section profile) → `equivalent_thermal_actions` → self-stress +
-  deflection results. Needs a project load-type + a results view.
-- [ ] **G3 — Construction stages + camber** — a stage manager (assign members
-  to stages, per-stage loads) on `IncrementalStagedAnalysis` → camber diagram
-  (`staged_camber`). Needs a persisted stage list in `project.py`.
+- [x] **G2 — Temperature-gradient load** ✅ DONE 2026-09-14. Wired as an
+  **analysis-case launcher** (consistent with Modal/RS/etc.), not a persisted
+  load type. `temperature_gradient_dialog.py` (AASHTO zone 1–4 or linear
+  top→bottom, α, member multi-select), `temperature_gradient_results_dialog.py`
+  (section self-stress + temperature diagram, non-modal),
+  `MainWindow.run_temperature_gradient` — derives rectangular-equivalent
+  depth/width per member from A/Iz, `equivalent_thermal_actions` +
+  `apply_beam_thermal_actions` per member, solves, renders the deflected shape,
+  reports self-stress + max deflection + continuity moment. Analysis-cases
+  "Temperature Gradient" row live. 2-D only. `tests/test_desktop_temperature_gradient.py`
+  (6).
+- [x] **G3 — Construction stages + camber** ✅ DONE 2026-09-14. Persisted
+  `project.Stage` (id, name, add_members) + `Project.stages` + serialization.
+  `stage_dialog.py` `StageManagerDialog` (ordered stages, add/delete/↑↓, per-
+  stage member multi-select with exclusivity, **auto-sequence L→R**),
+  `construction_stage_results_dialog.py` (camber diagram: per-stage deflection
+  history + final deflection + build-high camber),
+  `MainWindow.run_construction_stages` (self-weight per stage →
+  `IncrementalStagedAnalysis` → `staged_camber`; unassigned members prepended
+  to stage 1; renders final deflected shape; guards zero-density + unstable
+  build order). Analysis-cases "Construction Stages" row live. 2-D only.
+  `tests/test_desktop_construction_stages.py` (7).
 - [ ] **G4 — Multi-lane placement** — design-lane definition + multi-presence
   on top of G1 (influence surfaces need a grillage/deck; the deck-surface
   picker is the extra piece).
