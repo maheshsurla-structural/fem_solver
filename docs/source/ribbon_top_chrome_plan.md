@@ -149,9 +149,8 @@ Legend: `[x]` done · `[ ]` open. Do the lowest open item whose deps are met.
 
 **Core is done (R1–R6): the top chrome is one compact strip, iconed, keyboard-driven,
 persistent, contextual and collapsible.** Remaining items are polish/robustness, not
-load-bearing — **recommended order R8 → R7 → R9**: R8 is the most visible "commercial feel"
-win, R7 hardens narrow windows, R9 extends the model to the second window (largest, least
-urgent).
+load-bearing — **R8 done; recommended order now R7 → R9**: R7 hardens narrow windows, R9 extends
+the model to the second window (largest, least urgent).
 
 - [x] **R1 — Tabbed ribbon shell.** Replace the menu bar + 3 stacked rows + draw palette with one
   `RibbonBar` (File backstage + tabs Home/Draw/Loads/Analysis/Results/View, one swapping group
@@ -176,8 +175,11 @@ urgent).
 - [ ] **R7 — Width overflow.** When a tab's groups exceed the window width, collapse the
   lowest-priority group(s) to a single popup button (Office/CSi behaviour) instead of clipping.
   Deps: R1.
-- [ ] **R8 — File backstage panel.** Promote the File popup menu to a proper backstage (recent
-  files, New/Open/Save/Save As/Export, About) styled on the card scaffold. Deps: R1.
+- [x] **R8 — File backstage panel.** The File button now opens a full-window backstage
+  (`desktop/backstage.py`): a command rail (New · New 3-D · Open · Save · Save As), a persisted
+  **Recent** list (MRU in `recent/files`, filtered to existing files), and an **About** card, on
+  the card scaffold. Back arrow / Esc closes. *(Export deferred — no export action exists yet; see
+  R12.)* — `feat(ribbon R8)`, 2026-09-14.
 - [ ] **R9 — Section Designer parity.** Bring the separate Section Designer window
   (`section_designer.py`, still its own `QMenuBar`) onto the same ribbon model, or explicitly
   scope it out here with a rationale. Deps: R1.
@@ -190,11 +192,22 @@ urgent).
 - [ ] **R11 — Quick Access Toolbar (optional).** A small, user-pinnable row of common actions
   (Save · Undo · Redo · Run) beside the File button, independent of the active tab — the last piece
   of the CSi/Office ribbon idiom. Deps: R1. *(Nice-to-have; only if the strip still feels sparse.)*
+- [ ] **R12 — Export (from R8).** The backstage has no **Export** command because the app has no
+  export action yet (only project save/open). When an export path exists (results CSV, drawing/PDF,
+  model interchange), add it as a backstage command + a Home/Results button. Deps: R8.
 
 ---
 
 ## 6. Change log
 
+- **2026-09-14 — R8.** File backstage. New `desktop/backstage.py` (`Backstage(QWidget)`,
+  `WA_StyledBackground` so the overlay fully occludes): a command rail built from the ribbon's file
+  actions, a Recent list, and an About card on `GroupCard`. The ribbon File button drops its popup
+  menu and its `clicked` opens the overlay (`_open_backstage`); `file_menu` is kept as the canonical
+  action list. MRU: `_recent_files`/`_remember_recent`/`_open_recent` (QSettings `recent/files`,
+  cap 8, existence-filtered), hooked in `load_project`/`_write`; `resizeEvent` keeps the overlay
+  sized. QSS block in `style.py`. Tests: new `tests/test_desktop_backstage.py` (5). Desktop suite
+  326 passed. Screenshots `R8_backstage_{light,dark}.png`.
 - **2026-09-14 — R4 + R5.** R4 (contextual tabs): `MainWindow._show_results_tab` called at the end
   of `run_linear_static` raises **Results**; `_set_mode` raises **Draw** on any draw/select tool.
   Both guarded to no-op while collapsed. R5 (collapse): `RibbonBar` gains `collapsedChanged` signal

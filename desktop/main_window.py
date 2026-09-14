@@ -293,6 +293,30 @@ class MainWindow(QMainWindow):
         if rb is not None and not rb.is_collapsed():
             rb.set_current("Results")
 
+    # ------------------------------------------------------------- backstage (R8)
+    def _open_backstage(self) -> None:
+        """Show the File backstage overlay, built lazily from the ribbon's file
+        actions and refreshed with the current recent-files list."""
+        if getattr(self, "_backstage", None) is None:
+            from backstage import Backstage
+            self._backstage = Backstage(
+                self, list(self._ribbon.file_menu.actions()),
+                product="femsolver desktop",
+                monogram=icons.monogram_icon(PRODUCT_MONO, "#ffffff",
+                                             PRODUCT_ACCENT))
+            self._backstage.openRecentRequested.connect(self._open_recent)
+        self._backstage.set_recent(self._recent_files())
+        self._backstage.setGeometry(self.rect())
+        self._backstage.show()
+        self._backstage.raise_()
+        self._backstage.setFocus()
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        bs = getattr(self, "_backstage", None)
+        if bs is not None and bs.isVisible():
+            bs.setGeometry(self.rect())
+
     # --------------------------------------------------------------- menu / UI
     def _build_menu(self) -> None:
         self.act_undo = self._undo_stack.createUndoAction(self, "&Undo")
@@ -545,6 +569,7 @@ class MainWindow(QMainWindow):
         host.addWidget(rb)
 
         self._install_ribbon_shortcuts()      # R3: keyboard tab access
+        rb.file_btn.clicked.connect(self._open_backstage)   # R8: File backstage
 
     # ---------------------------------------------------------------- analysis
     def _solve(self):
@@ -1193,6 +1218,8 @@ class MainWindow(QMainWindow):
     def load_project(self, project, path=None) -> None:
         self._project = project
         self._path = path
+        if path:
+            self._remember_recent(path)          # R8: feed the backstage MRU
         self._undo_stack.clear()
         self._last_tree_sig = None       # a new document → always a full rebuild
         self._rebuild()
@@ -1267,11 +1294,45 @@ class MainWindow(QMainWindow):
         try:
             self._project.save(path)
             self._undo_stack.setClean()
+            self._remember_recent(path)            # R8: feed the backstage MRU
             self._update_title()
             self.statusBar().showMessage(f"Saved {path}")
             self.log.appendPlainText(f"Saved project to {path}")
         except Exception as exc:                       # noqa: BLE001
             QMessageBox.critical(self, "Save failed", str(exc))
+
+    # ---------------------------------------------------------- recent files (R8)
+    _RECENT_MAX = 8
+
+    def _recent_files(self) -> list[str]:
+        """Persisted most-recently-used project paths (newest first), filtered to
+        those that still exist on disk."""
+        import os
+        raw = self._settings.value("recent/files", [])
+        if isinstance(raw, str):                   # a lone entry returns as str
+            raw = [raw]
+        return [p for p in (raw or []) if p and os.path.exists(p)]
+
+    def _remember_recent(self, path) -> None:
+        """Push ``path`` to the front of the MRU list (deduped, capped)."""
+        if not path:
+            return
+        import os
+        path = os.path.abspath(path)
+        rest = [p for p in self._recent_files() if os.path.abspath(p) != path]
+        self._settings.setValue("recent/files", [path, *rest][:self._RECENT_MAX])
+
+    def _open_recent(self, path) -> None:
+        """Open a project chosen from the backstage's Recent list."""
+        import os
+        if not os.path.exists(path):
+            QMessageBox.warning(self, "Open failed",
+                                f"That file no longer exists:\n{path}")
+            return
+        try:
+            self.load_project(Project.load(path), path)
+        except Exception as exc:                       # noqa: BLE001
+            QMessageBox.critical(self, "Open failed", str(exc))
 
     # ------------------------------------------------------------------ edits
     def add_node(self) -> None:
@@ -2531,11 +2592,12 @@ class RibbonBar(QWidget):
         self.file_btn = QToolButton()
         self.file_btn.setObjectName("ribbonFile")
         self.file_btn.setText("File")
-        self.file_btn.setPopupMode(
-            QToolButton.ToolButtonPopupMode.InstantPopup)
         self.file_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.file_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        # The File button opens the backstage (R8), wired by the shell via
+        # file_btn.clicked; file_menu stays the canonical list of file actions
+        # that the backstage renders and that the homed-once invariant checks.
         self.file_menu = QMenu(self.file_btn)
-        self.file_btn.setMenu(self.file_menu)
         srow.addWidget(self.file_btn)
         self.tabs = QTabBar()
         self.tabs.setObjectName("ribbonTabs")

@@ -266,6 +266,25 @@ QTabBar#ribbonTabs::tab:hover, QTabBar#ribbonTabs::tab:focus {{
 QFrame#ribbonVSep {{ color: {BORDER}; background: {BORDER};
     max-width: 1px; margin: {SP_XS}px {SP_XS}px; }}
 
+/* ---- File backstage overlay (plan ribbon R8) ---- */
+QWidget#backstage {{ background: {BG}; }}
+QWidget#backstageTop {{ background: {PANEL}; border-bottom: 1px solid {BORDER}; }}
+QToolButton#backstageBack {{
+    background: {ACCENT}; color: #ffffff; font-weight: 600;
+    border: none; border-radius: {R_SM}px; padding: 6px 16px;
+}}
+QToolButton#backstageBack:hover {{ background: {ACCENT_HOVER}; }}
+QWidget#backstageRail {{ background: transparent; }}
+QToolButton#backstageCmd {{
+    background: transparent; border: 1px solid transparent;
+    border-radius: {R_SM}px; color: {TEXT}; text-align: left;
+    padding: 9px 12px; font-size: {FS_H3}px;
+}}
+QToolButton#backstageCmd:hover {{
+    background: {ACCENT_SOFT}; border-color: {BORDER}; color: {ACCENT};
+}}
+QListWidget#recentList {{ background: {PANEL}; }}
+
 /* ---- scrollbars ---- */
 QScrollBar:vertical {{ background: transparent; width: 10px; margin: 2px; }}
 QScrollBar::handle:vertical {{
