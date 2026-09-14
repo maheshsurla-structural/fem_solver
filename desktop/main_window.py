@@ -1317,6 +1317,96 @@ class MainWindow(QMainWindow):
             f"Vehicle dynamics · {kind_label} · DAF {res['DAF']:.3f}")
         return res
 
+    def run_influence_surface(self, config=None):
+        """Influence-surface / multi-lane moving-load analysis (Analysis-cases
+        ▸ Influence Surface).
+
+        A unit load traverses a 2-D deck / grillage to build the influence
+        surface for a chosen response; vehicles are then placed in the AASHTO
+        design lanes with multiple-presence factors for the governing effect.
+        ``config`` bypasses the setup dialog (tests). Needs a 3-D deck model.
+        """
+        import numpy as np
+
+        from femsolver.bridges import (DeckSurface, DesignLane, Displacement,
+                                       InfluenceLineEngine, MovingLoad,
+                                       Reaction, Vehicle2D,
+                                       generate_design_lanes,
+                                       multi_lane_envelope)
+
+        p = self._project
+        if p is None or not p.members:
+            self.statusBar().showMessage("Add members first.")
+            return None
+        if p.ndm != 3:
+            QMessageBox.information(
+                self, "Influence surface",
+                "Influence surfaces need a 3-D deck / grillage model (a plan "
+                "spread of nodes). Build the deck in 3-D and try again.")
+            return None
+
+        if config is None:
+            from influence_surface_dialog import InfluenceSurfaceDialog
+            config = InfluenceSurfaceDialog.configure(self, p)
+            if config is None:
+                return None
+        deck_nodes = config["deck"]
+        if len(deck_nodes) < 3:
+            QMessageBox.information(self, "Influence surface",
+                                   "Select at least three deck nodes.")
+            return None
+
+        kind, node = config["response"]
+        response = (Displacement(node_tag=node, dof=2) if kind == "disp"
+                    else Reaction(node_tag=node, dof=2))
+        units = "m" if kind == "disp" else "N"
+        label = (f"vertical {'displacement' if kind == 'disp' else 'reaction'} "
+                 f"at node {node}")
+
+        model = p.build_model(with_loads=False)
+        deck = DeckSurface(node_tags=deck_nodes, load_dof=2, plan_axes=(0, 1))
+        try:
+            IS = InfluenceLineEngine(model).influence_surface(deck, response)
+        except Exception as exc:                           # noqa: BLE001
+            QMessageBox.warning(self, "Influence surface",
+                                f"Could not build the influence surface:\n\n{exc}")
+            return None
+
+        veh_key = config["vehicle"]
+        veh_label = {"hl93_truck": "HL-93 truck", "hl93_tandem": "HL-93 tandem",
+                     "irc_class_a": "IRC Class A", "irc_70r": "IRC 70R"}.get(
+                         veh_key, veh_key)
+        vehicle = Vehicle2D.from_axle_train(MovingLoad.preset(veh_key))
+
+        ys = IS.points[:, 1]
+        lanes = generate_design_lanes(float(ys.min()), float(ys.max()))
+        if not lanes:                                      # deck narrower than a lane
+            lanes = [DesignLane(y_center=float(0.5 * (ys.min() + ys.max())),
+                                width=max(float(ys.max() - ys.min()), 3.0))]
+        try:
+            env = multi_lane_envelope(
+                IS, vehicle, lanes, multi_presence=config["multi_presence"])
+        except Exception as exc:                           # noqa: BLE001
+            QMessageBox.warning(self, "Influence surface",
+                                f"Multi-lane envelope failed:\n\n{exc}")
+            return None
+
+        from influence_surface_results_dialog import \
+            InfluenceSurfaceResultsDialog
+        self._influence_surface_results_dlg = \
+            InfluenceSurfaceResultsDialog.show_results(
+                self, IS, env, response_label=label, units=units,
+                vehicle=veh_label, n_lanes=len(lanes))
+        self.log.appendPlainText(
+            f"Influence surface solved: {label}, {veh_label}, {len(lanes)} "
+            f"lane(s), governing max={env.get('max', 0.0):.4g} "
+            f"(m={env.get('max_factor', 1.0):.2f}, "
+            f"{env.get('max_num_lanes', 0)} lane(s)) {units}")
+        self.statusBar().showMessage(
+            f"Influence surface · {veh_label} · max {env.get('max', 0.0):.3g} "
+            f"{units} ({env.get('max_num_lanes', 0)} lane(s))")
+        return {"surface": IS, "envelope": env, "lanes": len(lanes)}
+
     def run_pushover_dialog(self, preselect_case=None) -> None:
         from pushover_dialog import PushoverDialog
         p = self._project
@@ -1970,6 +2060,8 @@ class MainWindow(QMainWindow):
             self.run_construction_stages()
         elif kind == "vehicledynamics":
             self.run_vehicle_dynamics()
+        elif kind == "influencesurface":
+            self.run_influence_surface()
 
     def _on_double_click(self, item, _col) -> None:
         ref = item.data(0, Qt.ItemDataRole.UserRole)

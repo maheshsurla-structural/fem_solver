@@ -50,9 +50,16 @@ runs; the first increments keep config transient (like Modal/RS/Buckling).
   to stage 1; renders final deflected shape; guards zero-density + unstable
   build order). Analysis-cases "Construction Stages" row live. 2-D only.
   `tests/test_desktop_construction_stages.py` (7).
-- [ ] **G4 — Multi-lane placement** — design-lane definition + multi-presence
-  on top of G1 (influence surfaces need a grillage/deck; the deck-surface
-  picker is the extra piece).
+- [x] **G4 — Influence surfaces / multi-lane** ✅ DONE 2026-09-14.
+  `influence_surface_dialog.py` (deck-node multi-select, response = vertical
+  displacement/reaction at a node, vehicle, multiple-presence toggle),
+  `influence_surface_results_dialog.py` (plan contour of the influence surface +
+  governing multi-lane envelope), `MainWindow.run_influence_surface`
+  (`DeckSurface` load_dof=uz, `InfluenceLineEngine.influence_surface`,
+  `Vehicle2D.from_axle_train`, `generate_design_lanes` from the deck transverse
+  extent, `multi_lane_envelope` with AASHTO multiple presence). **Requires a
+  3-D deck/grillage** (gated). Analysis-cases "Influence Surface" row live.
+  `tests/test_desktop_influence_surface.py` (4).
 - [x] **G5 — Vehicle–bridge dynamics** ✅ DONE 2026-09-14.
   `vehicle_dynamics_dialog.py` (lane reused from G1; analysis kind = moving
   force / sprung-mass VBI via QStackedWidget; vehicle preset or sprung-mass

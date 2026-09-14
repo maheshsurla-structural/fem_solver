@@ -21,6 +21,8 @@ One table lists **every** analysis case with a Type column and icon:
   sequence under self-weight, reporting the camber (geometry control).
 * **Vehicle Dynamics** — a built-in launcher for the moving-load time-history
   (constant moving force or coupled sprung-mass VBI → DAF + response history).
+* **Influence Surface** — a built-in launcher for 2-D deck moving load: the
+  influence surface + AASHTO multi-lane vehicle envelope (needs a 3-D deck).
 
 The dialog never runs anything itself: **Run** records a request and closes;
 the owning window dispatches it (linear-static run, or opening the pushover /
@@ -158,6 +160,10 @@ class AnalysisCasesDialog(QDialog):
                      "type": "Vehicle Dynamics",
                      "detail": "moving-load time-history · DAF",
                      "icon": "run", "runnable": True})
+        rows.append({"kind": "influencesurface", "name": "Influence Surface",
+                     "type": "Influence Surface",
+                     "detail": "2-D deck moving load · multi-lane (3-D)",
+                     "icon": "run", "runnable": True})
         for name in _PLANNED:
             rows.append({"kind": "planned", "name": name, "type": name,
                          "detail": "planned", "icon": None, "runnable": False})
@@ -259,6 +265,8 @@ class AnalysisCasesDialog(QDialog):
             self._run_request = ("stages",)
         elif m["kind"] == "vehicledynamics":
             self._run_request = ("vehicledynamics",)
+        elif m["kind"] == "influencesurface":
+            self._run_request = ("influencesurface",)
         self.accept()
 
     @classmethod
