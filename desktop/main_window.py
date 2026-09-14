@@ -1422,20 +1422,114 @@ class MainWindow(QMainWindow):
         efilter = key[1] if isinstance(key, tuple) and len(key) > 1 else None
         ModelTableDialog.show_category(self, self._project, base,
                                        on_activate=self._table_activate,
+                                       on_commit=self._table_commit,
                                        type_filter=efilter)
 
     def _table_activate(self, ref) -> None:
-        """A row was double-clicked in a table → select it (and, for editable
-        kinds, open its editor)."""
+        """A read-only row was double-clicked in a table → select it (and, for
+        editable kinds, open its editor)."""
         if not ref:
             return
-        self._select(ref)
         kind, key = ref
         handler = {"node": self._edit_node, "member": self._edit_member,
                    "section": self._edit_section, "load": self._edit_load,
                    "member_load": self._edit_member_load}.get(kind)
-        if handler:
-            handler(key)
+        if handler is None:            # kinds with no drill-in editor (yet)
+            return
+        self._select(ref)
+        handler(key)
+
+    def _table_commit(self, ref, field, value) -> bool:
+        """Apply an in-place table edit (nav N7) through ``_apply_edit`` so it
+        is undoable. Returns True when applied, False (reverting the cell) when
+        the field/value is rejected. Each mutate re-resolves the target against
+        the live project (``_apply_edit`` swaps in a fresh copy)."""
+        kind, key = ref
+        p = self._project
+
+        def commit(text, mutate) -> bool:
+            self._apply_edit(text, mutate)
+            return True
+
+        if kind == "node" and field in ("x", "y", "z"):
+            if not any(n.id == key for n in p.nodes):
+                return False
+            return commit(f"Edit node {key}", lambda: setattr(
+                next(n for n in self._project.nodes if n.id == key),
+                field, float(value)))
+
+        if kind == "member" and field in ("section", "material"):
+            if not any(m.id == key for m in p.members):
+                return False
+            vid = int(value)
+            pool = p.sections if field == "section" else p.materials
+            if not any(x.id == vid for x in pool):
+                QMessageBox.information(
+                    self, "Reassign", f"No {field} with id {vid}.")
+                return False
+            return commit(f"Set member {key} {field}", lambda: setattr(
+                next(m for m in self._project.members if m.id == key),
+                field, vid))
+
+        if kind == "section":
+            s = next((s for s in p.sections if s.id == key), None)
+            if s is None:
+                return False
+            if field == "name":
+                return commit(f"Rename section {key}", lambda: setattr(
+                    next(x for x in self._project.sections if x.id == key),
+                    "name", str(value)))
+            if field in ("A", "Iz", "Iy", "J"):
+                if getattr(s, "gsd_spec", None):
+                    return False       # geometry is Section-Designer-driven
+                return commit(f"Edit section {key} {field}", lambda: setattr(
+                    next(x for x in self._project.sections if x.id == key),
+                    field, float(value)))
+            return False
+
+        if kind == "material" and field in ("name", "E", "nu", "rho",
+                                            "fy", "fu"):
+            if not any(m.id == key for m in p.materials):
+                return False
+            cast = str if field == "name" else float
+            return commit(f"Edit material {key}", lambda: setattr(
+                next(m for m in self._project.materials if m.id == key),
+                field, cast(value)))
+
+        if kind == "hinge" and field in ("name", "lp"):
+            if not any(h.id == key for h in p.hinges):
+                return False
+            cast = str if field == "name" else float
+            return commit(f"Edit hinge {key}", lambda: setattr(
+                next(h for h in self._project.hinges if h.id == key),
+                field, cast(value)))
+
+        if kind == "load_case" and field == "name":
+            if not any(c.id == key for c in p.load_cases):
+                return False
+            return commit(f"Rename case {key}", lambda: setattr(
+                next(c for c in self._project.load_cases if c.id == key),
+                "name", str(value)))
+
+        if kind == "load" and field.startswith("v"):
+            comp = int(field[1:])
+            if not (0 <= key < len(p.loads)) or comp >= len(p.loads[key].values):
+                return False
+
+            def mutate():
+                ld = self._project.loads[key]
+                vals = list(ld.values)
+                vals[comp] = float(value)
+                ld.values = tuple(vals)
+            return commit(f"Edit load {key + 1}", mutate)
+
+        if kind == "member_load" and field in ("wy", "wz"):
+            if not (0 <= key < len(p.member_loads)):
+                return False
+            return commit(f"Edit line load {key + 1}", lambda: setattr(
+                self._project.member_loads[key], field, float(value)))
+
+        return False
 
     def _edit_node(self, nid) -> None:
         new = NodeDialog.edit(self, self._project, _find(self._project.nodes, nid))

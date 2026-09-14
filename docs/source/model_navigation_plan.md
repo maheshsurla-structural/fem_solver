@@ -163,14 +163,33 @@ Legend: `[x]` done · `[ ]` open. Do the lowest open item whose deps are met.
   tables in summary mode; `_on_pick` / `_on_region_select` / `_select` / `deselect_all` /
   `delete_selected` (now multi-item) route through it, and `_ref_exists` prunes stale refs across
   rebuilds. — `feat(nav N6)`, 2026-09-14.
-- [ ] **N7 — In-table editing.** Let `ModelTableDialog` edit values in place (with undo through
-  `_apply_edit`) rather than only drilling to dialogs. Deps: N2.
+- [x] **N7 — In-table editing.** `ModelTableDialog` cells for safe scalar fields are editable
+  (`Editable` marker in the builders); committing routes through `MainWindow._table_commit`, which
+  applies the change with `_apply_edit` (undoable) after validating field/value, reverting the cell
+  on rejection. Read-only identity/derived cells still drill to the full editor. — `feat(nav N7)`,
+  2026-09-14.
 
 ---
 
 ## 6. Change log
 
 _(prepend newest)_
+
+- **2026-09-14 — N7. Tracker COMPLETE (N1–N7).** In-table editing. `desktop/model_tables.py` gains
+  an `Editable(value, field, kind)` marker; builders wrap only the safe scalar cells (material
+  name/E/ν/ρ/fy/fu, section name + non-GSD A/Iz/Iy/J, hinge name/Lp, node X/Y/Z, element
+  Section/Material, load-case name, nodal-load components, line-load wy/wz) — identity, derived and
+  GSD-driven cells stay read-only. `ModelTableDialog` sets `ItemIsEditable` + stores `(ref, field,
+  kind)`/original text per editable cell, enables the edit triggers, and on `itemChanged` parses per
+  kind, calls back `on_commit`, and reverts the cell on a parse error or a rejected commit
+  (`_loading` guards the programmatic writes). A double-click now edits an editable cell but still
+  drills a read-only one. `MainWindow._table_commit(ref, field, value)` validates then mutates
+  through `_apply_edit` (undoable; each mutate re-resolves against the live project since
+  `_apply_edit` swaps in a fresh copy), rejecting bad reassigns (with a message) and GSD-locked
+  geometry. `_open_category_table` passes it as `on_commit`; `_table_activate` no longer selects
+  kinds it can't drill. Verified end-to-end (edit a Nodes cell → tree updates → undo restores).
+  Tests: +6 in `tests/test_desktop_nav.py`. Screenshot `N7_editable_table.png`. Desktop suite:
+  407 passed, 1 skipped.
 
 - **2026-09-14 — N6.** The tree's leaves became optional. A **Summary** toggle in the nav header
   (`_nav_summary_act`/`_btn`, `toggle_summary_mode`, persisted `nav/summary`) flips `_populate_tree`

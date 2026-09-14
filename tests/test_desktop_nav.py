@@ -316,3 +316,66 @@ def test_summary_mode_persists(qapp, tmp_path):
     _temp_settings(w, tmp_path)
     w.toggle_summary_mode(True)
     assert w._settings.value("nav/summary", False, type=bool) is True
+
+
+# --------------------------------------------------------------- N7: in-table edit
+def test_table_commit_edits_and_undoes(qapp):
+    from main_window import MainWindow
+    w = MainWindow()
+    w.load_project(_project())
+    assert w._table_commit(("node", 2), "x", 7.0) is True
+    assert w._project.nodes[1].x == 7.0
+    w._undo_stack.undo()
+    assert w._project.nodes[1].x == 4.0
+    assert w._table_commit(("material", 1), "E", 2.1e11) is True
+    assert w._project.materials[0].E == 2.1e11
+    assert w._table_commit(("load", 0), "v0", 5000.0) is True
+    assert w._project.loads[0].values[0] == 5000.0
+
+
+def test_table_commit_rejects_unknown_field(qapp):
+    from main_window import MainWindow
+    w = MainWindow()
+    w.load_project(_project())
+    assert w._table_commit(("member", 1), "n1", 5) is False   # not editable
+    assert w._table_commit(("node", 2), "bogus", 1) is False
+
+
+def test_table_commit_member_reassign_validates(qapp, monkeypatch):
+    from main_window import MainWindow
+    from PySide6.QtWidgets import QMessageBox
+    monkeypatch.setattr(QMessageBox, "information", lambda *a, **k: None)
+    w = MainWindow()
+    p = _project()
+    p.sections.append(Section(id=2, name="W8x31", A=5e-3, Iz=1e-4))
+    w.load_project(p)
+    assert w._table_commit(("member", 1), "section", 999) is False   # no such id
+    assert w._table_commit(("member", 1), "section", 2) is True
+    assert next(m for m in w._project.members if m.id == 1).section == 2
+
+
+def test_gsd_section_geometry_not_editable(qapp):
+    from model_tables import _sections, Editable
+    p = _project()
+    p.sections[0].gsd_spec = {"dummy": 1}
+    _headers, rows = _sections(p)
+    cells, ref = rows[0]
+    assert ref == ("section", 1)
+    assert isinstance(cells[1], Editable)          # name stays editable
+    assert not isinstance(cells[3], Editable)      # A is GSD-driven → locked
+
+
+def test_dialog_cell_edit_calls_commit_and_reverts(qapp):
+    from model_tables import ModelTableDialog, _nodes
+    p = _project()
+    calls = []
+    headers, rows = _nodes(p)
+    dlg = ModelTableDialog(None, "Nodes", headers, rows,
+                           on_commit=lambda ref, f, v: (calls.append((ref, f, v))
+                                                        or True))
+    dlg.table.item(0, 1).setText("12")             # edit node 1's X
+    assert calls == [(("node", 1), "x", 12.0)]
+    # a bad parse reverts to the original text and does not commit
+    dlg.table.item(0, 2).setText("abc")            # Y column
+    assert dlg.table.item(0, 2).text() == "0"
+    assert len(calls) == 1
