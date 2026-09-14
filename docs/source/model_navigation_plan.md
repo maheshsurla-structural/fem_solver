@@ -156,10 +156,13 @@ Legend: `[x]` done · `[ ]` open. Do the lowest open item whose deps are met.
   / transient expansion survive natively); changed → a full `_populate_tree` that now also preserves
   scroll + reselects surviving refs. Leaf labels factored into shared `_*_leaf_label` builders. —
   `feat(nav N5)`, 2026-09-13.
-- [ ] **N6 — Pure-summary option.** A toggle that drops individual leaves entirely (tree = counts
-  only), moving all item selection to the viewport + tables — the full Midas "clean tree". Requires
-  routing move/copy/delete/Properties off the tree's leaves onto a viewport-owned selection set.
-  Deps: N2, N5.
+- [x] **N6 — Pure-summary option.** A **Summary** toggle in the nav header (persisted `nav/summary`)
+  drops the individual leaves — the tree is counts-only (element-type rows kept). Selection was moved
+  off the tree into an authoritative `self._selection`: `_set_selection` / `_sync_tree_selection` /
+  `_apply_selection_effects` mirror it onto the tree in leaf mode and drive it from the viewport +
+  tables in summary mode; `_on_pick` / `_on_region_select` / `_select` / `deselect_all` /
+  `delete_selected` (now multi-item) route through it, and `_ref_exists` prunes stale refs across
+  rebuilds. — `feat(nav N6)`, 2026-09-14.
 - [ ] **N7 — In-table editing.** Let `ModelTableDialog` edit values in place (with undo through
   `_apply_edit`) rather than only drilling to dialogs. Deps: N2.
 
@@ -168,6 +171,22 @@ Legend: `[x]` done · `[ ]` open. Do the lowest open item whose deps are met.
 ## 6. Change log
 
 _(prepend newest)_
+
+- **2026-09-14 — N6.** The tree's leaves became optional. A **Summary** toggle in the nav header
+  (`_nav_summary_act`/`_btn`, `toggle_summary_mode`, persisted `nav/summary`) flips `_populate_tree`
+  between the full outline and a counts-only summary via a `leaves = not self._summary_mode` guard on
+  every leaf loop (element-type rows stay for their counts). Because leaves can be absent, selection
+  no longer lives in the tree: a new authoritative `self._selection` list is the single source of
+  truth, with `_set_selection` (dedupes, mirrors to the tree in leaf mode via `_sync_tree_selection`,
+  then `_apply_selection_effects` for highlight/Properties/status) and `_ref_exists` pruning refs an
+  edit removed. `_selected_refs` returns it; `_on_pick` (additive toggles the list), `_on_region_select`,
+  `_select`, `deselect_all`, and `delete_selected` (now a mode-agnostic **multi-item** delete with the
+  section-in-use guard scoped to surviving members) all go through it; `_on_selection_changed` feeds
+  user leaf-clicks back in (leaf mode only). `_populate_tree` / `_refresh_labels_in_place` re-apply
+  selection effects at the end so Properties refresh after an edit. Toggling forces a full rebuild
+  (`_last_tree_sig = None`). Import: none. Tests: +5 in `tests/test_desktop_nav.py` plus an autouse
+  QSettings-isolation fixture; verified end-to-end (summary pick/delete/undo, toggle round-trip).
+  Screenshot `N6_summary_mode.png`. Desktop suite: 402 passed, 1 skipped.
 
 - **2026-09-13 — N5.** Edits no longer tear the tree down. `_rebuild` calls the new `_refresh_tree`,
   which compares `_tree_signature(project)` — a hashable of the section/node ids, the element-type

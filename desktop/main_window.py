@@ -110,6 +110,12 @@ class MainWindow(QMainWindow):
         # (super-group / category / element-type); seeded on first run.
         self._building_tree = False
         self._last_tree_sig = None       # structure signature for the N5 fast path
+        # Authoritative selection (nav N6): the tree is only one *driver* of it
+        # (in leaf mode); in summary mode the viewport / tables drive it. Every
+        # consumer (move/copy/delete/Properties/highlight) reads _selected_refs.
+        self._selection: list = []
+        self._summary_mode = self._settings.value(
+            "nav/summary", False, type=bool)
         saved = self._settings.value("nav/expanded", None)
         self._expanded = (set(saved) if saved is not None
                           else set(_DEFAULT_EXPANDED))
@@ -1477,34 +1483,73 @@ class MainWindow(QMainWindow):
                 ("member_load", index))
 
     def delete_selected(self) -> None:
-        item = self.tree.currentItem()
-        ref = item.data(0, Qt.ItemDataRole.UserRole) if item else None
-        if not ref:
+        refs = self._selected_refs()
+        if not refs:
             return
-        kind, key = ref
         p = self._project
-        if kind == "section" and any(m.section == key for m in p.members):
+        node_ids = {k for (t, k) in refs if t == "node"}
+        member_ids = {k for (t, k) in refs if t == "member"}
+        section_ids = {k for (t, k) in refs if t == "section"}
+        # Delete loads / line loads by identity (indices shift as we filter).
+        loads_del = {id(p.loads[k]) for (t, k) in refs
+                     if t == "load" and 0 <= k < len(p.loads)}
+        mloads_del = {id(p.member_loads[k]) for (t, k) in refs
+                      if t == "member_load" and 0 <= k < len(p.member_loads)}
+        # A section is only blocked when a *surviving* member still uses it.
+        surviving = [m for m in p.members if m.id not in member_ids
+                     and m.n1 not in node_ids and m.n2 not in node_ids]
+        blocked = section_ids & {m.section for m in surviving}
+        if blocked:
             QMessageBox.information(
                 self, "Delete section",
                 "Section is used by a member — reassign it first.")
             return
-        def mutate():
-            if kind == "node":
-                p.nodes = [n for n in p.nodes if n.id != key]
-                p.members = [m for m in p.members if key not in (m.n1, m.n2)]
-                p.loads = [ld for ld in p.loads if ld.node != key]
-            elif kind == "member":
-                p.members = [m for m in p.members if m.id != key]
-            elif kind == "section":
-                p.sections = [s for s in p.sections if s.id != key]
-            elif kind == "load" and 0 <= key < len(p.loads):
-                del p.loads[key]
-            elif kind == "member_load" and 0 <= key < len(p.member_loads):
-                del p.member_loads[key]
-        self._apply_edit(f"Delete {kind}", mutate)
 
-    def _on_selection_changed(self) -> None:
-        refs = self._selected_refs()
+        def mutate():
+            if node_ids:
+                p.nodes = [n for n in p.nodes if n.id not in node_ids]
+            if node_ids or member_ids:
+                p.members = [m for m in p.members if m.id not in member_ids
+                             and m.n1 not in node_ids and m.n2 not in node_ids]
+            if section_ids:
+                p.sections = [s for s in p.sections if s.id not in section_ids]
+            if node_ids or loads_del:
+                p.loads = [ld for ld in p.loads if ld.node not in node_ids
+                           and id(ld) not in loads_del]
+            if mloads_del:
+                p.member_loads = [ml for ml in p.member_loads
+                                  if id(ml) not in mloads_del]
+        n = len(refs)
+        self._apply_edit(f"Delete {n} item{'s' if n != 1 else ''}", mutate)
+        self._set_selection([])
+
+    # ---------------------------------------------------- selection model (N6)
+    # ``self._selection`` is the single source of truth. In leaf mode the tree
+    # mirrors it (and user clicks on leaves flow back in via
+    # ``_on_selection_changed``); in summary mode the viewport / tables are the
+    # only drivers. Every consumer reads ``_selected_refs``.
+    def _selected_refs(self):
+        return list(self._selection)
+
+    def _ref_exists(self, ref) -> bool:
+        kind, key = ref
+        p = self._project
+        if kind == "node":
+            return any(n.id == key for n in p.nodes)
+        if kind == "member":
+            return any(m.id == key for m in p.members)
+        if kind == "section":
+            return any(s.id == key for s in p.sections)
+        if kind == "load":
+            return 0 <= key < len(p.loads)
+        if kind == "member_load":
+            return 0 <= key < len(p.member_loads)
+        return False
+
+    def _apply_selection_effects(self) -> None:
+        # Drop refs an edit removed so a rebuild can't show a deleted item.
+        self._selection = [r for r in self._selection if self._ref_exists(r)]
+        refs = self._selection
         self._update_sel_status(len(refs))
         geom = [r for r in refs if r[0] in ("node", "member")]
         if geom:
@@ -1518,26 +1563,71 @@ class MainWindow(QMainWindow):
         else:
             self.props.show_multi(self._project, refs)
 
+    def _set_selection(self, refs) -> None:
+        """Set the authoritative selection, mirror it onto the tree (leaf mode),
+        and refresh the viewport highlight / Properties / status."""
+        seen, norm = set(), []
+        for r in refs:
+            t = tuple(r)
+            if t not in seen:
+                seen.add(t)
+                norm.append(t)
+        self._selection = norm
+        if not self._summary_mode:
+            self._sync_tree_selection(norm)
+        self._apply_selection_effects()
+
+    def _sync_tree_selection(self, refs) -> None:
+        """Reflect ``refs`` onto the tree's leaves without re-entering the
+        selection-changed signal (leaf mode only; a no-op when no leaf matches,
+        e.g. in summary mode)."""
+        targets = {tuple(r) for r in refs}
+        single = len(targets) == 1        # reveal + scroll only a lone pick
+        self.tree.blockSignals(True)
+        self.tree.clearSelection()
+        first = None
+        for it in self._iter_tree_items():
+            r = it.data(0, Qt.ItemDataRole.UserRole)
+            if r is not None and tuple(r) in targets:
+                it.setSelected(True)
+                if single:
+                    parent = it.parent()
+                    while parent is not None:
+                        parent.setExpanded(True)
+                        parent = parent.parent()
+                first = first or it
+        if first is not None:
+            self.tree.setCurrentItem(
+                first, 0, QItemSelectionModel.SelectionFlag.NoUpdate)
+            if single:
+                self.tree.scrollToItem(first)
+        self.tree.blockSignals(False)
+
+    def _on_selection_changed(self) -> None:
+        """The tree's own selection changed (user clicked leaves). In summary
+        mode the tree has no selectable leaves, so it never drives selection."""
+        if self._summary_mode:
+            return
+        seen, refs = set(), []
+        for it in self.tree.selectedItems():
+            r = it.data(0, Qt.ItemDataRole.UserRole)
+            if r and tuple(r) not in seen:
+                seen.add(tuple(r))
+                refs.append(tuple(r))
+        self._selection = refs
+        self._apply_selection_effects()
+
     def _on_pick(self, kind, ident) -> None:
         additive = bool(QApplication.keyboardModifiers() & (
             Qt.KeyboardModifier.ShiftModifier
             | Qt.KeyboardModifier.ControlModifier))
+        ref = (kind, ident)
         if not additive:
-            self._select((kind, ident))
-            return
-        item = self._find_item((kind, ident))
-        if item is not None:
-            item.setSelected(not item.isSelected())
-            self.tree.setCurrentItem(
-                item, 0, QItemSelectionModel.SelectionFlag.NoUpdate)
-
-    def _selected_refs(self):
-        refs = []
-        for it in self.tree.selectedItems():
-            r = it.data(0, Qt.ItemDataRole.UserRole)
-            if r:
-                refs.append(tuple(r))
-        return refs
+            self._set_selection([ref])
+        elif ref in self._selection:
+            self._set_selection([r for r in self._selection if r != ref])
+        else:
+            self._set_selection(self._selection + [ref])
 
     def move_selected(self) -> None:
         refs = self._selected_refs()
@@ -1636,10 +1726,7 @@ class MainWindow(QMainWindow):
                              dx, dy, dz, count))
 
     def deselect_all(self) -> None:
-        self.tree.clearSelection()
-        self.tree.setCurrentItem(None)
-        self.props.clear_selection()
-        self.view.clear_highlight()
+        self._set_selection([])
 
     def _update_snap(self, *_) -> None:
         self.view.set_snap(self.act_snap.isChecked(), self.snap_spin.value())
@@ -1703,25 +1790,11 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(hints.get(mode, ""))
 
     def _on_region_select(self, refs, additive=False) -> None:
-        targets = {tuple(r) for r in refs}
-        if additive:
-            targets |= set(self._selected_refs())
-        self.tree.blockSignals(True)
-        self.tree.clearSelection()
-        first = None
-        for i in range(self.tree.topLevelItemCount()):
-            grp = self.tree.topLevelItem(i)
-            for j in range(grp.childCount()):
-                child = grp.child(j)
-                if child.data(0, Qt.ItemDataRole.UserRole) in targets:
-                    child.setSelected(True)
-                    first = first or child
-        if first:
-            self.tree.setCurrentItem(
-                first, 0, QItemSelectionModel.SelectionFlag.NoUpdate)
-        self.tree.blockSignals(False)
-        self._on_selection_changed()
-        self.statusBar().showMessage(f"Selected {len(targets)} item(s)")
+        picked = [tuple(r) for r in refs]
+        combined = (self._selection + picked) if additive else picked
+        self._set_selection(combined)
+        self.statusBar().showMessage(
+            f"Selected {len(self._selection)} item(s)")
 
     def select_all_nodes(self) -> None:
         self._on_region_select([("node", n.id) for n in self._project.nodes])
@@ -1914,8 +1987,8 @@ class MainWindow(QMainWindow):
     def _populate_tree(self) -> None:
         p = self._project
         labels = dof_labels(p.ndm, p.ndf)
+        leaves = not self._summary_mode           # summary mode = counts only (N6)
         scroll = self.tree.verticalScrollBar().value()   # keep the view steady
-        keep_sel = self._selected_refs()
         self.tree.clear()
 
         # ---- Properties -------------------------------------------------
@@ -1924,18 +1997,22 @@ class MainWindow(QMainWindow):
                        "materials", "design")
         sections = self._category(props, "Sections", len(p.sections),
                                   "sections", "section")
-        for s in p.sections:
-            self._leaf(sections, self._section_leaf_label(s), ("section", s.id))
+        if leaves:
+            for s in p.sections:
+                self._leaf(sections, self._section_leaf_label(s),
+                           ("section", s.id))
         self._category(props, "Hinge properties", len(p.hinges),
                        "hinges", "run")
 
         # ---- Structures -------------------------------------------------
         struct = self._super("Structures")
         nodes = self._category(struct, "Nodes", len(p.nodes), "nodes", "node")
-        for n in p.nodes:
-            self._leaf(nodes, self._node_leaf_label(n, labels, p.ndm),
-                       ("node", n.id))
-        # Elements, grouped by element type (charter B3).
+        if leaves:
+            for n in p.nodes:
+                self._leaf(nodes, self._node_leaf_label(n, labels, p.ndm),
+                           ("node", n.id))
+        # Elements, grouped by element type (charter B3). The type rows carry
+        # counts and stay even in summary mode; only the members drop out.
         elements = self._category(struct, "Elements", len(p.members),
                                   "elements", "member")
         by_type: dict[str, list] = {}
@@ -1945,14 +2022,17 @@ class MainWindow(QMainWindow):
             bucket = by_type[etype]
             trow = self._category(elements, etype, len(bucket),
                                   ("elements", etype), "member")
-            for m in bucket:
-                self._leaf(trow, self._member_leaf_label(m), ("member", m.id))
+            if leaves:
+                for m in bucket:
+                    self._leaf(trow, self._member_leaf_label(m),
+                               ("member", m.id))
         supported = [n for n in p.nodes if n.supports and any(n.supports)]
         supports = self._category(struct, "Supports", len(supported),
                                   "supports", "node")
-        for n in supported:
-            self._leaf(supports, self._support_leaf_label(n, labels),
-                       ("node", n.id))
+        if leaves:
+            for n in supported:
+                self._leaf(supports, self._support_leaf_label(n, labels),
+                           ("node", n.id))
 
         # ---- Loads ------------------------------------------------------
         loadgrp = self._super("Loads")
@@ -1960,13 +2040,15 @@ class MainWindow(QMainWindow):
                        "load_cases", "load")
         loads = self._category(loadgrp, "Nodal loads", len(p.loads),
                                "loads", "load")
-        for i, ld in enumerate(p.loads):
-            self._leaf(loads, self._load_leaf_label(ld), ("load", i))
+        if leaves:
+            for i, ld in enumerate(p.loads):
+                self._leaf(loads, self._load_leaf_label(ld), ("load", i))
         mloads = self._category(loadgrp, "Line loads", len(p.member_loads),
                                 "member_loads", "load")
-        for i, ml in enumerate(p.member_loads):
-            self._leaf(mloads, self._mload_leaf_label(ml, p.ndm),
-                       ("member_load", i))
+        if leaves:
+            for i, ml in enumerate(p.member_loads):
+                self._leaf(mloads, self._mload_leaf_label(ml, p.ndm),
+                           ("member_load", i))
         self._category(loadgrp, "Load combinations", len(p.combinations),
                        "combinations", "load")
 
@@ -1977,24 +2059,24 @@ class MainWindow(QMainWindow):
                      + ["Modal", "Response Spectrum", "Buckling", "Time History"])
         cases = self._category(an, "Analysis cases", len(case_rows),
                                "analysis_cases", "run")
-        for name in case_rows:
-            self._leaf(cases, name, None)
+        if leaves:
+            for name in case_rows:
+                self._leaf(cases, name, None)
         runs = self._category(an, "Results", len(p.runs), "results", "run")
-        for i, r in enumerate(p.runs):
-            self._leaf(runs, getattr(r, "name", f"Run {i + 1}"), None)
+        if leaves:
+            for i, r in enumerate(p.runs):
+                self._leaf(runs, getattr(r, "name", f"Run {i + 1}"), None)
 
         # Restore each branch's expand/collapse state from the persisted set
         # (nav N3) so an edit-triggered rebuild keeps the user's outline; then
         # re-apply any active filter (nav N4) to the fresh items.
         self._restore_expansion()
-        for ref in keep_sel:                             # keep prior selection
-            item = self._find_item(ref)
-            if item is not None:
-                item.setSelected(True)
+        self._sync_tree_selection(self._selection)       # re-show selection (N6)
         self.tree.verticalScrollBar().setValue(scroll)
         flt = getattr(self, "_nav_filter", None)
         if flt is not None and flt.text().strip():
             self._apply_filter(flt.text())
+        self._apply_selection_effects()      # refresh highlight/Properties/status
         self._last_tree_sig = self._tree_signature(p)
 
     @staticmethod
@@ -2057,6 +2139,7 @@ class MainWindow(QMainWindow):
                 it.setText(0, self._load_leaf_label(p.loads[key]))
             elif kind == "member_load" and 0 <= key < len(p.member_loads):
                 it.setText(0, self._mload_leaf_label(p.member_loads[key], p.ndm))
+        self._apply_selection_effects()      # values changed → refresh Properties
 
     def _iter_tree_items(self, parent=None):
         """Depth-first walk of every item (used by the recursive finder)."""
@@ -2077,16 +2160,9 @@ class MainWindow(QMainWindow):
         return None
 
     def _select(self, ref) -> None:
-        item = self._find_item(ref)
-        if item is not None:
-            self.tree.clearSelection()
-            parent = item.parent()          # reveal a collapsed-by-default leaf
-            while parent is not None:
-                parent.setExpanded(True)
-                parent = parent.parent()
-            item.setSelected(True)
-            self.tree.setCurrentItem(item)
-            self.tree.scrollToItem(item)
+        """Make ``ref`` the sole selection (the tree mirrors it in leaf mode;
+        the viewport highlights it in both modes)."""
+        self._set_selection([ref])
 
     # --------------------------------------------------- expand/collapse (N3)
     def _build_nav_panel(self):
@@ -2125,9 +2201,36 @@ class MainWindow(QMainWindow):
             btn.setAutoRaise(True)
             bar.addWidget(btn)
         bar.addStretch(1)
+        # Summary-mode toggle (nav plan N6): drop the individual leaves so the
+        # tree is counts-only; selection then lives on the viewport + tables.
+        self._nav_summary_act = _action(self, "Summary", None,
+                                        self.toggle_summary_mode, "frame")
+        self._nav_summary_act.setCheckable(True)
+        self._nav_summary_act.setChecked(self._summary_mode)
+        self._nav_summary_act.setToolTip(
+            "Summary view — show category counts only, no individual items")
+        self._nav_summary_btn = QToolButton()
+        self._nav_summary_btn.setDefaultAction(self._nav_summary_act)
+        self._nav_summary_btn.setToolButtonStyle(
+            Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self._nav_summary_btn.setAutoRaise(True)
+        bar.addWidget(self._nav_summary_btn)
         col.addLayout(bar)
         col.addWidget(self.tree)
         return panel
+
+    def toggle_summary_mode(self, checked=None) -> None:
+        """Flip the tree between the full outline (leaves) and a counts-only
+        summary (nav N6). Structure differs, so force a full rebuild; the
+        selection is unaffected (it lives in ``self._selection``)."""
+        if checked is None:
+            checked = self._nav_summary_act.isChecked()
+        self._summary_mode = bool(checked)
+        self._nav_summary_act.setChecked(self._summary_mode)
+        self._settings.setValue("nav/summary", self._summary_mode)
+        self._last_tree_sig = None            # structure changed → full rebuild
+        if self._project is not None:
+            self._populate_tree()
 
     def _restore_expansion(self) -> None:
         """Set every branch's expanded state from the persisted set, without

@@ -34,6 +34,19 @@ def qapp():
     yield QApplication.instance() or QApplication([])
 
 
+@pytest.fixture(autouse=True)
+def _isolate_settings(qapp, tmp_path, monkeypatch):
+    """Point the window's QSettings at a throwaway ini so persisted nav flags
+    (summary / expanded) can't leak in from the real store or between tests."""
+    import main_window
+    from PySide6.QtCore import QSettings
+    ini = str(tmp_path / "settings.ini")
+    monkeypatch.setattr(
+        main_window, "QSettings",
+        lambda *a, **k: QSettings(ini, QSettings.Format.IniFormat))
+    yield
+
+
 def _project():
     p = Project(ndm=2, ndf=3)
     p.nodes = [Node(1, 0, 0, supports=(1, 1, 1)), Node(2, 4, 0),
@@ -243,3 +256,63 @@ def test_refresh_preserves_selection_and_scroll(qapp):
     w._project.sections[0].name = "W14x90"             # value-only edit
     w._refresh_tree()
     assert w._selected_refs() == [("member", 1)]       # selection kept
+
+
+# --------------------------------------------------------------- N6: summary mode
+def test_summary_mode_drops_leaves_keeps_counts(qapp, tmp_path):
+    from main_window import MainWindow
+    w = MainWindow()
+    _temp_settings(w, tmp_path)
+    w.load_project(_project())
+    w.toggle_summary_mode(True)
+    nodes = _cat(w, "Structures", "Nodes")
+    assert nodes.text(1) == "3"                         # count still shown
+    assert nodes.childCount() == 0                      # but no individual leaves
+    elements = _cat(w, "Structures", "Elements")
+    assert elements.text(1) == "2"
+    beam = next(elements.child(k) for k in range(elements.childCount())
+                if elements.child(k).text(0) == "Beam")
+    assert beam.text(1) == "2" and beam.childCount() == 0  # type row kept, no leaves
+
+
+def test_summary_mode_selection_via_viewport(qapp, tmp_path):
+    from main_window import MainWindow
+    w = MainWindow()
+    _temp_settings(w, tmp_path)
+    w.load_project(_project())
+    w.toggle_summary_mode(True)
+    assert w._find_item(("member", 1)) is None          # no leaf to click
+    w._on_pick("member", 1)                             # viewport drives selection
+    assert w._selected_refs() == [("member", 1)]
+    w._on_pick("node", 2)                               # non-additive replaces
+    assert w._selected_refs() == [("node", 2)]
+
+
+def test_leaf_mode_pick_and_additive(qapp):
+    from main_window import MainWindow
+    w = MainWindow()
+    w.load_project(_project())
+    w._on_pick("member", 1)
+    assert w._selected_refs() == [("member", 1)]
+    assert w._find_item(("member", 1)).isSelected()     # tree mirrors it
+    w._set_selection([("member", 1), ("member", 2)])    # multi selection
+    assert set(w._selected_refs()) == {("member", 1), ("member", 2)}
+    assert w._find_item(("member", 2)).isSelected()
+
+
+def test_delete_multiple_and_deselect(qapp):
+    from main_window import MainWindow
+    w = MainWindow()
+    w.load_project(_project())
+    w._set_selection([("load", 0), ("member_load", 0)])
+    w.delete_selected()
+    assert w._project.loads == [] and w._project.member_loads == []
+    assert w._selected_refs() == []
+
+
+def test_summary_mode_persists(qapp, tmp_path):
+    from main_window import MainWindow
+    w = MainWindow()
+    _temp_settings(w, tmp_path)
+    w.toggle_summary_mode(True)
+    assert w._settings.value("nav/summary", False, type=bool) is True
