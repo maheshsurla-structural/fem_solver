@@ -1,0 +1,263 @@
+# Model Navigation (Model Tree) — Charter & Plan
+
+**Status:** Living document — the single source of truth for the desktop app's **left Model tree**
+(the docked outline of everything in the model). Sibling to
+[`ribbon_top_chrome_plan.md`](ribbon_top_chrome_plan.md) (the top chrome),
+[`gui_professional_polish_plan.md`](gui_professional_polish_plan.md) (the app-wide skin) and
+[`loads_analysis_ux_plan.md`](loads_analysis_ux_plan.md) (the dialogs). This one owns **how the
+model's contents are summarised and reached in the left panel**.
+**Owner rotation:** multiple Claude sessions across multiple accounts.
+**The git repo is the only shared state** (memory files do NOT cross accounts). Read this file
+first, do **one** tracker item, update §5, commit `feat(nav <ID>): …`, and stop.
+
+**Goal in one line:** the Model tree is a **compact, complete outline** of the model — every
+category that exists (materials · sections · hinges · nodes · elements-by-type · supports · load
+cases · loads · combinations · analysis cases · results), each with a **count**, collapsed by
+default so the panel reads like a *table of contents*; **right-click → Show Table…** on any
+category opens the full spreadsheet of that category's rows. Exactly the Midas / CSiBridge model
+tree idiom, in **light *and* dark**, **comfortable *and* compact**.
+
+---
+
+## 0. Session protocol (binding)
+
+1. **Read this whole file before writing code.** It freezes the charter (§2), the tree taxonomy
+   (§3), and the tracker (§5) so independent sessions converge on one arrangement.
+2. **Pick the lowest-numbered unchecked item** whose deps are all checked. One item ≈ one session.
+3. **Charter §2 rules are binding.** Never hand-code a colour, font size, radius, or spacing —
+   pull the token from `style` (`style.ACCENT`, `style.MUTED`, `style.SP_MD`, `style.R_SM`, …).
+   Add missing tokens to `style.py` in the *same* commit and note them in §6.
+4. **Do not change `project.py` dataclasses or the solver.** Pure UI/UX. The tree only *reads*
+   the `Project`; it never invents new persisted state.
+5. **Selection is sacred.** The tree is the app's selection model: `_selected_refs()` drives
+   move / copy / delete / the Properties panel, and the viewport syncs to it through
+   `_on_pick` / `_select` / `_find_item`. Any restructure MUST keep `("node", id)`,
+   `("member", id)`, `("section", id)`, `("load", i)`, `("member_load", i)` refs locatable by
+   `_find_item` (it is recursive — keep it so) and selectable by `_select` (which expands
+   ancestors). Guarded by `tests/test_desktop_member_load.py` and `tests/test_desktop_nav.py`.
+6. **Every item ships:** the change + headless smoke coverage in `tests/test_desktop_nav.py`
+   (constructible under `QT_QPA_PLATFORM=offscreen`) + a light+dark screenshot pair under
+   `phase21_outputs/gui_polish/` (`N<ID>_*_light.png` / `_dark.png`). Capture on the **native**
+   platform, not offscreen — offscreen has no font glyphs (renders as ▯).
+7. **Update §5** (check the box, add commit + date) and append a line to §6 (Change log).
+
+---
+
+## 1. Why this stream exists
+
+The tree dumped **every** node, member, section and load as an individual row under five flat
+groups (`Nodes (n)` / `Members (n)` / `Sections (n)` / `Loads (n)` / `Line loads (n)`). Two
+problems, both raised by the user:
+
+1. **It's too much.** A real model floods the panel with hundreds of leaf rows, so it stops being
+   a *navigation* aid — you can't see at a glance *what is in the model*. Midas/CSi solve this by
+   showing the tree as a **summary** (categories + type + counts) and moving the row-by-row detail
+   into an on-demand **table** (right-click → Show Table…).
+2. **It's incomplete.** Materials, hinges, load cases, combinations, analysis cases and results
+   all exist in the `Project` but never appeared in the tree. "Show everything that exists in the
+   model" — the tree must be the model's table of contents.
+
+This is an **information-architecture** problem, not a repaint. The charter makes the rules
+explicit so it stays that way.
+
+---
+
+## 2. Charter (binding rules)
+
+- **B1 — Summary first.** The default (freshly-built) tree shows **category headers with counts**,
+  collapsed. Structural groups (Materials/Sections, Nodes, Elements, …) are expanded to reveal the
+  category rows; the long **leaf** lists (individual nodes/elements/loads) stay **collapsed** so
+  the default view is a compact outline. Expanding a category is opt-in.
+- **B2 — Completeness.** Every category the `Project` can hold has a row, **even when empty**
+  (count `0`, muted) — so the tree tells you what the model *doesn't* have too.
+- **B3 — Elements by type.** `Elements (n)` groups its members under a child row per element type
+  (`Beam`, `Truss`, `Fiber hinge`, …) carrying that type's count — the reference behaviour.
+- **B4 — Counts as a second column.** Counts render right-aligned in a narrow second tree column
+  (`style.MUTED`), like the badges in Midas — not baked into the label text.
+- **B5 — Right-click → tables.** Every category row (and the element-type rows) has a context menu
+  whose primary action is **Show Table…**, opening `model_tables.ModelTableDialog` with the full,
+  columned list of that category's rows. Editable categories also offer their manager/editor
+  (Manage materials…, New section…, …). Double-clicking a category header does its primary action.
+- **B6 — Tokens only.** No hand-coded colour/size/radius/spacing (see §0.3).
+- **B7 — Selection preserved (§0.5).** Never regress move/copy/delete/Properties/viewport-sync.
+
+---
+
+## 3. Tree taxonomy (the frozen outline)
+
+Top-level super-groups, each holding category rows. `‹n›` = count column. Leaf rows (individual
+items, collapsed) hang under the category that owns their selection ref.
+
+```
+Properties
+  Materials            ‹n›   → Show Table · Manage materials…
+  Sections             ‹n›   → Show Table · New section…            (leaves: section items)
+  Hinge properties     ‹n›   → Show Table · Manage hinges…
+Structures
+  Nodes                ‹n›   → Show Table · New node…               (leaves: node items)
+  Elements             ‹n›   → Show Table
+    ‹Type›             ‹n›   (Beam / Truss / Fiber hinge / …)       (leaves: member items)
+  Supports             ‹n›   → Show Table   (nodes with any fixity; informational)
+Loads
+  Load cases           ‹n›   → Show Table · Manage load cases…
+  Nodal loads          ‹n›   → Show Table · New load…               (leaves: load items)
+  Line loads           ‹n›   → Show Table · New line load…          (leaves: member_load items)
+  Load combinations    ‹n›   → Show Table · Manage combinations…
+Analysis
+  Analysis cases       ‹n›   → Show Table · Manage analysis cases…  (leaves: case rows)
+  Results              ‹n›   → Show Table   (saved nonlinear runs)
+```
+
+Refs (frozen, per §0.5): node→`("node", id)`, member→`("member", id)`, section→`("section", id)`,
+nodal load→`("load", index)`, line load→`("member_load", index)`. Category headers carry a
+`("cat", key)` tag in `Qt.UserRole+1` (key ∈ the taxonomy above) so the context menu and
+double-click know which table/manager to open; they carry **no** `UserRole` ref (selecting a
+header selects nothing).
+
+---
+
+## 4. Non-goals / out of scope (for now)
+
+- Replacing the viewport as the primary graphical selection surface (the tree keeps its leaves;
+  we do **not** yet strip individual items — that's N6, sequenced last).
+- Editing directly inside the tables (tables are read + drill-down to the existing editors first;
+  in-place editing is a later item).
+- Drag-and-drop reordering, grouping/named selection sets, and search/filter (tracked, later).
+
+---
+
+## 5. Tracker
+
+Legend: `[x]` done · `[ ]` open. Do the lowest open item whose deps are met.
+
+- [x] **N1 — Summary tree.** Rebuilt `_populate_tree` to the §3 taxonomy: super-groups + category
+  rows for **every** category (incl. empty ones), counts in a second column (B4), Elements grouped
+  by type (B3), leaves preserved but collapsed by default (B1/B7). `_find_item` now recursive and
+  `_select` expands ancestors. Icons per category from `icons.py`. — `feat(nav N1)`, 2026-09-13.
+- [x] **N2 — Right-click → Show Table….** Context menu (`_on_tree_menu`) on every category/type
+  row; new `desktop/model_tables.py::ModelTableDialog` renders the full columned list per category
+  (materials/sections/hinges/nodes/elements/supports/load-cases/loads/line-loads/combinations/
+  analysis-cases/results). Double-click a header runs its primary action (`_category_primary`);
+  double-click a table row drills to the existing editor via `_table_activate`. — `feat(nav N2)`,
+  2026-09-13.
+- [x] **N3 — Expand/collapse state persistence.** Each branch carries a stable `KEY_ROLE` key
+  (`grp:…` / `cat:…`); `_populate_tree` restores expansion from `self._expanded`, kept in sync by
+  `_on_branch_expanded/collapsed` and persisted to `QSettings("nav/expanded")` (seeded with
+  `_DEFAULT_EXPANDED` on first run). Nav panel gains an **Expand all / Collapse all** header
+  (`_build_nav_panel`, `expand_all_tree` / `collapse_all_tree`). — `feat(nav N3)`, 2026-09-13.
+- [x] **N4 — Search / filter box.** A `navFilter` `QLineEdit` above the tree (`_apply_filter`)
+  live-hides non-matching branches by id / name / type; a container shows when it or any descendant
+  matches (matched containers force their descendants visible + expand), and clearing restores the
+  saved outline via `_restore_expansion`. Re-applied after an edit-rebuild. — `feat(nav N4)`,
+  2026-09-13.
+- [x] **N5 — Live counts / partial refresh.** `_rebuild` now calls `_refresh_tree`, which compares
+  a `_tree_signature` (branch/leaf set + all counts + ref-less leaf names) against the last build:
+  unchanged → `_refresh_labels_in_place` updates only leaf text (no teardown, so scroll / selection
+  / transient expansion survive natively); changed → a full `_populate_tree` that now also preserves
+  scroll + reselects surviving refs. Leaf labels factored into shared `_*_leaf_label` builders. —
+  `feat(nav N5)`, 2026-09-13.
+- [x] **N6 — Pure-summary option.** A **Summary** toggle in the nav header (persisted `nav/summary`)
+  drops the individual leaves — the tree is counts-only (element-type rows kept). Selection was moved
+  off the tree into an authoritative `self._selection`: `_set_selection` / `_sync_tree_selection` /
+  `_apply_selection_effects` mirror it onto the tree in leaf mode and drive it from the viewport +
+  tables in summary mode; `_on_pick` / `_on_region_select` / `_select` / `deselect_all` /
+  `delete_selected` (now multi-item) route through it, and `_ref_exists` prunes stale refs across
+  rebuilds. — `feat(nav N6)`, 2026-09-14.
+- [x] **N7 — In-table editing.** `ModelTableDialog` cells for safe scalar fields are editable
+  (`Editable` marker in the builders); committing routes through `MainWindow._table_commit`, which
+  applies the change with `_apply_edit` (undoable) after validating field/value, reverting the cell
+  on rejection. Read-only identity/derived cells still drill to the full editor. — `feat(nav N7)`,
+  2026-09-14.
+
+---
+
+## 6. Change log
+
+_(prepend newest)_
+
+- **2026-09-14 — N7. Tracker COMPLETE (N1–N7).** In-table editing. `desktop/model_tables.py` gains
+  an `Editable(value, field, kind)` marker; builders wrap only the safe scalar cells (material
+  name/E/ν/ρ/fy/fu, section name + non-GSD A/Iz/Iy/J, hinge name/Lp, node X/Y/Z, element
+  Section/Material, load-case name, nodal-load components, line-load wy/wz) — identity, derived and
+  GSD-driven cells stay read-only. `ModelTableDialog` sets `ItemIsEditable` + stores `(ref, field,
+  kind)`/original text per editable cell, enables the edit triggers, and on `itemChanged` parses per
+  kind, calls back `on_commit`, and reverts the cell on a parse error or a rejected commit
+  (`_loading` guards the programmatic writes). A double-click now edits an editable cell but still
+  drills a read-only one. `MainWindow._table_commit(ref, field, value)` validates then mutates
+  through `_apply_edit` (undoable; each mutate re-resolves against the live project since
+  `_apply_edit` swaps in a fresh copy), rejecting bad reassigns (with a message) and GSD-locked
+  geometry. `_open_category_table` passes it as `on_commit`; `_table_activate` no longer selects
+  kinds it can't drill. Verified end-to-end (edit a Nodes cell → tree updates → undo restores).
+  Tests: +6 in `tests/test_desktop_nav.py`. Screenshot `N7_editable_table.png`. Desktop suite:
+  407 passed, 1 skipped.
+
+- **2026-09-14 — N6.** The tree's leaves became optional. A **Summary** toggle in the nav header
+  (`_nav_summary_act`/`_btn`, `toggle_summary_mode`, persisted `nav/summary`) flips `_populate_tree`
+  between the full outline and a counts-only summary via a `leaves = not self._summary_mode` guard on
+  every leaf loop (element-type rows stay for their counts). Because leaves can be absent, selection
+  no longer lives in the tree: a new authoritative `self._selection` list is the single source of
+  truth, with `_set_selection` (dedupes, mirrors to the tree in leaf mode via `_sync_tree_selection`,
+  then `_apply_selection_effects` for highlight/Properties/status) and `_ref_exists` pruning refs an
+  edit removed. `_selected_refs` returns it; `_on_pick` (additive toggles the list), `_on_region_select`,
+  `_select`, `deselect_all`, and `delete_selected` (now a mode-agnostic **multi-item** delete with the
+  section-in-use guard scoped to surviving members) all go through it; `_on_selection_changed` feeds
+  user leaf-clicks back in (leaf mode only). `_populate_tree` / `_refresh_labels_in_place` re-apply
+  selection effects at the end so Properties refresh after an edit. Toggling forces a full rebuild
+  (`_last_tree_sig = None`). Import: none. Tests: +5 in `tests/test_desktop_nav.py` plus an autouse
+  QSettings-isolation fixture; verified end-to-end (summary pick/delete/undo, toggle round-trip).
+  Screenshot `N6_summary_mode.png`. Desktop suite: 402 passed, 1 skipped.
+
+- **2026-09-13 — N5.** Edits no longer tear the tree down. `_rebuild` calls the new `_refresh_tree`,
+  which compares `_tree_signature(project)` — a hashable of the section/node ids, the element-type
+  buckets, the supported-node set, every category count, and the ref-less leaf names (analysis-case
+  / run) — against `self._last_tree_sig` (reset to `None` by `load_project` so a document load is
+  always a full build). Match → `_refresh_labels_in_place` rewrites only the leaf text from the
+  project (parent `KEY_ROLE` distinguishes a Nodes leaf from its Supports twin), leaving scroll,
+  selection and transient expansion untouched. Mismatch → `_populate_tree`, which now snapshots the
+  scrollbar value + `_selected_refs()` before `clear()` and restores them after. All leaf labels are
+  now built by shared static `_node_leaf_label` / `_support_leaf_label` / `_section_leaf_label` /
+  `_member_leaf_label` / `_load_leaf_label` / `_mload_leaf_label` so the full and fast paths can't
+  drift. Verified through the real `_apply_edit` → `_restore` → `_rebuild` path (item reused, label
+  updated, undo restores, selection kept). Tests: +3 in `tests/test_desktop_nav.py`. Desktop suite:
+  406 passed, 1 skipped. (No screenshot — behaviour, not appearance.)
+
+- **2026-09-13 — N4.** Live search/filter. `_build_nav_panel` now tops the panel with a `navFilter`
+  `QLineEdit` (placeholder "Search model…", clear button) whose `textChanged` drives
+  `_apply_filter(text)`: a case-insensitive substring test over each branch's column-0 text (id /
+  name / element-type), hiding non-matches with `setHidden`. A container is shown when it matches or
+  any descendant does; a matched container forces all its descendants visible and expands, and a
+  matched leaf reveals its ancestors. Filtering runs under the `_building_tree` guard (transient
+  expansion, no persist churn); clearing the box unhides everything and calls the new
+  `_restore_expansion` (extracted from `_populate_tree`, also reused at rebuild's tail, which now
+  re-applies an active filter to the fresh items). Import: `QLineEdit`. Tests: +3 in
+  `tests/test_desktop_nav.py`. Screenshot `N4_nav_filter.png`. Desktop suite: 394 passed, 1 skipped.
+
+- **2026-09-13 — N3.** Expand/collapse state now survives edit-rebuilds and sessions. Every
+  expandable branch carries a stable key in `KEY_ROLE` (`UserRole+2`): `grp:<title>` for
+  super-groups, `cat:<key>` for categories/element-types (`_cat_key_str` flattens the tuple keys).
+  `self._expanded` (a set) is loaded from `QSettings("nav/expanded")` at init — seeded with
+  `_DEFAULT_EXPANDED` (the four super-groups + Elements) on first run — restored in `_populate_tree`
+  under a `self._building_tree` guard so the programmatic pass doesn't churn the signals;
+  `_on_branch_expanded/_on_branch_collapsed` keep the set in sync and `_persist_expanded` writes it
+  back. The tree is now wrapped by `_build_nav_panel`, which adds an **Expand all / Collapse all**
+  header (nav-panel-local actions `_nav_expand_act` / `_nav_collapse_act`, deliberately off the
+  `act_*` namespace the ribbon "homed once" test guards); `collapse_all_tree` keeps the four
+  super-groups open so the category list stays visible. Tests: +3 in `tests/test_desktop_nav.py`
+  (temp-`QSettings` isolated). Screenshot `N3_nav_panel.png`. Desktop suite: 391 passed, 1 skipped.
+
+- **2026-09-13 — N1 + N2.** The model tree became a compact table-of-contents. `_populate_tree`
+  (in `desktop/main_window.py`) now builds four super-groups (Properties / Structures / Loads /
+  Analysis) whose category rows carry a right-aligned **count** in a new second column
+  (`setColumnCount(2)`, header hidden, col-1 = ResizeToContents); empty categories are muted so
+  the tree shows what the model *lacks* too. Elements group under a child row per element type
+  (`_element_type` → Beam / Truss / Fiber hinge). Every category — materials, sections, hinge
+  properties, nodes, elements, supports, load cases, nodal loads, line loads, load combinations,
+  analysis cases, results — is present. Leaves are preserved (selection intact) but collapsed by
+  default; `_find_item` is now recursive (`_iter_tree_items`) and `_select` expands ancestors +
+  scrolls. Category rows tag `("cat", key)` in `CAT_ROLE` (`UserRole+1`). New helpers `_super`,
+  `_category`, `_leaf`. Right-click (`_on_tree_menu`) offers **Show Table…** + the category's
+  manager/new action; double-click a header runs `_category_primary`. New `desktop/model_tables.py`
+  (`ModelTableDialog`) renders a read-only spreadsheet per category and drills a double-clicked row
+  back to its editor (`_table_activate`). Imports: `QHeaderView`, `QBrush/QColor/QFont`. Tests:
+  new `tests/test_desktop_nav.py` (6 cases). Screenshots `N1_nav_tree_light/dark.png`,
+  `N1_elements_by_type.png`, `N2_elements_table.png`. Desktop suite: 389 passed, 1 skipped.
