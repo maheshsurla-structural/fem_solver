@@ -309,3 +309,39 @@ def test_ctrl_f1_collapse_shortcut(win):
     from PySide6.QtGui import QShortcut
     seqs = {sc.key().toString() for sc in win.findChildren(QShortcut)}
     assert "Ctrl+F1" in seqs
+
+
+# ---- R7: width overflow ----------------------------------------------------
+def test_narrow_width_collapses_groups_into_overflow(win):
+    from main_window import RibbonPage
+    pg = win._ribbon.page("View")                     # 4 groups, the widest tab
+    assert isinstance(pg, RibbonPage)
+    nat = sum(pg._group_width(g) for g in pg._groups) + 64
+    pg.resize(nat + 200, pg.height())
+    pg._relayout()
+    assert pg.hidden_captions() == [] and pg._more.isHidden()   # all fit
+    pg.resize(360, pg.height())
+    pg._relayout()
+    assert pg.hidden_captions()                        # something spilled
+    assert not pg._more.isHidden()                     # the '»' button appears
+    assert pg._shown >= 1                              # one group always stays
+    assert "Appearance" in pg.hidden_captions()        # rightmost drops first
+    pg.resize(nat + 200, pg.height())
+    pg._relayout()
+    assert pg.hidden_captions() == [] and pg._more.isHidden()   # reverses
+
+
+def test_overflow_popup_lists_hidden_group_actions(win):
+    pg = win._ribbon.page("View")
+    pg.resize(360, pg.height())
+    pg._relayout()
+    pg._fill_overflow()
+    menu_acts = {a for a in pg._more_menu.actions() if not a.isSeparator()}
+    assert win.act_theme in menu_acts or win.act_drawings in menu_acts
+    pg.resize(1600, pg.height())                       # restore for other tests
+    pg._relayout()
+
+
+def test_overflow_button_is_not_a_ribbon_button(win):
+    # the '»' control is not counted among the tab's command buttons
+    assert win._ribbon.page("View")._more.objectName() == "ribbonMore"

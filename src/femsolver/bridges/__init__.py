@@ -28,18 +28,27 @@ from femsolver.bridges.creep_shrinkage import (
     steel_relaxation_loss_ratio,
 )
 from femsolver.bridges.influence import (
+    AASHTO_MULTI_PRESENCE,
+    DesignLane,
     MovingLoad,
+    Vehicle2D,
     aashto_hl93_lane_load_kN_per_m,
     aashto_hl93_tandem,
     aashto_hl93_truck,
     aashto_lane_moment_simple_span,
     evaluate_response_for_position,
+    generate_design_lanes,
     influence_line_simple_span_moment,
     influence_line_simple_span_shear,
     irc_class_70r_truck,
     irc_class_a,
+    lane_load_surface_envelope,
     max_response_for_moving_load,
     max_truck_envelope_simple_span,
+    moving_load_surface_envelope,
+    multi_lane_envelope,
+    multi_presence_factor,
+    number_of_design_lanes,
 )
 from femsolver.bridges.pt_tendon import (
     AnchorageSlipResult,
@@ -68,6 +77,14 @@ from femsolver.bridges.form_finding import (
     FormFindingResult,
     force_density_form_find,
 )
+from femsolver.bridges.thermal_gradient import (
+    SectionThermalActions,
+    TemperatureGradient,
+    aashto_gradient,
+    apply_beam_thermal_actions,
+    equivalent_thermal_actions,
+    linear_gradient,
+)
 from femsolver.bridges.staged_construction import (
     ConstructionStage,
     ErectionStage,
@@ -77,11 +94,33 @@ from femsolver.bridges.staged_construction import (
     StagedConstructionResult,
     effective_modulus_EMM,
 )
+from femsolver.bridges.construction_stage import (
+    StagedCamber,
+    merge_stage_loads,
+    staged_camber,
+    tendon_stage_loads,
+)
+from femsolver.bridges.moving_force import (
+    MovingForceAnalysis,
+    VehicleAxles,
+)
+from femsolver.bridges.vbi import (
+    SprungMassVehicle,
+    VBIAnalysis,
+)
+from femsolver.bridges.cable_tuning import (
+    Cable,
+    CableTuningResult,
+    apply_cable_tensions,
+    unknown_load_factors,
+)
 from femsolver.bridges.moving_load import (
     BeamForce,
+    DeckSurface,
     Displacement,
     InfluenceLine,
     InfluenceLineEngine,
+    InfluenceSurface,
     Lane,
     Reaction,
     ResponseExtractor,
@@ -161,4 +200,39 @@ __all__ = [
     "moving_load_envelope",
     "lane_load_response",
     "aashto_hl93_envelope",
+    # influence surfaces — 2-D moving load on decks / grillages (T1.1)
+    "DeckSurface",
+    "InfluenceSurface",
+    "Vehicle2D",
+    "moving_load_surface_envelope",
+    # multi-lane placement + AASHTO multiple presence (T1.2)
+    "DesignLane",
+    "generate_design_lanes",
+    "number_of_design_lanes",
+    "multi_presence_factor",
+    "AASHTO_MULTI_PRESENCE",
+    "multi_lane_envelope",
+    "lane_load_surface_envelope",
+    # temperature gradient (T1.3)
+    "TemperatureGradient",
+    "linear_gradient",
+    "aashto_gradient",
+    "SectionThermalActions",
+    "equivalent_thermal_actions",
+    "apply_beam_thermal_actions",
+    # construction-stage workflows: camber, tendon sequence, composite (T1.4)
+    "StagedCamber",
+    "staged_camber",
+    "tendon_stage_loads",
+    "merge_stage_loads",
+    # moving-load time-history / VBI (T2.1)
+    "VehicleAxles",
+    "MovingForceAnalysis",
+    "SprungMassVehicle",
+    "VBIAnalysis",
+    # cable-stayed initial-force optimisation — unknown load factor (T2.2)
+    "Cable",
+    "CableTuningResult",
+    "unknown_load_factors",
+    "apply_cable_tensions",
 ]

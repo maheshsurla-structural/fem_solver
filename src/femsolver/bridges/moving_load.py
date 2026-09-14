@@ -190,6 +190,93 @@ class InfluenceLine:
         return float(np.trapezoid(ys, xs))
 
 
+@dataclass
+class InfluenceSurface:
+    """An influence surface: response ordinate vs in-plan load position.
+
+    The 2-D analogue of :class:`InfluenceLine`. Holds the scattered
+    ``(x, y) -> ordinate`` data measured at the deck nodes and interpolates
+    linearly between them (barycentric on a Delaunay triangulation), so it
+    is a callable ``is_(xy) -> ordinate`` returning 0 for points outside the
+    deck. Positive vehicle wheel loads convolve directly:
+    ``response = sum(P_k * is_(x_k, y_k))``.
+
+    Parameters
+    ----------
+    points : ndarray (n, 2)
+        In-plan node positions.
+    values : ndarray (n,)
+        Response ordinate at each node (per unit downward load).
+    response_name, surface_name : str
+    """
+
+    points: np.ndarray
+    values: np.ndarray
+    response_name: str = ""
+    surface_name: str = ""
+
+    def __post_init__(self) -> None:
+        self.points = np.asarray(self.points, dtype=float)
+        self.values = np.asarray(self.values, dtype=float).ravel()
+        if self.points.ndim != 2 or self.points.shape[1] != 2:
+            raise ValueError("points must be (n, 2)")
+        if self.points.shape[0] != self.values.size:
+            raise ValueError("points and values length mismatch")
+        self._interp = None
+
+    def _build_interp(self):
+        if self._interp is None:
+            from scipy.interpolate import LinearNDInterpolator
+            try:
+                self._interp = LinearNDInterpolator(
+                    self.points, self.values, fill_value=0.0)
+            except Exception as exc:                       # noqa: BLE001
+                raise RuntimeError(
+                    f"could not triangulate the deck surface ({exc}). "
+                    "Influence surfaces need nodes spread over a 2-D area; "
+                    "for a single line of nodes use an influence *line*."
+                ) from exc
+        return self._interp
+
+    def __call__(self, xy) -> np.ndarray:
+        """Interpolated ordinate(s). Accepts ``(x, y)`` or an ``(m, 2)``
+        array; returns a scalar or ``(m,)`` array. Zero outside the deck."""
+        interp = self._build_interp()
+        q = np.atleast_2d(np.asarray(xy, dtype=float))
+        out = interp(q[:, 0], q[:, 1])
+        out = np.nan_to_num(np.asarray(out, dtype=float), nan=0.0)
+        return float(out[0]) if np.ndim(xy) == 1 else out
+
+    def max_value(self) -> float:
+        return float(np.max(self.values))
+
+    def min_value(self) -> float:
+        return float(np.min(self.values))
+
+    def max_point(self) -> np.ndarray:
+        return self.points[int(np.argmax(self.values))].copy()
+
+    def min_point(self) -> np.ndarray:
+        return self.points[int(np.argmin(self.values))].copy()
+
+    def integrate_patch(self, x0, x1, y0, y1, *, sign: str = "all",
+                        nx: int = 41, ny: int = 41) -> float:
+        """∫∫ IS dA over the rectangle ``[x0,x1]×[y0,y1]`` — the influence
+        area for a uniform patch / lane load of unit intensity. ``sign``
+        clips to positive / negative ordinates as in :meth:`InfluenceLine`."""
+        xs = np.linspace(x0, x1, nx)
+        ys = np.linspace(y0, y1, ny)
+        gx, gy = np.meshgrid(xs, ys)
+        z = self(np.column_stack([gx.ravel(), gy.ravel()])).reshape(gy.shape)
+        if sign == "positive":
+            z = np.clip(z, 0.0, None)
+        elif sign == "negative":
+            z = np.clip(z, None, 0.0)
+        elif sign != "all":
+            raise ValueError("sign must be 'all', 'positive', or 'negative'")
+        return float(np.trapezoid(np.trapezoid(z, xs, axis=1), ys))
+
+
 # ============================================================ response extractors
 
 class ResponseExtractor:
@@ -342,6 +429,61 @@ class Lane:
         return st
 
 
+@dataclass
+class DeckSurface:
+    """The 2-D running surface of a deck / grillage for influence *surfaces*.
+
+    Where a :class:`Lane` is a 1-D path of nodes, a ``DeckSurface`` is the
+    set of deck nodes a wheel can stand on, with an in-plan ``(x, y)``
+    position for each (``x`` = longitudinal, ``y`` = transverse). The unit
+    load is placed at each node in turn; the collection of
+    ``(position, response)`` triples is the influence *surface*.
+
+    Parameters
+    ----------
+    node_tags : Sequence[int]
+        Deck node tags the load can be placed on.
+    points : Sequence[tuple], optional
+        In-plan ``(x, y)`` for each node (m). If omitted, taken from the
+        node coordinates at ``plan_axes``.
+    load_dof : int, default 2
+        The vertical DOF index the moving load drives (3-D deck: ``uz`` = 2).
+    gravity_sign : float, default -1.0
+        Sign of the unit load on ``load_dof`` (-1 = downward).
+    plan_axes : tuple[int, int], default (0, 1)
+        Coordinate indices used as ``(x, y)`` when ``points`` is not given
+        (e.g. ``(0, 1)`` = global X, Y for a horizontal deck).
+    name : str
+    """
+
+    node_tags: Sequence[int]
+    points: Optional[Sequence] = None
+    load_dof: int = 2
+    gravity_sign: float = -1.0
+    plan_axes: tuple = (0, 1)
+    name: str = "deck"
+
+    def __post_init__(self) -> None:
+        self.node_tags = list(self.node_tags)
+        if len(self.node_tags) < 3:
+            raise ValueError("a deck surface needs at least 3 nodes")
+        if self.points is not None:
+            pts = np.asarray(self.points, dtype=float)
+            if pts.shape != (len(self.node_tags), 2):
+                raise ValueError("points must be (n_nodes, 2)")
+            self.points = pts
+
+    def resolve_points(self, model) -> np.ndarray:
+        """Return the ``(n_nodes, 2)`` in-plan positions, from geometry
+        if they were not supplied."""
+        if self.points is not None:
+            return np.asarray(self.points, dtype=float)
+        i, j = self.plan_axes
+        return np.array(
+            [[float(model.node(t).coords[i]), float(model.node(t).coords[j])]
+             for t in self.node_tags], dtype=float)
+
+
 # ============================================================ engine
 
 class InfluenceLineEngine:
@@ -454,6 +596,63 @@ class InfluenceLineEngine:
             name: InfluenceLine(
                 stations=stations.copy(), values=vals,
                 response_name=name, lane_name=lane.name,
+            )
+            for name, vals in recorded.items()
+        }
+
+    def influence_surface(
+        self, surface: DeckSurface, response: ResponseExtractor
+    ) -> InfluenceSurface:
+        """Influence surface for a single response over ``surface``."""
+        return self.influence_surfaces(surface, {response.name: response})[
+            response.name
+        ]
+
+    def influence_surfaces(
+        self, surface: DeckSurface, responses: dict
+    ) -> dict:
+        """Influence surfaces for several responses in one traversal.
+
+        Places a unit downward load at every deck node in turn (reusing the
+        factorise-once back-substitution core) and records each response,
+        returning a :class:`InfluenceSurface` per response.
+
+        Parameters
+        ----------
+        surface : DeckSurface
+        responses : dict[str, ResponseExtractor]
+
+        Returns
+        -------
+        dict[str, InfluenceSurface]
+        """
+        if not responses:
+            raise ValueError("provide at least one response")
+        points = surface.resolve_points(self.model)
+        need_elem = any(r.needs_elements for r in responses.values())
+        need_react = any(r.needs_reactions for r in responses.values())
+
+        n = len(surface.node_tags)
+        recorded = {name: np.zeros(n) for name in responses}
+
+        snap = {nd.tag: nd._load.copy() for nd in self.model.nodes.values()}
+        self.model.clear_loads()
+        try:
+            for i, node_tag in enumerate(surface.node_tags):
+                self._solve_unit_load(
+                    node_tag, surface.load_dof, surface.gravity_sign,
+                    need_elem=need_elem, need_react=need_react,
+                )
+                for name, r in responses.items():
+                    recorded[name][i] = r.evaluate(self.model)
+        finally:
+            for nd in self.model.nodes.values():
+                nd._load[:] = snap[nd.tag]
+
+        return {
+            name: InfluenceSurface(
+                points=points.copy(), values=vals,
+                response_name=name, surface_name=surface.name,
             )
             for name, vals in recorded.items()
         }

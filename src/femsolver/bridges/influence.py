@@ -32,7 +32,8 @@ References
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Optional
 
 import numpy as np
 
@@ -361,3 +362,314 @@ _MOVING_LOAD_PRESETS = {
     "irc_class_a": irc_class_a,
     "irc_70r":     irc_class_70r_truck,
 }
+
+
+# ============================================================ 2-D vehicles
+
+@dataclass
+class Vehicle2D:
+    """A vehicle as a set of point wheel loads at in-plan ``(x, y)``
+    positions, for placement on an :class:`InfluenceSurface`.
+
+    ``x`` runs longitudinally (direction of travel), ``y`` transversely.
+    The positions are relative to the vehicle's own reference point; the
+    envelope helper slides that reference over the deck.
+
+    Parameters
+    ----------
+    wheel_loads : array-like (k,)
+        Wheel loads (N), positive magnitudes.
+    wheel_xy : array-like (k, 2)
+        ``(x, y)`` of each wheel relative to the reference point (m).
+    name : str
+    """
+
+    wheel_loads: np.ndarray
+    wheel_xy: np.ndarray
+    name: str = "vehicle"
+
+    def __post_init__(self) -> None:
+        self.wheel_loads = np.asarray(self.wheel_loads, dtype=float).ravel()
+        self.wheel_xy = np.asarray(self.wheel_xy, dtype=float)
+        if self.wheel_xy.shape != (self.wheel_loads.size, 2):
+            raise ValueError("wheel_xy must be (k, 2) matching wheel_loads")
+        if self.wheel_loads.size == 0:
+            raise ValueError("need at least one wheel")
+
+    @classmethod
+    def from_axle_train(cls, train: "MovingLoad", *, track_width: float = 1.8,
+                        name: str | None = None) -> "Vehicle2D":
+        """Build a 2-D vehicle from a 1-D axle train by splitting each axle
+        into two wheels a ``track_width`` apart transversely (AASHTO wheel
+        gauge = 1.8 m). The axle offsets become longitudinal positions."""
+        offs = np.asarray(train.axle_offsets, dtype=float)
+        loads = np.asarray(train.axle_loads, dtype=float)
+        half = track_width / 2.0
+        xy, w = [], []
+        for x, p in zip(offs, loads):
+            xy.append((x, +half)); w.append(p / 2.0)
+            xy.append((x, -half)); w.append(p / 2.0)
+        return cls(wheel_loads=np.array(w), wheel_xy=np.array(xy),
+                   name=name or f"{train.name} (2-D)")
+
+
+def moving_load_surface_envelope(
+    surface,
+    vehicle: Vehicle2D,
+    *,
+    x_positions=None,
+    y_positions=None,
+    n_x: int = 61,
+    n_y: int = 21,
+    both_directions: bool = True,
+) -> dict:
+    """Slide a 2-D vehicle over an influence surface and return the maximum
+    and minimum response and the governing placement.
+
+    The vehicle reference point is placed at each ``(X, Y)`` on the search
+    grid; the response is ``sum_k P_k * IS(x_k + X, y_k + Y)`` (wheels off
+    the deck contribute zero). By default the search grid spans the deck's
+    bounding box; pass ``x_positions`` / ``y_positions`` to control it.
+
+    Parameters
+    ----------
+    surface : InfluenceSurface
+    vehicle : Vehicle2D
+    x_positions, y_positions : array-like, optional
+        Reference-point search stations (m). Default: ``n_x`` × ``n_y`` grid
+        over the deck bounding box, expanded so the whole vehicle can enter
+        and leave.
+    both_directions : bool, default True
+        Also test the vehicle reversed (governs for asymmetric vehicles).
+
+    Returns
+    -------
+    dict with ``max``, ``min``, ``max_xy``, ``min_xy`` (governing reference
+    positions), and ``vehicle``.
+    """
+    pts = surface.points
+    if x_positions is None:
+        wx = vehicle.wheel_xy[:, 0]
+        x0 = float(pts[:, 0].min() - wx.max())
+        x1 = float(pts[:, 0].max() - wx.min())
+        x_positions = np.linspace(x0, x1, n_x)
+    if y_positions is None:
+        wy = vehicle.wheel_xy[:, 1]
+        y0 = float(pts[:, 1].min() - wy.max())
+        y1 = float(pts[:, 1].max() - wy.min())
+        y_positions = np.linspace(y0, y1, n_y)
+
+    trials = [vehicle]
+    if both_directions:
+        rev = Vehicle2D(wheel_loads=vehicle.wheel_loads.copy(),
+                        wheel_xy=vehicle.wheel_xy * np.array([-1.0, 1.0]),
+                        name=vehicle.name + " (reversed)")
+        trials.append(rev)
+
+    best_max, best_min = -np.inf, np.inf
+    max_xy = min_xy = (0.0, 0.0)
+    for veh in trials:
+        for X in x_positions:
+            for Y in y_positions:
+                q = veh.wheel_xy + np.array([X, Y])
+                r = float(np.dot(veh.wheel_loads, surface(q)))
+                if r > best_max:
+                    best_max, max_xy = r, (float(X), float(Y))
+                if r < best_min:
+                    best_min, min_xy = r, (float(X), float(Y))
+    return {"max": best_max, "min": best_min,
+            "max_xy": max_xy, "min_xy": min_xy, "vehicle": vehicle.name}
+
+
+# ============================================================ multi-lane
+
+# AASHTO LRFD Table 3.6.1.1.2-1 — multiple-presence factors m.
+AASHTO_MULTI_PRESENCE = {1: 1.20, 2: 1.00, 3: 0.85}
+
+
+def multi_presence_factor(n_loaded_lanes: int) -> float:
+    """AASHTO LRFD multiple-presence factor ``m`` for ``n`` loaded lanes
+    (Table 3.6.1.1.2-1): 1→1.20, 2→1.00, 3→0.85, ≥4→0.65."""
+    if n_loaded_lanes < 1:
+        raise ValueError("n_loaded_lanes must be >= 1")
+    return AASHTO_MULTI_PRESENCE.get(n_loaded_lanes, 0.65)
+
+
+def number_of_design_lanes(roadway_width: float, *,
+                           lane_width: float = 3.6) -> int:
+    """Number of design lanes for a clear roadway width (AASHTO LRFD
+    §3.6.1.1.1): ``INT(w / 3.6 m)``, with the special rule that a width
+    between 6.0 and 7.2 m carries **two** lanes of ``w/2``."""
+    if roadway_width <= 0.0:
+        return 0
+    if 6.0 <= roadway_width < 7.2:
+        return 2
+    return max(1, int(roadway_width / lane_width))
+
+
+@dataclass
+class DesignLane:
+    """A transverse design-lane band on the deck. The vehicle travels
+    longitudinally along it and may be positioned transversely within the
+    band (keeping wheels a ``lane_margin`` inside the edges).
+
+    Parameters
+    ----------
+    y_center : float
+        Transverse centreline of the lane (m).
+    width : float, default 3.6
+        Design-lane width (AASHTO 12 ft = 3.6 m).
+    name : str
+    """
+
+    y_center: float
+    width: float = 3.6
+    name: str = "lane"
+
+    @property
+    def y_lo(self) -> float:
+        return self.y_center - self.width / 2.0
+
+    @property
+    def y_hi(self) -> float:
+        return self.y_center + self.width / 2.0
+
+
+def generate_design_lanes(y_min: float, y_max: float, *,
+                          lane_width: float = 3.6) -> list:
+    """Tile ``N = number_of_design_lanes`` lanes across a roadway spanning
+    ``[y_min, y_max]``, centred within the roadway. Within-lane transverse
+    vehicle placement and lane-selection (in :func:`multi_lane_envelope`)
+    then cover the AASHTO "position lanes to maximise" requirement."""
+    w = float(y_max - y_min)
+    n = number_of_design_lanes(w, lane_width=lane_width)
+    if n == 0:
+        return []
+    used = n * lane_width
+    start = y_min + (w - used) / 2.0            # centre the lane block
+    return [DesignLane(y_center=start + (i + 0.5) * lane_width,
+                       width=lane_width, name=f"lane {i + 1}")
+            for i in range(n)]
+
+
+def _lane_center_positions(lane: DesignLane, vehicle: Vehicle2D,
+                           lane_margin: float, n_y: int) -> np.ndarray:
+    """Allowed transverse positions for the vehicle *reference* so the
+    outermost wheels stay ``lane_margin`` inside the lane edges."""
+    wy = vehicle.wheel_xy[:, 1]
+    lo = lane.y_lo + lane_margin - float(wy.min())
+    hi = lane.y_hi - lane_margin - float(wy.max())
+    if hi < lo:                                  # vehicle wider than the band
+        return np.array([lane.y_center - 0.5 * float(wy.min() + wy.max())])
+    return np.linspace(lo, hi, max(1, n_y))
+
+
+def multi_lane_envelope(
+    surface,
+    vehicle: Vehicle2D,
+    lanes,
+    *,
+    n_x: int = 61,
+    n_y: int = 9,
+    lane_margin: float = 0.6,
+    both_directions: bool = True,
+    multi_presence: bool = True,
+) -> dict:
+    """Governing multi-lane moving-load response with AASHTO multiple-presence.
+
+    Each lane's vehicle is placed to maximise (and minimise) its own
+    contribution — longitudinally over the deck, transversely within the lane
+    band. The governing response then loads the ``k`` most-favourable lanes and
+    applies the multiple-presence factor ``m(k)``; the analysis reports the
+    ``k`` (and factor) that governs, searching ``k = 1 … N``.
+
+    ``response_max = max_k [ m(k) · Σ (k largest lane contributions) ]`` and
+    symmetrically for the minimum.
+
+    Returns
+    -------
+    dict with ``max`` / ``min`` (factored governing responses),
+    ``max_num_lanes`` / ``min_num_lanes``, ``max_factor`` / ``min_factor``,
+    and ``per_lane`` (each lane's unfactored max/min contribution + position).
+    """
+    lanes = list(lanes)
+    if not lanes:
+        raise ValueError("provide at least one design lane")
+
+    per_lane = []
+    for lane in lanes:
+        ys = _lane_center_positions(lane, vehicle, lane_margin, n_y)
+        env = moving_load_surface_envelope(
+            surface, vehicle, y_positions=ys, n_x=n_x,
+            both_directions=both_directions)
+        per_lane.append({"lane": lane.name, "max": env["max"],
+                         "min": env["min"], "max_xy": env["max_xy"],
+                         "min_xy": env["min_xy"]})
+
+    def _govern(values, reverse):
+        # add lanes best-first; m(k) penalises loading more lanes
+        ordered = sorted(values, reverse=reverse)
+        best, best_k, best_m, cum = (None, 0, 1.0, 0.0)
+        for k, v in enumerate(ordered, start=1):
+            cum += v
+            m = multi_presence_factor(k) if multi_presence else 1.0
+            tot = m * cum
+            if best is None or (tot > best if reverse else tot < best):
+                best, best_k, best_m = tot, k, m
+        return best, best_k, best_m
+
+    max_v, max_k, max_m = _govern([d["max"] for d in per_lane], reverse=True)
+    min_v, min_k, min_m = _govern([d["min"] for d in per_lane], reverse=False)
+    return {"max": max_v, "max_num_lanes": max_k, "max_factor": max_m,
+            "min": min_v, "min_num_lanes": min_k, "min_factor": min_m,
+            "per_lane": per_lane, "vehicle": vehicle.name}
+
+
+def lane_load_surface_envelope(
+    surface,
+    lanes,
+    pressure: float,
+    *,
+    loaded_width: float = 3.0,
+    x_range=None,
+    nx: int = 81,
+    ny: int = 9,
+    multi_presence: bool = True,
+) -> dict:
+    """Governing multi-lane **uniform lane load** response with multiple
+    presence. Integrates the influence surface over each lane's loaded strip
+    (``loaded_width``, AASHTO 3.0 m) times the ``pressure`` (force/area — for
+    the AASHTO 9.3 kN/m design lane load use 9.3/3.0 = 3.1 kN/m²), keeps the
+    positive area for the maximum and the negative area for the minimum, then
+    combines lanes with ``m(k)`` exactly as :func:`multi_lane_envelope`."""
+    lanes = list(lanes)
+    if x_range is None:
+        x_range = (float(surface.points[:, 0].min()),
+                   float(surface.points[:, 0].max()))
+    x0, x1 = x_range
+    per_lane = []
+    for lane in lanes:
+        y0 = lane.y_center - loaded_width / 2.0
+        y1 = lane.y_center + loaded_width / 2.0
+        a_pos = surface.integrate_patch(x0, x1, y0, y1, sign="positive",
+                                        nx=nx, ny=ny)
+        a_neg = surface.integrate_patch(x0, x1, y0, y1, sign="negative",
+                                        nx=nx, ny=ny)
+        per_lane.append({"lane": lane.name, "max": pressure * a_pos,
+                         "min": pressure * a_neg})
+
+    def _govern(values, reverse):
+        ordered = sorted(values, reverse=reverse)
+        best, best_k, cum = None, 0, 0.0
+        for k, v in enumerate(ordered, start=1):
+            cum += v
+            m = multi_presence_factor(k) if multi_presence else 1.0
+            tot = m * cum
+            if best is None or (tot > best if reverse else tot < best):
+                best, best_k = tot, k
+        return best, best_k
+
+    max_v, max_k = _govern([d["max"] for d in per_lane], reverse=True)
+    min_v, min_k = _govern([d["min"] for d in per_lane], reverse=False)
+    return {"max": max_v, "max_num_lanes": max_k,
+            "min": min_v, "min_num_lanes": min_k, "per_lane": per_lane}

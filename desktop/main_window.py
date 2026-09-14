@@ -33,6 +33,7 @@ from material_editor import MaterialManagerDialog
 from model_view import ModelView
 from project import Material, Member, Node, Project, Section
 from properties import PropertiesPanel
+from units import Quantity, UnitSystem
 
 PRODUCT_MONO = "FS"              # femsolver desktop — titlebar / taskbar mark
 PRODUCT_ACCENT = "#2563eb"       # stable brand blue (independent of theme)
@@ -68,6 +69,21 @@ def _element_type(m) -> str:
     if kind.startswith("beam"):
         return "Beam"
     return (kind.replace("2d", "").replace("3d", "").title() or "Element")
+
+
+class _ClickableLabel(QLabel):
+    """A status-bar label that emits ``clicked`` — used for the units chip so
+    the whole app's display units are one click away (plan U4)."""
+    clicked = Signal()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def mousePressEvent(self, ev) -> None:            # noqa: N802 (Qt override)
+        if ev.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+        super().mousePressEvent(ev)
 
 
 class MainWindow(QMainWindow):
@@ -210,9 +226,49 @@ class MainWindow(QMainWindow):
         self._st_model = _lbl()
         self._st_sel = _lbl()
         self._st_coord = _lbl()
-        self._st_units = _lbl()
+        self._st_units = _ClickableLabel("")           # click → Units dialog (U4)
+        self._st_units.setObjectName("sub")
+        self._st_units.setToolTip("Display units — click to change")
+        self._st_units.clicked.connect(self.change_units)
         for w in (self._st_model, self._st_sel, self._st_coord, self._st_units):
             sb.addPermanentWidget(w)
+
+    def _units(self) -> UnitSystem:
+        """The active display unit system (plan U2), derived from the project's
+        stored force/length preferences. SI base is always the source of truth;
+        this is the presentation layer everything formats through."""
+        if self._project is None:
+            return UnitSystem()
+        return UnitSystem.from_project(self._project)
+
+    def change_units(self) -> None:
+        """Open the Units dialog and, on accept, switch the whole app's display
+        units live (plan U4). The model is untouched (it is SI base); only how
+        values read and parse changes. The choice is saved on the project and
+        remembered as the app default for new models."""
+        if self._project is None:
+            return
+        from units_dialog import UnitsDialog
+        us = self._units()
+        chosen = UnitsDialog.get(self, us.force, us.length)
+        if chosen is None:
+            return
+        force, length = chosen
+        if (force, length) == (self._project.force_unit,
+                               self._project.length_unit):
+            return
+        self._settings.setValue("units/force", force)   # remember app default
+        self._settings.setValue("units/length", length)
+
+        def mutate():
+            self._project.force_unit = force
+            self._project.length_unit = length
+        # Units live on the project (saved in the file), so this is a real,
+        # undoable document change — it marks the model dirty and refreshes the
+        # status readouts via _rebuild. The Properties inspector re-renders too.
+        self._apply_edit(f"Set units → {force} · {length}", mutate)
+        self._apply_selection_effects()
+        self.log.appendPlainText(f"Display units → {force} · {length}")
 
     def _refresh_status(self) -> None:
         """Update the persistent model-summary + units readouts from the project."""
@@ -224,15 +280,18 @@ class MainWindow(QMainWindow):
         self._st_model.setText(
             f"{len(p.nodes)} nodes · {len(p.members)} members · "
             f"{len(p.loads)} loads")
-        self._st_units.setText(f"{p.force_unit} · {p.length_unit}")
+        self._st_units.setText(self._units().pair_label)
         self._update_sel_status(len(self._selected_refs()))   # stay consistent
 
     def _update_sel_status(self, n: int) -> None:
         self._st_sel.setText(f"{n} selected" if n else "")
 
     def _on_cursor_coords(self, x, y) -> None:
-        unit = self._project.length_unit if self._project else "m"
-        self._st_coord.setText(f"X {x:.2f}  Y {y:.2f} {unit}")
+        # Cursor coords arrive in SI base (m); show them in the chosen length unit.
+        us = self._units()
+        xd = us.to_display(x, Quantity.LENGTH)
+        yd = us.to_display(y, Quantity.LENGTH)
+        self._st_coord.setText(f"X {xd:.2f}  Y {yd:.2f} {us.label(Quantity.LENGTH)}")
 
     def _sync_theme_ui(self) -> None:
         """Point the theme controls at the theme they switch TO."""
@@ -843,6 +902,93 @@ class MainWindow(QMainWindow):
             f"× ({ref_label})")
         return info
 
+    def run_moving_load(self, config=None):
+        """Moving-load / influence-line analysis (Analysis-cases ▸ Moving Load).
+
+        Builds the influence line for a chosen response as a unit load travels
+        a lane of girder nodes, then convolves the selected vehicle (AASHTO
+        HL-93 / IRC) to get the design envelope. ``config`` bypasses the setup
+        dialog (for tests): ``dict(lane, vehicle, response=(kind, id, end))``.
+        2-D girder-line models only.
+        """
+        from femsolver.bridges import (BeamForce, Displacement,
+                                        InfluenceLineEngine, Lane, MovingLoad,
+                                        Reaction, aashto_hl93_envelope,
+                                        moving_load_envelope)
+
+        p = self._project
+        if p is None or not p.members:
+            self.statusBar().showMessage("Add members first.")
+            return None
+        if p.ndm != 2:
+            QMessageBox.information(self, "Moving load",
+                                   "Moving-load analysis is currently 2-D only.")
+            return None
+
+        if config is None:
+            from moving_load_dialog import MovingLoadDialog
+            config = MovingLoadDialog.configure(self, p)
+            if config is None:
+                return None
+        lane_nodes = config["lane"]
+        if len(lane_nodes) < 2:
+            QMessageBox.information(self, "Moving load",
+                                   "Select at least two lane nodes.")
+            return None
+
+        kind, target, end = config["response"]
+        _RESP = {
+            "M": lambda: BeamForce(element_tag=target, component="M", end=end),
+            "V": lambda: BeamForce(element_tag=target, component="V", end=end),
+            "disp": lambda: Displacement(node_tag=target, dof=1),
+            "reaction": lambda: Reaction(node_tag=target, dof=1),
+        }
+        _LABEL = {
+            "M": (f"moment at member {target} ({end})", "N·m"),
+            "V": (f"shear at member {target} ({end})", "N"),
+            "disp": (f"vertical displacement at node {target}", "m"),
+            "reaction": (f"vertical reaction at node {target}", "N"),
+        }
+        response = _RESP[kind]()
+        label, units = _LABEL[kind]
+
+        model = p.build_model(with_loads=False)
+        lane = Lane(node_tags=lane_nodes, load_dof=1, gravity_sign=-1.0)
+        try:
+            engine = InfluenceLineEngine(model)
+            il = engine.influence_line(lane, response)
+        except Exception as exc:                           # noqa: BLE001
+            QMessageBox.warning(self, "Moving load",
+                                f"Could not build the influence line:\n\n{exc}")
+            return None
+
+        veh_key = config["vehicle"]
+        veh_label = {"hl93": "AASHTO HL-93", "hl93_truck": "HL-93 truck",
+                     "hl93_tandem": "HL-93 tandem", "irc_class_a": "IRC Class A",
+                     "irc_70r": "IRC 70R"}.get(veh_key, veh_key)
+        try:
+            if veh_key == "hl93":
+                env = aashto_hl93_envelope(il)
+            else:
+                env = moving_load_envelope(il, MovingLoad.preset(veh_key))
+        except Exception as exc:                           # noqa: BLE001
+            QMessageBox.warning(self, "Moving load",
+                                f"Envelope failed:\n\n{exc}")
+            return None
+
+        from moving_load_results_dialog import MovingLoadResultsDialog
+        self._moving_load_results_dlg = MovingLoadResultsDialog.show_results(
+            self, il, env, response_label=label, units=units,
+            vehicle=veh_label)
+        self.log.appendPlainText(
+            f"Moving load solved: {label}, {veh_label} envelope "
+            f"max={env.get('max', 0.0):.4g} min={env.get('min', 0.0):.4g} "
+            f"{units}")
+        self.statusBar().showMessage(
+            f"Moving load · {veh_label} · max {env.get('max', 0.0):.3g} "
+            f"{units}")
+        return {"il": il, "env": env}
+
     def run_pushover_dialog(self, preselect_case=None) -> None:
         from pushover_dialog import PushoverDialog
         p = self._project
@@ -1009,11 +1155,14 @@ class MainWindow(QMainWindow):
             return
         vmax = self.view.show_diagram(self._model, kind)
         names = {"N": "Axial N", "V": "Shear V", "M": "Moment M"}
-        units = {"N": "N", "V": "N", "M": "N·m"}
+        # vmax is SI (N for axial/shear, N·m for moment); show in chosen units.
+        us = self._units()
+        qty = Quantity.MOMENT if kind == "M" else Quantity.FORCE
+        vd, unit = us.to_display(vmax, qty), us.label(qty)
         self.log.appendPlainText(
-            f"{names[kind]} diagram — max |{kind}| = {vmax:.4e} {units[kind]}")
+            f"{names[kind]} diagram — max |{kind}| = {vd:.4e} {unit}")
         self.statusBar().showMessage(
-            f"{names[kind]} · max |{kind}| {vmax:.3e} {units[kind]}")
+            f"{names[kind]} · max |{kind}| {vd:.3e} {unit}")
 
     def show_design(self) -> None:
         import design
@@ -1220,6 +1369,16 @@ class MainWindow(QMainWindow):
         self._path = path
         if path:
             self._remember_recent(path)          # R8: feed the backstage MRU
+        else:
+            # A new / generated / demo model adopts the remembered app-default
+            # display units (plan U4); an opened file keeps whatever units it
+            # was saved with. The app baseline is SI base (N · m) — matching the
+            # stored model — until the user picks otherwise.
+            from units import FORCE_UNITS, LENGTH_UNITS
+            f = str(self._settings.value("units/force", "N"))
+            l = str(self._settings.value("units/length", "m"))
+            project.force_unit = f if f in FORCE_UNITS else "N"
+            project.length_unit = l if l in LENGTH_UNITS else "m"
         self._undo_stack.clear()
         self._last_tree_sig = None       # a new document → always a full rebuild
         self._rebuild()
@@ -1475,6 +1634,8 @@ class MainWindow(QMainWindow):
             self.run_response_spectrum()
         elif kind == "buckling":
             self.run_buckling()
+        elif kind == "movingload":
+            self.run_moving_load()
 
     def _on_double_click(self, item, _col) -> None:
         ref = item.data(0, Qt.ItemDataRole.UserRole)
@@ -2659,7 +2820,7 @@ class RibbonBar(QWidget):
 
     def add_tab(self, title, groups) -> QWidget:
         """Add a ribbon tab whose body is a row of captioned groups."""
-        page = _ribbon_page(groups)
+        page = RibbonPage(groups)
         self.tabs.addTab(title)
         self.stack.addWidget(page)
         self._tab_titles.append(title)
@@ -2675,23 +2836,96 @@ class RibbonBar(QWidget):
         return self.stack.widget(self._tab_titles.index(title))
 
 
-def _ribbon_page(groups) -> QWidget:
-    """One ribbon tab's body: a single left-aligned row of captioned tool-groups
-    (:func:`_ribbon_group`) separated by thin vertical rules (plan ribbon R1)."""
-    page = QWidget()
-    page.setObjectName("ribbonPage")
-    row = QHBoxLayout(page)
-    row.setContentsMargins(style.SP_SM, style.SP_XS, style.SP_SM, style.SP_XS)
-    row.setSpacing(0)
-    for i, (caption, items) in enumerate(groups):
-        if i:
-            sep = QFrame()
-            sep.setObjectName("ribbonVSep")
-            sep.setFrameShape(QFrame.Shape.VLine)
-            row.addWidget(sep)
-        row.addWidget(_ribbon_group(caption, items))
-    row.addStretch(1)
-    return page
+class RibbonPage(QWidget):
+    """One ribbon tab's body: a left-aligned row of captioned tool-groups
+    (:func:`_ribbon_group`) separated by thin vertical rules (plan ribbon R1).
+
+    Width overflow (plan ribbon R7): when the row is wider than the tab, the
+    lowest-priority groups — from the right — collapse into a single ``»`` popup
+    button (their actions become a grouped menu) instead of being clipped. The
+    split is recomputed on every resize and reverses when the width returns.
+    """
+
+    def __init__(self, groups, parent=None) -> None:
+        super().__init__(parent)
+        self.setObjectName("ribbonPage")
+        self._row = QHBoxLayout(self)
+        self._row.setContentsMargins(style.SP_SM, style.SP_XS, style.SP_SM,
+                                     style.SP_XS)
+        self._row.setSpacing(0)
+        self._groups: list[dict] = []
+        for i, (caption, items) in enumerate(groups):
+            sep = None
+            if i:
+                sep = QFrame()
+                sep.setObjectName("ribbonVSep")
+                sep.setFrameShape(QFrame.Shape.VLine)
+                self._row.addWidget(sep)
+            gw = _ribbon_group(caption, items)
+            self._row.addWidget(gw)
+            self._groups.append(
+                {"caption": caption, "widget": gw, "sep": sep,
+                 "actions": [it[0] for it in items if isinstance(it, tuple)]})
+        # overflow "»" button — hidden until a group spills off the right
+        self._more = QToolButton()
+        self._more.setObjectName("ribbonMore")
+        self._more.setText("»")
+        self._more.setToolTip("More groups")
+        self._more.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self._more.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self._more_menu = QMenu(self._more)
+        self._more.setMenu(self._more_menu)
+        self._more_menu.aboutToShow.connect(self._fill_overflow)
+        self._row.addWidget(self._more)
+        self._more.hide()
+        self._row.addStretch(1)
+        self._shown = len(self._groups)          # groups currently inline
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._relayout()
+
+    def _group_width(self, g) -> int:
+        w = g["widget"].sizeHint().width()
+        if g["sep"] is not None:
+            w += g["sep"].sizeHint().width() + style.SP_SM
+        return w
+
+    def _relayout(self) -> None:
+        avail = self.width() - 2 * style.SP_SM
+        widths = [self._group_width(g) for g in self._groups]
+        if sum(widths) <= avail:
+            shown = len(self._groups)
+        else:
+            budget = avail - self._more.sizeHint().width() - style.SP_SM
+            shown, acc = 0, 0
+            for w in widths:
+                if acc + w > budget:
+                    break
+                acc += w
+                shown += 1
+            shown = max(shown, 1)                # always keep one group inline
+        if shown == self._shown:
+            return
+        self._shown = shown
+        for idx, g in enumerate(self._groups):
+            vis = idx < shown
+            g["widget"].setVisible(vis)
+            if g["sep"] is not None:
+                g["sep"].setVisible(vis)
+        self._more.setVisible(shown < len(self._groups))
+
+    def _fill_overflow(self) -> None:
+        """(Re)build the overflow menu from the groups that don't fit."""
+        self._more_menu.clear()
+        for g in self._groups[self._shown:]:
+            self._more_menu.addSection(g["caption"])
+            for a in g["actions"]:
+                self._more_menu.addAction(a)
+
+    def hidden_captions(self) -> list[str]:
+        """Captions of the groups currently collapsed into the overflow popup."""
+        return [g["caption"] for g in self._groups[self._shown:]]
 
 
 def _ribbon_group(caption, items) -> QWidget:

@@ -46,12 +46,15 @@ def test_lists_builtin_nonlinear_and_planned(qapp):
     kinds = [m["kind"] for m in dlg._row_meta]
     assert kinds[0] == "linear"
     assert "nonlinear" in kinds and "timehistory" in kinds
+    # every analysis is now wired — modal / RS / buckling / moving load live
+    for k in ("modal", "responsespectrum", "buckling", "movingload"):
+        assert k in kinds
     assert kinds.count("planned") == len(_PLANNED)
-    # planned rows are not selectable
-    planned_row = kinds.index("planned")
-    from PySide6.QtCore import Qt
-    it = dlg.table.item(planned_row, 0)
-    assert not (it.flags() & Qt.ItemFlag.ItemIsSelectable)
+    if _PLANNED:                                   # any remaining planned rows
+        planned_row = kinds.index("planned")       # are greyed / not selectable
+        from PySide6.QtCore import Qt
+        it = dlg.table.item(planned_row, 0)
+        assert not (it.flags() & Qt.ItemFlag.ItemIsSelectable)
 
 
 def test_buttons_gate_on_row_kind(qapp):

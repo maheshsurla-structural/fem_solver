@@ -13,8 +13,8 @@ One table lists **every** analysis case with a Type column and icon:
   seismic analysis (design spectrum → SRSS / CQC).
 * **Buckling** — a built-in launcher for linear (eigenvalue) buckling
   ``(K + λ·K_g)·φ = 0`` on a member-sub-divided model.
-* **Moving Load** — greyed roadmap row so the list signals where the product
-  is going (matching the reference tools).
+* **Moving Load** — a built-in launcher for the influence-line / moving-load
+  analysis (HL-93 / IRC vehicle envelopes on a lane of girder nodes).
 
 The dialog never runs anything itself: **Run** records a request and closes;
 the owning window dispatches it (linear-static run, or opening the pushover /
@@ -37,7 +37,7 @@ from project import NonlinearCase
 _DOF = {0: "Ux", 1: "Uy", 2: "Rz", 3: "Rx", 4: "Ry", 5: "Rz"}
 
 # roadmap placeholders — shown greyed so the list previews the plan
-_PLANNED = ["Moving Load"]
+_PLANNED = []
 
 
 def _icon(name: str):
@@ -136,6 +136,10 @@ class AnalysisCasesDialog(QDialog):
         rows.append({"kind": "buckling", "name": "Buckling", "type": "Buckling",
                      "detail": "eigenvalue · (K + λ·K_g)", "icon": "run",
                      "runnable": True})
+        rows.append({"kind": "movingload", "name": "Moving Load",
+                     "type": "Moving Load",
+                     "detail": "influence line · HL-93 / IRC envelope",
+                     "icon": "run", "runnable": True})
         for name in _PLANNED:
             rows.append({"kind": "planned", "name": name, "type": name,
                          "detail": "planned", "icon": None, "runnable": False})
@@ -229,6 +233,8 @@ class AnalysisCasesDialog(QDialog):
             self._run_request = ("responsespectrum",)
         elif m["kind"] == "buckling":
             self._run_request = ("buckling",)
+        elif m["kind"] == "movingload":
+            self._run_request = ("movingload",)
         self.accept()
 
     @classmethod

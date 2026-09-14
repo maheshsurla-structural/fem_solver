@@ -265,6 +265,15 @@ QTabBar#ribbonTabs::tab:hover, QTabBar#ribbonTabs::tab:focus {{
 }}
 QFrame#ribbonVSep {{ color: {BORDER}; background: {BORDER};
     max-width: 1px; margin: {SP_XS}px {SP_XS}px; }}
+QToolButton#ribbonMore {{
+    background: transparent; border: 1px solid transparent;
+    border-radius: {R_SM}px; color: {MUTED}; font-size: {FS_H1}px;
+    font-weight: 700; padding: 0 {SP_SM}px; margin: 0 {SP_XS}px;
+}}
+QToolButton#ribbonMore:hover {{
+    background: {ACCENT_SOFT}; border-color: {BORDER}; color: {ACCENT};
+}}
+QToolButton#ribbonMore::menu-indicator {{ image: none; width: 0; }}
 
 /* ---- File backstage overlay (plan ribbon R8) ---- */
 QWidget#backstage {{ background: {BG}; }}
