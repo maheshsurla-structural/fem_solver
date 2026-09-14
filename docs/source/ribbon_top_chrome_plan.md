@@ -147,6 +147,12 @@ Analysis-cases home).
 
 Legend: `[x]` done · `[ ]` open. Do the lowest open item whose deps are met.
 
+**Core is done (R1–R6): the top chrome is one compact strip, iconed, keyboard-driven,
+persistent, contextual and collapsible.** Remaining items are polish/robustness, not
+load-bearing — **recommended order R8 → R7 → R9**: R8 is the most visible "commercial feel"
+win, R7 hardens narrow windows, R9 extends the model to the second window (largest, least
+urgent).
+
 - [x] **R1 — Tabbed ribbon shell.** Replace the menu bar + 3 stacked rows + draw palette with one
   `RibbonBar` (File backstage + tabs Home/Draw/Loads/Analysis/Results/View, one swapping group
   row). Re-home every menu-only command per §3. Rewrite chrome tests. — `feat(ribbon R1)`,
@@ -175,6 +181,15 @@ Legend: `[x]` done · `[ ]` open. Do the lowest open item whose deps are met.
 - [ ] **R9 — Section Designer parity.** Bring the separate Section Designer window
   (`section_designer.py`, still its own `QMenuBar`) onto the same ribbon model, or explicitly
   scope it out here with a rationale. Deps: R1.
+- [ ] **R10 — Broaden contextual raising (from R4).** R4 only raises **Results** after
+  *linear-static*; the modal / response-spectrum / buckling / moving-load runs open their own
+  result surfaces without surfacing the ribbon. Route those through a single post-run hook so
+  every analysis type raises the right tab. The **Draw**-raise in `_set_mode` is effectively a
+  no-op today (those tools already live on the Draw tab) — revisit if a command palette / shortcut
+  can activate a tool from elsewhere. Deps: R4.
+- [ ] **R11 — Quick Access Toolbar (optional).** A small, user-pinnable row of common actions
+  (Save · Undo · Redo · Run) beside the File button, independent of the active tab — the last piece
+  of the CSi/Office ribbon idiom. Deps: R1. *(Nice-to-have; only if the strip still feels sparse.)*
 
 ---
 
