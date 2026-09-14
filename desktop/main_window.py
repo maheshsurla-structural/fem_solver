@@ -1209,6 +1209,114 @@ class MainWindow(QMainWindow):
             f"{dmax * 1e3:.2f} mm")
         return {"camber": camber, "stages": len(erection)}
 
+    def run_vehicle_dynamics(self, config=None):
+        """Vehicle-dynamics / moving-load time-history (Analysis-cases ▸ Vehicle
+        Dynamics).
+
+        A vehicle crosses the lane at speed and the transient response gives the
+        dynamic amplification factor. ``kind='force'`` uses constant moving
+        axle forces (`MovingForceAnalysis`); ``kind='vbi'`` a coupled
+        sprung-mass vehicle (`VBIAnalysis`, with a contact-force history).
+        ``config`` bypasses the setup dialog (tests). 2-D girder-line models,
+        mass from material density.
+        """
+        import numpy as np
+
+        from femsolver import EigenAnalysis
+        from femsolver.analysis.assembler import assemble_mass
+        from femsolver.analysis.damping import RayleighDamping
+        from femsolver.bridges import Lane
+
+        p = self._project
+        if p is None or not p.members:
+            self.statusBar().showMessage("Add members first.")
+            return None
+        if p.ndm != 2:
+            QMessageBox.information(self, "Vehicle dynamics",
+                                   "Vehicle-dynamics analysis is currently "
+                                   "2-D only.")
+            return None
+
+        if config is None:
+            from vehicle_dynamics_dialog import VehicleDynamicsDialog
+            config = VehicleDynamicsDialog.configure(self, p)
+            if config is None:
+                return None
+        lane_nodes = config["lane"]
+        if len(lane_nodes) < 2:
+            QMessageBox.information(self, "Vehicle dynamics",
+                                   "Select at least two lane nodes.")
+            return None
+
+        model = p.build_model(with_loads=False)
+        model.number_dofs()
+        if abs(assemble_mass(model)).max() <= 0.0:
+            QMessageBox.information(
+                self, "Vehicle dynamics",
+                "The model has no mass — set a material density (ρ) so the "
+                "dynamics (and DAF) are meaningful.")
+            return None
+
+        lane = Lane(node_tags=lane_nodes, load_dof=1, gravity_sign=-1.0)
+        track = (config["node"], 1)
+        speed = config["speed"]
+        zeta = config["zeta"]
+
+        damping = None                                  # Rayleigh from modes 1,3
+        if zeta > 0.0:
+            try:
+                w1 = 2.0 * np.pi * EigenAnalysis(
+                    model, num_modes=2).run()["frequencies_hz"][0]
+                damping = RayleighDamping.from_modes(w1, zeta, 3.0 * w1, zeta)
+            except Exception:                           # noqa: BLE001
+                damping = None
+
+        try:
+            if config["kind"] == "vbi":
+                from femsolver.bridges import SprungMassVehicle, VBIAnalysis
+                m_s = config["mass"]
+                k = m_s * (2.0 * np.pi * config["bounce"]) ** 2
+                c = 2.0 * config["susp_damp"] * float(np.sqrt(k * m_s))
+                veh = SprungMassVehicle(mass=m_s, stiffness=k, damping=c)
+                res = VBIAnalysis(model, lane, veh, speed, track=track,
+                                  bridge_damping=damping,
+                                  free_vibration_time=0.5).run()
+                dynamic = res["bridge_disp"]
+                contact = res["contact_force"]
+                weight = m_s * 9.80665
+            else:
+                from femsolver.bridges import (MovingForceAnalysis, MovingLoad,
+                                               VehicleAxles)
+                preset = MovingLoad.preset(config["vehicle"])
+                veh = VehicleAxles(axle_loads=preset.axle_loads,
+                                   axle_offsets=preset.axle_offsets)
+                res = MovingForceAnalysis(model, lane, veh, speed, track=track,
+                                          damping=damping,
+                                          free_vibration_time=0.5).run()
+                dynamic = res["dynamic_disp"]
+                contact = None
+                weight = None
+        except Exception as exc:                           # noqa: BLE001
+            QMessageBox.warning(self, "Vehicle dynamics",
+                                f"The dynamic analysis failed:\n\n{exc}")
+            return None
+
+        from vehicle_dynamics_results_dialog import VehicleDynamicsResultsDialog
+        self._vehicle_dyn_results_dlg = \
+            VehicleDynamicsResultsDialog.show_results(
+                self, res["times"], dynamic, res["static_disp"], res["DAF"],
+                contact_force=contact, weight=weight,
+                response_label=f"node {config['node']} vertical",
+                speed_kmh=speed * 3.6)
+        kind_label = "sprung-mass VBI" if config["kind"] == "vbi" \
+            else "moving force"
+        self.log.appendPlainText(
+            f"Vehicle dynamics solved ({kind_label}): {speed * 3.6:.0f} km/h, "
+            f"DAF = {res['DAF']:.3f}, peak dynamic {res['peak_dynamic']:.4e} m")
+        self.statusBar().showMessage(
+            f"Vehicle dynamics · {kind_label} · DAF {res['DAF']:.3f}")
+        return res
+
     def run_pushover_dialog(self, preselect_case=None) -> None:
         from pushover_dialog import PushoverDialog
         p = self._project
@@ -1860,6 +1968,8 @@ class MainWindow(QMainWindow):
             self.run_temperature_gradient()
         elif kind == "stages":
             self.run_construction_stages()
+        elif kind == "vehicledynamics":
+            self.run_vehicle_dynamics()
 
     def _on_double_click(self, item, _col) -> None:
         ref = item.data(0, Qt.ItemDataRole.UserRole)

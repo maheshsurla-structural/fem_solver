@@ -53,9 +53,15 @@ runs; the first increments keep config transient (like Modal/RS/Buckling).
 - [ ] **G4 — Multi-lane placement** — design-lane definition + multi-presence
   on top of G1 (influence surfaces need a grillage/deck; the deck-surface
   picker is the extra piece).
-- [ ] **G5 — Vehicle–bridge dynamics** — moving-force / sprung-mass VBI
-  (`MovingForceAnalysis` / `VBIAnalysis`): vehicle + speed + lane → DAF +
-  time-history / contact-force plots.
+- [x] **G5 — Vehicle–bridge dynamics** ✅ DONE 2026-09-14.
+  `vehicle_dynamics_dialog.py` (lane reused from G1; analysis kind = moving
+  force / sprung-mass VBI via QStackedWidget; vehicle preset or sprung-mass
+  mass/bounce-freq/suspension-damping; speed km/h; bridge ζ; response node),
+  `vehicle_dynamics_results_dialog.py` (deflection dynamic-vs-static time-history
+  + DAF, plus contact-force panel for VBI), `MainWindow.run_vehicle_dynamics`
+  (Rayleigh damping from modes 1&3; `MovingForceAnalysis` / `VBIAnalysis`).
+  Analysis-cases "Vehicle Dynamics" row live. 2-D, mass from density.
+  `tests/test_desktop_vehicle_dynamics.py` (6).
 - [ ] **G6 — Cable-stayed tuning (ULF)** — cable + target-condition editor →
   `unknown_load_factors` → tuned tensions + before/after deck profile. Needs
   truss/cable members + target editor in the GUI.
