@@ -131,6 +131,38 @@ _ICONS = {
                    '<path d="M12 2v2M12 20v2M4 12H2M22 12h-2'
                    'M5.6 5.6L4.2 4.2M19.8 19.8l-1.4-1.4'
                    'M18.4 5.6l1.4-1.4M4.2 19.8l1.4-1.4"/>',
+    # --- ribbon R6: glyphs for buttons that were text-only ---
+    "materials": '<path d="M12 3l9 4.5-9 4.5-9-4.5z"/>'
+                 '<path d="M3 12l9 4.5 9-4.5"/>'
+                 '<path d="M3 16.5l9 4.5 9-4.5"/>',
+    "selnodes": '<rect x="4" y="5" width="16" height="14" rx="1" '
+                'stroke-dasharray="3 2.5"/>'
+                '<circle cx="9" cy="10" r="1.7" fill="{c}" stroke="none"/>'
+                '<circle cx="15" cy="10" r="1.7" fill="{c}" stroke="none"/>'
+                '<circle cx="9" cy="15" r="1.7" fill="{c}" stroke="none"/>'
+                '<circle cx="15" cy="15" r="1.7" fill="{c}" stroke="none"/>',
+    "selmembers": '<rect x="4" y="5" width="16" height="14" rx="1" '
+                  'stroke-dasharray="3 2.5"/><line x1="8" y1="16" x2="16" y2="8"/>'
+                  '<circle cx="8" cy="16" r="1.6" fill="{c}" stroke="none"/>'
+                  '<circle cx="16" cy="8" r="1.6" fill="{c}" stroke="none"/>',
+    "selall": '<rect x="3.5" y="5" width="17" height="14" rx="1" '
+              'stroke-dasharray="3 2.5"/><line x1="7" y1="16" x2="17" y2="8"/>'
+              '<circle cx="7" cy="16" r="1.5" fill="{c}" stroke="none"/>'
+              '<circle cx="12" cy="12" r="1.5" fill="{c}" stroke="none"/>'
+              '<circle cx="17" cy="8" r="1.5" fill="{c}" stroke="none"/>',
+    "selsection": '<rect x="4" y="5" width="16" height="14" rx="1" '
+                  'stroke-dasharray="3 2.5"/><path d="M9 9h6M9 15h6M12 9v6"/>',
+    "hinge": '<path d="M3 12h6M15 12h6"/><circle cx="12" cy="12" r="3"/>',
+    "assignhinge": '<path d="M3 15h6M14 15h5"/>'
+                   '<circle cx="11.5" cy="15" r="2.6"/>'
+                   '<path d="M18 5h4M20 3v4"/>',
+    "history": '<path d="M3.5 12a8.5 8.5 0 1 0 2.7-6.2"/><path d="M3 3v4h4"/>'
+               '<path d="M12 8v4l3 2"/>',
+    "checkmodel": '<rect x="5" y="4" width="14" height="17" rx="2"/>'
+                  '<path d="M9 4h6v2H9z" fill="{c}" stroke="none"/>'
+                  '<path d="M8.5 13l2.5 2.5 4.5-5"/>',
+    "density": '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6v12"/>'
+               '<path d="M4 6l-1.6 2.2M4 6l1.6 2.2M4 18l-1.6-2.2M4 18l1.6-2.2"/>',
 }
 _LETTERS = {"axial": "N", "shear": "V", "moment": "M"}
 

@@ -258,7 +258,11 @@ QToolButton#ribbonFile {{
 }}
 QToolButton#ribbonFile:hover {{ background: {ACCENT_HOVER}; }}
 QToolButton#ribbonFile::menu-indicator {{ image: none; width: 0; }}
-QTabBar#ribbonTabs {{ background: transparent; }}
+QTabBar#ribbonTabs {{ background: transparent; outline: none; }}
+QTabBar#ribbonTabs::tab:hover, QTabBar#ribbonTabs::tab:focus {{
+    background: {ACCENT_SOFT}; border-top-left-radius: {R_SM}px;
+    border-top-right-radius: {R_SM}px;
+}}
 QFrame#ribbonVSep {{ color: {BORDER}; background: {BORDER};
     max-width: 1px; margin: {SP_XS}px {SP_XS}px; }}
 

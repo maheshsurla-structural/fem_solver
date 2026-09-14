@@ -151,19 +151,22 @@ Legend: `[x]` done · `[ ]` open. Do the lowest open item whose deps are met.
   `RibbonBar` (File backstage + tabs Home/Draw/Loads/Analysis/Results/View, one swapping group
   row). Re-home every menu-only command per §3. Rewrite chrome tests. — `feat(ribbon R1)`,
   2026-09-13.
-- [ ] **R2 — Persist & restore the active tab** across sessions via `QSettings` (like theme /
-  density); default to Home on first run. Deps: R1.
-- [ ] **R3 — Keyboard access.** Alt-accelerators to raise each tab (Alt+H/D/L/A/R/V), Ctrl+Tab /
-  Ctrl+Shift+Tab to cycle, and a visible focus ring on `ribbonTabs`. Deps: R1.
-- [ ] **R4 — Contextual tab raising.** Auto-raise **Results** after a successful analysis run and
-  **Draw** when a draw/select tool becomes active (CSi contextual-ribbon behaviour), without
-  stealing focus mid-edit. Deps: R1.
-- [ ] **R5 — Collapse / expand the ribbon.** Double-click the active tab (and Ctrl+F1) collapses
-  the group row to just the tab strip; next tab click shows it transiently. Reclaims the last row
-  on demand. Deps: R1.
-- [ ] **R6 — Icon coverage.** Give every ribbon button a themed icon (currently text-only:
-  Materials, Undo, Redo, the *Select by* group, some *Orient* views). Add glyphs to `icons.py`
-  as needed; keep `_set_icon` / `style.ICON`. Deps: R1.
+- [x] **R2 — Persist & restore the active tab** across sessions via `QSettings` key `ribbon/tab`
+  (default Home; unknown name falls back to Home). Persisted on every switch. — `feat(ribbon R2)`,
+  2026-09-14.
+- [x] **R3 — Keyboard access.** Alt+H/D/L/A/R/V raise a tab by its initial, Ctrl+Tab /
+  Ctrl+Shift+Tab cycle (wrapping), and the tab strip is `TabFocus`-able with a soft hover/focus
+  fill (`outline:none` kills the native dotted rect). — `feat(ribbon R3)`, 2026-09-14.
+- [x] **R4 — Contextual tab raising.** `run_linear_static` success raises **Results** (covers
+  Ctrl+R, Run-analysis, Analysis-cases); `_set_mode` raises **Draw** when a draw/select tool
+  activates. Both no-op while collapsed (R5) so nothing pops up unbidden. — `feat(ribbon R4)`,
+  2026-09-14.
+- [x] **R5 — Collapse / expand the ribbon.** Double-click the active tab or Ctrl+F1 collapses the
+  group row to just the tab strip; while collapsed a single tab click reveals it transiently until
+  a click outside. State persisted (`ribbon/collapsed`). — `feat(ribbon R5)`, 2026-09-14.
+- [x] **R6 — Icon coverage.** Every ribbon button now carries a themed glyph (was text-only:
+  Materials, Undo, Redo, the *Select by* group, Hinges Define/Assign, History, Check, Compact).
+  Guarded by `test_every_ribbon_button_has_an_icon`. — `feat(ribbon R6)`, 2026-09-14.
 - [ ] **R7 — Width overflow.** When a tab's groups exceed the window width, collapse the
   lowest-priority group(s) to a single popup button (Office/CSi behaviour) instead of clipping.
   Deps: R1.
@@ -177,6 +180,33 @@ Legend: `[x]` done · `[ ]` open. Do the lowest open item whose deps are met.
 
 ## 6. Change log
 
+- **2026-09-14 — R4 + R5.** R4 (contextual tabs): `MainWindow._show_results_tab` called at the end
+  of `run_linear_static` raises **Results**; `_set_mode` raises **Draw** on any draw/select tool.
+  Both guarded to no-op while collapsed. R5 (collapse): `RibbonBar` gains `collapsedChanged` signal
+  + `set_collapsed`/`toggle_collapsed`/`is_collapsed`, `tabBarDoubleClicked`→toggle, and a transient
+  reveal (`_on_tab_clicked` shows the row + an app event filter re-collapses on an outside click);
+  Ctrl+F1 toggles; state persists in `ribbon/collapsed`. Imports `QEvent`, `Signal`. Tests: +7 in
+  `test_desktop_ribbon.py` (Results/Draw raise, suppressed-when-collapsed, collapse/toggle, persist,
+  transient, Ctrl+F1). Deterministic desktop suite 321 passed (the lone order-dependent
+  `test_main_window_wires_line_loads` failure is the nav/summary QSettings leak — see below —
+  unrelated). Screenshot `R5_collapsed_light.png`.
+- **2026-09-14 — R2 + R3.** Ribbon navigation. R2: `MainWindow._persist_ribbon_tab` saves the
+  active tab to `QSettings("MidasStructural","Desktop")` key `ribbon/tab` on every switch;
+  construction restores it (unknown name → Home). R3: `_install_ribbon_shortcuts` adds Alt+initial
+  accelerators (H/D/L/A/R/V) and Ctrl+Tab / Ctrl+Shift+Tab cycling via `_cycle_ribbon_tab`; the tab
+  strip is now `TabFocus` with `QTabBar#ribbonTabs` hover/focus fill in `style.py` (`outline:none`).
+  Imports `QShortcut`, `QKeySequence`. Tests: +4 in `test_desktop_ribbon.py` (persist/restore,
+  fallback, accelerators, cycle-wrap), all resetting `ribbon/tab` in teardown. Desktop suite: 314
+  passed. Behavioural items — no new screenshots (the R1/R6 record still holds).
+- **2026-09-14 — R6.** Icon coverage. Added 10 in-house glyphs to `desktop/icons.py`
+  (`materials`, `selnodes`, `selmembers`, `selall`, `selsection`, `hinge`, `assignhinge`,
+  `history`, `checkmodel`, `density`) and wired the 12 previously text-only ribbon buttons via
+  `_set_icon` / the `_action(..., icon_name)` arg (`undo`/`redo` glyphs already existed). New
+  regression guard `test_every_ribbon_button_has_an_icon`. Screenshots `R6_home_light.png`,
+  `R6_draw_light.png`, `R6_view_dark.png`. Desktop suite: 310 passed. (Note: a stale shared
+  `nav/summary=True` QSettings value — left by the model-navigation suite — makes the unrelated
+  `test_desktop_member_load::test_main_window_wires_line_loads` fail until reset; not an R6
+  regression.)
 - **2026-09-13 — R1.** New `RibbonBar` (tab strip + `QStackedWidget` + File backstage) in
   `desktop/main_window.py` replaces the classic menu bar, the three `ribbonBar` toolbars, and the
   draw/select palette; `_ribbon_group` now accepts bare widgets and `_ribbon_page` builds a tab

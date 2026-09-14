@@ -170,6 +170,16 @@ def test_ctrl_r_rides_a_ribbon_button(win):
     assert win.act_run.shortcut().toString() == "Ctrl+R"
 
 
+def test_every_ribbon_button_has_an_icon(win):
+    # R6: no text-only ribbon button — every one carries a (themed) glyph.
+    # File is a backstage menu (not a tab); every tab button carries a glyph.
+    naked = [(t, b.defaultAction().iconText())
+             for t in TABS
+             for b in _page_buttons(win, t)
+             if b.defaultAction().icon().isNull()]
+    assert naked == [], naked
+
+
 def test_switching_tabs_swaps_the_group_row(win):
     rb = win._ribbon
     rb.set_current("Home")
@@ -177,3 +187,125 @@ def test_switching_tabs_swaps_the_group_row(win):
     rb.tabs.setCurrentIndex(TABS.index("Loads"))
     assert rb.stack.currentIndex() == TABS.index("Loads")
     rb.set_current("Home")
+
+
+# ---- R2: persist / restore the active tab ---------------------------------
+def test_active_tab_persists_and_restores(qapp):
+    from PySide6.QtCore import QSettings
+    from main_window import MainWindow
+    s = QSettings("MidasStructural", "Desktop")
+    try:
+        s.setValue("ribbon/tab", "Loads")
+        w = MainWindow()                              # reopens where left off
+        assert w._ribbon.tabs.tabText(w._ribbon.tabs.currentIndex()) == "Loads"
+        w._ribbon.set_current("Results")              # a switch re-persists
+        assert str(s.value("ribbon/tab")) == "Results"
+    finally:
+        s.setValue("ribbon/tab", "Home")             # keep the shared store clean
+
+
+def test_unknown_saved_tab_falls_back_to_home(qapp):
+    from PySide6.QtCore import QSettings
+    from main_window import MainWindow
+    s = QSettings("MidasStructural", "Desktop")
+    try:
+        s.setValue("ribbon/tab", "Nonexistent")
+        w = MainWindow()
+        assert w._ribbon.tabs.tabText(w._ribbon.tabs.currentIndex()) == "Home"
+    finally:
+        s.setValue("ribbon/tab", "Home")
+
+
+# ---- R3: keyboard access ---------------------------------------------------
+def test_keyboard_tab_accelerators_exist(win):
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QShortcut
+    seqs = {sc.key().toString() for sc in win.findChildren(QShortcut)}
+    for k in ("Alt+H", "Alt+D", "Alt+L", "Alt+A", "Alt+R", "Alt+V",
+              "Ctrl+Tab", "Ctrl+Shift+Tab"):
+        assert k in seqs, k
+    assert win._ribbon.tabs.focusPolicy() == Qt.FocusPolicy.TabFocus
+
+
+def test_cycle_ribbon_tab_wraps(win):
+    rb = win._ribbon
+    rb.set_current("View")                            # last tab
+    win._cycle_ribbon_tab(1)
+    assert rb.tabs.currentIndex() == 0                # wraps to first
+    win._cycle_ribbon_tab(-1)
+    assert rb.tabs.currentIndex() == len(TABS) - 1    # wraps back to last
+    rb.set_current("Home")
+
+
+# ---- R4: contextual tab raising -------------------------------------------
+def _tab(win):
+    return win._ribbon.tabs.tabText(win._ribbon.tabs.currentIndex())
+
+
+def test_run_raises_results_tab(qapp):
+    from main_window import MainWindow
+    from demo_model import demo_project
+    w = MainWindow()
+    w.load_project(demo_project())
+    w._ribbon.set_collapsed(False)
+    w._ribbon.set_current("Analysis")
+    assert w.run_linear_static() is not None           # solvable demo frame
+    assert _tab(w) == "Results"
+
+
+def test_draw_tool_raises_draw_tab(qapp):
+    from main_window import MainWindow
+    w = MainWindow()
+    w._ribbon.set_collapsed(False)
+    w._ribbon.set_current("Home")
+    w._set_mode("draw_node")
+    assert _tab(w) == "Draw"
+
+
+def test_contextual_raise_is_suppressed_when_collapsed(qapp):
+    from main_window import MainWindow
+    w = MainWindow()
+    w._ribbon.set_current("Home")
+    w._ribbon.set_collapsed(True)
+    w._show_results_tab()                              # deliberately hidden → no jump
+    assert _tab(w) == "Home"
+    w._ribbon.set_collapsed(False)
+
+
+# ---- R5: collapse / expand -------------------------------------------------
+def test_collapse_hides_group_row(win):
+    rb = win._ribbon
+    rb.set_collapsed(False)
+    assert not rb.is_collapsed() and not rb.stack.isHidden()
+    rb.set_collapsed(True)
+    assert rb.is_collapsed() and rb.stack.isHidden()   # just the tab strip left
+    rb.toggle_collapsed()
+    assert not rb.is_collapsed() and not rb.stack.isHidden()
+
+
+def test_collapsed_state_persists(qapp):
+    from PySide6.QtCore import QSettings
+    from main_window import MainWindow
+    s = QSettings("MidasStructural", "Desktop")
+    try:
+        s.setValue("ribbon/collapsed", True)
+        w = MainWindow()
+        assert w._ribbon.is_collapsed()               # reopened collapsed
+    finally:
+        s.setValue("ribbon/collapsed", False)          # keep the shared store clean
+
+
+def test_transient_reveal_then_recollapse(win):
+    rb = win._ribbon
+    rb.set_collapsed(True)
+    rb._on_tab_clicked(1)                              # a click peeks the row
+    assert not rb.stack.isHidden()
+    rb._end_transient()                               # click-away re-collapses
+    assert rb.stack.isHidden()
+    rb.set_collapsed(False)
+
+
+def test_ctrl_f1_collapse_shortcut(win):
+    from PySide6.QtGui import QShortcut
+    seqs = {sc.key().toString() for sc in win.findChildren(QShortcut)}
+    assert "Ctrl+F1" in seqs

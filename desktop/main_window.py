@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import copy
 
-from PySide6.QtCore import QItemSelectionModel, QSettings, QSize, Qt
+from PySide6.QtCore import (QEvent, QItemSelectionModel, QSettings, QSize, Qt,
+                            Signal)
 from PySide6.QtGui import (QAction, QActionGroup, QBrush, QColor, QFont,
-                           QUndoStack)
+                           QKeySequence, QShortcut, QUndoStack)
 from PySide6.QtWidgets import (QAbstractItemView, QApplication, QComboBox,
                                QDockWidget, QDoubleSpinBox, QFileDialog,
                                QFrame, QHBoxLayout, QHeaderView, QLabel,
@@ -252,12 +253,54 @@ class MainWindow(QMainWindow):
             if name:
                 act.setIcon(icons.icon(name, style.ICON))
 
+    # --------------------------------------------------------------- ribbon nav
+    def _persist_ribbon_tab(self, index: int) -> None:
+        """R2 — remember the active ribbon tab so the next session reopens it."""
+        self._settings.setValue("ribbon/tab", self._ribbon.tabs.tabText(index))
+
+    def _cycle_ribbon_tab(self, delta: int) -> None:
+        """Move the active ribbon tab by ``delta``, wrapping around (Ctrl+Tab)."""
+        tabs = self._ribbon.tabs
+        if tabs.count():
+            tabs.setCurrentIndex((tabs.currentIndex() + delta) % tabs.count())
+
+    def _install_ribbon_shortcuts(self) -> None:
+        """R3 — keyboard access to the ribbon: Alt+<initial> raises a tab by its
+        first letter (H/D/L/A/R/V), and Ctrl+Tab / Ctrl+Shift+Tab cycle. The
+        tab strip is also focusable so the arrow keys walk it."""
+        self._ribbon.tabs.setFocusPolicy(Qt.FocusPolicy.TabFocus)
+        titles = [self._ribbon.tabs.tabText(i)
+                  for i in range(self._ribbon.tabs.count())]
+        seen = set()
+        for title in titles:
+            initial = title[0].upper()
+            if initial in seen:                       # keep each accelerator unique
+                continue
+            seen.add(initial)
+            sc = QShortcut(QKeySequence(f"Alt+{initial}"), self)
+            sc.activated.connect(lambda t=title: self._ribbon.set_current(t))
+        for seq, delta in (("Ctrl+Tab", 1), ("Ctrl+Shift+Tab", -1)):
+            sc = QShortcut(QKeySequence(seq), self)
+            sc.activated.connect(lambda d=delta: self._cycle_ribbon_tab(d))
+        sc = QShortcut(QKeySequence("Ctrl+F1"), self)   # R5: collapse toggle
+        sc.activated.connect(self._ribbon.toggle_collapsed)
+
+    def _show_results_tab(self) -> None:
+        """R4 — after a successful run, surface the Results tab so the diagrams
+        are one click away. A no-op when the ribbon is collapsed (the user hid
+        it deliberately) so nothing pops up unbidden."""
+        rb = getattr(self, "_ribbon", None)
+        if rb is not None and not rb.is_collapsed():
+            rb.set_current("Results")
+
     # --------------------------------------------------------------- menu / UI
     def _build_menu(self) -> None:
         self.act_undo = self._undo_stack.createUndoAction(self, "&Undo")
         self.act_undo.setShortcut("Ctrl+Z")
+        _set_icon(self.act_undo, "undo")
         self.act_redo = self._undo_stack.createRedoAction(self, "&Redo")
         self.act_redo.setShortcut("Ctrl+Y")
+        _set_icon(self.act_redo, "redo")
 
         self.act_new = _action(self, "&New", "Ctrl+N", self.new_project, "new")
         self.act_new3d = _action(self, "New &3-D frame", None,
@@ -282,10 +325,11 @@ class MainWindow(QMainWindow):
         self.act_add_section = _action(self, "Add &section…", None,
                                        self.add_section, "section")
         self.act_materials = _action(self, "&Materials…", None,
-                                     self.manage_materials)
-        self.act_hinges = _action(self, "&Hinges…", None, self.manage_hinges)
+                                     self.manage_materials, "materials")
+        self.act_hinges = _action(self, "&Hinges…", None, self.manage_hinges,
+                                  "hinge")
         self.act_assign_hinges = _action(self, "Assign &hinges…", None,
-                                         self.assign_hinges)
+                                         self.assign_hinges, "assignhinge")
         self.act_genloads = _action(self, "Generate &loads…", None,
                                     self.generate_loads, "loadsgen")
         self.act_delete = _action(self, "&Delete", "Del", self.delete_selected,
@@ -311,9 +355,9 @@ class MainWindow(QMainWindow):
         self.act_timehistory = _action(self, "Nonlinear &time history…", None,
                                        self.run_timehistory_dialog, "run")
         self.act_runhistory = _action(self, "Run &history…", None,
-                                      self.show_run_history)
+                                      self.show_run_history, "history")
         self.act_checkmodel = _action(self, "&Check model…", None,
-                                      self.check_model)
+                                      self.check_model, "checkmodel")
         self.act_undef = _action(self, "&Undeformed", None,
                                  self._show_undeformed, "undeformed")
         self.act_fit = _action(self, "&Fit", "F", self.view.fit, "fit")
@@ -353,7 +397,7 @@ class MainWindow(QMainWindow):
         self.act_theme = _action(self, "Toggle &theme (light / dark)", None,
                                  self.toggle_theme)
         self.act_density = _action(self, "Compact &density", None,
-                                   self.toggle_density)
+                                   self.toggle_density, "density")
         self.act_density.setCheckable(True)
         self.act_density.setChecked(style.current_density() == "compact")
 
@@ -386,12 +430,13 @@ class MainWindow(QMainWindow):
         self.act_snap.setChecked(True)
         self.act_snap.toggled.connect(self._update_snap)
         self.act_sel_all_nodes = _action(self, "Select all &nodes", None,
-                                         self.select_all_nodes)
+                                         self.select_all_nodes, "selnodes")
         self.act_sel_all_members = _action(self, "Select all &members", None,
-                                           self.select_all_members)
-        self.act_sel_all = _action(self, "Select &all", "Ctrl+A", self.select_all)
+                                           self.select_all_members, "selmembers")
+        self.act_sel_all = _action(self, "Select &all", "Ctrl+A",
+                                   self.select_all, "selall")
         self.act_sel_by_section = _action(self, "Select by &section…", None,
-                                          self.select_by_section)
+                                          self.select_by_section, "selsection")
         self.snap_spin = QDoubleSpinBox()
         self.snap_spin.setRange(0.05, 10.0)
         self.snap_spin.setSingleStep(0.05)
@@ -481,13 +526,25 @@ class MainWindow(QMainWindow):
             ("Appearance", ((self.act_theme, "Theme"),
                             (self.act_density, "Compact"))),
         ))
-        rb.set_current("Home")
+        # R2: reopen the ribbon on the tab the user left it on (persisted on
+        # every switch below); fall back to Home if the saved name is unknown.
+        titles = [rb.tabs.tabText(i) for i in range(rb.tabs.count())]
+        saved = str(self._settings.value("ribbon/tab", "Home"))
+        rb.set_current(saved if saved in titles else "Home")
+        rb.tabs.currentChanged.connect(self._persist_ribbon_tab)
+        # R5: restore the collapsed state and keep it persisted.
+        rb.set_collapsed(self._settings.value("ribbon/collapsed", False,
+                                              type=bool))
+        rb.collapsedChanged.connect(
+            lambda c: self._settings.setValue("ribbon/collapsed", c))
 
         host = self.addToolBar("Ribbon")
         host.setObjectName("ribbonHost")
         host.setMovable(False)
         host.setFloatable(False)
         host.addWidget(rb)
+
+        self._install_ribbon_shortcuts()      # R3: keyboard tab access
 
     # ---------------------------------------------------------------- analysis
     def _solve(self):
@@ -510,6 +567,7 @@ class MainWindow(QMainWindow):
             f"max|u| = {dmax:.4e} m, deformation ×{scale:.0f}")
         self.statusBar().showMessage(
             f"Solved · max|u| {dmax:.3e} m · deformation ×{scale:.0f}")
+        self._show_results_tab()               # R4: jump to Results after a run
         return info
 
     def run_modal(self, num_modes=None, lumped=None):
@@ -1882,6 +1940,9 @@ class MainWindow(QMainWindow):
                          "(snapped to 0.5 m).",
             "draw_member": "Draw member — click two nodes to connect them."}
         self.statusBar().showMessage(hints.get(mode, ""))
+        rb = getattr(self, "_ribbon", None)    # R4: surface the Draw tab
+        if rb is not None and not rb.is_collapsed():
+            rb.set_current("Draw")
 
     def _on_region_select(self, refs, additive=False) -> None:
         picked = [tuple(r) for r in refs]
@@ -2440,7 +2501,14 @@ class RibbonBar(QWidget):
     rows, so the top chrome is a single strip. Buttons mirror their ``QAction``
     (``setDefaultAction``), so enabled state, re-inked icons and Ctrl-shortcuts
     stay live. Selecting a tab is a pure view swap — no model state.
+
+    The group row can be **collapsed** (plan ribbon R5) to just the tab strip —
+    double-click the active tab or Ctrl+F1 — reclaiming a row on demand; while
+    collapsed, a single tab click reveals the row transiently until the next
+    click outside the ribbon. ``collapsedChanged`` lets the shell persist it.
     """
+
+    collapsedChanged = Signal(bool)
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -2448,6 +2516,8 @@ class RibbonBar(QWidget):
         self.setSizePolicy(QSizePolicy.Policy.Preferred,
                            QSizePolicy.Policy.Fixed)
         self._tab_titles: list[str] = []
+        self._collapsed = False
+        self._transient = False
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)
@@ -2481,6 +2551,49 @@ class RibbonBar(QWidget):
         self.stack.setObjectName("ribbonStack")
         outer.addWidget(self.stack)
         self.tabs.currentChanged.connect(self.stack.setCurrentIndex)
+        self.tabs.tabBarDoubleClicked.connect(lambda _i: self.toggle_collapsed())
+        self.tabs.tabBarClicked.connect(self._on_tab_clicked)
+
+    # ---- collapse / expand (R5) ----
+    def is_collapsed(self) -> bool:
+        return self._collapsed
+
+    def set_collapsed(self, collapsed) -> None:
+        """Hide (or show) the group row, leaving just the tab strip."""
+        collapsed = bool(collapsed)
+        self._end_transient()
+        self._collapsed = collapsed
+        self.stack.setVisible(not collapsed)
+        self.collapsedChanged.emit(collapsed)
+
+    def toggle_collapsed(self) -> None:
+        self.set_collapsed(not self._collapsed)
+
+    def _on_tab_clicked(self, _index) -> None:
+        # a click while collapsed reveals the row transiently (Office-style)
+        if self._collapsed and not self.stack.isVisible():
+            self._transient = True
+            self.stack.setVisible(True)
+            app = QApplication.instance()
+            if app is not None:
+                app.installEventFilter(self)
+
+    def _end_transient(self) -> None:
+        if not self._transient:
+            return
+        self._transient = False
+        app = QApplication.instance()
+        if app is not None:
+            app.removeEventFilter(self)
+        if self._collapsed:
+            self.stack.setVisible(False)
+
+    def eventFilter(self, obj, event):
+        if self._transient and event.type() == QEvent.Type.MouseButtonPress:
+            w = QApplication.widgetAt(event.globalPosition().toPoint())
+            if w is None or not (w is self or self.isAncestorOf(w)):
+                self._end_transient()          # clicked away → re-collapse
+        return super().eventFilter(obj, event)
 
     def add_tab(self, title, groups) -> QWidget:
         """Add a ribbon tab whose body is a row of captioned groups."""
