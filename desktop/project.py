@@ -368,6 +368,14 @@ class Project:
             sec = secs[mb.section]
             A, Iz, Iy, J = _resolve_section(sec)
             material = mats[mb.material]
+            # a pin-ended cable / truss carries axial force only
+            if getattr(mb, "kind", "") == "cable":
+                from femsolver import Truss2D, Truss3D
+                if self.ndm == 3:
+                    m.add_element(Truss3D(mb.id, (mb.n1, mb.n2), material, A))
+                else:
+                    m.add_element(Truss2D(mb.id, (mb.n1, mb.n2), material, A))
+                continue
             # a Section-Designer (concrete/PSC) section drives its own modulus,
             # so the member's stiffness reflects concrete E_c, not whatever
             # material was assigned in the model.
@@ -437,6 +445,14 @@ class Project:
             sec = secs[mb.section]
             A, Iz, _Iy, _J = _resolve_section(sec)
             material = mats[mb.material]
+            # a cable / truss stays a single pin-ended element (no sub-division,
+            # no bending — carries axial only)
+            if getattr(mb, "kind", "") == "cable":
+                from femsolver import Truss2D
+                m.add_element(Truss2D(eid, (mb.n1, mb.n2), material, A))
+                member_subelems[mb.id] = [eid]
+                eid += 1
+                continue
             if getattr(sec, "gsd_spec", None):
                 cm = gsd_mats.get(sec.id)
                 if cm is None:

@@ -121,6 +121,8 @@ class MemberDialog(QDialog):
         self.n2 = _combo([(str(n.id), n.id) for n in project.nodes])
         self.sec = _combo([(f"{s.id}: {s.name}", s.id) for s in project.sections])
         self.mat = _combo([(f"{m.id}: {m.name}", m.id) for m in project.materials])
+        self.kind = _combo([("Beam / column", "beamcolumn2d"),
+                            ("Cable / truss (axial only)", "cable")])
         self.hinge = _combo([("— none —", None)]
                             + [(f"{h.id}: {h.name}", h.id)
                                for h in getattr(project, "hinges", [])])
@@ -130,6 +132,7 @@ class MemberDialog(QDialog):
             _select(self.n2, member.n2)
             _select(self.sec, member.section)
             _select(self.mat, member.material)
+            _select(self.kind, getattr(member, "kind", "beamcolumn2d"))
             _select(self.hinge, getattr(member, "hinge", None))
         elif self.n2.count() > 1:
             self.n2.setCurrentIndex(1)
@@ -138,6 +141,7 @@ class MemberDialog(QDialog):
         form.addRow("End node", self.n2)
         form.addRow("Section", self.sec)
         form.addRow("Material", self.mat)
+        form.addRow("Type", self.kind)
         if getattr(project, "hinges", []):
             form.addRow("Hinge", self.hinge)
         form.addRow(_buttons(self))
@@ -153,6 +157,7 @@ class MemberDialog(QDialog):
         return Member(id=self.id_spin.value(), n1=self.n1.currentData(),
                       n2=self.n2.currentData(), section=self.sec.currentData(),
                       material=self.mat.currentData(),
+                      kind=self.kind.currentData(),
                       hinge=self.hinge.currentData())
 
     @classmethod

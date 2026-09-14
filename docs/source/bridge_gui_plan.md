@@ -82,6 +82,23 @@ runs; the first increments keep config transient (like Modal/RS/Buckling).
 **GUI plan COMPLETE (G1–G6, 2026-09-14).** Analysis-cases home has 11 live
 rows — every analysis is reachable from the desktop.
 
+## Track A — polish / coverage (harden what G1–G6 built)
+
+- [x] **A1 — Pin-ended cable / truss member type** ✅ DONE 2026-09-14.
+  `project.Member.kind == "cable"` compiles to `Truss2D` / `Truss3D` (axial
+  only) in `build_model` + `build_buckling_model` (single element, no
+  sub-division); `MemberDialog` gains a Beam/Cable "Type" selector; kind
+  serializes (old projects → beam). Works inside the ndf=3 beam model (truss
+  maps to ux/uy, leaves rz to the beams). `tests/test_desktop_cable_member.py`
+  (7). Now the cable-tuning stays are real pin-ended cables.
+- [ ] **A2 — Units-layer retrofit** on the new results dialogs (Temp Gradient,
+  Stages, Vehicle Dynamics, Influence Surface, Cable Tuning) — Moving Load
+  already uses the project display units; the rest use fixed SI-derived labels.
+- [ ] **A3 — 3-D coverage** for the cases gated to 2-D (Buckling, Moving Load,
+  Temp Gradient, Stages, Vehicle Dynamics) — needs `BeamColumn3D.
+  K_geometric_global`, 3-D moving-load beam-force ILs, and 3-D vertical-DOF
+  handling in the runners.
+
 ## Notes
 - Every GUI change is flagged to the user (their standing request).
 - Pre-existing: `test_desktop_member_load.py::test_main_window_wires_line_loads`
