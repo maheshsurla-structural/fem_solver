@@ -14,6 +14,7 @@ from matplotlib.figure import Figure
 from PySide6.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout
 
 import style
+from units import Quantity, UnitSystem
 
 
 class VehicleDynamicsResultsDialog(QDialog):
@@ -21,10 +22,13 @@ class VehicleDynamicsResultsDialog(QDialog):
 
     def __init__(self, parent, times, dynamic, static, daf, *,
                  contact_force=None, weight=None, response_label="response",
-                 speed_kmh=0.0):
+                 speed_kmh=0.0, unitsys=None):
         super().__init__(parent)
         self.setWindowTitle("Vehicle-dynamics results")
         self.resize(600, 500)
+        us = unitsys or UnitSystem()
+        l_u = us.label(Quantity.LENGTH)
+        f_u = us.label(Quantity.FORCE)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(style.SP_LG, style.SP_LG,
@@ -39,17 +43,18 @@ class VehicleDynamicsResultsDialog(QDialog):
         sub.setObjectName("sub")
         root.addWidget(sub)
 
+        def _len(arr):
+            return [us.to_display(-v, Quantity.LENGTH) for v in np.asarray(arr)]
+
         t = np.asarray(times)
         has_cf = contact_force is not None
         fig = Figure(figsize=(5.6, 4.0 if has_cf else 3.4),
                      layout="constrained")
         ax = fig.add_subplot(2, 1, 1) if has_cf else fig.add_subplot(111)
-        ax.plot(t, -np.asarray(static) * 1e3, color="#94a3b8", lw=2,
-                label="quasi-static")
-        ax.plot(t, -np.asarray(dynamic) * 1e3, color=style.C_PRIMARY, lw=1.8,
-                label="dynamic")
+        ax.plot(t, _len(static), color="#94a3b8", lw=2, label="quasi-static")
+        ax.plot(t, _len(dynamic), color=style.C_PRIMARY, lw=1.8, label="dynamic")
         ax.axhline(0.0, color=style.AX_SPINE, lw=0.7)
-        ax.set_ylabel("deflection (mm, ↓)")
+        ax.set_ylabel(f"deflection ({l_u}, ↓)")
         ax.set_xlabel("time (s)")
         ax.legend(fontsize=8)
         try:
@@ -62,13 +67,14 @@ class VehicleDynamicsResultsDialog(QDialog):
             cf = np.asarray(contact_force)
             if cf.ndim == 2:
                 cf = cf[:, 0]
-            ax2.plot(t, cf / 1e3, color=style.C_SECONDARY, lw=1.6,
-                     label="contact force")
+            ax2.plot(t, [us.to_display(v, Quantity.FORCE) for v in cf],
+                     color=style.C_SECONDARY, lw=1.6, label="contact force")
             if weight:
-                ax2.axhline(weight / 1e3, color=style.AX_SPINE, ls="--",
-                            lw=1.2, label=f"static weight {weight / 1e3:.0f} kN")
+                wd = us.to_display(weight, Quantity.FORCE)
+                ax2.axhline(wd, color=style.AX_SPINE, ls="--", lw=1.2,
+                            label=f"static weight {wd:.4g} {f_u}")
             ax2.set_xlabel("time (s)")
-            ax2.set_ylabel("contact force (kN)")
+            ax2.set_ylabel(f"contact force ({f_u})")
             ax2.legend(fontsize=8)
             try:
                 style.beautify_axes(ax2)

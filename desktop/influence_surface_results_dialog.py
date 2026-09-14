@@ -13,16 +13,20 @@ from matplotlib.figure import Figure
 from PySide6.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout
 
 import style
+from units import Quantity, UnitSystem
 
 
 class InfluenceSurfaceResultsDialog(QDialog):
     """Influence-surface contour + governing multi-lane envelope."""
 
     def __init__(self, parent, surface, envelope, *, response_label="response",
-                 units="", vehicle="", n_lanes=0):
+                 quantity=Quantity.LENGTH, vehicle="", n_lanes=0, unitsys=None):
         super().__init__(parent)
         self.setWindowTitle("Influence-surface results")
         self.resize(620, 500)
+        us = unitsys or UnitSystem()
+        u = f" {us.label(quantity)}"
+        l_u = us.label(Quantity.LENGTH)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(style.SP_LG, style.SP_LG,
@@ -32,13 +36,14 @@ class InfluenceSurfaceResultsDialog(QDialog):
         head = QLabel(f"Influence surface — {response_label}")
         head.setObjectName("h2")
         root.addWidget(head)
-        u = f" {units}" if units else ""
+        emax = us.to_display(envelope.get('max', 0.0), quantity)
+        emin = us.to_display(envelope.get('min', 0.0), quantity)
         sub = QLabel(
             f"{vehicle} · {n_lanes} design lane(s) · governing "
-            f"max = {envelope.get('max', 0.0):.4g}{u} "
+            f"max = {emax:.4g}{u} "
             f"({envelope.get('max_num_lanes', 0)} lane(s), "
             f"m={envelope.get('max_factor', 1.0):.2f})   ·   "
-            f"min = {envelope.get('min', 0.0):.4g}{u}")
+            f"min = {emin:.4g}{u}")
         sub.setObjectName("sub")
         sub.setWordWrap(True)
         root.addWidget(sub)
@@ -46,18 +51,19 @@ class InfluenceSurfaceResultsDialog(QDialog):
         fig = Figure(figsize=(5.6, 3.8), layout="constrained")
         ax = fig.add_subplot(111)
         pts = np.asarray(surface.points)
-        vals = np.asarray(surface.values)
+        px = [us.to_display(v, Quantity.LENGTH) for v in pts[:, 0]]
+        py = [us.to_display(v, Quantity.LENGTH) for v in pts[:, 1]]
+        vals = [us.to_display(v, quantity) for v in surface.values]
         try:
-            tc = ax.tricontourf(pts[:, 0], pts[:, 1], vals, levels=16,
-                                cmap="viridis")
+            tc = ax.tricontourf(px, py, vals, levels=16, cmap="viridis")
             fig.colorbar(tc, ax=ax, shrink=0.9).set_label(
                 f"influence ordinate{u}")
-            ax.plot(pts[:, 0], pts[:, 1], "k.", ms=2, alpha=0.3)
+            ax.plot(px, py, "k.", ms=2, alpha=0.3)
         except Exception:                              # noqa: BLE001
-            ax.scatter(pts[:, 0], pts[:, 1], c=vals, cmap="viridis")
+            ax.scatter(px, py, c=vals, cmap="viridis")
         ax.set_aspect("equal")
-        ax.set_xlabel("longitudinal x (m)")
-        ax.set_ylabel("transverse y (m)")
+        ax.set_xlabel(f"longitudinal x ({l_u})")
+        ax.set_ylabel(f"transverse y ({l_u})")
         ax.set_title(f"per unit load — {response_label}")
         canvas = Canvas(fig)
         canvas.setMinimumHeight(300)

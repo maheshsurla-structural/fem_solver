@@ -88,6 +88,26 @@ def test_run_cable_tuning_meets_targets(qapp):
     assert hasattr(w, "_cable_tuning_results_dlg")
 
 
+def test_results_dialog_respects_display_units(qapp):
+    """A2 units retrofit: the tuned-tension table shows the project's force
+    unit (100 kN reads as '1e+05 N' in SI, '100' under kN)."""
+    from PySide6.QtWidgets import QTableWidget
+    from cable_tuning_results_dialog import CableTuningResultsDialog
+    from units import UnitSystem
+    d_si = CableTuningResultsDialog(None, ["c1"], [100e3], [0.0, 10.0],
+                                    [-0.01, -0.005], [0.0, 0.0],
+                                    unitsys=UnitSystem("N", "m"))
+    d_kn = CableTuningResultsDialog(None, ["c1"], [100e3], [0.0, 10.0],
+                                    [-0.01, -0.005], [0.0, 0.0],
+                                    unitsys=UnitSystem("kN", "m"))
+    t_si = d_si.findChildren(QTableWidget)[0]
+    t_kn = d_kn.findChildren(QTableWidget)[0]
+    assert "N" in t_si.horizontalHeaderItem(1).text()
+    assert "kN" in t_kn.horizontalHeaderItem(1).text()
+    assert t_kn.item(0, 1).text() == "100"             # 100 kN
+    assert t_si.item(0, 1).text() != "100"             # 1e+05 N
+
+
 def test_run_guards(qapp, monkeypatch):
     import main_window as MW
     monkeypatch.setattr(MW.QMessageBox, "information",

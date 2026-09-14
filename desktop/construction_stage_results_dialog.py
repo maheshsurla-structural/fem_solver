@@ -14,15 +14,19 @@ from matplotlib.figure import Figure
 from PySide6.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout
 
 import style
+from units import Quantity, UnitSystem
 
 
 class ConstructionStageResultsDialog(QDialog):
     """Camber diagram + per-stage deflection history."""
 
-    def __init__(self, parent, camber, *, n_stages=0):
+    def __init__(self, parent, camber, *, n_stages=0, unitsys=None):
         super().__init__(parent)
         self.setWindowTitle("Construction-stage results")
         self.resize(600, 460)
+        us = unitsys or UnitSystem()
+        L = Quantity.LENGTH
+        l_u = us.label(L)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(style.SP_LG, style.SP_LG,
@@ -34,29 +38,33 @@ class ConstructionStageResultsDialog(QDialog):
         root.addWidget(head)
         dmax = float(np.max(np.abs(camber.final_deflection))) if len(
             camber.final_deflection) else 0.0
+        dmax_d = us.to_display(dmax, L)
         sub = QLabel(f"{n_stages} stages · max final deflection = "
-                     f"{dmax * 1e3:.2f} mm · required camber = build "
-                     f"{dmax * 1e3:.2f} mm high")
+                     f"{dmax_d:.4g} {l_u} · required camber = build "
+                     f"{dmax_d:.4g} {l_u} high")
         sub.setObjectName("sub")
         root.addWidget(sub)
 
+        def _disp(arr):
+            return [us.to_display(v, L) for v in np.asarray(arr)]
+
         fig = Figure(figsize=(5.6, 3.6), layout="constrained")
         ax = fig.add_subplot(111)
-        x = np.asarray(camber.x)
+        x = _disp(camber.x)
         sd = np.asarray(camber.stage_deflection)
         if sd.ndim == 2 and sd.shape[0] > 1:
             cmap = __import__("matplotlib").colormaps["viridis"]
             for k in range(sd.shape[0]):
-                ax.plot(x, sd[k] * 1e3, lw=1.0,
+                ax.plot(x, _disp(sd[k]), lw=1.0,
                         color=cmap(k / max(1, sd.shape[0] - 1)), alpha=0.7)
-        ax.plot(x, np.asarray(camber.final_deflection) * 1e3, "-o",
+        ax.plot(x, _disp(camber.final_deflection), "-o",
                 color=style.C_SECONDARY, lw=2, ms=3, label="final deflection")
-        ax.plot(x, np.asarray(camber.final_camber) * 1e3, "-o",
+        ax.plot(x, _disp(camber.final_camber), "-o",
                 color=style.C_PRIMARY, lw=2.4, ms=3,
                 label="required camber (build high)")
         ax.axhline(0.0, color=style.AX_SPINE, lw=0.8)
-        ax.set_xlabel("x (m)")
-        ax.set_ylabel("vertical (mm)")
+        ax.set_xlabel(f"x ({l_u})")
+        ax.set_ylabel(f"vertical ({l_u})")
         ax.set_title("faint = stage-by-stage deflection")
         ax.legend(fontsize=8)
         try:

@@ -15,16 +15,20 @@ from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QHeaderView, QLabel,
                                QTableWidget, QTableWidgetItem, QVBoxLayout)
 
 import style
+from units import Quantity, UnitSystem
 
 
 class CableTuningResultsDialog(QDialog):
     """Tuned stay tensions + before/after deck deflection profile."""
 
     def __init__(self, parent, cable_labels, tensions, xs, before, after, *,
-                 max_residual=0.0):
+                 max_residual=0.0, unitsys=None):
         super().__init__(parent)
         self.setWindowTitle("Cable-tuning results")
         self.resize(600, 560)
+        us = unitsys or UnitSystem()
+        f_u = us.label(Quantity.FORCE)
+        l_u = us.label(Quantity.LENGTH)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(style.SP_LG, style.SP_LG,
@@ -34,13 +38,14 @@ class CableTuningResultsDialog(QDialog):
         head = QLabel("Cable-stayed tuning (unknown load factor)")
         head.setObjectName("h2")
         root.addWidget(head)
+        res_d = us.to_display(abs(max_residual), Quantity.LENGTH)
         sub = QLabel(f"{len(tensions)} stay(s) tuned · "
-                     f"target residual ≤ {abs(max_residual) * 1e3:.3g} mm")
+                     f"target residual ≤ {res_d:.3g} {l_u}")
         sub.setObjectName("sub")
         root.addWidget(sub)
 
         table = QTableWidget(len(tensions), 2)
-        table.setHorizontalHeaderLabels(["Stay", "Tension [kN]"])
+        table.setHorizontalHeaderLabels(["Stay", f"Tension [{f_u}]"])
         table.verticalHeader().setVisible(False)
         table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         table.horizontalHeader().setSectionResizeMode(
@@ -49,20 +54,23 @@ class CableTuningResultsDialog(QDialog):
             1, QHeaderView.ResizeMode.ResizeToContents)
         for r, (lab, T) in enumerate(zip(cable_labels, tensions)):
             table.setItem(r, 0, QTableWidgetItem(str(lab)))
-            table.setItem(r, 1, QTableWidgetItem(f"{T / 1e3:.1f}"))
+            table.setItem(r, 1, QTableWidgetItem(
+                f"{us.to_display(T, Quantity.FORCE):.4g}"))
         table.setMaximumHeight(150)
         root.addWidget(table)
 
         fig = Figure(figsize=(5.4, 3.2), layout="constrained")
         ax = fig.add_subplot(111)
-        x = np.asarray(xs)
-        ax.plot(x, -np.asarray(before) * 1e3, "-o", color=style.C_SECONDARY,
-                lw=2, ms=3, label="dead load only")
-        ax.plot(x, -np.asarray(after) * 1e3, "-o", color=style.C_PRIMARY,
-                lw=2.2, ms=3, label="after tuning")
+        x = [us.to_display(v, Quantity.LENGTH) for v in np.asarray(xs)]
+        b = [us.to_display(-v, Quantity.LENGTH) for v in np.asarray(before)]
+        a = [us.to_display(-v, Quantity.LENGTH) for v in np.asarray(after)]
+        ax.plot(x, b, "-o", color=style.C_SECONDARY, lw=2, ms=3,
+                label="dead load only")
+        ax.plot(x, a, "-o", color=style.C_PRIMARY, lw=2.2, ms=3,
+                label="after tuning")
         ax.axhline(0.0, color=style.AX_SPINE, lw=0.8)
-        ax.set_xlabel("x (m)")
-        ax.set_ylabel("vertical deflection (mm, ↓)")
+        ax.set_xlabel(f"x ({l_u})")
+        ax.set_ylabel(f"vertical deflection ({l_u}, ↓)")
         ax.set_title("deck profile — stays tune the dead-load shape to target")
         ax.legend(fontsize=8)
         try:

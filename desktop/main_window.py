@@ -1090,7 +1090,7 @@ class MainWindow(QMainWindow):
         self._temp_gradient_results_dlg = \
             TemperatureGradientResultsDialog.show_results(
                 self, grad, act, h, max_deflection=dmax, max_moment=max_moment,
-                section_label=label)
+                section_label=label, unitsys=self._units())
         self.log.appendPlainText(
             f"Temperature gradient solved: {applied} member(s), "
             f"ΔT_uniform={act.dT_uniform:.2f}°C, self-stress "
@@ -1199,7 +1199,7 @@ class MainWindow(QMainWindow):
         from construction_stage_results_dialog import \
             ConstructionStageResultsDialog
         self._stage_results_dlg = ConstructionStageResultsDialog.show_results(
-            self, camber, n_stages=len(erection))
+            self, camber, n_stages=len(erection), unitsys=self._units())
         self.log.appendPlainText(
             f"Construction stages solved: {len(erection)} stages, "
             f"max final deflection {dmax * 1e3:.2f} mm → camber {dmax * 1e3:.2f} "
@@ -1307,7 +1307,7 @@ class MainWindow(QMainWindow):
                 self, res["times"], dynamic, res["static_disp"], res["DAF"],
                 contact_force=contact, weight=weight,
                 response_label=f"node {config['node']} vertical",
-                speed_kmh=speed * 3.6)
+                speed_kmh=speed * 3.6, unitsys=self._units())
         kind_label = "sprung-mass VBI" if config["kind"] == "vbi" \
             else "moving force"
         self.log.appendPlainText(
@@ -1359,7 +1359,7 @@ class MainWindow(QMainWindow):
         kind, node = config["response"]
         response = (Displacement(node_tag=node, dof=2) if kind == "disp"
                     else Reaction(node_tag=node, dof=2))
-        units = "m" if kind == "disp" else "N"
+        qty = Quantity.LENGTH if kind == "disp" else Quantity.FORCE
         label = (f"vertical {'displacement' if kind == 'disp' else 'reaction'} "
                  f"at node {node}")
 
@@ -1391,19 +1391,22 @@ class MainWindow(QMainWindow):
                                 f"Multi-lane envelope failed:\n\n{exc}")
             return None
 
+        us = self._units()
+        units = us.label(qty)
         from influence_surface_results_dialog import \
             InfluenceSurfaceResultsDialog
         self._influence_surface_results_dlg = \
             InfluenceSurfaceResultsDialog.show_results(
-                self, IS, env, response_label=label, units=units,
-                vehicle=veh_label, n_lanes=len(lanes))
+                self, IS, env, response_label=label, quantity=qty,
+                vehicle=veh_label, n_lanes=len(lanes), unitsys=us)
+        emax = us.to_display(env.get('max', 0.0), qty)
         self.log.appendPlainText(
             f"Influence surface solved: {label}, {veh_label}, {len(lanes)} "
-            f"lane(s), governing max={env.get('max', 0.0):.4g} "
+            f"lane(s), governing max={emax:.4g} "
             f"(m={env.get('max_factor', 1.0):.2f}, "
             f"{env.get('max_num_lanes', 0)} lane(s)) {units}")
         self.statusBar().showMessage(
-            f"Influence surface · {veh_label} · max {env.get('max', 0.0):.3g} "
+            f"Influence surface · {veh_label} · max {emax:.3g} "
             f"{units} ({env.get('max_num_lanes', 0)} lane(s))")
         return {"surface": IS, "envelope": env, "lanes": len(lanes)}
 
@@ -1489,7 +1492,7 @@ class MainWindow(QMainWindow):
         self._cable_tuning_results_dlg = CableTuningResultsDialog.show_results(
             self, [c.name for c in cables], res.tensions, xs, before, after,
             max_residual=float(np.max(np.abs(res.residual))) if len(
-                res.residual) else 0.0)
+                res.residual) else 0.0, unitsys=self._units())
         self.log.appendPlainText(
             f"Cable tuning solved: {len(cables)} stay(s), tensions "
             + ", ".join(f"{t / 1e3:.0f}" for t in res.tensions)

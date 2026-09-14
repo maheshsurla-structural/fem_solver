@@ -91,9 +91,13 @@ rows — every analysis is reachable from the desktop.
   serializes (old projects → beam). Works inside the ndf=3 beam model (truss
   maps to ux/uy, leaves rz to the beams). `tests/test_desktop_cable_member.py`
   (7). Now the cable-tuning stays are real pin-ended cables.
-- [ ] **A2 — Units-layer retrofit** on the new results dialogs (Temp Gradient,
-  Stages, Vehicle Dynamics, Influence Surface, Cable Tuning) — Moving Load
-  already uses the project display units; the rest use fixed SI-derived labels.
+- [x] **A2 — Units-layer retrofit** ✅ DONE 2026-09-14. All five new results
+  dialogs (Temperature Gradient, Construction Stages, Vehicle Dynamics,
+  Influence Surface, Cable Tuning) now display in the project's units via
+  `UnitSystem.to_display` / `.label` (STRESS / LENGTH / FORCE / MOMENT), fed
+  `unitsys=self._units()` from each runner — matching Moving Load. Verified a
+  non-SI system converts (100 kN → "100" under kN vs "1e+05" under N).
+  `tests/test_desktop_cable_tuning.py::test_results_dialog_respects_display_units`.
 - [ ] **A3 — 3-D coverage** for the cases gated to 2-D (Buckling, Moving Load,
   Temp Gradient, Stages, Vehicle Dynamics) — needs `BeamColumn3D.
   K_geometric_global`, 3-D moving-load beam-force ILs, and 3-D vertical-DOF
