@@ -25,17 +25,23 @@ from enum import Enum
 # SI base: force = newton (N), length = metre (m).  First cut = SI family only
 # (plan U5 adds kgf/tonf/kip/lbf, cm-free imperial lengths, etc.).
 # --------------------------------------------------------------------------- #
+# SI factors are exact by definition; imperial factors use the exact
+# international pound-force (1 lbf = 4.4482216152605 N) and inch (0.0254 m).
 FORCE_UNITS: dict[str, float] = {
     "N": 1.0,
     "kN": 1.0e3,
-    "kgf": 9.80665,
-    "tonf": 9.80665e3,        # metric tonne-force
+    "kgf": 9.80665,          # kilogram-force
+    "tonf": 9.80665e3,       # metric tonne-force
+    "kip": 4448.2216152605,  # kilopound-force (1000 lbf) — plan U5
+    "lbf": 4.4482216152605,  # pound-force
 }
 
 LENGTH_UNITS: dict[str, float] = {
     "m": 1.0,
     "cm": 1.0e-2,
     "mm": 1.0e-3,
+    "in": 0.0254,            # inch (exact) — plan U5
+    "ft": 0.3048,            # foot (exact, = 12 in)
 }
 
 DEFAULT_FORCE = "kN"
@@ -136,6 +142,13 @@ class UnitSystem:
     def pair_label(self) -> str:
         """The status-bar chip text, e.g. ``kN · m``."""
         return f"{self.force} · {self.length}"
+
+    def dof_quantity(self, dof_label: str) -> Quantity:
+        """The quantity of a DOF component from its label: rotational DOFs
+        (``Rx``/``Ry``/``Rz``) carry moments (F·L), translational ones forces.
+        Used to convert a load vector whose entries mix the two."""
+        return (Quantity.MOMENT if dof_label.strip().upper().startswith("R")
+                else Quantity.FORCE)
 
     @classmethod
     def from_project(cls, project) -> "UnitSystem":

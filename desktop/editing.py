@@ -18,6 +18,8 @@ import icons
 import style
 from project import (Load, LoadCase, Member, NATURE_ASCE, NATURE_LABELS, Node,
                      Section)
+from unit_widgets import UnitSpin, labeled
+from units import Quantity, UnitSystem
 
 
 def dof_labels(ndm: int, ndf: int) -> list[str]:
@@ -41,22 +43,20 @@ def _id_spin(value: int, editing: bool) -> QSpinBox:
     return spin
 
 
-def _coord_spin(value: float = 0.0) -> QDoubleSpinBox:
-    spin = QDoubleSpinBox()
-    spin.setRange(-1.0e6, 1.0e6)
-    spin.setDecimals(4)
-    spin.setSingleStep(0.1)
-    spin.setValue(value)
-    return spin
+def _coord_spin(units: UnitSystem, si: float = 0.0) -> UnitSpin:
+    """A length spin (plan U3): displays in the project's length unit, stores
+    SI metres. ``si`` is the stored (SI) seed value."""
+    return UnitSpin(Quantity.LENGTH, units, si=si, decimals=4, step=0.1,
+                    rng=(-1.0e6, 1.0e6))
 
 
-def _force_spin(value: float = 0.0) -> QDoubleSpinBox:
-    spin = QDoubleSpinBox()
-    spin.setRange(-1.0e12, 1.0e12)
-    spin.setDecimals(3)
-    spin.setSingleStep(1000.0)
-    spin.setValue(value)
-    return spin
+def _force_spin(units: UnitSystem, si: float = 0.0,
+                quantity: Quantity = Quantity.FORCE) -> UnitSpin:
+    """A force/moment spin (plan U3): displays in the project's force (or
+    force·length) unit, stores SI. ``quantity`` lets a load vector's rotational
+    DOFs be moments while translational ones are forces."""
+    return UnitSpin(quantity, units, si=si, decimals=3, step=1000.0,
+                    rng=(-1.0e12, 1.0e12))
 
 
 class NodeDialog(QDialog):
@@ -65,19 +65,20 @@ class NodeDialog(QDialog):
         self.setWindowTitle("Edit node" if node else "Add node")
         form = QFormLayout(self)
 
+        self._us = UnitSystem.from_project(project)
         self.id_spin = _id_spin(
             node.id if node else _next_id([n.id for n in project.nodes]),
             editing=node is not None)
         form.addRow("Node id", self.id_spin)
 
-        self.x = _coord_spin(node.x if node else 0.0)
-        self.y = _coord_spin(node.y if node else 0.0)
-        form.addRow(f"x [{project.length_unit}]", self.x)
-        form.addRow(f"y [{project.length_unit}]", self.y)
+        self.x = _coord_spin(self._us, node.x if node else 0.0)
+        self.y = _coord_spin(self._us, node.y if node else 0.0)
+        form.addRow(labeled("x", self.x), self.x)
+        form.addRow(labeled("y", self.y), self.y)
         self.z = None
         if project.ndm == 3:
-            self.z = _coord_spin(node.z if node else 0.0)
-            form.addRow(f"z [{project.length_unit}]", self.z)
+            self.z = _coord_spin(self._us, node.z if node else 0.0)
+            form.addRow(labeled("z", self.z), self.z)
 
         self.fix = []
         row = QWidget()
@@ -94,9 +95,10 @@ class NodeDialog(QDialog):
 
     def data(self) -> Node:
         supports = tuple(1 if cb.isChecked() else 0 for cb in self.fix)
-        z = self.z.value() if self.z is not None else 0.0
-        return Node(id=self.id_spin.value(), x=self.x.value(), y=self.y.value(),
-                    z=z, supports=supports if any(supports) else ())
+        z = self.z.si_value() if self.z is not None else 0.0
+        return Node(id=self.id_spin.value(), x=self.x.si_value(),
+                    y=self.y.si_value(), z=z,
+                    supports=supports if any(supports) else ())
 
     @classmethod
     def edit(cls, parent, project, node=None):
@@ -168,7 +170,7 @@ class LoadDialog(QDialog):
     def __init__(self, parent, project, load=None):
         super().__init__(parent)
         self.setWindowTitle("Edit load" if load else "Add load")
-        fu = project.force_unit
+        self._us = UnitSystem.from_project(project)
         outer = QVBoxLayout(self)
         outer.setContentsMargins(style.SP_LG, style.SP_LG,
                                  style.SP_LG, style.SP_LG)
@@ -185,11 +187,15 @@ class LoadDialog(QDialog):
         applied.add_row("Node", self.node)
         applied.add_row("Load case", self.case)
 
-        comps = ui.GroupCard(f"Components  [{fu}]")
+        # Components mix forces (translational DOFs) and moments (rotational),
+        # so units live per-row, not in one card header.
+        comps = ui.GroupCard("Components")
         self.vals = []
         vec = tuple(load.values) if load else ()
         for k, lbl in enumerate(dof_labels(project.ndm, project.ndf)):
-            spin = _force_spin(vec[k] if k < len(vec) else 0.0)
+            qty = self._us.dof_quantity(lbl)
+            spin = _force_spin(self._us, vec[k] if k < len(vec) else 0.0,
+                               quantity=qty)
             self.vals.append(spin)
             host = QWidget()
             h = QHBoxLayout(host)
@@ -197,7 +203,7 @@ class LoadDialog(QDialog):
             h.setSpacing(style.SP_SM)
             h.addWidget(spin, 1)
             h.addWidget(ui.direction_glyph(lbl))
-            comps.add_row(lbl, host)
+            comps.add_row(f"{lbl}  [{spin.unit_label()}]", host)
 
         outer.addWidget(applied)
         outer.addWidget(comps)
@@ -206,7 +212,7 @@ class LoadDialog(QDialog):
 
     def data(self) -> Load:
         return Load(node=self.node.currentData(),
-                    values=tuple(s.value() for s in self.vals),
+                    values=tuple(s.si_value() for s in self.vals),
                     case=self.case.currentData())
 
     @classmethod
@@ -341,13 +347,13 @@ def _shape_props(shape: str):
         return None
 
 
-def _prop_spin(value: float, decimals: int, step: float) -> QDoubleSpinBox:
-    spin = QDoubleSpinBox()
-    spin.setRange(0.0, 1.0e3)
-    spin.setDecimals(decimals)
-    spin.setSingleStep(step)
-    spin.setValue(value)
-    return spin
+def _prop_spin(units: UnitSystem, quantity: Quantity, si: float, *,
+               decimals: int, step: float) -> UnitSpin:
+    """A section-property (area / second moment) spin (plan U6): displays in the
+    project's derived unit (m², mm⁴, in⁴, …), stores SI. Non-negative; the range
+    is generous so a small SI value is not clamped when shown in a large unit."""
+    return UnitSpin(quantity, units, si=si, decimals=decimals, step=step,
+                    rng=(0.0, 1.0e15))
 
 
 class SectionDialog(QDialog):
@@ -356,6 +362,7 @@ class SectionDialog(QDialog):
         self.setWindowTitle("Edit section" if section else "Add section")
         form = QFormLayout(self)
 
+        self._us = UnitSystem.from_project(project)
         self.id_spin = _id_spin(
             section.id if section else _next_id([s.id for s in project.sections]),
             editing=section is not None)
@@ -372,16 +379,24 @@ class SectionDialog(QDialog):
             _select(self.shape, section.shape.replace("X", "x"))
         form.addRow("AISC shape", self.shape)
 
-        self.A = _prop_spin(section.A if section else 6.0e-3, 6, 1.0e-4)
-        self.Iz = _prop_spin(section.Iz if section else 2.0e-4, 8, 1.0e-5)
-        form.addRow("A [m²]", self.A)
-        form.addRow("Iz [m⁴]", self.Iz)
+        self.A = _prop_spin(self._us, Quantity.AREA,
+                            section.A if section else 6.0e-3,
+                            decimals=6, step=1.0e-4)
+        self.Iz = _prop_spin(self._us, Quantity.INERTIA,
+                             section.Iz if section else 2.0e-4,
+                             decimals=8, step=1.0e-5)
+        form.addRow(labeled("A", self.A), self.A)
+        form.addRow(labeled("Iz", self.Iz), self.Iz)
         self.Iy = self.J = None
         if project.ndm == 3:
-            self.Iy = _prop_spin(section.Iy if section else 1.0e-4, 8, 1.0e-5)
-            self.J = _prop_spin(section.J if section else 1.0e-5, 9, 1.0e-6)
-            form.addRow("Iy [m⁴]", self.Iy)
-            form.addRow("J [m⁴]", self.J)
+            self.Iy = _prop_spin(self._us, Quantity.INERTIA,
+                                 section.Iy if section else 1.0e-4,
+                                 decimals=8, step=1.0e-5)
+            self.J = _prop_spin(self._us, Quantity.INERTIA,
+                                section.J if section else 1.0e-5,
+                                decimals=9, step=1.0e-6)
+            form.addRow(labeled("Iy", self.Iy), self.Iy)
+            form.addRow(labeled("J", self.J), self.J)
 
         self.shape.currentIndexChanged.connect(self._on_shape)
         self._on_shape()                     # set initial fill / enabled state
@@ -390,14 +405,14 @@ class SectionDialog(QDialog):
     def _on_shape(self) -> None:
         shape = self.shape.currentData()
         if shape:                            # catalog W-shape drives A/Iz/Iy/J
-            props = _shape_props(shape)
+            props = _shape_props(shape)      # catalog values are SI (m², m⁴)
             if props:
-                self.A.setValue(props[0])
-                self.Iz.setValue(props[1])
+                self.A.set_si(props[0])
+                self.Iz.set_si(props[1])
                 if self.Iy is not None:
-                    self.Iy.setValue(props[2])
+                    self.Iy.set_si(props[2])
                 if self.J is not None:
-                    self.J.setValue(props[3])
+                    self.J.set_si(props[3])
             for spin in (self.A, self.Iz, self.Iy, self.J):
                 if spin is not None:
                     spin.setEnabled(False)
@@ -413,9 +428,9 @@ class SectionDialog(QDialog):
         name = (self.name.text().strip() or shape
                 or f"Section {self.id_spin.value()}")
         return Section(id=self.id_spin.value(), name=name,
-                       A=self.A.value(), Iz=self.Iz.value(), shape=shape,
-                       Iy=self.Iy.value() if self.Iy is not None else 0.0,
-                       J=self.J.value() if self.J is not None else 0.0)
+                       A=self.A.si_value(), Iz=self.Iz.si_value(), shape=shape,
+                       Iy=self.Iy.si_value() if self.Iy is not None else 0.0,
+                       J=self.J.si_value() if self.J is not None else 0.0)
 
     @classmethod
     def edit(cls, parent, project, section=None):
@@ -519,6 +534,7 @@ class LoadGenDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Generate loads")
         self._project = project
+        self._us = UnitSystem.from_project(project)
         outer = QVBoxLayout(self)
         outer.setContentsMargins(style.SP_LG, style.SP_LG,
                                  style.SP_LG, style.SP_LG)
@@ -532,7 +548,7 @@ class LoadGenDialog(QDialog):
             self.kind.addItem("Lateral Y (storey forces)", "lateral_y")
         self.kind.currentIndexChanged.connect(self._relabel)
         card.add_row("Pattern", self.kind)
-        self.mag = _force_spin(50000.0)
+        self.mag = _force_spin(self._us, 50000.0)
         self.mag.valueChanged.connect(self._update_preview)
         self._label = QLabel()               # dynamic label (per-node / shear)
         card.body_layout().addRow(self._label, self.mag)
@@ -555,7 +571,7 @@ class LoadGenDialog(QDialog):
 
     def _update_preview(self, *_) -> None:
         import generators
-        kind, mag = self.kind.currentData(), self.mag.value()
+        kind, mag = self.kind.currentData(), self.mag.si_value()
         fu = self._project.force_unit
         try:
             if kind == "gravity":
@@ -576,7 +592,7 @@ class LoadGenDialog(QDialog):
         self._preview.setText(msg)
 
     def params(self):
-        return self.kind.currentData(), self.mag.value()
+        return self.kind.currentData(), self.mag.si_value()
 
     @classmethod
     def get(cls, parent, project):
@@ -590,19 +606,20 @@ class MoveDialog(QDialog):
     def __init__(self, parent, project):
         super().__init__(parent)
         self.setWindowTitle("Move selection")
+        self._us = UnitSystem.from_project(project)
         form = QFormLayout(self)
-        self.dx, self.dy = _coord_spin(0.0), _coord_spin(0.0)
-        form.addRow(f"dx [{project.length_unit}]", self.dx)
-        form.addRow(f"dy [{project.length_unit}]", self.dy)
+        self.dx, self.dy = _coord_spin(self._us), _coord_spin(self._us)
+        form.addRow(labeled("dx", self.dx), self.dx)
+        form.addRow(labeled("dy", self.dy), self.dy)
         self.dz = None
         if project.ndm == 3:
-            self.dz = _coord_spin(0.0)
-            form.addRow(f"dz [{project.length_unit}]", self.dz)
+            self.dz = _coord_spin(self._us)
+            form.addRow(labeled("dz", self.dz), self.dz)
         form.addRow(_buttons(self))
 
     def data(self):
-        return (self.dx.value(), self.dy.value(),
-                self.dz.value() if self.dz is not None else 0.0)
+        return (self.dx.si_value(), self.dy.si_value(),
+                self.dz.si_value() if self.dz is not None else 0.0)
 
     @classmethod
     def get(cls, parent, project):
@@ -616,21 +633,22 @@ class CopyDialog(QDialog):
     def __init__(self, parent, project, title="Copy / array selection"):
         super().__init__(parent)
         self.setWindowTitle(title)
+        self._us = UnitSystem.from_project(project)
         form = QFormLayout(self)
-        self.dx, self.dy = _coord_spin(0.0), _coord_spin(0.0)
-        form.addRow(f"dx [{project.length_unit}]", self.dx)
-        form.addRow(f"dy [{project.length_unit}]", self.dy)
+        self.dx, self.dy = _coord_spin(self._us), _coord_spin(self._us)
+        form.addRow(labeled("dx", self.dx), self.dx)
+        form.addRow(labeled("dy", self.dy), self.dy)
         self.dz = None
         if project.ndm == 3:
-            self.dz = _coord_spin(0.0)
-            form.addRow(f"dz [{project.length_unit}]", self.dz)
+            self.dz = _coord_spin(self._us)
+            form.addRow(labeled("dz", self.dz), self.dz)
         self.count = _int_spin(1, 1, 500)
         form.addRow("Copies", self.count)
         form.addRow(_buttons(self))
 
     def data(self):
-        return (self.dx.value(), self.dy.value(),
-                self.dz.value() if self.dz is not None else 0.0,
+        return (self.dx.si_value(), self.dy.si_value(),
+                self.dz.si_value() if self.dz is not None else 0.0,
                 self.count.value())
 
     @classmethod
@@ -645,17 +663,18 @@ class MirrorDialog(QDialog):
     def __init__(self, parent, project):
         super().__init__(parent)
         self.setWindowTitle("Mirror selection")
+        self._us = UnitSystem.from_project(project)
         form = QFormLayout(self)
         self.axis = QComboBox()
         for a in (["X", "Y"] if project.ndm == 2 else ["X", "Y", "Z"]):
             self.axis.addItem(f"{a} = constant plane", a)
         form.addRow("Mirror plane", self.axis)
-        self.coord = _coord_spin(0.0)
-        form.addRow(f"Plane coordinate [{project.length_unit}]", self.coord)
+        self.coord = _coord_spin(self._us)
+        form.addRow(labeled("Plane coordinate", self.coord), self.coord)
         form.addRow(_buttons(self))
 
     def data(self):
-        return (self.axis.currentData(), self.coord.value())
+        return (self.axis.currentData(), self.coord.si_value())
 
     @classmethod
     def get(cls, parent, project):
@@ -670,20 +689,21 @@ class RotateDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Rotate selection")
         self._three_d = project.ndm == 3
+        self._us = UnitSystem.from_project(project)
         form = QFormLayout(self)
         self.axis = QComboBox()
         if self._three_d:
             for a in ("Z", "X", "Y"):
                 self.axis.addItem(f"about {a} axis", a)
             form.addRow("Axis", self.axis)
-        self.cx = _coord_spin(0.0)
-        self.cy = _coord_spin(0.0)
-        form.addRow(f"Center x [{project.length_unit}]", self.cx)
-        form.addRow(f"Center y [{project.length_unit}]", self.cy)
+        self.cx = _coord_spin(self._us)
+        self.cy = _coord_spin(self._us)
+        form.addRow(labeled("Center x", self.cx), self.cx)
+        form.addRow(labeled("Center y", self.cy), self.cy)
         self.cz = None
         if self._three_d:
-            self.cz = _coord_spin(0.0)
-            form.addRow(f"Center z [{project.length_unit}]", self.cz)
+            self.cz = _coord_spin(self._us)
+            form.addRow(labeled("Center z", self.cz), self.cz)
         self.angle = QDoubleSpinBox()
         self.angle.setRange(-360.0, 360.0)
         self.angle.setDecimals(1)
@@ -693,8 +713,8 @@ class RotateDialog(QDialog):
 
     def data(self):
         axis = self.axis.currentData() if self._three_d else "Z"
-        center = (self.cx.value(), self.cy.value(),
-                  self.cz.value() if self.cz is not None else 0.0)
+        center = (self.cx.si_value(), self.cy.si_value(),
+                  self.cz.si_value() if self.cz is not None else 0.0)
         return (axis, center, self.angle.value())
 
     @classmethod

@@ -29,6 +29,8 @@ import analysis_ui as ui
 import nonlinear as NL
 import style
 from nl_results import NonlinearResults
+from unit_widgets import UnitSpin
+from units import Quantity, UnitSystem
 
 _DOFS_2D = [("Ux", 0), ("Uy", 1), ("Rz", 2)]
 _DOFS_3D = [("Ux", 0), ("Uy", 1), ("Uz", 2),
@@ -82,6 +84,7 @@ class PushoverDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Nonlinear pushover")
         self._project = project
+        self._us = UnitSystem.from_project(project)     # display units (U6)
         self._worker: PushoverWorker | None = None
         self._disp: list[float] = []
         self._shear: list[float] = []
@@ -102,7 +105,8 @@ class PushoverDialog(QDialog):
         dof_items = _dof_items(project.ndf)
         self.dof = self._combo(dof_items, default=1)
         self.dof.currentIndexChanged.connect(self._on_dof)
-        self.target = self._spin(0.05, unit=project.length_unit, decimals=4)
+        self.target = UnitSpin(Quantity.LENGTH, self._us, si=0.05, decimals=4,
+                               rng=(-1.0e6, 1.0e6))
         self.n_steps = QSpinBox()
         self.n_steps.setRange(2, 2000)
         self.n_steps.setValue(40)
@@ -115,8 +119,8 @@ class PushoverDialog(QDialog):
         self.max_iter.setValue(60)
         self.capture = QCheckBox("Record fiber response")
         self.capture.setChecked(True)
-        self.axial = self._spin(0.0, unit=project.force_unit, decimals=1,
-                                big=True)
+        self.axial = UnitSpin(Quantity.FORCE, self._us, si=0.0, decimals=1,
+                              rng=(-1.0e15, 1.0e15))
         self.axial_node = self._combo([(str(i), i) for i in node_ids],
                                       default=(free[-1] if free else None))
         self.axial_dof = self._combo(dof_items, default=0)
@@ -132,13 +136,13 @@ class PushoverDialog(QDialog):
         control.add_row("Case", self.case_combo)
         control.add_row("Control node", self.node)
         control.add_row("Push DOF", self.dof)
-        control.add_row(f"Target [{project.length_unit}]", self.target)
+        control.add_row(f"Target [{self.target.unit_label()}]", self.target)
         control.add_row("Steps", self.n_steps)
         self._dir_hint = ui.direction_glyph(self.dof.currentText())
         control.add_full_row(self._dir_hint)
 
         init = ui.GroupCard("Initial conditions")
-        init.add_row(f"Axial preload [{project.force_unit}]", self.axial)
+        init.add_row(f"Axial preload [{self.axial.unit_label()}]", self.axial)
         init.add_row("Axial node", self.axial_node)
         init.add_row("Axial DOF", self.axial_dof)
 
@@ -321,22 +325,22 @@ class PushoverDialog(QDialog):
             return
         self._set_combo(self.node, case.control_node)
         self._set_combo(self.dof, case.control_dof)
-        self.target.setValue(case.target)
+        self.target.set_si(case.target)                  # stored SI → display
         self.n_steps.setValue(case.n_steps)
         self._set_combo(self.tol, case.tol)
         self.max_iter.setValue(case.max_iter)
-        self.axial.setValue(case.axial)
+        self.axial.set_si(case.axial)
         if case.axial_node:
             self._set_combo(self.axial_node, case.axial_node)
         self._set_combo(self.axial_dof, case.axial_dof)
 
     # ------------------------------------------------ run lifecycle
     def _kwargs(self) -> dict:
-        axial = float(self.axial.value())
+        axial = float(self.axial.si_value())             # display → stored SI
         return dict(
             control_node=self.node.currentData(),
             control_dof=self.dof.currentData(),
-            target=float(self.target.value()),
+            target=float(self.target.si_value()),
             n_steps=int(self.n_steps.value()),
             axial=axial,
             axial_node=(self.axial_node.currentData() if axial else None),
@@ -433,15 +437,18 @@ class PushoverDialog(QDialog):
     def _draw_curve(self) -> None:
         self._ax.clear()
         cyclic = self._protocol == "cyclic"
+        us = self._us
         if self._disp:
-            self._ax.plot(self._disp, self._shear,
-                          "-" if cyclic else "-o",
+            # curves are stored SI (m, N) — plot them in the chosen display units
+            dx = [us.to_display(d, Quantity.LENGTH) for d in self._disp]
+            sy = [us.to_display(s, Quantity.FORCE) for s in self._shear]
+            self._ax.plot(dx, sy, "-" if cyclic else "-o",
                           ms=3, lw=1.2 if cyclic else 1.6)
             if cyclic:                              # origin cross-hairs for loops
                 self._ax.axhline(0, color="0.6", lw=0.6)
                 self._ax.axvline(0, color="0.6", lw=0.6)
-        self._ax.set_xlabel(f"displacement [{self._project.length_unit}]")
-        self._ax.set_ylabel(f"base shear [{self._project.force_unit}]")
+        self._ax.set_xlabel(f"displacement [{us.label(Quantity.LENGTH)}]")
+        self._ax.set_ylabel(f"base shear [{us.label(Quantity.FORCE)}]")
         self._ax.set_title("Cyclic hysteresis" if cyclic else "Pushover",
                            fontsize=9)
         self._ax.grid(True, alpha=0.25)
@@ -462,8 +469,9 @@ class PushoverDialog(QDialog):
         n_steps = self._results.n_steps
         step = max(0, min(self.step_slider.value(), n_steps - 1))
         frame = self._results.step(step).fibers
-        y = np.array([t[0] for t in frame])
-        z = np.array([t[1] for t in frame])
+        fl = self._us.factor(Quantity.LENGTH)          # SI → display length
+        y = np.array([t[0] for t in frame]) / fl
+        z = np.array([t[1] for t in frame]) / fl
         if self.fiber_mode.currentText() == "strain":
             val = np.array([t[3] for t in frame])
             label = "fiber strain"
@@ -475,11 +483,12 @@ class PushoverDialog(QDialog):
                         vmin=-vmax, vmax=vmax)
         self._ffig.colorbar(sc, ax=ax, label=label)
         ax.set_aspect("equal", "box")
-        ax.set_xlabel(f"z [{self._project.length_unit}]")
-        ax.set_ylabel(f"y [{self._project.length_unit}]")
+        ax.set_xlabel(f"z [{self._us.label(Quantity.LENGTH)}]")
+        ax.set_ylabel(f"y [{self._us.label(Quantity.LENGTH)}]")
         d = self._disp[step] if step < len(self._disp) else 0.0
         ax.set_title(f"Fiber stress · step {step + 1}/{n_steps} "
-                     f"(d = {d:.4g})", fontsize=9)
+                     f"(d = {self._us.to_display(d, Quantity.LENGTH):.4g})",
+                     fontsize=9)
         self.step_lbl.setText(f"step {step + 1}/{n_steps}")
         self._fcanvas.draw_idle()
 
@@ -513,10 +522,12 @@ class PushoverDialog(QDialog):
         cmap = colormaps["YlOrRd"]
         norm = Normalize(0.0, vmax)
 
+        fl = self._us.factor(Quantity.LENGTH)         # SI → display length
         def _d(nid):
             d = frame.get(nid) or (0.0, 0.0)          # 2-D (dx,dy) or 3-D (…,dz)
             dx, dy = d[0], d[1]                        # x-y projection
-            return nodes[nid][0] + dx * scale, nodes[nid][1] + dy * scale
+            return ((nodes[nid][0] + dx * scale) / fl,
+                    (nodes[nid][1] + dy * scale) / fl)
 
         for mb in self._project.members:
             (dx1, dy1), (dx2, dy2) = _d(mb.n1), _d(mb.n2)
@@ -531,8 +542,8 @@ class PushoverDialog(QDialog):
             sm.set_array([])
             self._sfig.colorbar(sm, ax=ax, label="peak fiber strain")
         ax.set_aspect("equal", "datalim")
-        ax.set_xlabel(f"x [{self._project.length_unit}]")
-        ax.set_ylabel(f"y [{self._project.length_unit}]")
+        ax.set_xlabel(f"x [{self._us.label(Quantity.LENGTH)}]")
+        ax.set_ylabel(f"y [{self._us.label(Quantity.LENGTH)}]")
         ax.set_title(f"Deformed shape · step {step + 1}/{n_steps} "
                      f"(×{scale:.0f})", fontsize=9)
         self._scanvas.draw_idle()
@@ -568,9 +579,11 @@ class PushoverDialog(QDialog):
             meta["Case"] = f"{case.id}: {case.name}"
             meta["Control"] = (f"node {case.control_node} "
                                f"{dofs.get(case.control_dof, '?')}")
-            meta["Target"] = f"{case.target:g} {lu}"
+            meta["Target"] = \
+                f"{self._us.to_display(case.target, Quantity.LENGTH):g} {lu}"
             if case.axial:
-                meta["Axial preload"] = f"{case.axial:g} {fu}"
+                meta["Axial preload"] = \
+                    f"{self._us.to_display(case.axial, Quantity.FORCE):g} {fu}"
             if case.continue_from:
                 meta["Continues from"] = f"case {case.continue_from}"
         else:

@@ -46,20 +46,69 @@ conversion factor. All widgets format via one `fmt()` and parse via one
   stress, moment, dist_load, area, inertia, mass, density, disp, rotation),
   a `UnitSystem(force, length)` with `to_si` / `to_display` / `factor` /
   `label(qty)`, SI-family catalogs, pure + fully unit-tested. No GUI.
-- [ ] **U2 — Display pass** route the status bar, output-log diagram lines and
-  results labels through `UnitSystem.fmt(value, qty)` (display converts;
-  inputs still SI). Read-only, low risk.
-- [ ] **U3 — Input pass** dialogs parse display→SI on commit and SI→display on
-  load (`editing.py`, `member_load_dialog.py`, `pushover_dialog.py`, …). A
-  shared `unit_spin(qty, unitsys)` helper replaces ad-hoc `_spin(unit=…)`.
-- [ ] **U4 — Preferences + live switch** a Units dialog (Force + Length combos,
-  live preview) and a **clickable** status-bar unit chip that opens it;
-  persist per-project (`project.py`) and as app default (`QSettings`); on
-  change, re-render every open view. This is the moment it becomes "dynamic".
-- [ ] **U5 — Imperial + full catalog** kip/lbf/kgf/tonf, in/ft, ksi/psi/MPa,
-  with correct cross-family factors.
-- [ ] **U6 — Polish sweep** results dialogs, CSV/HTML exports (`nl_report.py`),
-  matplotlib axis labels, section designer, coord readout, nav cube.
+- [x] **U2 — Display pass** ✅ 2026-09-14. `MainWindow._units()` →
+  `UnitSystem.from_project`; status-bar chip (`pair_label`), cursor-coord
+  readout (converts LENGTH), and diagram-max log/status line (converts
+  FORCE/MOMENT) now format through it. `tests/test_desktop_statusbar.py`
+  gains a non-SI (kN·mm) conversion test. Moving-load *results dialog* + its
+  numeric plots deferred to U6 (whole-widget, kept mutually consistent).
+  Display converts; inputs still SI.
+- [x] **U3 — Input pass** ✅ 2026-09-14. New `desktop/unit_widgets.py`
+  `UnitSpin` (shows display units, stores SI via `set_si`/`si_value`) +
+  `labeled()`; `UnitSystem.dof_quantity()` splits a load vector's rotational
+  DOFs (moments, F·L) from translational (forces). Converted the model-building
+  dialogs in `editing.py` (Node, Load, LoadGen, Move, Copy, Mirror, Rotate),
+  `member_load_dialog.py` (line loads, F/L), and the live **`properties.py`**
+  inspector (node + load forms — the right-hand panel; it imports
+  `editing._coord_spin`/`_force_spin`, so the signature change *required*
+  updating it — regression caught by `test_desktop_nav.py`).
+  `tests/test_desktop_units_input.py` (9) proves conversion under a non-SI
+  (kN·mm) project, incl. the Properties panel end-to-end — existing dialog
+  tests stay green because default N/m is the identity. **Deferred to U6:**
+  `SectionDialog` A/Iz/Iy/J (area/inertia, tied to AISC catalog auto-fill),
+  the generator dialogs (`FrameDialog`/grid — take no `project`, need a
+  signature change), and `pushover_dialog`/`hinge_editor` (carry their own
+  persist + meta-display).
+- [x] **U4 — Preferences + live switch** ✅ 2026-09-14. `desktop/units_dialog.py`
+  `UnitsDialog` (Force × Length combos + live "everything else follows" preview
+  of derived labels). Status-bar chip is now a `_ClickableLabel` →
+  `MainWindow.change_units`: opens the dialog, applies via `_apply_edit` (so
+  it's **undoable + marks the model dirty**), persists to `QSettings`
+  (`units/force`, `units/length`) as the **app default**, and re-renders the
+  status readouts + live Properties inspector. `load_project` adopts the app
+  default for new/generated/demo models (`path is None`) while opened files
+  keep their saved units. Fixed the default-mismatch bug: `from_dict` now
+  defaults `"N"` (was `"kN"`) to match the dataclass + SI-base baseline.
+  `tests/test_desktop_units_dialog.py` (7). Full desktop suite green.
+  (`UnitSystem()`'s standalone fallback stays kN·m; the *app* baseline is N·m.)
+- [x] **U5 — Imperial + full catalog** ✅ 2026-09-14. Added `kip`
+  (4448.2216152605 N) + `lbf` (exact international pound-force) to `FORCE_UNITS`
+  and `in` (0.0254 m) + `ft` (0.3048 m) to `LENGTH_UNITS`. Stress/moment stay
+  **compositional** (kip·ft, kip/in² — the latter *is* ksi, `lbf/in²` = psi),
+  keeping the derive-from-the-pair design rather than special-casing friendly
+  names. Combos + preview pick them up for free. Tests in
+  `test_desktop_units.py` (cross-family factors) + `test_desktop_units_input.py`
+  (imperial dialog round-trips: 10 ft→3.048 m, 2 kip→8896 N, kip·in moment).
+  Full desktop suite green. Friendly stress aliases (ksi/psi/MPa/kPa) noted as
+  possible future polish.
+- [x] **U6 — Polish sweep (live GUI + pushover export)** ✅ 2026-09-14.
+  Converted: `SectionDialog` + `properties._section_form` A/Iz/Iy/J
+  (AREA/INERTIA; AISC catalog auto-fill uses `set_si` so SI catalog values seed
+  correctly); `pushover_dialog` target/axial inputs + `_report_meta` scalars +
+  all three matplotlib plots (curve, fiber geometry, deformed shape — data +
+  axes; fiber *stress* deliberately stays MPa); `nl_report.py` `curve_csv` /
+  `fibers_csv` geometry / `report_html` metrics (peak shear, disps, stiffness
+  F/L, energy F·L, ASCE milestones) — so a report reads consistently with the
+  converted plots. Tests: `test_desktop_units_input.py` (+section),
+  `test_desktop_nlreport_units.py` (4). Identity under default m/N keeps all
+  prior tests green.
+- [ ] **U6b — remainder** (deferred, each a clean separate change):
+  generator dialogs (`FrameDialog`/grid — take no `project`; plumbing units
+  needs a `main_window` signature change, still entangled with bridge WIP);
+  `hinge_editor` lengths (**must convert only in *absolute* mode** — relative
+  values are dimensionless ratios, so a fixed-quantity spin would mis-convert);
+  moving-load results dialog + plots (part of the user's uncommitted bridge
+  WIP — do not entangle); optional friendly stress aliases (ksi/psi/MPa/kPa).
 
 ## Notes
 

@@ -17,6 +17,8 @@ from PySide6.QtWidgets import (QComboBox, QDialog, QDoubleSpinBox, QHBoxLayout,
 import analysis_ui as ui
 import style
 from project import MemberLoad
+from unit_widgets import UnitSpin
+from units import Quantity, UnitSystem
 
 
 def _combo(entries) -> QComboBox:
@@ -32,13 +34,11 @@ def _select(combo: QComboBox, value) -> None:
         combo.setCurrentIndex(i)
 
 
-def _udl_spin(value: float = 0.0) -> QDoubleSpinBox:
-    s = QDoubleSpinBox()
-    s.setRange(-1.0e12, 1.0e12)
-    s.setDecimals(3)
-    s.setSingleStep(1000.0)
-    s.setValue(value)
-    return s
+def _udl_spin(units: UnitSystem, si: float = 0.0) -> UnitSpin:
+    """A distributed-load (force/length) spin (plan U3): displays in the
+    project's force/length unit, stores SI N/m."""
+    return UnitSpin(Quantity.DIST_LOAD, units, si=si, decimals=3, step=1000.0,
+                    rng=(-1.0e12, 1.0e12))
 
 
 def _with_hint(spin: QDoubleSpinBox, hint: str) -> QWidget:
@@ -60,7 +60,8 @@ class MemberLoadDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Edit line load" if mload else "Add line load")
         self._three_d = project.ndm == 3
-        unit = f"{project.force_unit}/{project.length_unit}"
+        self._us = UnitSystem.from_project(project)
+        unit = self._us.label(Quantity.DIST_LOAD)
         outer = QVBoxLayout(self)
         outer.setContentsMargins(style.SP_LG, style.SP_LG,
                                  style.SP_LG, style.SP_LG)
@@ -79,12 +80,12 @@ class MemberLoadDialog(QDialog):
         applied.add_row("Load case", self.case)
 
         loads = ui.GroupCard(f"Uniform line load  [{unit}]")
-        self.wy = _udl_spin(mload.wy if mload else 0.0)
+        self.wy = _udl_spin(self._us, mload.wy if mload else 0.0)
         loads.add_row("w_y  (local y)",
                       _with_hint(self.wy, "+ along local +y"))
         self.wz = None
         if self._three_d:
-            self.wz = _udl_spin(mload.wz if mload else 0.0)
+            self.wz = _udl_spin(self._us, mload.wz if mload else 0.0)
             loads.add_row("w_z  (local z)",
                           _with_hint(self.wz, "+ along local +z"))
         note = QLabel("Uniform load in the member's local axes, per unit length.")
@@ -99,8 +100,8 @@ class MemberLoadDialog(QDialog):
 
     def data(self) -> MemberLoad:
         return MemberLoad(member=self.member.currentData(),
-                          wy=float(self.wy.value()),
-                          wz=float(self.wz.value()) if self.wz is not None
+                          wy=float(self.wy.si_value()),
+                          wz=float(self.wz.si_value()) if self.wz is not None
                           else 0.0,
                           case=self.case.currentData())
 

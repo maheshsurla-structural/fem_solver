@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QFormLayout, QHBoxLayout,
 from editing import (_coord_spin, _designations, _force_spin, _prop_spin,
                      _shape_props, dof_labels)
 from project import Load, Member, Node, Section
+from units import Quantity, UnitSystem
 
 
 class PropertiesPanel(QWidget):
@@ -128,14 +129,15 @@ class PropertiesPanel(QWidget):
     # ------------------------------------------------------------------ forms
     def _node_form(self, key, node):
         p = self._project
+        us = UnitSystem.from_project(p)
         w, form = self._frame(f"Node {node.id}")
-        x, y = _coord_spin(node.x), _coord_spin(node.y)
-        form.addRow(f"x [{p.length_unit}]", x)
-        form.addRow(f"y [{p.length_unit}]", y)
+        x, y = _coord_spin(us, node.x), _coord_spin(us, node.y)
+        form.addRow(f"x [{x.unit_label()}]", x)
+        form.addRow(f"y [{y.unit_label()}]", y)
         z = None
         if p.ndm == 3:
-            z = _coord_spin(node.z)
-            form.addRow(f"z [{p.length_unit}]", z)
+            z = _coord_spin(us, node.z)
+            form.addRow(f"z [{z.unit_label()}]", z)
         boxes, row = [], QWidget()
         hl = QHBoxLayout(row)
         hl.setContentsMargins(0, 0, 0, 0)
@@ -150,8 +152,8 @@ class PropertiesPanel(QWidget):
         def commit():
             supports = tuple(1 if b.isChecked() else 0 for b in boxes)
             self._on_apply("node", key, Node(
-                id=node.id, x=x.value(), y=y.value(),
-                z=z.value() if z is not None else node.z,
+                id=node.id, x=x.si_value(), y=y.si_value(),
+                z=z.si_value() if z is not None else node.z,
                 supports=supports if any(supports) else ()))
         self._apply_button(form, commit)
         return w
@@ -180,6 +182,7 @@ class PropertiesPanel(QWidget):
 
     def _section_form(self, key, section):
         p = self._project
+        us = UnitSystem.from_project(p)
         w, form = self._frame(f"Section {section.id}")
         name = QLineEdit(section.name)
         form.addRow("Name", name)
@@ -190,28 +193,30 @@ class PropertiesPanel(QWidget):
         if section.shape:
             _sel(shape, section.shape.replace("X", "x"))
         form.addRow("AISC shape", shape)
-        A = _prop_spin(section.A, 6, 1.0e-4)
-        Iz = _prop_spin(section.Iz, 8, 1.0e-5)
-        form.addRow("A [m²]", A)
-        form.addRow("Iz [m⁴]", Iz)
+        A = _prop_spin(us, Quantity.AREA, section.A, decimals=6, step=1.0e-4)
+        Iz = _prop_spin(us, Quantity.INERTIA, section.Iz, decimals=8, step=1.0e-5)
+        form.addRow(f"A [{A.unit_label()}]", A)
+        form.addRow(f"Iz [{Iz.unit_label()}]", Iz)
         Iy = Jt = None
         if p.ndm == 3:
-            Iy = _prop_spin(section.Iy or 1.0e-4, 8, 1.0e-5)
-            Jt = _prop_spin(section.J or 1.0e-5, 9, 1.0e-6)
-            form.addRow("Iy [m⁴]", Iy)
-            form.addRow("J [m⁴]", Jt)
+            Iy = _prop_spin(us, Quantity.INERTIA, section.Iy or 1.0e-4,
+                            decimals=8, step=1.0e-5)
+            Jt = _prop_spin(us, Quantity.INERTIA, section.J or 1.0e-5,
+                            decimals=9, step=1.0e-6)
+            form.addRow(f"Iy [{Iy.unit_label()}]", Iy)
+            form.addRow(f"J [{Jt.unit_label()}]", Jt)
 
         def on_shape():
             s = shape.currentData()
             if s:
-                props = _shape_props(s)
+                props = _shape_props(s)          # catalog values are SI
                 if props:
-                    A.setValue(props[0])
-                    Iz.setValue(props[1])
+                    A.set_si(props[0])
+                    Iz.set_si(props[1])
                     if Iy is not None:
-                        Iy.setValue(props[2])
+                        Iy.set_si(props[2])
                     if Jt is not None:
-                        Jt.setValue(props[3])
+                        Jt.set_si(props[3])
             for sp in (A, Iz, Iy, Jt):
                 if sp is not None:
                     sp.setEnabled(not s)
@@ -222,26 +227,30 @@ class PropertiesPanel(QWidget):
             s = shape.currentData() or ""
             self._on_apply("section", key, Section(
                 id=section.id, name=name.text().strip() or s or section.name,
-                A=A.value(), Iz=Iz.value(), shape=s,
-                Iy=Iy.value() if Iy is not None else section.Iy,
-                J=Jt.value() if Jt is not None else section.J))
+                A=A.si_value(), Iz=Iz.si_value(), shape=s,
+                Iy=Iy.si_value() if Iy is not None else section.Iy,
+                J=Jt.si_value() if Jt is not None else section.J))
         self._apply_button(form, commit)
         return w
 
     def _load_form(self, key, load):
         p = self._project
+        us = UnitSystem.from_project(p)
         w, form = self._frame(f"Load on node {load.node}")
         node = _id_combo([n.id for n in p.nodes], load.node)
         form.addRow("Node", node)
         vals, vec = [], tuple(load.values)
         for k, lbl in enumerate(dof_labels(p.ndm, p.ndf)):
-            spin = _force_spin(vec[k] if k < len(vec) else 0.0)
+            # translational DOFs are forces, rotational ones moments (F·L)
+            spin = _force_spin(us, vec[k] if k < len(vec) else 0.0,
+                               quantity=us.dof_quantity(lbl))
             vals.append(spin)
-            form.addRow(f"{lbl} [{p.force_unit}]", spin)
+            form.addRow(f"{lbl} [{spin.unit_label()}]", spin)
 
         def commit():
             self._on_apply("load", key, Load(
-                node=node.currentData(), values=tuple(s.value() for s in vals)))
+                node=node.currentData(),
+                values=tuple(s.si_value() for s in vals)))
         self._apply_button(form, commit)
         return w
 

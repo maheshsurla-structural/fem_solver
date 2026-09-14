@@ -80,6 +80,47 @@ def test_kgf_and_tonf_factors():
     assert u.to_si(1.0, Quantity.FORCE) == pytest.approx(9806.65)
 
 
+def test_imperial_force_factors():
+    # 1 kip = 1000 lbf; lbf uses the exact international pound-force
+    assert FORCE_UNITS["lbf"] == pytest.approx(4.4482216152605)
+    assert FORCE_UNITS["kip"] == pytest.approx(1000.0 * FORCE_UNITS["lbf"])
+    assert UnitSystem("kip", "ft").to_si(1.0, Quantity.FORCE) == \
+        pytest.approx(4448.2216152605)
+
+
+def test_imperial_length_factors():
+    assert LENGTH_UNITS["in"] == pytest.approx(0.0254)
+    assert LENGTH_UNITS["ft"] == pytest.approx(0.3048)
+    # 12 in == 1 ft
+    assert 12 * LENGTH_UNITS["in"] == pytest.approx(LENGTH_UNITS["ft"])
+    u = UnitSystem("kip", "ft")
+    assert u.to_display(3.048, Quantity.LENGTH) == pytest.approx(10.0)  # 3.048 m
+
+
+def test_kip_ft_moment_roundtrip():
+    u = UnitSystem("kip", "ft")
+    # 1 kip·ft = 4448.2216152605 * 0.3048 N·m
+    si = 4448.2216152605 * 0.3048
+    assert u.factor(Quantity.MOMENT) == pytest.approx(si)
+    assert u.to_display(si, Quantity.MOMENT) == pytest.approx(1.0)
+
+
+def test_ksi_and_psi_are_compositional():
+    # kip/in² == "ksi" (composed, not a special name); 1 ksi = 6.894757e6 Pa
+    u = UnitSystem("kip", "in")
+    assert u.label(Quantity.STRESS) == "kip/in²"
+    assert u.factor(Quantity.STRESS) == pytest.approx(6.894757293168e6, rel=1e-9)
+    # psi = lbf/in²
+    p = UnitSystem("lbf", "in")
+    assert p.label(Quantity.STRESS) == "lbf/in²"
+    assert p.factor(Quantity.STRESS) == pytest.approx(6894.757293168, rel=1e-9)
+
+
+def test_inch_fourth_inertia():
+    u = UnitSystem("kip", "in")
+    assert u.factor(Quantity.INERTIA) == pytest.approx(0.0254 ** 4)
+
+
 def test_rotation_is_unit_invariant():
     for f in FORCE_UNITS:
         for l in LENGTH_UNITS:

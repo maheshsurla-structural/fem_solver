@@ -22,6 +22,16 @@ import html as _html
 
 import numpy as np
 
+from units import FORCE_UNITS, LENGTH_UNITS, Quantity, UnitSystem
+
+
+def _report_units(force_unit: str, length_unit: str) -> UnitSystem:
+    """A display :class:`UnitSystem` from the report's unit labels, tolerating
+    unknown/legacy values (plan U6) so values convert to match their labels."""
+    f = force_unit if force_unit in FORCE_UNITS else "N"
+    l = length_unit if length_unit in LENGTH_UNITS else "m"
+    return UnitSystem(f, l)
+
 # strain past which a fiber section is taken as inelastic (rebar yield ε_y ≈
 # f_y/E ≈ 0.0025 for 500 MPa; a coarse "has this hinge yielded?" flag only).
 YIELD_STRAIN = 2.0e-3
@@ -30,19 +40,22 @@ YIELD_STRAIN = 2.0e-3
 def curve_csv(disp, shear, *, length_unit="m", force_unit="N") -> str:
     """CSV text of the base-shear vs displacement curve (signed, so a cyclic
     run round-trips the hysteresis)."""
+    us = _report_units(force_unit, length_unit)
+    fl, ff = us.factor(Quantity.LENGTH), us.factor(Quantity.FORCE)
     out = [f"step,displacement [{length_unit}],base_shear [{force_unit}]"]
     for i, (d, s) in enumerate(zip(disp, shear)):
-        out.append(f"{i + 1},{float(d):.10g},{float(s):.10g}")
+        out.append(f"{i + 1},{float(d) / fl:.10g},{float(s) / ff:.10g}")
     return "\n".join(out) + "\n"
 
 
 def fibers_csv(frame, *, length_unit="m") -> str:
     """CSV text of one captured step's fiber state — ``frame`` is a list of
     ``(y, z, stress, strain)`` tuples (as recorded by the capture)."""
+    fl = _report_units("N", length_unit).factor(Quantity.LENGTH)
     out = [f"y [{length_unit}],z [{length_unit}],stress [Pa],strain"]
     for y, z, sig, eps in frame:
-        out.append(f"{float(y):.10g},{float(z):.10g},"
-                   f"{float(sig):.10g},{float(eps):.10g}")
+        out.append(f"{float(y) / fl:.10g},{float(z) / fl:.10g},"
+                   f"{float(sig):.10g},{float(eps):.10g}")   # stress stays Pa
     return "\n".join(out) + "\n"
 
 
@@ -106,6 +119,12 @@ def report_html(result, meta: dict, *, length_unit="m", force_unit="N",
     curve image."""
     s = run_summary(result)
     esc = _html.escape
+    us = _report_units(force_unit, length_unit)
+    to_len = lambda x: us.to_display(x, Quantity.LENGTH)     # noqa: E731
+    to_force = lambda x: us.to_display(x, Quantity.FORCE)    # noqa: E731
+    to_energy = lambda x: us.to_display(x, Quantity.MOMENT)  # F·L  # noqa: E731
+    # stiffness is F/L — no single Quantity, so compose the two factors
+    k_factor = us.factor(Quantity.FORCE) / us.factor(Quantity.LENGTH)
 
     def _table(pairs) -> str:
         rows = "".join(
@@ -118,18 +137,18 @@ def report_html(result, meta: dict, *, length_unit="m", force_unit="N",
     metric_rows = [("Protocol", s["protocol"]), ("Steps", s["steps"])]
     if "peak_shear" in s:
         metric_rows += [
-            ("Peak base shear", f"{_fmt(s['peak_shear'])} {force_unit}"),
+            ("Peak base shear", f"{_fmt(to_force(s['peak_shear']))} {force_unit}"),
             ("Displacement at peak",
-             f"{_fmt(s['disp_at_peak_shear'])} {length_unit}"),
+             f"{_fmt(to_len(s['disp_at_peak_shear']))} {length_unit}"),
             ("Max |displacement|",
-             f"{_fmt(s['max_abs_disp'])} {length_unit}")]
+             f"{_fmt(to_len(s['max_abs_disp']))} {length_unit}")]
     if "initial_stiffness" in s:
         metric_rows.append(("Initial stiffness",
-                            f"{_fmt(s['initial_stiffness'])} "
+                            f"{_fmt(s['initial_stiffness'] / k_factor)} "
                             f"{force_unit}/{length_unit}"))
     if "dissipated_energy" in s:
         metric_rows.append(("Dissipated energy",
-                            f"{_fmt(s['dissipated_energy'])} "
+                            f"{_fmt(to_energy(s['dissipated_energy']))} "
                             f"{force_unit}·{length_unit}"))
     if "peak_fiber_strain" in s:
         metric_rows.append(("Peak fiber strain", _fmt(s["peak_fiber_strain"])))
@@ -161,7 +180,7 @@ def report_html(result, meta: dict, *, length_unit="m", force_unit="N",
     if ms:
         rows = "".join(
             f"<tr><td>{lvl}</td>"
-            f"<td>{_fmt(ms[lvl]['disp'])} {length_unit}</td>"
+            f"<td>{_fmt(to_len(ms[lvl]['disp']))} {length_unit}</td>"
             f"<td>{ms[lvl]['step']}</td></tr>"
             for lvl in ("IO", "LS", "CP") if lvl in ms)
         accept_html = (
