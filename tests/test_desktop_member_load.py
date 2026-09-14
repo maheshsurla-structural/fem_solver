@@ -27,6 +27,22 @@ def qapp():
     yield QApplication.instance() or QApplication([])
 
 
+@pytest.fixture(autouse=True)
+def _isolate_settings(qapp, tmp_path, monkeypatch):
+    """Point the window's QSettings at a throwaway ini so persisted nav flags
+    (summary / expanded) can't leak in from the real store. Without this the
+    tree can come up in summary mode (counts only), where individual leaf refs
+    like ("member_load", 0) intentionally don't exist. Mirrors the fixture in
+    test_desktop_nav.py."""
+    import main_window
+    from PySide6.QtCore import QSettings
+    ini = str(tmp_path / "settings.ini")
+    monkeypatch.setattr(
+        main_window, "QSettings",
+        lambda *a, **k: QSettings(ini, QSettings.Format.IniFormat))
+    yield
+
+
 def _project(ndm=2, ndf=3):
     p = Project(ndm=ndm, ndf=ndf)
     p.nodes = [Node(1, 0, 0, supports=(1, 1, 1)), Node(2, 4, 0)]
