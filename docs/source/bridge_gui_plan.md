@@ -69,9 +69,18 @@ runs; the first increments keep config transient (like Modal/RS/Buckling).
   (Rayleigh damping from modes 1&3; `MovingForceAnalysis` / `VBIAnalysis`).
   Analysis-cases "Vehicle Dynamics" row live. 2-D, mass from density.
   `tests/test_desktop_vehicle_dynamics.py` (6).
-- [ ] **G6 — Cable-stayed tuning (ULF)** — cable + target-condition editor →
-  `unknown_load_factors` → tuned tensions + before/after deck profile. Needs
-  truss/cable members + target editor in the GUI.
+- [x] **G6 — Cable-stayed tuning (ULF)** ✅ DONE 2026-09-14.
+  `cable_tuning_dialog.py` (stay-member multi-select + target-node multi-select),
+  `cable_tuning_results_dialog.py` (tuned-tension table + before/after deck
+  profile), `MainWindow.run_cable_tuning` (`Cable` from designated members,
+  `Displacement` targets = 0, `unknown_load_factors`, `apply_cable_tensions`
+  for the after-profile; renders tuned deflected shape). 2-D; dead load required.
+  Stays are designated among existing members (a pin-ended cable/truss member
+  type is a future refinement). Analysis-cases "Cable Tuning" row live.
+  `tests/test_desktop_cable_tuning.py` (4).
+
+**GUI plan COMPLETE (G1–G6, 2026-09-14).** Analysis-cases home has 11 live
+rows — every analysis is reachable from the desktop.
 
 ## Notes
 - Every GUI change is flagged to the user (their standing request).

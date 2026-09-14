@@ -1407,6 +1407,98 @@ class MainWindow(QMainWindow):
             f"{units} ({env.get('max_num_lanes', 0)} lane(s))")
         return {"surface": IS, "envelope": env, "lanes": len(lanes)}
 
+    def run_cable_tuning(self, config=None):
+        """Cable-stayed tuning — unknown-load-factor (Analysis-cases ▸ Cable
+        Tuning).
+
+        Solves the stay pretensions so the target deck nodes reach zero
+        vertical deflection under dead load
+        (:func:`femsolver.bridges.unknown_load_factors`), then shows the tuned
+        tensions and the before/after deck profile. ``config`` bypasses the
+        setup dialog (tests). 2-D only; needs dead load defined; stays are
+        designated among the model's members.
+        """
+        import numpy as np
+
+        from femsolver import LinearStaticAnalysis
+        from femsolver.bridges import (Cable, Displacement,
+                                       apply_cable_tensions,
+                                       unknown_load_factors)
+
+        p = self._project
+        if p is None or not p.members:
+            self.statusBar().showMessage("Add members first.")
+            return None
+        if p.ndm != 2:
+            QMessageBox.information(self, "Cable tuning",
+                                   "Cable tuning is currently 2-D only.")
+            return None
+        if not p.loads and not p.member_loads:
+            QMessageBox.information(
+                self, "Cable tuning",
+                "Define the dead load first — the stays are tuned to cancel "
+                "its deck deflection.")
+            return None
+
+        if config is None:
+            from cable_tuning_dialog import CableTuningDialog
+            config = CableTuningDialog.configure(self, p)
+            if config is None:
+                return None
+        cab_ids = config["cables"]
+        tgt_ids = config["targets"]
+        if not cab_ids or not tgt_ids:
+            QMessageBox.information(self, "Cable tuning",
+                                   "Select at least one stay and one target "
+                                   "node.")
+            return None
+
+        by_id = {mb.id: mb for mb in p.members}
+        cables = [Cable(by_id[i].n1, by_id[i].n2, name=f"member {i}")
+                  for i in cab_ids if i in by_id]
+        targets = [(Displacement(node_tag=n, dof=1), 0.0) for n in tgt_ids]
+
+        model = p.build_model(with_loads=True)             # includes dead load
+        try:
+            res = unknown_load_factors(model, cables, targets)
+        except Exception as exc:                           # noqa: BLE001
+            QMessageBox.warning(self, "Cable tuning",
+                                f"The tuning solve failed:\n\n{exc}")
+            return None
+
+        def _profile(with_tensions):
+            m = p.build_model(with_loads=True)
+            if with_tensions:
+                apply_cable_tensions(m, cables, res.tensions)
+            LinearStaticAnalysis(m).run()
+            order = sorted(m.nodes.values(),
+                           key=lambda nd: nd.coords[0])
+            xs = [float(nd.coords[0]) for nd in order]
+            uy = [float(nd.disp[1]) for nd in order]
+            return xs, uy, m
+
+        xs, before, _ = _profile(False)
+        _, after, m_after = _profile(True)
+        # show the tuned (after) deflected shape on the view
+        dmax = mg.max_translation(m_after)
+        span = mg.model_span(m_after)
+        scale = (0.08 * span / dmax) if dmax > 0 else 1.0
+        self.view.show_deformed(m_after, scale)
+
+        from cable_tuning_results_dialog import CableTuningResultsDialog
+        self._cable_tuning_results_dlg = CableTuningResultsDialog.show_results(
+            self, [c.name for c in cables], res.tensions, xs, before, after,
+            max_residual=float(np.max(np.abs(res.residual))) if len(
+                res.residual) else 0.0)
+        self.log.appendPlainText(
+            f"Cable tuning solved: {len(cables)} stay(s), tensions "
+            + ", ".join(f"{t / 1e3:.0f}" for t in res.tensions)
+            + f" kN; target residual {np.max(np.abs(res.residual)) * 1e3:.3g} mm")
+        self.statusBar().showMessage(
+            f"Cable tuning · {len(cables)} stay(s) · "
+            f"max tension {max(abs(t) for t in res.tensions) / 1e3:.0f} kN")
+        return {"tensions": res.tensions, "residual": res.residual}
+
     def run_pushover_dialog(self, preselect_case=None) -> None:
         from pushover_dialog import PushoverDialog
         p = self._project
@@ -2062,6 +2154,8 @@ class MainWindow(QMainWindow):
             self.run_vehicle_dynamics()
         elif kind == "influencesurface":
             self.run_influence_surface()
+        elif kind == "cabletuning":
+            self.run_cable_tuning()
 
     def _on_double_click(self, item, _col) -> None:
         ref = item.data(0, Qt.ItemDataRole.UserRole)
