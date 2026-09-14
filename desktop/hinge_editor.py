@@ -31,6 +31,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox, QDialog,
 import style
 from analysis_ui import GroupCard, dialog_buttons
 from project import Hinge
+from units import Quantity, UnitSystem
 
 
 def _next_id(ids) -> int:
@@ -41,15 +42,18 @@ def _has_fiber(section) -> bool:
     return bool(getattr(section, "gsd_spec", None))
 
 
-def _length_text(hinge, unit: str) -> str:
-    """Human-readable length spec for the manager table."""
+def _length_text(hinge, unit: str, lfac: float = 1.0) -> str:
+    """Human-readable length spec for the manager table. ``lfac`` is the SI
+    metres per display length unit — absolute lengths (stored SI) are shown in
+    that unit; relative fractions are dimensionless and never scaled (U6b)."""
     lp_j = hinge.lp if hinge.lp_j is None else hinge.lp_j
     if hinge.relative:
         body = (f"{hinge.lp:g}·L" if hinge.lp_j is None
                 else f"I {hinge.lp:g}·L / J {lp_j:g}·L")
         return f"relative · {body}"
-    body = (f"{hinge.lp:g} {unit}" if hinge.lp_j is None
-            else f"I {hinge.lp:g} / J {lp_j:g} {unit}")
+    i, j = hinge.lp / lfac, lp_j / lfac
+    body = (f"{i:g} {unit}" if hinge.lp_j is None
+            else f"I {i:g} / J {j:g} {unit}")
     return f"absolute · {body}"
 
 
@@ -58,6 +62,9 @@ class HingeDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Edit hinge" if hinge else "Add hinge")
         self._project = project
+        # SI metres per display length unit; absolute lengths convert, relative
+        # fractions do not (plan U6b).
+        self._lfac = UnitSystem.from_project(project).factor(Quantity.LENGTH)
         v = QVBoxLayout(self)
         v.setContentsMargins(style.SP_LG, style.SP_LG, style.SP_LG, style.SP_LG)
         v.setSpacing(style.SP_MD)
@@ -78,7 +85,7 @@ class HingeDialog(QDialog):
         self.relative.setChecked(hinge.relative if hinge else True)
         self.relative.toggled.connect(self._on_relative)
         length.add_full_row(self.relative)
-        self.lp_i = self._len_spin(hinge.lp if hinge else 0.1)
+        self.lp_i = self._len_spin(self._seed(hinge, hinge.lp if hinge else 0.1))
         length.add_row("Hinge length I", self.lp_i)
         self.symmetric = QCheckBox("end J same as end I")
         self.symmetric.setChecked(hinge.lp_j is None if hinge else True)
@@ -86,7 +93,7 @@ class HingeDialog(QDialog):
         length.add_full_row(self.symmetric)
         lp_j0 = (hinge.lp_j if (hinge and hinge.lp_j is not None)
                  else (hinge.lp if hinge else 0.1))
-        self.lp_j = self._len_spin(lp_j0)
+        self.lp_j = self._len_spin(self._seed(hinge, lp_j0))
         self.lp_j_row = QLabel("Hinge length J")
         length.body_layout().addRow(self.lp_j_row, self.lp_j)
         v.addWidget(length)
@@ -133,14 +140,25 @@ class HingeDialog(QDialog):
             self.lp_j.setValue(self.lp_i.value())
         super().accept()
 
+    def _seed(self, hinge, raw: float) -> float:
+        """Stored value → the number to show: absolute lengths convert SI→
+        display, relative fractions stay as-is (plan U6b)."""
+        if hinge is not None and not hinge.relative:
+            return raw / self._lfac
+        return raw
+
     def data(self) -> Hinge:
+        rel = self.relative.isChecked()
+        lp = float(self.lp_i.value())
+        lp_j = None if self.symmetric.isChecked() else float(self.lp_j.value())
+        if not rel:                       # absolute: display units → SI metres
+            lp *= self._lfac
+            if lp_j is not None:
+                lp_j *= self._lfac
         return Hinge(
             id=self.id_spin.value(),
             name=self.name.text().strip() or f"Hinge {self.id_spin.value()}",
-            lp=float(self.lp_i.value()),
-            lp_j=(None if self.symmetric.isChecked()
-                  else float(self.lp_j.value())),
-            relative=self.relative.isChecked())
+            lp=lp, lp_j=lp_j, relative=rel)
 
     @classmethod
     def edit(cls, parent, project, hinge=None):
@@ -200,11 +218,12 @@ class HingeManagerDialog(QDialog):
 
     def _refresh(self) -> None:
         unit = self._project.length_unit
+        lfac = UnitSystem.from_project(self._project).factor(Quantity.LENGTH)
         self.table.setRowCount(len(self._hinges))
         for r, h in enumerate(self._hinges):
             self.table.setItem(r, 0, QTableWidgetItem(str(h.id)))
             self.table.setItem(r, 1, QTableWidgetItem(h.name))
-            self.table.setItem(r, 2, QTableWidgetItem(_length_text(h, unit)))
+            self.table.setItem(r, 2, QTableWidgetItem(_length_text(h, unit, lfac)))
 
     def _proxy_project(self):
         proxy = copy.copy(self._project)

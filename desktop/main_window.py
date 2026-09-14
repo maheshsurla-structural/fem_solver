@@ -944,13 +944,19 @@ class MainWindow(QMainWindow):
             "reaction": lambda: Reaction(node_tag=target, dof=1),
         }
         _LABEL = {
-            "M": (f"moment at member {target} ({end})", "N·m"),
-            "V": (f"shear at member {target} ({end})", "N"),
-            "disp": (f"vertical displacement at node {target}", "m"),
-            "reaction": (f"vertical reaction at node {target}", "N"),
+            "M": f"moment at member {target} ({end})",
+            "V": f"shear at member {target} ({end})",
+            "disp": f"vertical displacement at node {target}",
+            "reaction": f"vertical reaction at node {target}",
         }
+        # the response's physical quantity, for unit conversion (plan U6b)
+        _QTY = {"M": Quantity.MOMENT, "V": Quantity.FORCE,
+                "disp": Quantity.LENGTH, "reaction": Quantity.FORCE}
         response = _RESP[kind]()
-        label, units = _LABEL[kind]
+        label = _LABEL[kind]
+        us = self._units()
+        qty = _QTY[kind]
+        units = us.label(qty)
 
         model = p.build_model(with_loads=False)
         lane = Lane(node_tags=lane_nodes, load_dof=1, gravity_sign=-1.0)
@@ -978,15 +984,15 @@ class MainWindow(QMainWindow):
 
         from moving_load_results_dialog import MovingLoadResultsDialog
         self._moving_load_results_dlg = MovingLoadResultsDialog.show_results(
-            self, il, env, response_label=label, units=units,
+            self, il, env, response_label=label, unitsys=us, quantity=qty,
             vehicle=veh_label)
+        emax = us.to_display(env.get('max', 0.0), qty)
+        emin = us.to_display(env.get('min', 0.0), qty)
         self.log.appendPlainText(
             f"Moving load solved: {label}, {veh_label} envelope "
-            f"max={env.get('max', 0.0):.4g} min={env.get('min', 0.0):.4g} "
-            f"{units}")
+            f"max={emax:.4g} min={emin:.4g} {units}")
         self.statusBar().showMessage(
-            f"Moving load · {veh_label} · max {env.get('max', 0.0):.3g} "
-            f"{units}")
+            f"Moving load · {veh_label} · max {emax:.3g} {units}")
         return {"il": il, "env": env}
 
     def run_pushover_dialog(self, preselect_case=None) -> None:
@@ -1400,7 +1406,7 @@ class MainWindow(QMainWindow):
     def generate_frame(self) -> None:
         import generators
         from editing import FrameDialog
-        params = FrameDialog.get(self)
+        params = FrameDialog.get(self, self._units())
         if params is not None:
             self.load_project(generators.frame(**params), None)
 

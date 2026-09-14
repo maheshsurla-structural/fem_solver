@@ -13,16 +13,24 @@ from matplotlib.figure import Figure
 from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QLabel, QVBoxLayout)
 
 import style
+from units import Quantity, UnitSystem
 
 
 class MovingLoadResultsDialog(QDialog):
-    """Influence-line plot + vehicle envelope."""
+    """Influence-line plot + vehicle envelope, in the project's display units.
+
+    ``unitsys`` + ``quantity`` (the response's quantity — MOMENT / FORCE /
+    LENGTH) convert the SI envelope and ordinates for display; the station
+    axis is always a length. SI stays the source of truth (plan U6b)."""
 
     def __init__(self, parent, il, env, *, response_label="response",
-                 units="", vehicle=""):
+                 unitsys=None, quantity=Quantity.FORCE, vehicle=""):
         super().__init__(parent)
         self.setWindowTitle("Moving-load results")
         self.resize(560, 460)
+        us = unitsys or UnitSystem()
+        r_unit = us.label(quantity)                    # response (envelope) unit
+        l_unit = us.label(Quantity.LENGTH)             # station / lane length
 
         root = QVBoxLayout(self)
         root.setContentsMargins(style.SP_LG, style.SP_LG,
@@ -32,21 +40,22 @@ class MovingLoadResultsDialog(QDialog):
         head = QLabel(f"Influence line — {response_label}")
         head.setObjectName("h2")
         root.addWidget(head)
-        u = f" {units}" if units else ""
-        sub = QLabel(f"{vehicle} envelope:  max = {env.get('max', 0.0):.4g}{u}"
-                     f"   ·   min = {env.get('min', 0.0):.4g}{u}")
+        emax = us.to_display(env.get('max', 0.0), quantity)
+        emin = us.to_display(env.get('min', 0.0), quantity)
+        sub = QLabel(f"{vehicle} envelope:  max = {emax:.4g} {r_unit}"
+                     f"   ·   min = {emin:.4g} {r_unit}")
         sub.setObjectName("sub")
         root.addWidget(sub)
 
         fig = Figure(figsize=(5.2, 3.4), layout="constrained")
         ax = fig.add_subplot(111)
-        st = list(il.stations)
-        vals = list(il.values)
+        st = [us.to_display(s, Quantity.LENGTH) for s in il.stations]
+        vals = [us.to_display(v, quantity) for v in il.values]
         ax.fill_between(st, vals, 0.0, color=style.C_PRIMARY, alpha=0.20)
         ax.plot(st, vals, "-", lw=1.8, color=style.C_PRIMARY)
         ax.axhline(0.0, color=style.AX_SPINE, lw=0.8)
-        ax.set_xlabel("station along lane (m)")
-        ax.set_ylabel(f"influence ordinate{u}")
+        ax.set_xlabel(f"station along lane ({l_unit})")
+        ax.set_ylabel(f"influence ordinate ({r_unit})")
         ax.set_title(f"per unit load — {response_label}")
         try:
             style.beautify_axes(ax)

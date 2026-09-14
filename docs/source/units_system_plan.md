@@ -102,13 +102,21 @@ conversion factor. All widgets format via one `fmt()` and parse via one
   converted plots. Tests: `test_desktop_units_input.py` (+section),
   `test_desktop_nlreport_units.py` (4). Identity under default m/N keeps all
   prior tests green.
-- [ ] **U6b — remainder** (deferred, each a clean separate change):
-  generator dialogs (`FrameDialog`/grid — take no `project`; plumbing units
-  needs a `main_window` signature change, still entangled with bridge WIP);
-  `hinge_editor` lengths (**must convert only in *absolute* mode** — relative
-  values are dimensionless ratios, so a fixed-quantity spin would mis-convert);
-  moving-load results dialog + plots (part of the user's uncommitted bridge
-  WIP — do not entangle); optional friendly stress aliases (ksi/psi/MPa/kPa).
+- [x] **U6b — remainder** ✅ 2026-09-14 (branch `feat/units-u6b`).
+  **Moving-load results** (`moving_load_results_dialog.py`): now takes
+  `unitsys` + response `quantity` (M→MOMENT, V/reaction→FORCE, disp→LENGTH);
+  converts the envelope max/min, station axis (LENGTH), and influence ordinate;
+  `main_window.run_moving_load` passes them + converts its log/status lines.
+  **`hinge_editor`**: mode-aware — absolute lengths convert SI↔display
+  (`_seed` on load, ×`_lfac` in `data()`), relative fractions stay raw; the
+  manager table (`_length_text`) converts absolute rows only.
+  **`FrameDialog`**: optional `units` arg → bay/storey inputs read/store in the
+  project's length unit (defaults to metres = identity); `_len_spin` removed;
+  `main_window.generate_frame` passes `self._units()`.
+  Tests: `test_desktop_units_u6b.py` (5). **#4 friendly stress aliases
+  (ksi/psi/MPa) SKIPPED** — `Quantity.STRESS`'s label surfaces only in the
+  units-dialog preview line, so an alias would be a cosmetic relabel that dents
+  the compositional model; left as a documented non-goal.
 
 ## Notes
 

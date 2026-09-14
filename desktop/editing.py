@@ -466,21 +466,24 @@ def _int_spin(value, lo, hi):
     return s
 
 
-def _len_spin(value):
-    s = QDoubleSpinBox()
-    s.setRange(0.1, 1000.0)
-    s.setDecimals(2)
-    s.setSingleStep(0.5)
-    s.setValue(value)
-    return s
+def _grid_len_spin(units: UnitSystem, si: float) -> UnitSpin:
+    """A frame-geometry length spin (plan U6b): shows the project's length unit,
+    stores SI metres. Generous range so a metre value isn't clamped in mm."""
+    return UnitSpin(Quantity.LENGTH, units, si=si, decimals=2, step=0.5,
+                    rng=(0.0, 1.0e9))
 
 
 class FrameDialog(QDialog):
-    """Parameters for a regular building frame (2-D or 3-D space frame)."""
+    """Parameters for a regular building frame (2-D or 3-D space frame).
 
-    def __init__(self, parent):
+    ``units`` (a :class:`~units.UnitSystem`) makes the bay/storey inputs read
+    and store in the project's length unit; omitted, it defaults to metres so
+    the generated model's dimensions stay SI (plan U6b)."""
+
+    def __init__(self, parent, units: UnitSystem | None = None):
         super().__init__(parent)
         self.setWindowTitle("Generate frame")
+        self._us = units or UnitSystem()
         form = QFormLayout(self)
 
         from PySide6.QtWidgets import QCheckBox
@@ -489,17 +492,17 @@ class FrameDialog(QDialog):
         form.addRow(self.threed)
 
         self.bays_x = _int_spin(3, 1, 500)
-        self.bay_x = _len_spin(6.0)
+        self.bay_x = _grid_len_spin(self._us, 6.0)
         form.addRow("Bays (X)", self.bays_x)
-        form.addRow(f"Bay width X [m]", self.bay_x)
+        form.addRow(labeled("Bay width X", self.bay_x), self.bay_x)
         self.bays_y = _int_spin(2, 1, 500)
-        self.bay_y = _len_spin(6.0)
+        self.bay_y = _grid_len_spin(self._us, 6.0)
         form.addRow("Bays (Y)", self.bays_y)
-        form.addRow("Bay width Y [m]", self.bay_y)
+        form.addRow(labeled("Bay width Y", self.bay_y), self.bay_y)
         self.storeys = _int_spin(3, 1, 500)
-        self.storey_h = _len_spin(3.5)
+        self.storey_h = _grid_len_spin(self._us, 3.5)
         form.addRow("Storeys", self.storeys)
-        form.addRow("Storey height [m]", self.storey_h)
+        form.addRow(labeled("Storey height", self.storey_h), self.storey_h)
 
         self.shape = QComboBox()
         for d in _designations():
@@ -516,14 +519,16 @@ class FrameDialog(QDialog):
 
     def params(self) -> dict:
         td = self.threed.isChecked()
-        return dict(bays_x=self.bays_x.value(), bay_x=self.bay_x.value(),
-                    storeys=self.storeys.value(), storey_h=self.storey_h.value(),
+        return dict(bays_x=self.bays_x.value(),
+                    bay_x=self.bay_x.si_value(),
+                    storeys=self.storeys.value(),
+                    storey_h=self.storey_h.si_value(),
                     bays_y=self.bays_y.value() if td else 0,
-                    bay_y=self.bay_y.value(), shape=self.shape.currentData())
+                    bay_y=self.bay_y.si_value(), shape=self.shape.currentData())
 
     @classmethod
-    def get(cls, parent):
-        dlg = cls(parent)
+    def get(cls, parent, units: UnitSystem | None = None):
+        dlg = cls(parent, units)
         return dlg.params() if dlg.exec() else None
 
 
