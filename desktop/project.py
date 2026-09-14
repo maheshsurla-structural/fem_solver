@@ -290,8 +290,8 @@ class Project:
             name=d.get("name", "Untitled"),
             ndm=int(d.get("ndm", 2)),
             ndf=int(d.get("ndf", 3)),
-            force_unit=d.get("force_unit", "kN"),
-            length_unit=d.get("length_unit", "m"),
+            force_unit=d.get("force_unit", "N"),   # SI base default (matches the
+            length_unit=d.get("length_unit", "m"),  # dataclass; was "kN" — a bug)
             design_code=d.get("design_code", "AISC 360"),
             materials=[Material(**m) for m in d.get("materials", [])],
             sections=[Section(**s) for s in d.get("sections", [])],

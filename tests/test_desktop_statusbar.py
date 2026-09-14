@@ -63,6 +63,21 @@ def test_cursor_coords_readout(win):
     assert win._st_coord.text() == "X 4.25  Y -1.50 m"
 
 
+def test_units_readout_converts_when_not_si(win):
+    """Plan U2 — the readouts must reflect the *chosen* units, not always SI."""
+    p = win._project
+    try:
+        p.force_unit, p.length_unit = "kN", "mm"
+        win._refresh_status()
+        assert win._st_units.text() == "kN · mm"
+        # 1.0 m of cursor travel shows as 1000 mm
+        win._on_cursor_coords(1.0, -2.0)
+        assert win._st_coord.text() == "X 1000.00  Y -2000.00 mm"
+    finally:                                   # restore SI for the other tests
+        p.force_unit, p.length_unit = "N", "m"
+        win._refresh_status()
+
+
 def test_viewport_coord_callback_wired(win):
     assert win.view._coord_cb is not None
 
