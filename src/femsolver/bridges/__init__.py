@@ -128,6 +128,22 @@ from femsolver.bridges.moving_load import (
     lane_load_response,
     moving_load_envelope,
 )
+from femsolver.bridges.rating import (
+    BridgeRating,
+    LoadFactors,
+    RatingResult,
+    condition_factor,
+    legal_live_load_factor,
+    legal_load,
+    live_load_effect,
+    permit_load,
+    rate_from_influence_line,
+    rate_member,
+    rating_factor,
+    strength_i_inventory,
+    strength_i_operating,
+    system_factor,
+)
 
 
 __all__ = [
@@ -235,4 +251,19 @@ __all__ = [
     "CableTuningResult",
     "unknown_load_factors",
     "apply_cable_tensions",
+    # AASHTO LRFR load rating (T2.3)
+    "LoadFactors",
+    "strength_i_inventory",
+    "strength_i_operating",
+    "legal_live_load_factor",
+    "legal_load",
+    "permit_load",
+    "condition_factor",
+    "system_factor",
+    "RatingResult",
+    "rating_factor",
+    "BridgeRating",
+    "rate_member",
+    "live_load_effect",
+    "rate_from_influence_line",
 ]

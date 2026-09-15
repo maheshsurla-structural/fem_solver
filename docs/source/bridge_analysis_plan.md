@@ -52,7 +52,7 @@ where an item needs data the model does not yet carry — those are flagged
 |---|---|---|
 | **T2.1** | **Vehicle–Bridge Interaction / moving-load time-history** — moving mass, dynamic amplification, EN 1991-2 HSLM high-speed-rail resonance | ✅ **DONE 2026-09-14.** T2.1a moving-force (`bridges/moving_force.py`: `VehicleAxles`, `MovingForceAnalysis` on Newmark `TransientAnalysis`, consistent Hermite distribution, dynamic vs quasi-static + DAF; validated PL³/48EI, DAF→1 slow, DAF↑ speed, train resonance; 7 tests). T2.1b **coupled sprung-mass VBI** (`bridges/vbi.py`: `SprungMassVehicle`, `VBIAnalysis` — monolithic average-accel Newmark on the coupled bridge+vehicle system, moving contact blocks `k_s NNᵀ`; returns bridge history, **contact-force history**, DAF; validated: static=WL³/48EI, DAF→1 slow, contact mean=W, matches moving-force when vehicle dynamics secondary; 8 tests). 2-D girder line; engine only. |
 | **T2.2** | **Cable-stayed initial-force optimisation** — MIDAS "Unknown Load Factor" / target-shape iteration; nonlinear staged erection (geometric NL + cable sag) | ✅ **ULF DONE 2026-09-14** (`bridges/cable_tuning.py`: `Cable`, `unknown_load_factors` — factorize-once influence matrix of unit cable pretensions vs `ResponseExtractor` targets, solve `b0+Ax=t` via lstsq; `apply_cable_tensions`; `CableTuningResult`). Validated: targets met to machine precision, positive stay tensions, independent re-solve ≈ target, member-force targets, over-/under-determined lstsq. `tests/test_bridge_cable_tuning.py` (7). **Nonlinear staged cable-stayed erection (geom NL + sag) still open.** Engine only. |
-| **T2.3** | **Load rating** — AASHTO LRFR, permit rating, rating factors | for existing bridges |
+| **T2.3** | **Load rating** — AASHTO LRFR, permit rating, rating factors | ✅ **DONE 2026-09-15** (`bridges/rating.py`, engine only) — see tracker below |
 
 ### Tier 3 — completeness
 
@@ -118,6 +118,27 @@ Aeroelastic flutter, buffeting (CFD), coupled FSI, topology optimisation.
   only — no GUI.*
 
 **Tier 1 COMPLETE (2026-09-14).**
+
+## 3a. Tier 2 tracker
+
+- [x] **T2.3 Load rating (AASHTO LRFR)** — ✅ DONE 2026-09-15.
+  `bridges/rating.py` implements MBE Eq. 6A.4.2.1-1
+  ``RF = (C - gamma_DC*DC - gamma_DW*DW - gamma_P*P) / (gamma_LL*(LL+IM))``
+  with ``C = (phi_c*phi_s floored at 0.85)*phi*Rn``. Load-factor sets:
+  `strength_i_inventory` (gamma_LL 1.75), `strength_i_operating` (1.35),
+  `legal_load` (`legal_live_load_factor` interpolates 1.40–1.80 by ADTT,
+  Table 6A.4.4.2.3a-1), `permit_load` (caller gamma_LL). Factor tables
+  `condition_factor` (NBI/keyword, Table 6A.4.2.3-1) and `system_factor`
+  (Table 6A.4.2.4-1, shear→1.00). `rating_factor`→`RatingResult`
+  (`adequate`, `rating_tons`, `summary`); `rate_member`→`BridgeRating`
+  (all levels + `controlling`). **Tie-in:** `live_load_effect` /
+  `rate_from_influence_line` pull LL+IM from
+  `aashto_hl93_envelope` (moving-load engine). Exported from
+  `bridges/__init__`. **Validation:** closed-form RF hand calcs
+  (inventory 675/525=1.2857, operating 675/405=1.6667), capacity floor,
+  ADTT interpolation, P/tons/multi-level, IL-driven == direct.
+  `tests/test_bridge_rating.py` (18). *Engine only — no GUI.*
+  *Permit multi-lane/weight factor table (6A.4.5.4.2a-1) left to the caller.*
 
 **Test convention:** each item validated to hand-calc or closed-form where
 one exists, else to a direct solve; headless; matches the repo's existing
