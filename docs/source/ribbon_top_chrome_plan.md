@@ -149,11 +149,10 @@ Legend: `[x]` done · `[ ]` open. Do the lowest open item whose deps are met.
 
 **Core is done (R1–R6): the top chrome is one compact strip, iconed, keyboard-driven,
 persistent, contextual and collapsible.** Remaining items are polish/robustness, not
-not load-bearing. **R7, R8, R11 done; R9 deliberately scoped out (see below).** The stream is
-effectively **complete** — the only open items are R10 (broaden contextual raising; low value —
-most analyses open dialogs, not ribbon-tab content) and R12 (Export; blocked until an export action
-exists). The top chrome is now one compact strip: tabbed, iconed, keyboard-driven, persistent,
-contextual, collapsible, width-responsive, with a File backstage and a Quick Access Toolbar.
+not load-bearing. **R7, R8, R10, R11 done; R9 deliberately scoped out (see below).** The stream is
+**complete** — the only remaining item is R12 (Export), blocked until an export action exists. The
+top chrome is now one compact strip: tabbed, iconed, keyboard-driven, persistent, contextual,
+collapsible, width-responsive, with a File backstage and a Quick Access Toolbar.
 
 - [x] **R1 — Tabbed ribbon shell.** Replace the menu bar + 3 stacked rows + draw palette with one
   `RibbonBar` (File backstage + tabs Home/Draw/Loads/Analysis/Results/View, one swapping group
@@ -194,12 +193,12 @@ contextual, collapsible, width-responsive, with a File backstage and a Quick Acc
   would be a large, risky rewrite of the product-differentiator tool that would actually *diverge*
   from the references for negligible benefit. Its chrome is appropriate as-is; revisit only if its
   command surface grows to ribbon scale. — decided 2026-09-15.
-- [ ] **R10 — Broaden contextual raising (from R4).** R4 only raises **Results** after
-  *linear-static*; the modal / response-spectrum / buckling / moving-load runs open their own
-  result surfaces without surfacing the ribbon. Route those through a single post-run hook so
-  every analysis type raises the right tab. The **Draw**-raise in `_set_mode` is effectively a
-  no-op today (those tools already live on the Draw tab) — revisit if a command palette / shortcut
-  can activate a tool from elsewhere. Deps: R4.
+- [x] **R10 — Broaden contextual raising (from R4).** A single post-dispatch hook at the end of
+  `manage_analysis_cases` raises **Results** after *any* of the 13 analysis kinds runs from the
+  cases home (History/diagrams/design all live there), not just linear-static; no-op while
+  collapsed. Guarded by `test_any_analysis_run_raises_results`. *(The `_set_mode` Draw-raise stays a
+  practical no-op — those tools already live on Draw; revisit only if something can activate a tool
+  from another tab.)* — `feat(ribbon R10)`, 2026-09-15.
 - [x] **R11 — Quick Access Toolbar.** `RibbonBar.set_quick_actions([save, undo, redo, run])` adds
   an icon-only, tab-independent button row beside the File button (`qatBtn`; mirrors the actions, so
   it is *not* counted against the homed-once invariant). — `feat(ribbon R11)`, 2026-09-15.
@@ -211,6 +210,11 @@ contextual, collapsible, width-responsive, with a File backstage and a Quick Acc
 
 ## 6. Change log
 
+- **2026-09-15 — R10.** Broaden contextual raising. One `self._show_results_tab()` at the end of
+  `manage_analysis_cases` (after the 13-kind dispatch) surfaces **Results** for every analysis run
+  from the cases home, extending R4 beyond linear-static; no-op while collapsed. Test
+  `test_any_analysis_run_raises_results` (stubs the cases dialog + runner). This leaves only R12
+  (Export, blocked) open — the ribbon stream is complete. Analysis-related suites 54 passed.
 - **2026-09-15 — R11 + R9.** R11 (Quick Access Toolbar): `RibbonBar` gains a `_qat` holder in the
   tab strip (between File and the tabs) + `set_quick_actions(actions)` building icon-only `qatBtn`
   buttons via `setDefaultAction`; the shell wires `[act_save, act_undo, act_redo, act_run]`. QSS

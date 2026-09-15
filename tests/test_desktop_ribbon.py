@@ -362,3 +362,20 @@ def test_quick_access_toolbar(win):
         assert not b.defaultAction().icon().isNull()
     # QAT buttons are not ribbon command buttons — the homed-once invariant holds
     assert all(b.objectName() != "ribbonBtn" for b in qat)
+
+
+# ---- R10: contextual raise for every analysis kind -------------------------
+def test_any_analysis_run_raises_results(win, monkeypatch):
+    from analysis_cases_dialog import AnalysisCasesDialog
+    from demo_model import demo_project
+    win.load_project(demo_project())
+    win._ribbon.set_collapsed(False)
+    win._ribbon.set_current("Home")
+    # the user "runs modal" from the cases home; stub the dialog + the runner
+    monkeypatch.setattr(
+        AnalysisCasesDialog, "manage",
+        staticmethod(lambda *a, **k: (win._project.nonlinear_cases, ("modal",))))
+    monkeypatch.setattr(win, "run_modal", lambda *a, **k: None)
+    win.manage_analysis_cases()
+    assert win._ribbon.tabs.tabText(win._ribbon.tabs.currentIndex()) == "Results"
+    win._ribbon.set_current("Home")

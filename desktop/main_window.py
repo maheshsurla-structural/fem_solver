@@ -2231,6 +2231,10 @@ class MainWindow(QMainWindow):
             self.run_cable_tuning()
         elif kind == "loadrating":
             self.run_load_rating()
+        # R10: broaden R4's contextual raise — after *any* analysis dispatched
+        # from the cases home, surface the Results tab (History/diagrams/design
+        # all live there). A no-op when the ribbon is collapsed.
+        self._show_results_tab()
 
     def _on_double_click(self, item, _col) -> None:
         ref = item.data(0, Qt.ItemDataRole.UserRole)
