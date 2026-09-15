@@ -149,8 +149,8 @@ Legend: `[x]` done · `[ ]` open. Do the lowest open item whose deps are met.
 
 **Core is done (R1–R6): the top chrome is one compact strip, iconed, keyboard-driven,
 persistent, contextual and collapsible.** Remaining items are polish/robustness, not
-load-bearing — **R8 done; recommended order now R7 → R9**: R7 hardens narrow windows, R9 extends
-the model to the second window (largest, least urgent).
+load-bearing — **R7 + R8 done; only R9 left** (extends the model to the second window — largest,
+least urgent) plus the R10–R12 backlog.
 
 - [x] **R1 — Tabbed ribbon shell.** Replace the menu bar + 3 stacked rows + draw palette with one
   `RibbonBar` (File backstage + tabs Home/Draw/Loads/Analysis/Results/View, one swapping group
@@ -172,9 +172,11 @@ the model to the second window (largest, least urgent).
 - [x] **R6 — Icon coverage.** Every ribbon button now carries a themed glyph (was text-only:
   Materials, Undo, Redo, the *Select by* group, Hinges Define/Assign, History, Check, Compact).
   Guarded by `test_every_ribbon_button_has_an_icon`. — `feat(ribbon R6)`, 2026-09-14.
-- [ ] **R7 — Width overflow.** When a tab's groups exceed the window width, collapse the
-  lowest-priority group(s) to a single popup button (Office/CSi behaviour) instead of clipping.
-  Deps: R1.
+- [x] **R7 — Width overflow.** `_ribbon_page` became `RibbonPage`: on resize it measures the
+  groups and collapses the lowest-priority (rightmost) ones into a single `»` popup (their actions
+  become a grouped menu) instead of clipping; reverses when width returns, always keeping ≥1 group
+  inline. Guarded by `test_narrow_width_collapses_groups_into_overflow`. — code swept into
+  `0b2c86e`; closed 2026-09-15.
 - [x] **R8 — File backstage panel.** The File button now opens a full-window backstage
   (`desktop/backstage.py`): a command rail (New · New 3-D · Open · Save · Save As), a persisted
   **Recent** list (MRU in `recent/files`, filtered to existing files), and an **About** card, on
@@ -200,6 +202,14 @@ the model to the second window (largest, least urgent).
 
 ## 6. Change log
 
+- **2026-09-15 — R7.** Width overflow. `_ribbon_page` → `RibbonPage(QWidget)`: keeps its groups +
+  a hidden `»` `QToolButton#ribbonMore`; `resizeEvent`→`_relayout` measures group sizeHints against
+  the available width and hides the rightmost groups that don't fit (min one stays), toggling `»`;
+  `_fill_overflow` (on `aboutToShow`) rebuilds the popup menu from `hidden_captions()` as captioned
+  sections of the hidden groups' actions. QSS `ribbonMore` in `style.py`. Tests: +3 in
+  `test_desktop_ribbon.py`. NB: the code was swept into another session's `0b2c86e` (shared
+  working tree, `git add -A`); this entry + screenshots close it out. Ribbon+backstage suite 33
+  passed. Screenshots `R7_overflow_{light,dark}.png`.
 - **2026-09-14 — R8.** File backstage. New `desktop/backstage.py` (`Backstage(QWidget)`,
   `WA_StyledBackground` so the overlay fully occludes): a command rail built from the ribbon's file
   actions, a Recent list, and an About card on `GroupCard`. The ribbon File button drops its popup
