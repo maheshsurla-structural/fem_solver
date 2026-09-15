@@ -190,6 +190,33 @@ def test_run_saved_case_dispatches(qapp, monkeypatch):
                         lambda win, config: seen.setdefault("config", config))
     w._run_saved_case(3)
     assert seen["config"] == (5, True)      # build_config(params) → runtime cfg
+    assert "Modal-3" in w.log.toPlainText()  # run log names the case
+
+
+def test_add_case_auto_suffixes_duplicate_name(qapp, monkeypatch):
+    import case_types
+    from analysis_cases_dialog import AnalysisCasesDialog
+    dlg = AnalysisCasesDialog(None, _project())
+    monkeypatch.setattr(case_types.TYPES["modal"], "edit",
+                        lambda parent, project, case=None:
+                        AnalysisCase(id=0, name="Dup", type="modal",
+                                     params={"num_modes": 4, "lumped": False}))
+    dlg._add_case("modal")
+    dlg._add_case("modal")
+    dlg._add_case("modal")
+    assert [c.name for c in dlg._acases] == ["Dup", "Dup (2)", "Dup (3)"]
+
+
+def test_saved_case_notes_shown_as_tooltip(qapp):
+    from analysis_cases_dialog import AnalysisCasesDialog
+    p = _project()
+    p.analysis_cases = [AnalysisCase(id=1, name="Modal-DBE", type="modal",
+                                     params={"num_modes": 4, "lumped": False},
+                                     notes="design basis event")]
+    dlg = AnalysisCasesDialog(None, p)
+    kinds = [m["kind"] for m in dlg._row_meta]
+    r = kinds.index("analysis")
+    assert "design basis event" in dlg.table.item(r, 0).toolTip()
 
 
 def test_analysis_case_serialization_round_trip():

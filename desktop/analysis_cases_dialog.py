@@ -141,6 +141,7 @@ class AnalysisCasesDialog(QDialog):
                 "name": c.name, "type": "Nonlinear Static",
                 "detail": f"{proto} · node {c.control_node} "
                           f"{_DOF.get(c.control_dof, '?')}",
+                "notes": getattr(c, "notes", ""),
                 "icon": "run", "runnable": True})
         # saved multi-instance cases for migrated built-in types (Modal,
         # Buckling, …) — full Add/Modify/Delete/Run via their case_types adapter
@@ -152,6 +153,7 @@ class AnalysisCasesDialog(QDialog):
                 "type": (ct.type_label if ct else c.type),
                 "detail": (ct.detail(self._project, c.params) if ct
                            else "saved case"),
+                "notes": getattr(c, "notes", ""),
                 "icon": (ct.icon if ct else "run"), "runnable": True})
         rows.append({"kind": "timehistory", "name": "Time History",
                      "type": "Time History",
@@ -173,6 +175,11 @@ class AnalysisCasesDialog(QDialog):
                 name_it.setIcon(_icon(meta["icon"]))
             type_it = QTableWidgetItem(meta["type"])
             det_it = QTableWidgetItem(meta["detail"])
+            notes = (meta.get("notes") or "").strip()
+            if notes:                                    # surface notes on hover
+                tip = f"{meta['name']} — {notes}"
+                for it in (name_it, type_it, det_it):
+                    it.setToolTip(tip)
             if meta["kind"] == "planned":                # greyed + not selectable
                 for it in (name_it, type_it, det_it):
                     it.setFlags(Qt.ItemFlag.NoItemFlags)
@@ -205,6 +212,18 @@ class AnalysisCasesDialog(QDialog):
     def _next_case_id(self) -> int:
         return max((c.id for c in self._acases), default=0) + 1
 
+    def _unique_name(self, name: str, exclude_id=None) -> str:
+        """Keep saved-case names distinct (CSiBridge does): append ``(2)``, ``(3)``
+        … on a clash. ``exclude_id`` skips the case being modified."""
+        name = name or "Case"
+        taken = {c.name for c in self._acases if c.id != exclude_id}
+        if name not in taken:
+            return name
+        i = 2
+        while f"{name} ({i})" in taken:
+            i += 1
+        return f"{name} ({i})"
+
     def _select_case(self, case_id) -> None:
         for r, meta in enumerate(self._row_meta):
             if meta["kind"] == "analysis" and meta["case_id"] == case_id:
@@ -219,6 +238,7 @@ class AnalysisCasesDialog(QDialog):
         if case is None:
             return
         case.id = self._next_case_id()
+        case.name = self._unique_name(case.name)
         self._acases.append(case)
         self._refresh()
         self._select_case(case.id)
@@ -247,6 +267,7 @@ class AnalysisCasesDialog(QDialog):
             case = ct.edit(self, self._proxy_project(), self._acases[idx])
             if case is not None:
                 case.id = self._acases[idx].id       # id is not user-editable
+                case.name = self._unique_name(case.name, exclude_id=case.id)
                 self._acases[idx] = case
                 self._refresh()
                 self._select_case(case.id)

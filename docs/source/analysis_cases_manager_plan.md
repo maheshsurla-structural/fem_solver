@@ -139,9 +139,12 @@ already consumes.
   `StageManagerDialog`); there is one stage sequence per model, so a
   multi-instance saved case would only duplicate/diverge from `project.stages`.
   Left as a launcher row (already operates on persistent data).
-- [ ] **P — Polish.** Notes surfaced in the list; duplicate-name guard or
-  auto-suffix ("Modal 1/2"); reorder; results-history label carries the case
-  name; user-guide docs.
+- [~] **P — Polish.** ✅ 2026-09-15 (core): **notes** surfaced as a row tooltip;
+  **duplicate-name auto-suffix** (`_unique_name` → "Name (2)", "(3)" on Add /
+  Modify); the **run log names the case** (`'<name>' (<Type>) — running…` in
+  `_run_saved_case`). Still open: reorder (move up/down); a fuller
+  results-history label carrying the case name into each runner's RunRecord;
+  a "Clone case" action; user-guide docs.
 
 **End state:** 9 types are saved, multi-instance AnalysisCases (Modal, Buckling,
 Moving Load, Temp Gradient, Load Rating, Response Spectrum, Vehicle Dynamics,

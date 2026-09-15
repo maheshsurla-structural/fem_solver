@@ -2236,6 +2236,8 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Analysis case",
                                 f"Unknown analysis type '{c.type}'.")
             return None
+        self.log.appendPlainText(
+            f"Analysis case '{c.name}' ({ct.type_label}) — running…")
         config = ct.build_config(self._project, c.params)
         return ct.dispatch(self, config)
 
