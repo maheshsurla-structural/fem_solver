@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDialog, QLabel,
                                QWidget)
 
 import style
-from analysis_ui import GroupCard, dialog_buttons
+from analysis_ui import CaseHeader, GroupCard, dialog_buttons
 
 # label -> vehicle key ("hl93" = full HL-93 envelope, else a MovingLoad preset)
 _VEHICLES = [
@@ -40,7 +40,8 @@ _RESPONSES = [
 class MovingLoadDialog(QDialog):
     """Configure a moving-load / influence-line analysis."""
 
-    def __init__(self, parent, project):
+    def __init__(self, parent, project, *, initial: dict | None = None,
+                 name: str = "Moving Load", notes: str = ""):
         super().__init__(parent)
         self.setWindowTitle("Moving load")
         self._project = project
@@ -49,6 +50,10 @@ class MovingLoadDialog(QDialog):
         root.setContentsMargins(style.SP_LG, style.SP_LG,
                                 style.SP_LG, style.SP_LG)
         root.setSpacing(style.SP_MD)
+
+        self.header = CaseHeader(name=name, type_label="Moving Load",
+                                 notes=notes)
+        root.addWidget(self.header)
 
         head = QLabel("Moving load / influence line")
         head.setObjectName("h2")
@@ -105,11 +110,39 @@ class MovingLoadDialog(QDialog):
 
         self._member_rows = (self.member, self.end)
         self._node_rows = (self.node,)
+        if initial:
+            self._seed(initial)
         self._sync_target()
 
         root.addStretch(1)
         root.addWidget(dialog_buttons(self))
         style.apply(self)
+
+    def _seed(self, p: dict) -> None:
+        """Seed the widgets from a saved case's params."""
+        lane = set(p.get("lane") or [])
+        for i in range(self.lane_list.count()):
+            it = self.lane_list.item(i)
+            it.setSelected(it.data(0x0100) in lane)
+        vi = self.vehicle.findData(p.get("vehicle"))
+        if vi >= 0:
+            self.vehicle.setCurrentIndex(vi)
+        resp = p.get("response") or ()
+        if resp:
+            for i in range(self.resp.count()):
+                if self.resp.itemData(i)[0] == resp[0]:
+                    self.resp.setCurrentIndex(i)
+                    break
+            target = resp[1] if len(resp) > 1 else None
+            mi = self.member.findData(target)
+            if mi >= 0:
+                self.member.setCurrentIndex(mi)
+            ni = self.node.findData(target)
+            if ni >= 0:
+                self.node.setCurrentIndex(ni)
+            ei = self.end.findData(resp[2] if len(resp) > 2 else "i")
+            if ei >= 0:
+                self.end.setCurrentIndex(ei)
 
     def _sync_target(self) -> None:
         _kind, needs_member = self.resp.currentData()

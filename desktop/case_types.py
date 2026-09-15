@@ -154,9 +154,103 @@ class BucklingType(CaseType):
         return win.run_buckling(config=config)
 
 
+class MovingLoadType(CaseType):
+    """Moving-load / influence-line → :meth:`MainWindow.run_moving_load`. The
+    dialog's config dict *is* the params (identity ``build_config``)."""
+
+    type_id = "movingload"
+    type_label = "Moving Load"
+
+    def detail(self, project, params):
+        veh = params.get("vehicle", "hl93")
+        resp = params.get("response") or ("M", None, "i")
+        what = {"M": f"moment @ member {resp[1]}",
+                "V": f"shear @ member {resp[1]}",
+                "disp": f"disp @ node {resp[1]}",
+                "reaction": f"reaction @ node {resp[1]}"}.get(resp[0], resp[0])
+        return f"{veh} · {what} · {len(params.get('lane') or [])}-node lane"
+
+    def edit(self, parent, project, case=None):
+        from moving_load_dialog import MovingLoadDialog
+        dlg = MovingLoadDialog(parent, project,
+                               initial=(dict(case.params) if case else None),
+                               name=(case.name if case else "Moving Load"),
+                               notes=(case.notes if case else ""))
+        if not dlg.exec():
+            return None
+        return self._mk(case, name=dlg.header.name() or "Moving Load",
+                        params=dlg.result(), notes=dlg.header.notes())
+
+    def dispatch(self, win, config):
+        return win.run_moving_load(config=config)
+
+
+class TemperatureGradientType(CaseType):
+    """Temperature gradient → :meth:`MainWindow.run_temperature_gradient`."""
+
+    type_id = "tempgradient"
+    type_label = "Temperature Gradient"
+
+    def detail(self, project, params):
+        n = len(params.get("members") or [])
+        if params.get("source") == "linear":
+            grad = f"linear {params.get('dt_top', 0):g}→{params.get('dt_bot', 0):g}°C"
+        else:
+            grad = f"AASHTO zone {params.get('zone', '?')}"
+        return f"{grad} · {n} members"
+
+    def edit(self, parent, project, case=None):
+        from temperature_gradient_dialog import TemperatureGradientDialog
+        dlg = TemperatureGradientDialog(
+            parent, project,
+            initial=(dict(case.params) if case else None),
+            name=(case.name if case else "Temperature Gradient"),
+            notes=(case.notes if case else ""))
+        if not dlg.exec():
+            return None
+        return self._mk(case, name=dlg.header.name() or "Temperature Gradient",
+                        params=dlg.result(), notes=dlg.header.notes())
+
+    def dispatch(self, win, config):
+        return win.run_temperature_gradient(config=config)
+
+
+class LoadRatingType(CaseType):
+    """AASHTO LRFR load rating → :meth:`MainWindow.run_load_rating`. Capacity /
+    dead loads are persisted in SI (the dialog converts to/from display)."""
+
+    type_id = "loadrating"
+    type_label = "Load Rating"
+
+    def detail(self, project, params):
+        resp = params.get("response") or ("M", None, "i")
+        kind = {"M": "moment", "V": "shear"}.get(resp[0], resp[0])
+        levels = ["inv/op"]
+        if params.get("adtt") is not None:
+            levels.append("legal")
+        if params.get("permit_gamma_LL") is not None:
+            levels.append("permit")
+        return f"{kind} @ member {resp[1]} ({resp[2]}) · {'+'.join(levels)}"
+
+    def edit(self, parent, project, case=None):
+        from load_rating_dialog import LoadRatingDialog
+        dlg = LoadRatingDialog(parent, project,
+                               initial=(dict(case.params) if case else None),
+                               name=(case.name if case else "Load Rating"),
+                               notes=(case.notes if case else ""))
+        if not dlg.exec():
+            return None
+        return self._mk(case, name=dlg.header.name() or "Load Rating",
+                        params=dlg.result(), notes=dlg.header.notes())
+
+    def dispatch(self, win, config):
+        return win.run_load_rating(config=config)
+
+
 # Ordered registry — also the order of the Add ▾ menu. Extend as types migrate
-# (moving load, temperature gradient, load rating, response spectrum, …).
-_ORDER: list[CaseType] = [ModalType(), BucklingType()]
+# (response spectrum, vehicle dynamics, influence surface, cable tuning, …).
+_ORDER: list[CaseType] = [ModalType(), BucklingType(), MovingLoadType(),
+                          TemperatureGradientType(), LoadRatingType()]
 TYPES: dict[str, CaseType] = {ct.type_id: ct for ct in _ORDER}
 
 

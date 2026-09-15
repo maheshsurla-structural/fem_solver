@@ -105,12 +105,16 @@ already consumes.
 - [x] **M2 — Buckling** ✅ 2026-09-15. params `{selection:[kind,id], num_modes,
   subdivisions}`; config `(tuple(selection), num_modes, subdivisions)`; dispatch
   `run_buckling`. `BucklingDialog` header + `initial`.
-- [ ] **M3 — Moving Load.** params `{lane:[ids], vehicle, response:[kind,id,end]}`
-  = config (identity). `MovingLoadDialog` header + `initial`.
-- [ ] **M4 — Temperature Gradient.** params `{members:[ids], alpha, source,
-  zone, dt_top, dt_bot}` = config. Dialog header + `initial`.
-- [ ] **M5 — Load Rating.** params `{lane:[ids], response:[comp,id,end], …}` =
-  config. Dialog header + `initial`.
+- [x] **M3 — Moving Load** ✅ 2026-09-15. params `{lane:[ids], vehicle,
+  response:[kind,id,end]}` = config (identity). `MovingLoadDialog` header +
+  `initial` + `_seed`.
+- [x] **M4 — Temperature Gradient** ✅ 2026-09-15. params `{source, zone, dt_top,
+  dt_bot, alpha (SI), members:[ids]}` = config. Dialog header + `initial` +
+  `_seed` (α shown ×10⁻⁵, stored SI).
+- [x] **M5 — Load Rating** ✅ 2026-09-15. params `{lane:[ids],
+  response:[comp,id,end], Rn/DC/DW/P (SI), phi, phi_c, phi_s, im, adtt,
+  permit_gamma_LL}` = config. Dialog header + `initial` + `_seed` (capacity/dead
+  loads SI→display, quantity from the effect so set effect first).
 - [ ] **M6 — Response Spectrum** (the object case). params = spectrum **inputs**
   `{source, damping, asce7:{SDS,SD1,TL} | ec8:{…} | is1893:{…} | custom:[[T,Sa]]},
   num_modes, direction, combination}`. `build_config` rebuilds the

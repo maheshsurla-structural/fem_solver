@@ -87,16 +87,34 @@ def test_dialog_permit_toggle(qapp):
 
 
 # ---------------------------------------------------- analysis-cases row
-def test_analysis_cases_lists_load_rating(qapp):
-    from analysis_cases_dialog import AnalysisCasesDialog, _PLANNED
-    assert _PLANNED == []
-    dlg = AnalysisCasesDialog(None, _girder())
+def test_load_rating_is_a_saveable_case_type(qapp):
+    import case_types
+    ct = case_types.get("loadrating")
+    assert ct is not None and ct.type_label == "Load Rating"
+    params = {"response": ["M", 2, "i"], "adtt": 5000, "permit_gamma_LL": None}
+    d = ct.detail(_girder(), params)
+    assert "moment @ member 2" in d and "legal" in d and "permit" not in d
+
+
+def test_analysis_cases_lists_saved_load_rating_case(qapp):
+    from analysis_cases_dialog import AnalysisCasesDialog
+    from project import AnalysisCase
+    p = _girder()
+    p.analysis_cases = [AnalysisCase(id=9, name="Girder RF", type="loadrating",
+                                     params={"lane": [1, 2],
+                                             "response": ["M", 1, "i"],
+                                             "Rn": 1000.0, "DC": 200.0,
+                                             "DW": 50.0, "P": 0.0, "phi": 1.0,
+                                             "phi_c": 1.0, "phi_s": 1.0,
+                                             "im": 0.33, "adtt": None,
+                                             "permit_gamma_LL": None})]
+    dlg = AnalysisCasesDialog(None, p)
     kinds = [m["kind"] for m in dlg._row_meta]
-    assert "loadrating" in kinds
-    dlg.table.setCurrentCell(kinds.index("loadrating"), 0)
-    assert dlg._run_btn.isEnabled()
+    assert "analysis" in kinds
+    dlg.table.setCurrentCell(kinds.index("analysis"), 0)
+    assert dlg._mod_btn.isEnabled() and dlg._del_btn.isEnabled()
     dlg._run()
-    assert dlg._run_request == ("loadrating",)
+    assert dlg._run_request == ("case", 9)
 
 
 # --------------------------------------------------------- run_load_rating

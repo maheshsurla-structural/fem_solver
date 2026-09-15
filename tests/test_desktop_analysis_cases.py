@@ -47,13 +47,14 @@ def test_lists_builtin_nonlinear_and_planned(qapp):
     assert kinds[0] == "linear"
     assert "nonlinear" in kinds and "timehistory" in kinds
     # un-migrated types are still launcher rows
-    for k in ("responsespectrum", "movingload", "loadrating"):
+    for k in ("responsespectrum", "stages", "cabletuning"):
         assert k in kinds
-    # migrated types (modal / buckling) are no longer fixed launcher rows —
-    # they are saved AnalysisCase types offered in the Add ▾ menu
-    assert "modal" not in kinds and "buckling" not in kinds
+    # migrated types are no longer fixed launcher rows — they are saved
+    # AnalysisCase types offered in the Add ▾ menu
     import case_types
-    assert case_types.get("modal") and case_types.get("buckling")
+    for t in ("modal", "buckling", "movingload", "tempgradient", "loadrating"):
+        assert t not in kinds
+        assert case_types.get(t)
     assert kinds.count("planned") == len(_PLANNED)
     if _PLANNED:                                   # any remaining planned rows
         planned_row = kinds.index("planned")       # are greyed / not selectable

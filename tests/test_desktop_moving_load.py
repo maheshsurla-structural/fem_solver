@@ -60,16 +60,31 @@ def test_dialog_response_target_sync(qapp):
 
 
 # ---------------------------------------------------- analysis-cases row
-def test_analysis_cases_lists_moving_load(qapp):
-    from analysis_cases_dialog import AnalysisCasesDialog, _PLANNED
-    assert _PLANNED == []                              # every row now live
-    dlg = AnalysisCasesDialog(None, _girder())
+def test_moving_load_is_a_saveable_case_type(qapp):
+    # Moving Load is now a saved, multi-instance AnalysisCase type (Add ▾ menu).
+    import case_types
+    ct = case_types.get("movingload")
+    assert ct is not None and ct.type_label == "Moving Load"
+    params = {"lane": [1, 2, 3], "vehicle": "hl93",
+              "response": ["M", 2, "i"]}
+    assert ct.build_config(_girder(), params) == params      # identity
+    assert "member 2" in ct.detail(_girder(), params)
+
+
+def test_analysis_cases_lists_saved_moving_load_case(qapp):
+    from analysis_cases_dialog import AnalysisCasesDialog
+    from project import AnalysisCase
+    p = _girder()
+    p.analysis_cases = [AnalysisCase(id=1, name="HL-93 mid", type="movingload",
+                                     params={"lane": [1, 2], "vehicle": "hl93",
+                                             "response": ["M", 1, "i"]})]
+    dlg = AnalysisCasesDialog(None, p)
     kinds = [m["kind"] for m in dlg._row_meta]
-    assert "movingload" in kinds
-    dlg.table.setCurrentCell(kinds.index("movingload"), 0)
-    assert dlg._run_btn.isEnabled()
+    assert "analysis" in kinds
+    dlg.table.setCurrentCell(kinds.index("analysis"), 0)
+    assert dlg._mod_btn.isEnabled() and dlg._del_btn.isEnabled()
     dlg._run()
-    assert dlg._run_request == ("movingload",)
+    assert dlg._run_request == ("case", 1)
 
 
 # --------------------------------------------------------- run_moving_load

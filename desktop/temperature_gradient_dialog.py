@@ -22,13 +22,14 @@ from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDialog,
                                QVBoxLayout, QWidget)
 
 import style
-from analysis_ui import GroupCard, dialog_buttons
+from analysis_ui import CaseHeader, GroupCard, dialog_buttons
 
 
 class TemperatureGradientDialog(QDialog):
     """Configure a temperature-gradient load case."""
 
-    def __init__(self, parent, project):
+    def __init__(self, parent, project, *, initial: dict | None = None,
+                 name: str = "Temperature Gradient", notes: str = ""):
         super().__init__(parent)
         self.setWindowTitle("Temperature gradient")
         self._project = project
@@ -37,6 +38,10 @@ class TemperatureGradientDialog(QDialog):
         root.setContentsMargins(style.SP_LG, style.SP_LG,
                                 style.SP_LG, style.SP_LG)
         root.setSpacing(style.SP_MD)
+
+        self.header = CaseHeader(name=name, type_label="Temperature Gradient",
+                                 notes=notes)
+        root.addWidget(self.header)
 
         head = QLabel("Temperature-gradient load")
         head.setObjectName("h2")
@@ -81,9 +86,28 @@ class TemperatureGradientDialog(QDialog):
         root.addWidget(apply_card)
 
         self.source.currentIndexChanged.connect(self.stack.setCurrentIndex)
+        if initial:
+            self._seed(initial)
         root.addStretch(1)
         root.addWidget(dialog_buttons(self))
         style.apply(self)
+
+    def _seed(self, p: dict) -> None:
+        """Seed the widgets from a saved case's params (α stored in SI)."""
+        si = self.source.findData(p.get("source", "aashto"))
+        if si >= 0:
+            self.source.setCurrentIndex(si)
+            self.stack.setCurrentIndex(si)
+        zi = self.zone.findData(p.get("zone"))
+        if zi >= 0:
+            self.zone.setCurrentIndex(zi)
+        self.dt_top.setValue(float(p.get("dt_top", 20.0)))
+        self.dt_bot.setValue(float(p.get("dt_bot", 0.0)))
+        self.alpha.setValue(float(p.get("alpha", 1.0e-5)) / 1.0e-5)
+        mem = set(p.get("members") or [])
+        for i in range(self.members.count()):
+            it = self.members.item(i)
+            it.setSelected(it.data(0x0100) in mem)
 
     def _aashto_page(self) -> QWidget:
         card = GroupCard("AASHTO parameters")

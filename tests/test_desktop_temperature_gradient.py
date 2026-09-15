@@ -53,15 +53,29 @@ def test_dialog_defaults_and_source_switch(qapp):
 
 
 # ---------------------------------------------------- analysis-cases row
-def test_analysis_cases_lists_temperature_gradient(qapp):
+def test_temperature_gradient_is_a_saveable_case_type(qapp):
+    import case_types
+    ct = case_types.get("tempgradient")
+    assert ct is not None and ct.type_label == "Temperature Gradient"
+    params = {"source": "aashto", "zone": 3, "alpha": 1e-5, "members": [1, 2]}
+    assert "AASHTO zone 3" in ct.detail(_two_span(), params)
+
+
+def test_analysis_cases_lists_saved_temperature_gradient_case(qapp):
     from analysis_cases_dialog import AnalysisCasesDialog
-    dlg = AnalysisCasesDialog(None, _two_span())
+    from project import AnalysisCase
+    p = _two_span()
+    p.analysis_cases = [AnalysisCase(id=2, name="Zone-3", type="tempgradient",
+                                     params={"source": "aashto", "zone": 3,
+                                             "dt_top": 20.0, "dt_bot": 0.0,
+                                             "alpha": 1e-5, "members": [1]})]
+    dlg = AnalysisCasesDialog(None, p)
     kinds = [m["kind"] for m in dlg._row_meta]
-    assert "tempgradient" in kinds
-    dlg.table.setCurrentCell(kinds.index("tempgradient"), 0)
-    assert dlg._run_btn.isEnabled()
+    assert "analysis" in kinds
+    dlg.table.setCurrentCell(kinds.index("analysis"), 0)
+    assert dlg._mod_btn.isEnabled() and dlg._del_btn.isEnabled()
     dlg._run()
-    assert dlg._run_request == ("tempgradient",)
+    assert dlg._run_request == ("case", 2)
 
 
 # ------------------------------------------------- run_temperature_gradient

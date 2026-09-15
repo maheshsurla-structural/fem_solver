@@ -172,14 +172,6 @@ class AnalysisCasesDialog(QDialog):
                      "type": "Response Spectrum",
                      "detail": "modal superposition · SRSS/CQC", "icon": "run",
                      "runnable": True})
-        rows.append({"kind": "movingload", "name": "Moving Load",
-                     "type": "Moving Load",
-                     "detail": "influence line · HL-93 / IRC envelope",
-                     "icon": "run", "runnable": True})
-        rows.append({"kind": "tempgradient", "name": "Temperature Gradient",
-                     "type": "Temperature Gradient",
-                     "detail": "AASHTO / linear vertical gradient",
-                     "icon": "run", "runnable": True})
         rows.append({"kind": "stages", "name": "Construction Stages",
                      "type": "Construction Stages",
                      "detail": "incremental erection · camber",
@@ -195,10 +187,6 @@ class AnalysisCasesDialog(QDialog):
         rows.append({"kind": "cabletuning", "name": "Cable Tuning",
                      "type": "Cable Tuning",
                      "detail": "cable-stayed · unknown load factor",
-                     "icon": "run", "runnable": True})
-        rows.append({"kind": "loadrating", "name": "Load Rating",
-                     "type": "Load Rating",
-                     "detail": "AASHTO LRFR · rating factors (inv/op/legal)",
                      "icon": "run", "runnable": True})
         for name in _PLANNED:
             rows.append({"kind": "planned", "name": name, "type": name,
@@ -333,10 +321,6 @@ class AnalysisCasesDialog(QDialog):
             self._run_request = ("timehistory",)
         elif m["kind"] == "responsespectrum":
             self._run_request = ("responsespectrum",)
-        elif m["kind"] == "movingload":
-            self._run_request = ("movingload",)
-        elif m["kind"] == "tempgradient":
-            self._run_request = ("tempgradient",)
         elif m["kind"] == "stages":
             self._run_request = ("stages",)
         elif m["kind"] == "vehicledynamics":
@@ -345,8 +329,6 @@ class AnalysisCasesDialog(QDialog):
             self._run_request = ("influencesurface",)
         elif m["kind"] == "cabletuning":
             self._run_request = ("cabletuning",)
-        elif m["kind"] == "loadrating":
-            self._run_request = ("loadrating",)
         self.accept()
 
     @classmethod

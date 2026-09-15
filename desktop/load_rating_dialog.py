@@ -26,7 +26,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox,
                                QListWidgetItem, QSpinBox, QVBoxLayout)
 
 import style
-from analysis_ui import GroupCard, dialog_buttons
+from analysis_ui import CaseHeader, GroupCard, dialog_buttons
 from units import Quantity, UnitSystem
 
 # label -> (component, quantity) — LRFR rates a force effect (moment or shear)
@@ -62,7 +62,8 @@ def _spin(value, lo=0.0, hi=1.0e12, step=1.0, decimals=3):
 class LoadRatingDialog(QDialog):
     """Configure an AASHTO LRFR load-rating case."""
 
-    def __init__(self, parent, project):
+    def __init__(self, parent, project, *, initial: dict | None = None,
+                 name: str = "Load Rating", notes: str = ""):
         super().__init__(parent)
         self.setWindowTitle("Load rating (LRFR)")
         self._project = project
@@ -72,6 +73,10 @@ class LoadRatingDialog(QDialog):
         root.setContentsMargins(style.SP_LG, style.SP_LG,
                                 style.SP_LG, style.SP_LG)
         root.setSpacing(style.SP_MD)
+
+        self.header = CaseHeader(name=name, type_label="Load Rating",
+                                 notes=notes)
+        root.addWidget(self.header)
 
         head = QLabel("Load rating — AASHTO LRFR")
         head.setObjectName("h2")
@@ -166,6 +171,8 @@ class LoadRatingDialog(QDialog):
         lvl.add_row("  Permit γLL", self.permit_gamma)
         root.addWidget(lvl)
 
+        if initial:
+            self._seed(initial)
         root.addStretch(1)
         root.addWidget(dialog_buttons(self))
         style.apply(self)
@@ -174,6 +181,48 @@ class LoadRatingDialog(QDialog):
     # ------------------------------------------------------------------ helpers
     def _quantity(self) -> Quantity:
         return self.effect.currentData()[1]
+
+    def _seed(self, p: dict) -> None:
+        """Seed the widgets from a saved case's params. Capacity / dead loads
+        are stored in SI → convert back to display units, whose quantity
+        depends on the rated effect, so set the effect first."""
+        resp = p.get("response") or ("M", None, "i")
+        for i in range(self.effect.count()):
+            if self.effect.itemData(i)[0] == resp[0]:
+                self.effect.setCurrentIndex(i)
+                break
+        qty = self._quantity()
+        to_disp = self._us.to_display
+        self.Rn.setValue(to_disp(float(p.get("Rn", 0.0)), qty))
+        self.DC.setValue(to_disp(float(p.get("DC", 0.0)), qty))
+        self.DW.setValue(to_disp(float(p.get("DW", 0.0)), qty))
+        self.P.setValue(to_disp(float(p.get("P", 0.0)), qty))
+        lane = set(p.get("lane") or [])
+        for i in range(self.lane_list.count()):
+            it = self.lane_list.item(i)
+            it.setSelected(it.data(0x0100) in lane)
+        mi = self.member.findData(resp[1] if len(resp) > 1 else None)
+        if mi >= 0:
+            self.member.setCurrentIndex(mi)
+        ei = self.end.findData(resp[2] if len(resp) > 2 else "i")
+        if ei >= 0:
+            self.end.setCurrentIndex(ei)
+        self.phi.setValue(float(p.get("phi", 1.0)))
+        ci = self.phi_c.findData(float(p.get("phi_c", 1.0)))
+        if ci >= 0:
+            self.phi_c.setCurrentIndex(ci)
+        psi = self.phi_s.findData(float(p.get("phi_s", 1.0)))
+        if psi >= 0:
+            self.phi_s.setCurrentIndex(psi)
+        self.im.setValue(float(p.get("im", 0.33)))
+        adtt = p.get("adtt")
+        self.legal.setChecked(adtt is not None)
+        if adtt is not None:
+            self.adtt.setValue(int(adtt))
+        pg = p.get("permit_gamma_LL")
+        self.permit.setChecked(pg is not None)
+        if pg is not None:
+            self.permit_gamma.setValue(float(pg))
 
     def _sync_units(self) -> None:
         """Show the capacity/dead-load spin-box units for the rated effect."""

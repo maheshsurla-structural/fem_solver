@@ -44,10 +44,20 @@ class _FakeWin:
     def run_buckling(self, config=None):
         self.calls.append(("run_buckling", config))
 
+    def run_moving_load(self, config=None):
+        self.calls.append(("run_moving_load", config))
+
+    def run_temperature_gradient(self, config=None):
+        self.calls.append(("run_temperature_gradient", config))
+
+    def run_load_rating(self, config=None):
+        self.calls.append(("run_load_rating", config))
+
 
 def test_registry_has_migrated_types():
     import case_types
-    assert set(case_types.TYPES) >= {"modal", "buckling"}
+    assert set(case_types.TYPES) >= {"modal", "buckling", "movingload",
+                                     "tempgradient", "loadrating"}
     # every registered type carries a label + icon and lands in the ordered list
     for ct in case_types._ORDER:
         assert ct.type_id and ct.type_label and ct.icon
@@ -89,3 +99,26 @@ def test_edit_cap_is_a_positive_bound():
     import case_types
     ct = case_types.get("modal")
     assert ct._edit_cap(_project()) >= 1
+
+
+def test_dict_config_types_dispatch_by_identity():
+    # moving load / temp gradient / load rating persist their dialog dict as-is;
+    # build_config is identity and dispatch forwards config= to the runner
+    import case_types
+    p = _project()
+    cases = {
+        "movingload": ({"lane": [1, 2], "vehicle": "hl93",
+                        "response": ["M", 1, "i"]}, "run_moving_load"),
+        "tempgradient": ({"source": "aashto", "zone": 3, "alpha": 1e-5,
+                          "members": [1]}, "run_temperature_gradient"),
+        "loadrating": ({"lane": [1, 2], "response": ["M", 1, "i"], "Rn": 1.0,
+                        "adtt": None, "permit_gamma_LL": None},
+                       "run_load_rating"),
+    }
+    for type_id, (params, run_name) in cases.items():
+        ct = case_types.get(type_id)
+        cfg = ct.build_config(p, params)
+        assert cfg == params                              # identity
+        win = _FakeWin()
+        ct.dispatch(win, cfg)
+        assert win.calls == [(run_name, params)]
