@@ -274,6 +274,14 @@ QToolButton#ribbonMore:hover {{
     background: {ACCENT_SOFT}; border-color: {BORDER}; color: {ACCENT};
 }}
 QToolButton#ribbonMore::menu-indicator {{ image: none; width: 0; }}
+QWidget#ribbonQat {{ background: transparent; }}
+QToolButton#qatBtn {{
+    background: transparent; border: 1px solid transparent;
+    border-radius: {R_SM}px; padding: 4px;
+}}
+QToolButton#qatBtn:hover {{ background: {ACCENT_SOFT}; border-color: {BORDER}; }}
+QToolButton#qatBtn:pressed {{ background: {ACCENT_SOFT}; border-color: {ACCENT}; }}
+QToolButton#qatBtn:disabled {{ opacity: 0.4; }}
 
 /* ---- File backstage overlay (plan ribbon R8) ---- */
 QWidget#backstage {{ background: {BG}; }}

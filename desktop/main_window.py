@@ -629,6 +629,8 @@ class MainWindow(QMainWindow):
 
         self._install_ribbon_shortcuts()      # R3: keyboard tab access
         rb.file_btn.clicked.connect(self._open_backstage)   # R8: File backstage
+        rb.set_quick_actions([self.act_save, self.act_undo,   # R11: quick access
+                              self.act_redo, self.act_run])
 
     # ---------------------------------------------------------------- analysis
     def _solve(self):
@@ -3353,6 +3355,21 @@ class RibbonBar(QWidget):
         # that the backstage renders and that the homed-once invariant checks.
         self.file_menu = QMenu(self.file_btn)
         srow.addWidget(self.file_btn)
+        # Quick Access Toolbar (plan ribbon R11): a few common actions beside
+        # File, visible on every tab. Populated by the shell via
+        # ``set_quick_actions``; hidden until then.
+        self._qat = QWidget()
+        self._qat.setObjectName("ribbonQat")
+        self._qat_row = QHBoxLayout(self._qat)
+        self._qat_row.setContentsMargins(style.SP_SM, 0, style.SP_XS, 0)
+        self._qat_row.setSpacing(style.SP_XS)
+        srow.addWidget(self._qat)
+        self._qat_sep = QFrame()
+        self._qat_sep.setObjectName("ribbonVSep")
+        self._qat_sep.setFrameShape(QFrame.Shape.VLine)
+        srow.addWidget(self._qat_sep)
+        self._qat.hide()
+        self._qat_sep.hide()
         self.tabs = QTabBar()
         self.tabs.setObjectName("ribbonTabs")
         self.tabs.setDrawBase(False)
@@ -3418,6 +3435,26 @@ class RibbonBar(QWidget):
         self.stack.addWidget(page)
         self._tab_titles.append(title)
         return page
+
+    def set_quick_actions(self, actions) -> None:
+        """R11 — fill the Quick Access Toolbar with icon-only buttons mirroring
+        ``actions`` (tab-independent common commands). Empty hides the QAT."""
+        self.qat_buttons: list[QToolButton] = []
+        while self._qat_row.count():
+            item = self._qat_row.takeAt(0)
+            if item.widget() is not None:
+                item.widget().deleteLater()
+        for act in actions:
+            btn = QToolButton()
+            btn.setObjectName("qatBtn")
+            btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+            btn.setDefaultAction(act)
+            btn.setAutoRaise(True)
+            btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            self._qat_row.addWidget(btn)
+            self.qat_buttons.append(btn)
+        self._qat.setVisible(bool(actions))
+        self._qat_sep.setVisible(bool(actions))
 
     def set_current(self, which) -> None:
         idx = which if isinstance(which, int) else self._tab_titles.index(which)

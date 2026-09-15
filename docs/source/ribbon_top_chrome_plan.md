@@ -149,8 +149,11 @@ Legend: `[x]` done · `[ ]` open. Do the lowest open item whose deps are met.
 
 **Core is done (R1–R6): the top chrome is one compact strip, iconed, keyboard-driven,
 persistent, contextual and collapsible.** Remaining items are polish/robustness, not
-load-bearing — **R7 + R8 done; only R9 left** (extends the model to the second window — largest,
-least urgent) plus the R10–R12 backlog.
+not load-bearing. **R7, R8, R11 done; R9 deliberately scoped out (see below).** The stream is
+effectively **complete** — the only open items are R10 (broaden contextual raising; low value —
+most analyses open dialogs, not ribbon-tab content) and R12 (Export; blocked until an export action
+exists). The top chrome is now one compact strip: tabbed, iconed, keyboard-driven, persistent,
+contextual, collapsible, width-responsive, with a File backstage and a Quick Access Toolbar.
 
 - [x] **R1 — Tabbed ribbon shell.** Replace the menu bar + 3 stacked rows + draw palette with one
   `RibbonBar` (File backstage + tabs Home/Draw/Loads/Analysis/Results/View, one swapping group
@@ -182,18 +185,24 @@ least urgent) plus the R10–R12 backlog.
   **Recent** list (MRU in `recent/files`, filtered to existing files), and an **About** card, on
   the card scaffold. Back arrow / Esc closes. *(Export deferred — no export action exists yet; see
   R12.)* — `feat(ribbon R8)`, 2026-09-14.
-- [ ] **R9 — Section Designer parity.** Bring the separate Section Designer window
-  (`section_designer.py`, still its own `QMenuBar`) onto the same ribbon model, or explicitly
-  scope it out here with a rationale. Deps: R1.
+- [x] **R9 — Section Designer parity — deliberately scoped out.** The Section Designer is a
+  *separate, specialized section editor* (workflow: draw section → assign materials/rebar →
+  P-M-M / M-φ / Report), already fully on the design system (41 `style.*` uses, its own theme
+  toggle + dark, a header toolbar + tabbed workspace + focused File/Sections/Materials/Export/View/
+  Help menus). This is exactly how the reference tools (SAP2000 / CSiBridge) ship *their* Section
+  Designer — a separate window with its own menus, **not** the main ribbon — so a full ribbon port
+  would be a large, risky rewrite of the product-differentiator tool that would actually *diverge*
+  from the references for negligible benefit. Its chrome is appropriate as-is; revisit only if its
+  command surface grows to ribbon scale. — decided 2026-09-15.
 - [ ] **R10 — Broaden contextual raising (from R4).** R4 only raises **Results** after
   *linear-static*; the modal / response-spectrum / buckling / moving-load runs open their own
   result surfaces without surfacing the ribbon. Route those through a single post-run hook so
   every analysis type raises the right tab. The **Draw**-raise in `_set_mode` is effectively a
   no-op today (those tools already live on the Draw tab) — revisit if a command palette / shortcut
   can activate a tool from elsewhere. Deps: R4.
-- [ ] **R11 — Quick Access Toolbar (optional).** A small, user-pinnable row of common actions
-  (Save · Undo · Redo · Run) beside the File button, independent of the active tab — the last piece
-  of the CSi/Office ribbon idiom. Deps: R1. *(Nice-to-have; only if the strip still feels sparse.)*
+- [x] **R11 — Quick Access Toolbar.** `RibbonBar.set_quick_actions([save, undo, redo, run])` adds
+  an icon-only, tab-independent button row beside the File button (`qatBtn`; mirrors the actions, so
+  it is *not* counted against the homed-once invariant). — `feat(ribbon R11)`, 2026-09-15.
 - [ ] **R12 — Export (from R8).** The backstage has no **Export** command because the app has no
   export action yet (only project save/open). When an export path exists (results CSV, drawing/PDF,
   model interchange), add it as a backstage command + a Home/Results button. Deps: R8.
@@ -202,6 +211,14 @@ least urgent) plus the R10–R12 backlog.
 
 ## 6. Change log
 
+- **2026-09-15 — R11 + R9.** R11 (Quick Access Toolbar): `RibbonBar` gains a `_qat` holder in the
+  tab strip (between File and the tabs) + `set_quick_actions(actions)` building icon-only `qatBtn`
+  buttons via `setDefaultAction`; the shell wires `[act_save, act_undo, act_redo, act_run]`. QSS
+  `ribbonQat`/`qatBtn` in `style.py`. Test in `test_desktop_ribbon.py`. R9 (Section Designer
+  parity): **scoped out** with rationale (§5) — the SD is a separate specialized editor already on
+  the design system; the reference tools keep their Section Designer off the main ribbon too. This
+  closes the ribbon stream's core (R1–R9 resolved); only R10/R12 backlog remain. Screenshots
+  `R11_qat_{light,dark}.png`.
 - **2026-09-15 — R7.** Width overflow. `_ribbon_page` → `RibbonPage(QWidget)`: keeps its groups +
   a hidden `»` `QToolButton#ribbonMore`; `resizeEvent`→`_relayout` measures group sizeHints against
   the available width and hides the rightmost groups that don't fit (min one stays), toggling `»`;

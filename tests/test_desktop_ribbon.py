@@ -345,3 +345,20 @@ def test_overflow_popup_lists_hidden_group_actions(win):
 def test_overflow_button_is_not_a_ribbon_button(win):
     # the '»' control is not counted among the tab's command buttons
     assert win._ribbon.page("View")._more.objectName() == "ribbonMore"
+
+
+# ---- R11: quick access toolbar ---------------------------------------------
+def test_quick_access_toolbar(win):
+    from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QToolButton
+    qat = [b for b in win.findChildren(QToolButton)
+           if b.objectName() == "qatBtn"]
+    # mirrors the common tab-independent commands, in order
+    assert [b.defaultAction() for b in qat] == [win.act_save, win.act_undo,
+                                                win.act_redo, win.act_run]
+    assert not win._ribbon._qat.isHidden()
+    for b in qat:                                     # icon-only, all iconed
+        assert b.toolButtonStyle() == Qt.ToolButtonStyle.ToolButtonIconOnly
+        assert not b.defaultAction().icon().isNull()
+    # QAT buttons are not ribbon command buttons — the homed-once invariant holds
+    assert all(b.objectName() != "ribbonBtn" for b in qat)
