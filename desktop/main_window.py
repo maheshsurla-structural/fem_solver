@@ -1108,15 +1108,14 @@ class MainWindow(QMainWindow):
         from femsolver.bridges import (ErectionStage,
                                        IncrementalStagedAnalysis, staged_camber)
 
+        import numpy as np
+
         p = self._project
         if p is None or not p.members:
             self.statusBar().showMessage("Add members first.")
             return None
-        if p.ndm != 2:
-            QMessageBox.information(
-                self, "Construction stages",
-                "Construction-stage analysis is currently 2-D only.")
-            return None
+        vdof = 2 if p.ndm == 3 else 1                   # vertical translation DOF
+        ndf = p.ndf
 
         if config is not None:
             stages = config
@@ -1143,12 +1142,13 @@ class MainWindow(QMainWindow):
                     el = model.element(tag)
                 except KeyError:
                     continue
-                L = el.length_and_angle()[0]
+                X = el.node_coords()
+                L = float(np.linalg.norm(X[1] - X[0]))
                 w = getattr(el.material, "rho", 0.0) * el.area * L * G
                 if w <= 0.0:
                     continue
                 for nd in el.node_tags:
-                    loads.setdefault(nd, [0.0, 0.0, 0.0])[1] += -w / 2.0
+                    loads.setdefault(nd, [0.0] * ndf)[vdof] += -w / 2.0
             return loads
 
         erection = []
@@ -1164,7 +1164,8 @@ class MainWindow(QMainWindow):
                     s.name or f"Stage {i + 1}", add_elements=ids,
                     loads=_self_weight(ids)))
 
-        total_w = sum(abs(v[1]) for st in erection for v in st.loads.values())
+        total_w = sum(abs(v[vdof]) for st in erection
+                      for v in st.loads.values())
         if total_w <= 0.0:
             QMessageBox.information(
                 self, "Construction stages",
@@ -1181,7 +1182,7 @@ class MainWindow(QMainWindow):
                 f"be unstable — check the build order):\n\n{exc}")
             return None
 
-        camber = staged_camber(res, model, erection, dof=1)
+        camber = staged_camber(res, model, erection, dof=vdof)
         dmax = mg.max_translation(model)
         span = mg.model_span(model)
         scale = (0.08 * span / dmax) if dmax > 0 else 1.0

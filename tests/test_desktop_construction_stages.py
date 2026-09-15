@@ -128,3 +128,25 @@ def test_run_stages_guards(qapp, monkeypatch):
     bad = [Stage(id=1, name="S1", add_members=[8]),
            Stage(id=2, name="S2", add_members=[1, 2, 3, 4, 5, 6, 7])]
     assert w2.run_construction_stages(config=bad) is None
+
+
+def test_run_stages_3d_camber(qapp):
+    """A3.3a: construction-stage camber works in 3-D (vertical DOF = uz)."""
+    from main_window import MainWindow
+    n, L = 8, 24.0
+    p = Project(ndm=3, ndf=6)
+    for i in range(n + 1):
+        p.nodes.append(Node(id=i + 1, x=i * L / n, y=0.0, z=0.0))
+    p.nodes[0].supports = (1, 1, 1, 1, 1, 1)          # fixed base cantilever
+    p.sections = [Section(id=1, name="deck", A=0.6, Iz=0.08, Iy=0.05, J=0.03)]
+    p.materials = [Material(1, "conc", E=3e10, nu=0.2, rho=2500.0)]
+    p.members = [Member(i + 1, i + 1, i + 2, 1, 1) for i in range(n)]
+    w = MainWindow()
+    w.load_project(p)
+    stages = [Stage(id=i + 1, name=f"S{i + 1}",
+                    add_members=[2 * i + 1, 2 * i + 2]) for i in range(4)]
+    res = w.run_construction_stages(config=stages)
+    assert res is not None and res["stages"] == 4
+    cam = res["camber"]
+    assert cam.final_camber[-1] > 0.0                  # tip droops → build high
+    assert abs(cam.final_deflection[-1]) > 0.0

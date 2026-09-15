@@ -113,8 +113,19 @@ rows — every analysis is reachable from the desktop.
     DOF = uz (2). Validated: 3-D member-moment IL == 2-D exactly; static
     My = PL/4. `tests/test_moving_load.py::test_3d_member_moment_matches_2d_influence_line`,
     `tests/test_desktop_moving_load.py::test_run_moving_load_3d`.
-  - [ ] **A3.3 — 3-D temperature gradient / stages / vehicle dynamics** — 3-D
-    vertical-DOF handling in those runners.
+  - **A3.3 — 3-D temperature gradient / stages / vehicle dynamics:**
+    - [x] **A3.3a — Construction stages 3-D** ✅ DONE 2026-09-15. `run_construction_stages`
+      un-gated; vertical DOF = uz (2) for self-weight + camber; dimension-safe
+      member length. `tests/test_desktop_construction_stages.py::test_run_stages_3d_camber`.
+    - [ ] **A3.3b — Temperature gradient 3-D** — DEFERRED. Needs a section
+      vertical-orientation convention (which of Iy/Iz is the vertical-bending
+      inertia, and the vertical axis in the 3-D local frame); the desktop
+      `Section` doesn't carry it, so a convention-based version risks silently
+      wrong results. Stays 2-D-only (clear message).
+    - [ ] **A3.3c — Vehicle dynamics 3-D** — DEFERRED. `MovingForceAnalysis` /
+      `VBIAnalysis` are 2-D by construction (Hermite distribution on uy/rz +
+      a coupled 2-D Newmark contact solver); 3-D is a dedicated engine effort.
+      Stays 2-D-only (clear message).
 
 ## Notes
 - Every GUI change is flagged to the user (their standing request).
