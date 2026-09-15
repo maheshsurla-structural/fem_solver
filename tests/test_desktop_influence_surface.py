@@ -66,14 +66,30 @@ def test_dialog_defaults(qapp):
 
 
 # ---------------------------------------------------- analysis-cases row
-def test_analysis_cases_lists_influence_surface(qapp):
+def test_influence_surface_is_a_saveable_case_type(qapp):
+    import case_types
+    ct = case_types.get("influencesurface")
+    assert ct is not None and ct.type_label == "Influence Surface"
+    params = {"deck": [1, 2, 3], "response": ["disp", 2], "vehicle": "hl93_truck",
+              "multi_presence": True}
+    assert "node 2" in ct.detail(_grillage(), params)
+
+
+def test_analysis_cases_lists_saved_influence_surface_case(qapp):
     from analysis_cases_dialog import AnalysisCasesDialog
-    dlg = AnalysisCasesDialog(None, _grillage())
+    from project import AnalysisCase
+    p = _grillage()
+    p.analysis_cases = [AnalysisCase(id=6, name="Deck IS", type="influencesurface",
+                                     params={"deck": [1, 2], "vehicle": "hl93_truck",
+                                             "response": ["disp", 1],
+                                             "multi_presence": True})]
+    dlg = AnalysisCasesDialog(None, p)
     kinds = [m["kind"] for m in dlg._row_meta]
-    assert "influencesurface" in kinds
-    dlg.table.setCurrentCell(kinds.index("influencesurface"), 0)
+    assert "analysis" in kinds
+    dlg.table.setCurrentCell(kinds.index("analysis"), 0)
+    assert dlg._mod_btn.isEnabled() and dlg._del_btn.isEnabled()
     dlg._run()
-    assert dlg._run_request == ("influencesurface",)
+    assert dlg._run_request == ("case", 6)
 
 
 # ------------------------------------------------- run_influence_surface

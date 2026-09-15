@@ -103,16 +103,59 @@ def test_results_dialog_mass_percentages(qapp):
 
 
 # ---------------------------------------------------------- analysis-cases row
-def test_analysis_cases_lists_response_spectrum(qapp):
-    from analysis_cases_dialog import AnalysisCasesDialog, _PLANNED
-    assert "Response Spectrum" not in _PLANNED
-    dlg = AnalysisCasesDialog(None, _frame())
+def test_response_spectrum_is_a_saveable_case_type(qapp):
+    # RS is the "object" case: params are the spectrum inputs; build_config
+    # rebuilds the derived ResponseSpectrum headlessly.
+    import case_types
+    from femsolver import ResponseSpectrum
+    ct = case_types.get("responsespectrum")
+    assert ct is not None and ct.type_label == "Response Spectrum"
+    params = {"source": "asce7", "damping": 0.05, "num_modes": 4,
+              "direction": "x", "combination": "srss",
+              "asce7": {"SDS": 1.0, "SD1": 0.6, "TL": 8.0}}
+    spec, n, direction, comb = ct.build_config(_frame(), params)
+    assert isinstance(spec, ResponseSpectrum)
+    assert (n, direction, comb) == (4, "x", "srss")
+    assert "ASCE 7" in ct.detail(_frame(), params)
+
+
+def test_response_spectrum_params_round_trip(qapp):
+    # seeding a dialog from params, then reading params() back, is stable
+    from response_spectrum_dialog import ResponseSpectrumDialog
+    params = {"source": "ec8", "damping": 0.03, "num_modes": 5,
+              "direction": "y", "combination": "cqc",
+              "asce7": {"SDS": 1.2, "SD1": 0.5, "TL": 6.0},
+              "ec8": {"ag": 3.0, "ground": "D", "q": 2.0, "type": 2},
+              "is1893": {"zone": 5, "I": 1.5, "R": 4.0, "soil": 3},
+              "custom": []}
+    dlg = ResponseSpectrumDialog(None, ndm=2, max_modes=20, initial=params,
+                                 name="RS-Y")
+    got = dlg.params()
+    assert got["source"] == "ec8" and got["num_modes"] == 5
+    assert got["direction"] == "y" and got["combination"] == "cqc"
+    assert abs(got["damping"] - 0.03) < 1e-9
+    assert got["ec8"] == {"ag": 3.0, "ground": "D", "q": 2.0, "type": 2}
+    assert got["is1893"]["zone"] == 5 and got["is1893"]["soil"] == 3
+    assert dlg.header.name() == "RS-Y"
+
+
+def test_analysis_cases_lists_saved_response_spectrum_case(qapp):
+    from analysis_cases_dialog import AnalysisCasesDialog
+    from project import AnalysisCase
+    p = _frame()
+    p.analysis_cases = [AnalysisCase(id=5, name="RS-X", type="responsespectrum",
+                                     params={"source": "asce7", "num_modes": 6,
+                                             "direction": "x",
+                                             "combination": "cqc",
+                                             "asce7": {"SDS": 1.0, "SD1": 0.6,
+                                                       "TL": 8.0}})]
+    dlg = AnalysisCasesDialog(None, p)
     kinds = [m["kind"] for m in dlg._row_meta]
-    assert "responsespectrum" in kinds
-    dlg.table.setCurrentCell(kinds.index("responsespectrum"), 0)
-    assert dlg._run_btn.isEnabled()
+    assert "analysis" in kinds
+    dlg.table.setCurrentCell(kinds.index("analysis"), 0)
+    assert dlg._mod_btn.isEnabled() and dlg._del_btn.isEnabled()
     dlg._run()
-    assert dlg._run_request == ("responsespectrum",)
+    assert dlg._run_request == ("case", 5)
 
 
 # ----------------------------------------------------------- run_response_spectrum

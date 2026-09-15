@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QDialog, QLabel, QListWidget,
                                QListWidgetItem, QVBoxLayout)
 
 import style
-from analysis_ui import GroupCard, dialog_buttons
+from analysis_ui import CaseHeader, GroupCard, dialog_buttons
 
 _ROLE = 0x0100                                          # Qt.UserRole
 
@@ -25,7 +25,8 @@ _ROLE = 0x0100                                          # Qt.UserRole
 class CableTuningDialog(QDialog):
     """Pick the stay members to tune and the deck nodes to target."""
 
-    def __init__(self, parent, project):
+    def __init__(self, parent, project, *, initial: dict | None = None,
+                 name: str = "Cable Tuning", notes: str = ""):
         super().__init__(parent)
         self.setWindowTitle("Cable tuning")
         self._project = project
@@ -34,6 +35,9 @@ class CableTuningDialog(QDialog):
         root.setContentsMargins(style.SP_LG, style.SP_LG,
                                 style.SP_LG, style.SP_LG)
         root.setSpacing(style.SP_MD)
+        self.header = CaseHeader(name=name, type_label="Cable Tuning",
+                                 notes=notes)
+        root.addWidget(self.header)
         head = QLabel("Cable-stayed tuning (unknown load factor)")
         head.setObjectName("h2")
         root.addWidget(head)
@@ -69,9 +73,22 @@ class CableTuningDialog(QDialog):
         tgt.body_layout().addWidget(self.targets)
         root.addWidget(tgt)
 
+        if initial:
+            self._seed(initial)
         root.addStretch(1)
         root.addWidget(dialog_buttons(self))
         style.apply(self)
+
+    def _seed(self, p: dict) -> None:
+        """Seed the stay + target selections from a saved case's params."""
+        cables = set(p.get("cables") or [])
+        for i in range(self.cables.count()):
+            it = self.cables.item(i)
+            it.setSelected(it.data(_ROLE) in cables)
+        targets = set(p.get("targets") or [])
+        for i in range(self.targets.count()):
+            it = self.targets.item(i)
+            it.setSelected(it.data(_ROLE) in targets)
 
     def cable_members(self) -> list:
         return [it.data(_ROLE) for it in self.cables.selectedItems()]

@@ -2215,16 +2215,8 @@ class MainWindow(QMainWindow):
             self._run_saved_case(run[1])
         elif kind == "timehistory":
             self.run_timehistory_dialog()
-        elif kind == "responsespectrum":
-            self.run_response_spectrum()
         elif kind == "stages":
             self.run_construction_stages()
-        elif kind == "vehicledynamics":
-            self.run_vehicle_dynamics()
-        elif kind == "influencesurface":
-            self.run_influence_surface()
-        elif kind == "cabletuning":
-            self.run_cable_tuning()
         # R10: broaden R4's contextual raise — after *any* analysis dispatched
         # from the cases home, surface the Results tab (History/diagrams/design
         # all live there). A no-op when the ribbon is collapsed.

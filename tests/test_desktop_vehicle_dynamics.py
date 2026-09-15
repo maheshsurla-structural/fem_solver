@@ -66,14 +66,29 @@ def test_dialog_kind_switch(qapp):
 
 
 # ---------------------------------------------------- analysis-cases row
-def test_analysis_cases_lists_vehicle_dynamics(qapp):
+def test_vehicle_dynamics_is_a_saveable_case_type(qapp):
+    import case_types
+    ct = case_types.get("vehicledynamics")
+    assert ct is not None and ct.type_label == "Vehicle Dynamics"
+    params = {"kind": "vbi", "speed": 16.667, "node": 2}
+    assert "sprung-mass" in ct.detail(_girder(), params)
+
+
+def test_analysis_cases_lists_saved_vehicle_dynamics_case(qapp):
     from analysis_cases_dialog import AnalysisCasesDialog
-    dlg = AnalysisCasesDialog(None, _girder())
+    from project import AnalysisCase
+    p = _girder()
+    p.analysis_cases = [AnalysisCase(id=3, name="VBI 60", type="vehicledynamics",
+                                     params={"lane": [1, 2], "kind": "force",
+                                             "vehicle": "hl93_truck",
+                                             "speed": 16.667, "node": 2})]
+    dlg = AnalysisCasesDialog(None, p)
     kinds = [m["kind"] for m in dlg._row_meta]
-    assert "vehicledynamics" in kinds
-    dlg.table.setCurrentCell(kinds.index("vehicledynamics"), 0)
+    assert "analysis" in kinds
+    dlg.table.setCurrentCell(kinds.index("analysis"), 0)
+    assert dlg._mod_btn.isEnabled() and dlg._del_btn.isEnabled()
     dlg._run()
-    assert dlg._run_request == ("vehicledynamics",)
+    assert dlg._run_request == ("case", 3)
 
 
 # ------------------------------------------------- run_vehicle_dynamics

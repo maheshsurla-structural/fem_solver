@@ -7,29 +7,18 @@ One table lists **every** analysis case with a Type column and icon:
   loads / combinations (a built-in launcher, not a stored entity).
 * **Nonlinear Static** — each saved :class:`project.NonlinearCase`; add / modify
   / delete these here (delegating to :class:`nonlinear_cases.NonlinearCaseDialog`).
-* **Saved analysis cases** — each saved :class:`project.AnalysisCase` for a
-  *migrated* built-in type (Modal, Buckling, … — see :mod:`case_types`). These
-  are the multi-instance, named, editable cases: **Add ▾** creates one (seeding
-  the type's setup dialog), **Modify** / **Delete** manage it, and **Run** uses
-  its stored params with no re-prompt (analysis-cases-manager plan).
-* **Time History** — a built-in launcher for the nonlinear dynamic dialog.
-* **Response Spectrum** — a built-in launcher for the modal-superposition
-  seismic analysis (design spectrum → SRSS / CQC). *(not yet migrated)*
-* **Moving Load** — a built-in launcher for the influence-line / moving-load
-  analysis (HL-93 / IRC vehicle envelopes on a lane of girder nodes).
-* **Temperature Gradient** — a built-in launcher for a vertical
-  temperature-gradient load (AASHTO / linear → self-stress + continuity).
+* **Saved analysis cases** — each saved :class:`project.AnalysisCase`, the
+  multi-instance, named, editable cases for the migrated built-in types (Modal,
+  Buckling, Moving Load, Temperature Gradient, Load Rating, Response Spectrum,
+  Vehicle Dynamics, Influence Surface, Cable Tuning — see :mod:`case_types`).
+  **Add ▾** creates one (seeding the type's setup dialog), **Modify** /
+  **Delete** manage it, and **Run** uses its stored params with no re-prompt
+  (analysis-cases-manager plan).
+* **Time History** — a built-in launcher for the nonlinear dynamic dialog (a
+  runner-dialog + ground-motion record → left a launcher, see the plan).
 * **Construction Stages** — a built-in launcher for the incremental erection
-  sequence under self-weight, reporting the camber (geometry control).
-* **Vehicle Dynamics** — a built-in launcher for the moving-load time-history
-  (constant moving force or coupled sprung-mass VBI → DAF + response history).
-* **Influence Surface** — a built-in launcher for 2-D deck moving load: the
-  influence surface + AASHTO multi-lane vehicle envelope (needs a 3-D deck).
-* **Cable Tuning** — a built-in launcher for cable-stayed initial-force
-  optimisation (unknown load factor → stay pretensions for a target profile).
-* **Load Rating** — a built-in launcher for AASHTO LRFR load rating: the
-  HL-93 live-load effect of a rated member force → rating factors (design
-  inventory / operating, plus optional legal and permit).
+  sequence under self-weight, reporting the camber; operates on the shared,
+  already-persistent ``project.stages`` (so left a launcher).
 
 The dialog never runs anything itself: **Run** records a request and closes;
 the owning window dispatches it (a linear-static run, a launcher's setup dialog,
@@ -168,25 +157,9 @@ class AnalysisCasesDialog(QDialog):
                      "type": "Time History",
                      "detail": "ground-motion record", "icon": "run",
                      "runnable": True})
-        rows.append({"kind": "responsespectrum", "name": "Response Spectrum",
-                     "type": "Response Spectrum",
-                     "detail": "modal superposition · SRSS/CQC", "icon": "run",
-                     "runnable": True})
         rows.append({"kind": "stages", "name": "Construction Stages",
                      "type": "Construction Stages",
                      "detail": "incremental erection · camber",
-                     "icon": "run", "runnable": True})
-        rows.append({"kind": "vehicledynamics", "name": "Vehicle Dynamics",
-                     "type": "Vehicle Dynamics",
-                     "detail": "moving-load time-history · DAF",
-                     "icon": "run", "runnable": True})
-        rows.append({"kind": "influencesurface", "name": "Influence Surface",
-                     "type": "Influence Surface",
-                     "detail": "2-D deck moving load · multi-lane (3-D)",
-                     "icon": "run", "runnable": True})
-        rows.append({"kind": "cabletuning", "name": "Cable Tuning",
-                     "type": "Cable Tuning",
-                     "detail": "cable-stayed · unknown load factor",
                      "icon": "run", "runnable": True})
         for name in _PLANNED:
             rows.append({"kind": "planned", "name": name, "type": name,
@@ -319,16 +292,8 @@ class AnalysisCasesDialog(QDialog):
             self._run_request = ("case", m["case_id"])
         elif m["kind"] == "timehistory":
             self._run_request = ("timehistory",)
-        elif m["kind"] == "responsespectrum":
-            self._run_request = ("responsespectrum",)
         elif m["kind"] == "stages":
             self._run_request = ("stages",)
-        elif m["kind"] == "vehicledynamics":
-            self._run_request = ("vehicledynamics",)
-        elif m["kind"] == "influencesurface":
-            self._run_request = ("influencesurface",)
-        elif m["kind"] == "cabletuning":
-            self._run_request = ("cabletuning",)
         self.accept()
 
     @classmethod

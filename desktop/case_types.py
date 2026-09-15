@@ -247,10 +247,142 @@ class LoadRatingType(CaseType):
         return win.run_load_rating(config=config)
 
 
+class ResponseSpectrumType(CaseType):
+    """Response-spectrum (modal superposition) → run_response_spectrum. The
+    *object* case: the dialog's result is a derived ``ResponseSpectrum``, so the
+    saved params are the spectrum **inputs** and ``build_config`` rebuilds the
+    object headlessly via ``response_spectrum_dialog.spectrum_from_params``."""
+
+    type_id = "responsespectrum"
+    type_label = "Response Spectrum"
+
+    def detail(self, project, params):
+        src = {"asce7": "ASCE 7", "ec8": "EC8", "is1893": "IS 1893",
+               "custom": "custom"}.get(params.get("source"),
+                                       params.get("source", "?"))
+        return (f"{src} · {int(params.get('num_modes', 6))} modes · "
+                f"{str(params.get('direction', 'x')).upper()} · "
+                f"{str(params.get('combination', 'cqc')).upper()}")
+
+    def edit(self, parent, project, case=None):
+        from PySide6.QtWidgets import QMessageBox
+
+        from response_spectrum_dialog import (ResponseSpectrumDialog,
+                                              spectrum_from_params)
+        dlg = ResponseSpectrumDialog(
+            parent, ndm=project.ndm, max_modes=self._edit_cap(project),
+            default_modes=6, initial=(dict(case.params) if case else None),
+            name=(case.name if case else "Response Spectrum"),
+            notes=(case.notes if case else ""))
+        while dlg.exec():
+            params = dlg.params()
+            try:                                   # validate the custom table
+                spectrum_from_params(params)
+            except ValueError as exc:
+                QMessageBox.warning(dlg, "Response spectrum", str(exc))
+                continue
+            return self._mk(case,
+                            name=dlg.header.name() or "Response Spectrum",
+                            params=params, notes=dlg.header.notes())
+        return None
+
+    def build_config(self, project, params):
+        from response_spectrum_dialog import spectrum_from_params
+        return (spectrum_from_params(params), int(params.get("num_modes", 6)),
+                params.get("direction", "x"),
+                params.get("combination", "cqc"))
+
+    def dispatch(self, win, config):
+        return win.run_response_spectrum(config=config)
+
+
+class VehicleDynamicsType(CaseType):
+    """Vehicle dynamics (moving-load time-history) → run_vehicle_dynamics."""
+
+    type_id = "vehicledynamics"
+    type_label = "Vehicle Dynamics"
+
+    def detail(self, project, params):
+        kind = "sprung-mass" if params.get("kind") == "vbi" else "moving force"
+        spd = float(params.get("speed", 16.667)) * 3.6
+        tail = (f" · {params.get('vehicle', '')}"
+                if params.get("kind") != "vbi" else "")
+        return f"{kind}{tail} · {spd:.0f} km/h @ node {params.get('node')}"
+
+    def edit(self, parent, project, case=None):
+        from vehicle_dynamics_dialog import VehicleDynamicsDialog
+        dlg = VehicleDynamicsDialog(
+            parent, project, initial=(dict(case.params) if case else None),
+            name=(case.name if case else "Vehicle Dynamics"),
+            notes=(case.notes if case else ""))
+        if not dlg.exec():
+            return None
+        return self._mk(case, name=dlg.header.name() or "Vehicle Dynamics",
+                        params=dlg.result(), notes=dlg.header.notes())
+
+    def dispatch(self, win, config):
+        return win.run_vehicle_dynamics(config=config)
+
+
+class InfluenceSurfaceType(CaseType):
+    """Influence surface / multi-lane (3-D deck) → run_influence_surface."""
+
+    type_id = "influencesurface"
+    type_label = "Influence Surface"
+
+    def detail(self, project, params):
+        resp = params.get("response") or ("disp", None)
+        what = {"disp": "disp", "reaction": "reaction"}.get(resp[0], resp[0])
+        mp = " · MP" if params.get("multi_presence", True) else ""
+        return (f"{what} @ node {resp[1]} · {params.get('vehicle', '')} · "
+                f"{len(params.get('deck') or [])} deck nodes{mp}")
+
+    def edit(self, parent, project, case=None):
+        from influence_surface_dialog import InfluenceSurfaceDialog
+        dlg = InfluenceSurfaceDialog(
+            parent, project, initial=(dict(case.params) if case else None),
+            name=(case.name if case else "Influence Surface"),
+            notes=(case.notes if case else ""))
+        if not dlg.exec():
+            return None
+        return self._mk(case, name=dlg.header.name() or "Influence Surface",
+                        params=dlg.result(), notes=dlg.header.notes())
+
+    def dispatch(self, win, config):
+        return win.run_influence_surface(config=config)
+
+
+class CableTuningType(CaseType):
+    """Cable-stayed tuning (unknown load factor) → run_cable_tuning."""
+
+    type_id = "cabletuning"
+    type_label = "Cable Tuning"
+
+    def detail(self, project, params):
+        return (f"{len(params.get('cables') or [])} stays · "
+                f"{len(params.get('targets') or [])} target nodes")
+
+    def edit(self, parent, project, case=None):
+        from cable_tuning_dialog import CableTuningDialog
+        dlg = CableTuningDialog(
+            parent, project, initial=(dict(case.params) if case else None),
+            name=(case.name if case else "Cable Tuning"),
+            notes=(case.notes if case else ""))
+        if not dlg.exec():
+            return None
+        return self._mk(case, name=dlg.header.name() or "Cable Tuning",
+                        params=dlg.result(), notes=dlg.header.notes())
+
+    def dispatch(self, win, config):
+        return win.run_cable_tuning(config=config)
+
+
 # Ordered registry — also the order of the Add ▾ menu. Extend as types migrate
-# (response spectrum, vehicle dynamics, influence surface, cable tuning, …).
+# (time history, construction stages, …).
 _ORDER: list[CaseType] = [ModalType(), BucklingType(), MovingLoadType(),
-                          TemperatureGradientType(), LoadRatingType()]
+                          TemperatureGradientType(), LoadRatingType(),
+                          ResponseSpectrumType(), VehicleDynamicsType(),
+                          InfluenceSurfaceType(), CableTuningType()]
 TYPES: dict[str, CaseType] = {ct.type_id: ct for ct in _ORDER}
 
 

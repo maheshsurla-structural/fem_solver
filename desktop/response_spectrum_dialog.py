@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDialog,
                                QTableWidgetItem, QVBoxLayout, QWidget)
 
 import style
-from analysis_ui import GroupCard, dialog_buttons
+from analysis_ui import CaseHeader, GroupCard, dialog_buttons
 
 _G = 9.80665                    # gravity (m/s²) — converts Sa in g → m/s²
 
@@ -46,14 +46,73 @@ def asce7_Sa(T: float, *, SDS: float, SD1: float, TL: float) -> float:
     return _G * Sa_g
 
 
+def _clean_custom_points(raw):
+    """Sorted, distinct-period ``(T, Sa)`` points from a raw list of pairs."""
+    pts = []
+    for pair in raw or []:
+        try:
+            pts.append((float(pair[0]), float(pair[1])))
+        except (TypeError, ValueError, IndexError):
+            continue
+    pts.sort(key=lambda p: p[0])
+    out, seen = [], set()
+    for T, Sa in pts:
+        if T in seen:
+            continue
+        seen.add(T)
+        out.append((T, Sa))
+    return out
+
+
+def spectrum_from_params(params: dict):
+    """Build a :class:`femsolver.ResponseSpectrum` from a saved case's
+    JSON-friendly **inputs** (source + per-code parameters + damping) — the
+    headless counterpart of :meth:`ResponseSpectrumDialog.build_spectrum`, used
+    both by the live preview and by :mod:`case_types` at Run time. Raises
+    ``ValueError`` for an under-defined custom table."""
+    from femsolver import ResponseSpectrum
+
+    zeta = float(params.get("damping", 0.05))
+    src = params.get("source", "asce7")
+    if src == "custom":
+        pts = _clean_custom_points(params.get("custom"))
+        if len(pts) < 2:
+            raise ValueError("a custom spectrum needs at least two points with "
+                             "distinct periods")
+        return ResponseSpectrum([p[0] for p in pts], [p[1] for p in pts],
+                                damping_ratio=zeta)
+    if src == "asce7":
+        a = params.get("asce7", {})
+        SDS, SD1, TL = (a.get("SDS", 1.0), a.get("SD1", 0.6), a.get("TL", 8.0))
+        fn = lambda T: asce7_Sa(T, SDS=SDS, SD1=SD1, TL=TL)  # noqa: E731
+        t_max = max(10.0, TL)
+    elif src == "ec8":
+        from femsolver.design import ec8
+        e = params.get("ec8", {})
+        fn = lambda T: ec8.design_spectrum_Sd(  # noqa: E731
+            T, a_g=e.get("ag", 2.5), ground_type=e.get("ground", "C"),
+            q=e.get("q", 1.5), spectrum_type=e.get("type", 1))
+        t_max = 10.0
+    else:                                                    # is1893
+        from femsolver.design import is1893
+        i = params.get("is1893", {})
+        fn = lambda T: is1893.Ah_coefficient(  # noqa: E731
+            T=T, zone=i.get("zone", 4), importance=i.get("I", 1.0),
+            R=i.get("R", 5.0), soil_type=i.get("soil", 2))["A_h"] * _G
+        t_max = 6.0
+    return ResponseSpectrum.from_function(
+        fn, T_min=0.02, T_max=t_max, n_points=200, damping_ratio=zeta)
+
+
 class ResponseSpectrumDialog(QDialog):
     """Define a response spectrum + modal-combination parameters."""
 
     def __init__(self, parent, *, ndm: int = 2, max_modes: int = 20,
-                 default_modes: int = 6):
+                 default_modes: int = 6, initial: dict | None = None,
+                 name: str = "Response Spectrum", notes: str = ""):
         super().__init__(parent)
         self.setWindowTitle("Response spectrum")
-        max_modes = max(1, int(max_modes))
+        self._max_modes = max_modes = max(1, int(max_modes))
         default_modes = max(1, min(int(default_modes), max_modes))
 
         outer = QHBoxLayout(self)
@@ -65,6 +124,10 @@ class ResponseSpectrumDialog(QDialog):
         lv = QVBoxLayout(left)
         lv.setContentsMargins(0, 0, 0, 0)
         lv.setSpacing(style.SP_MD)
+
+        self.header = CaseHeader(name=name, type_label="Response Spectrum",
+                                 notes=notes)
+        lv.addWidget(self.header)
 
         # ---- spectrum source + swappable parameter pages ----
         src_card = GroupCard("Spectrum")
@@ -120,6 +183,8 @@ class ResponseSpectrumDialog(QDialog):
         self.source.currentIndexChanged.connect(self.stack.setCurrentIndex)
         self.source.currentIndexChanged.connect(self._redraw)
         self.damping.valueChanged.connect(self._redraw)
+        if initial:
+            self._seed(initial)
         style.apply(self)
         self._redraw()
 
@@ -249,47 +314,73 @@ class ResponseSpectrumDialog(QDialog):
             out.append((T, Sa))
         return out
 
+    def params(self) -> dict:
+        """The spectrum **inputs** as a JSON-friendly dict (all source pages, so
+        switching source in a later Modify keeps the others). This is what a
+        saved :class:`project.AnalysisCase` stores; :func:`spectrum_from_params`
+        rebuilds the :class:`ResponseSpectrum` from it."""
+        return {
+            "source": self._current_source(),
+            "damping": float(self.damping.value()),
+            "num_modes": int(self.modes.value()),
+            "direction": self.direction.currentData(),
+            "combination": self.combination.currentData(),
+            "asce7": {"SDS": self.a_SDS.value(), "SD1": self.a_SD1.value(),
+                      "TL": self.a_TL.value()},
+            "ec8": {"ag": self.e_ag.value(), "ground": self.e_ground.currentData(),
+                    "q": self.e_q.value(), "type": self.e_type.currentData()},
+            "is1893": {"zone": self.i_zone.currentData(), "I": self.i_I.value(),
+                       "R": self.i_R.value(), "soil": self.i_soil.currentData()},
+            "custom": [[T, Sa] for T, Sa in self._custom_points()],
+        }
+
+    def _seed(self, p: dict) -> None:
+        """Seed every widget from a saved case's params."""
+        self.damping.setValue(float(p.get("damping", 0.05)))
+        self.modes.setValue(max(1, min(int(p.get("num_modes", 6)),
+                                       self._max_modes)))
+        di = self.direction.findData(p.get("direction", "x"))
+        if di >= 0:
+            self.direction.setCurrentIndex(di)
+        ci = self.combination.findData(p.get("combination", "cqc"))
+        if ci >= 0:
+            self.combination.setCurrentIndex(ci)
+        a = p.get("asce7", {})
+        self.a_SDS.setValue(float(a.get("SDS", 1.0)))
+        self.a_SD1.setValue(float(a.get("SD1", 0.6)))
+        self.a_TL.setValue(float(a.get("TL", 8.0)))
+        e = p.get("ec8", {})
+        self.e_ag.setValue(float(e.get("ag", 2.5)))
+        gi = self.e_ground.findData(e.get("ground", "C"))
+        if gi >= 0:
+            self.e_ground.setCurrentIndex(gi)
+        self.e_q.setValue(float(e.get("q", 1.5)))
+        ti = self.e_type.findData(e.get("type", 1))
+        if ti >= 0:
+            self.e_type.setCurrentIndex(ti)
+        i = p.get("is1893", {})
+        zi = self.i_zone.findData(i.get("zone", 4))
+        if zi >= 0:
+            self.i_zone.setCurrentIndex(zi)
+        self.i_I.setValue(float(i.get("I", 1.0)))
+        self.i_R.setValue(float(i.get("R", 5.0)))
+        soi = self.i_soil.findData(i.get("soil", 2))
+        if soi >= 0:
+            self.i_soil.setCurrentIndex(soi)
+        custom = p.get("custom")
+        if custom:
+            self.custom.setRowCount(0)
+            for pair in _clean_custom_points(custom):
+                self._add_custom_row(pair[0], pair[1])
+        # source last: its signal swaps the visible page + redraws
+        si = self.source.findData(p.get("source", "asce7"))
+        if si >= 0:
+            self.source.setCurrentIndex(si)
+
     def build_spectrum(self):
         """Construct a :class:`ResponseSpectrum` from the current inputs, or
         raise ``ValueError`` if a custom table is under-defined."""
-        from femsolver import ResponseSpectrum
-
-        zeta = float(self.damping.value())
-        src = self._current_source()
-        if src == "custom":
-            pts = self._custom_points()
-            if len(pts) < 2:
-                raise ValueError("a custom spectrum needs at least two "
-                                 "points with distinct periods")
-            periods = [p[0] for p in pts]
-            accel = [p[1] for p in pts]
-            return ResponseSpectrum(periods, accel, damping_ratio=zeta)
-
-        if src == "asce7":
-            SDS, SD1, TL = (self.a_SDS.value(), self.a_SD1.value(),
-                            self.a_TL.value())
-            fn = lambda T: asce7_Sa(T, SDS=SDS, SD1=SD1, TL=TL)  # noqa: E731
-            t_max = max(10.0, TL)
-        elif src == "ec8":
-            from femsolver.design import ec8
-            ag = self.e_ag.value()
-            gt = self.e_ground.currentData()
-            q = self.e_q.value()
-            st = self.e_type.currentData()
-            fn = lambda T: ec8.design_spectrum_Sd(  # noqa: E731
-                T, a_g=ag, ground_type=gt, q=q, spectrum_type=st)
-            t_max = 10.0
-        else:                                                    # is1893
-            from femsolver.design import is1893
-            zone = self.i_zone.currentData()
-            I = self.i_I.value()
-            R = self.i_R.value()
-            soil = self.i_soil.currentData()
-            fn = lambda T: is1893.Ah_coefficient(  # noqa: E731
-                T=T, zone=zone, importance=I, R=R, soil_type=soil)["A_h"] * _G
-            t_max = 6.0
-        return ResponseSpectrum.from_function(
-            fn, T_min=0.02, T_max=t_max, n_points=200, damping_ratio=zeta)
+        return spectrum_from_params(self.params())
 
     def _redraw(self) -> None:
         self._ax.clear()

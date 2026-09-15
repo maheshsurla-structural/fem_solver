@@ -65,14 +65,27 @@ def test_dialog_lists_members_and_nodes(qapp):
 
 
 # ---------------------------------------------------- analysis-cases row
-def test_analysis_cases_lists_cable_tuning(qapp):
+def test_cable_tuning_is_a_saveable_case_type(qapp):
+    import case_types
+    ct = case_types.get("cabletuning")
+    assert ct is not None and ct.type_label == "Cable Tuning"
+    assert "2 stays" in ct.detail(_cable_stayed(),
+                                  {"cables": [1, 2], "targets": [3]})
+
+
+def test_analysis_cases_lists_saved_cable_tuning_case(qapp):
     from analysis_cases_dialog import AnalysisCasesDialog
-    dlg = AnalysisCasesDialog(None, _cable_stayed())
+    from project import AnalysisCase
+    p = _cable_stayed()
+    p.analysis_cases = [AnalysisCase(id=8, name="Stay tune", type="cabletuning",
+                                     params={"cables": [1], "targets": [2]})]
+    dlg = AnalysisCasesDialog(None, p)
     kinds = [m["kind"] for m in dlg._row_meta]
-    assert "cabletuning" in kinds
-    dlg.table.setCurrentCell(kinds.index("cabletuning"), 0)
+    assert "analysis" in kinds
+    dlg.table.setCurrentCell(kinds.index("analysis"), 0)
+    assert dlg._mod_btn.isEnabled() and dlg._del_btn.isEnabled()
     dlg._run()
-    assert dlg._run_request == ("cabletuning",)
+    assert dlg._run_request == ("case", 8)
 
 
 # --------------------------------------------------------- run_cable_tuning

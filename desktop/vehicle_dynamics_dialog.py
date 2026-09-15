@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDialog,
                                QWidget)
 
 import style
-from analysis_ui import GroupCard, dialog_buttons
+from analysis_ui import CaseHeader, GroupCard, dialog_buttons
 
 _ROLE = 0x0100                                          # Qt.UserRole
 # label -> MovingLoad preset key (axle trains for the moving-force model)
@@ -37,7 +37,8 @@ _VEHICLES = [
 class VehicleDynamicsDialog(QDialog):
     """Configure a vehicle-dynamics (moving-load time-history) analysis."""
 
-    def __init__(self, parent, project):
+    def __init__(self, parent, project, *, initial: dict | None = None,
+                 name: str = "Vehicle Dynamics", notes: str = ""):
         super().__init__(parent)
         self.setWindowTitle("Vehicle dynamics")
         self._project = project
@@ -46,6 +47,9 @@ class VehicleDynamicsDialog(QDialog):
         root.setContentsMargins(style.SP_LG, style.SP_LG,
                                 style.SP_LG, style.SP_LG)
         root.setSpacing(style.SP_MD)
+        self.header = CaseHeader(name=name, type_label="Vehicle Dynamics",
+                                 notes=notes)
+        root.addWidget(self.header)
         head = QLabel("Vehicle dynamics / moving-load time-history")
         head.setObjectName("h2")
         root.addWidget(head)
@@ -98,9 +102,32 @@ class VehicleDynamicsDialog(QDialog):
         cfg.add_row("Response node", self.node)
         root.addWidget(cfg)
 
+        if initial:
+            self._seed(initial)
         root.addStretch(1)
         root.addWidget(dialog_buttons(self))
         style.apply(self)
+
+    def _seed(self, p: dict) -> None:
+        """Seed from a saved case's params (stored SI → display units)."""
+        lane = set(p.get("lane") or [])
+        for i in range(self.lane_list.count()):
+            it = self.lane_list.item(i)
+            it.setSelected(it.data(_ROLE) in lane)
+        ki = self.kind.findData(p.get("kind", "force"))
+        if ki >= 0:
+            self.kind.setCurrentIndex(ki)              # swaps the stack page
+        vi = self.vehicle.findData(p.get("vehicle"))
+        if vi >= 0:
+            self.vehicle.setCurrentIndex(vi)
+        self.mass.setValue(float(p.get("mass", 20000.0)) / 1.0e3)   # kg → t
+        self.bounce.setValue(float(p.get("bounce", 2.0)))
+        self.susp.setValue(float(p.get("susp_damp", 0.10)) * 100.0)  # frac → %
+        self.speed.setValue(float(p.get("speed", 16.667)) * 3.6)     # m/s → km/h
+        self.zeta.setValue(float(p.get("zeta", 0.02)) * 100.0)       # frac → %
+        ni = self.node.findData(p.get("node"))
+        if ni >= 0:
+            self.node.setCurrentIndex(ni)
 
     # ---------------------------------------------------------- vehicle pages
     def _force_page(self) -> QWidget:

@@ -115,22 +115,40 @@ already consumes.
   response:[comp,id,end], Rn/DC/DW/P (SI), phi, phi_c, phi_s, im, adtt,
   permit_gamma_LL}` = config. Dialog header + `initial` + `_seed` (capacity/dead
   loads SI→display, quantity from the effect so set effect first).
-- [ ] **M6 — Response Spectrum** (the object case). params = spectrum **inputs**
-  `{source, damping, asce7:{SDS,SD1,TL} | ec8:{…} | is1893:{…} | custom:[[T,Sa]]},
-  num_modes, direction, combination}`. `build_config` rebuilds the
-  `ResponseSpectrum` (factor `build_spectrum` into an input→object helper).
-  Dialog: `params()` / `from_params()` + header.
-- [ ] **M7 — Vehicle Dynamics / Influence Surface / Cable Tuning.** dict configs
-  of primitives; header + `initial` each.
-- [ ] **M8 — Time History.** audit the ground-motion dialog's config; persist the
-  record reference + integration params; header + `initial`.
-- [ ] **M9 — Construction Stages** (shared-entity special case). Its config is
-  the project-global `stages` list, already persisted. A "stages" case stores
-  only run options (reference load / camber target) and references the shared
-  stage set — decide whether it is a case at all or stays a launcher.
-- [ ] **P — Polish.** Notes surfaced; duplicate-name guard or auto-suffix;
-  reorder; per-type default names ("RS-X"); results-history label carries the
-  case name; docs.
+- [x] **M6 — Response Spectrum** (the object case) ✅ 2026-09-15. params =
+  spectrum **inputs** `{source, damping, num_modes, direction, combination,
+  asce7:{SDS,SD1,TL}, ec8:{ag,ground,q,type}, is1893:{zone,I,R,soil},
+  custom:[[T,Sa]]}` (all source pages stored). New module-level
+  `spectrum_from_params()` rebuilds the `ResponseSpectrum` headlessly; the dialog
+  now delegates `build_spectrum` to it and gains `params()` + `_seed` + header.
+  `build_config` = `(spectrum_from_params(params), num_modes, direction,
+  combination)`. Verified across all 4 sources + custom-underdefined guard.
+- [x] **M7 — Vehicle Dynamics / Influence Surface / Cable Tuning** ✅ 2026-09-15.
+  dict configs of primitives; header + `initial` + `_seed` each (vehicle dynamics
+  reverses its t/%/km-h→SI conversions on seed). Round-trip verified headless.
+- [ ] **M8 — Time History** — **DEFERRED (stays a launcher by design).**
+  Unlike the other launchers, `run_timehistory_dialog` takes **no `config`**:
+  `TimeHistoryDialog` *runs the nonlinear dynamic analysis internally* (like the
+  pushover dialog) and needs a fiber (GSD) section. Migrating it needs a
+  config/run split **and** ground-motion-record persistence (file ref or array)
+  — a separate, larger piece that belongs with the nonlinear/pushover machinery
+  (its own `NonlinearCase`-style list), not the generic AnalysisCase registry.
+  Left as a launcher row.
+- [ ] **M9 — Construction Stages** — **STAYS A LAUNCHER by design.** Its config
+  *is* the project-global `stages` list (already persisted, edited via
+  `StageManagerDialog`); there is one stage sequence per model, so a
+  multi-instance saved case would only duplicate/diverge from `project.stages`.
+  Left as a launcher row (already operates on persistent data).
+- [ ] **P — Polish.** Notes surfaced in the list; duplicate-name guard or
+  auto-suffix ("Modal 1/2"); reorder; results-history label carries the case
+  name; user-guide docs.
+
+**End state:** 9 types are saved, multi-instance AnalysisCases (Modal, Buckling,
+Moving Load, Temp Gradient, Load Rating, Response Spectrum, Vehicle Dynamics,
+Influence Surface, Cable Tuning). Three remain launchers **by design**: Linear
+Static (the always-available current-model run), Construction Stages (operates on
+the shared stage set), and Time History (a nonlinear dynamic runner-dialog —
+deferred to a nonlinear-style follow-up).
 
 ## Decisions / open questions
 

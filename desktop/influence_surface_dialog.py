@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox, QDialog,
                                QVBoxLayout)
 
 import style
-from analysis_ui import GroupCard, dialog_buttons
+from analysis_ui import CaseHeader, GroupCard, dialog_buttons
 
 _ROLE = 0x0100                                          # Qt.UserRole
 _VEHICLES = [
@@ -40,7 +40,8 @@ _RESPONSES = [
 class InfluenceSurfaceDialog(QDialog):
     """Configure an influence-surface / multi-lane analysis (3-D deck)."""
 
-    def __init__(self, parent, project):
+    def __init__(self, parent, project, *, initial: dict | None = None,
+                 name: str = "Influence Surface", notes: str = ""):
         super().__init__(parent)
         self.setWindowTitle("Influence surface")
         self._project = project
@@ -49,6 +50,9 @@ class InfluenceSurfaceDialog(QDialog):
         root.setContentsMargins(style.SP_LG, style.SP_LG,
                                 style.SP_LG, style.SP_LG)
         root.setSpacing(style.SP_MD)
+        self.header = CaseHeader(name=name, type_label="Influence Surface",
+                                 notes=notes)
+        root.addWidget(self.header)
         head = QLabel("Influence surface / multi-lane moving load")
         head.setObjectName("h2")
         root.addWidget(head)
@@ -95,9 +99,29 @@ class InfluenceSurfaceDialog(QDialog):
         cfg.add_full_row(self.multi)
         root.addWidget(cfg)
 
+        if initial:
+            self._seed(initial)
         root.addStretch(1)
         root.addWidget(dialog_buttons(self))
         style.apply(self)
+
+    def _seed(self, p: dict) -> None:
+        """Seed from a saved case's params."""
+        deck = set(p.get("deck") or [])
+        for i in range(self.deck_list.count()):
+            it = self.deck_list.item(i)
+            it.setSelected(it.data(_ROLE) in deck)
+        resp = p.get("response") or ("disp", None)
+        ri = self.resp.findData(resp[0])
+        if ri >= 0:
+            self.resp.setCurrentIndex(ri)
+        ni = self.node.findData(resp[1] if len(resp) > 1 else None)
+        if ni >= 0:
+            self.node.setCurrentIndex(ni)
+        vi = self.vehicle.findData(p.get("vehicle"))
+        if vi >= 0:
+            self.vehicle.setCurrentIndex(vi)
+        self.multi.setChecked(bool(p.get("multi_presence", True)))
 
     def deck_nodes(self) -> list:
         return [it.data(_ROLE) for it in self.deck_list.selectedItems()]

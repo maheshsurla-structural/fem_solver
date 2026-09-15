@@ -57,7 +57,9 @@ class _FakeWin:
 def test_registry_has_migrated_types():
     import case_types
     assert set(case_types.TYPES) >= {"modal", "buckling", "movingload",
-                                     "tempgradient", "loadrating"}
+                                     "tempgradient", "loadrating",
+                                     "responsespectrum", "vehicledynamics",
+                                     "influencesurface", "cabletuning"}
     # every registered type carries a label + icon and lands in the ordered list
     for ct in case_types._ORDER:
         assert ct.type_id and ct.type_label and ct.icon
