@@ -368,10 +368,31 @@ class BeamForce(ResponseExtractor):
 
     def evaluate(self, model) -> float:
         elem = model.element(self.element_tag)
+        if getattr(elem, "dofs_per_node", 3) >= 6:
+            return self._evaluate_3d(elem)
         diag = beam_force_diagram(elem, n_points=3)
         L = diag["length"]
         target_s = self._frac * L
         return float(np.interp(target_s, diag["s"], diag[self.component]))
+
+    def _evaluate_3d(self, elem) -> float:
+        """End/interior force in a 3-D beam-column, for a vertical (local-z)
+        moving load. ``"M"`` is the bending moment about local y (``My``),
+        ``"V"`` the local-z shear (``Vz``), ``"N"`` the axial force — the
+        components a vertical load drives. End sections are nodally exact
+        (same sign convention as the 2-D diagram); interior points linearly
+        interpolate between the ends."""
+        f_l = np.asarray(elem.transform_matrix() @ elem.f_int_global(),
+                         dtype=float)
+        # local dof order per node: [N, Vy, Vz, T, My, Mz]. For a vertical
+        # (local-z) load use Vz / My; negate them so a sagging moment reads
+        # positive, matching the 2-D sign convention (θy = -dw/dx flips My).
+        idx, sign = {"N": ((0, 6), 1.0),
+                     "V": ((2, 8), -1.0),
+                     "M": ((4, 10), -1.0)}[self.component]
+        v_i = -float(f_l[idx[0]])          # internal = -(local nodal force) at i
+        v_j = +float(f_l[idx[1]])          #          = +(local nodal force) at j
+        return sign * (v_i + (v_j - v_i) * self._frac)
 
 
 # ============================================================ Lane

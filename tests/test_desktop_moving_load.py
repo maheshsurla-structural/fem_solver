@@ -108,12 +108,26 @@ def test_run_moving_load_guards(qapp, monkeypatch):
     # too few lane nodes
     assert w.run_moving_load(config={"lane": [1], "vehicle": "hl93",
                                      "response": ("M", 4, "j")}) is None
-    # 3-D model gated
-    p3 = Project(ndm=3, ndf=6)
-    p3.nodes = [Node(1, 0, 0, z=0), Node(2, 3, 0, z=0)]
-    p3.sections = [Section(id=1, name="g", A=0.5, Iz=0.05, Iy=0.05, J=1e-3)]
-    p3.materials = [Material(1, "s", E=2e11, nu=0.3, rho=7850.0)]
-    p3.members = [Member(1, 1, 2, 1, 1)]
-    w.load_project(p3)
-    assert w.run_moving_load(config={"lane": [1, 2], "vehicle": "hl93",
-                                     "response": ("M", 1, "j")}) is None
+
+
+def test_run_moving_load_3d(qapp):
+    """A3.2: 3-D girder moving load — member moment envelope works via the
+    vertical (uz) DOF; a displacement response uses uz too."""
+    from main_window import MainWindow
+    n, L = 8, 24.0
+    p = Project(ndm=3, ndf=6)
+    p.nodes = [Node(i + 1, i * L / n, 0.0, z=0.0) for i in range(n + 1)]
+    p.nodes[0].supports = (1, 1, 1, 1, 0, 0)
+    p.nodes[-1].supports = (0, 1, 1, 1, 0, 0)
+    p.sections = [Section(id=1, name="g", A=0.5, Iz=0.05, Iy=0.05, J=0.02)]
+    p.materials = [Material(1, "steel", E=2e11, nu=0.3, rho=7850.0)]
+    p.members = [Member(i + 1, i + 1, i + 2, 1, 1) for i in range(n)]
+    w = MainWindow()
+    w.load_project(p)
+    lane = [nd.id for nd in p.nodes]
+    res = w.run_moving_load(config={"lane": lane, "vehicle": "hl93",
+                                    "response": ("M", n // 2, "j")})
+    assert res is not None and res["env"]["max"] > 0.0
+    resd = w.run_moving_load(config={"lane": lane, "vehicle": "hl93_truck",
+                                     "response": ("disp", n // 2 + 1, None)})
+    assert resd["env"]["min"] < 0.0

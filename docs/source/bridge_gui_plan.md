@@ -106,8 +106,13 @@ rows — every analysis is reachable from the desktop.
     interpolation, biaxial member self-weight); `run_buckling` 3-D gate removed.
     `tests/test_buckling.py::test_3d_column_buckles_about_weak_axis`,
     `tests/test_desktop_buckling.py` (3-D build + run-to-Euler).
-  - [ ] **A3.2 — 3-D moving load / influence lines** — vertical DOF + beam-force
-    component in 3-D; the InfluenceLineEngine already works in 3-D.
+  - [x] **A3.2 — 3-D moving load / influence lines** ✅ DONE 2026-09-15.
+    `BeamForce._evaluate_3d` (reads local end forces from `f_int_global`;
+    "M"→My, "V"→Vz — the vertical-plane components — sign-flipped so sagging is
+    positive, matching 2-D). `run_moving_load` un-gated for 3-D with vertical
+    DOF = uz (2). Validated: 3-D member-moment IL == 2-D exactly; static
+    My = PL/4. `tests/test_moving_load.py::test_3d_member_moment_matches_2d_influence_line`,
+    `tests/test_desktop_moving_load.py::test_run_moving_load_3d`.
   - [ ] **A3.3 — 3-D temperature gradient / stages / vehicle dynamics** — 3-D
     vertical-DOF handling in those runners.
 

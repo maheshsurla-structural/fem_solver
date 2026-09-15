@@ -915,11 +915,6 @@ class MainWindow(QMainWindow):
         if p is None or not p.members:
             self.statusBar().showMessage("Add members first.")
             return None
-        if p.ndm != 2:
-            QMessageBox.information(self, "Moving load",
-                                   "Moving-load analysis is currently 2-D only.")
-            return None
-
         if config is None:
             from moving_load_dialog import MovingLoadDialog
             config = MovingLoadDialog.configure(self, p)
@@ -931,12 +926,13 @@ class MainWindow(QMainWindow):
                                    "Select at least two lane nodes.")
             return None
 
+        vdof = 2 if p.ndm == 3 else 1                   # vertical translation DOF
         kind, target, end = config["response"]
         _RESP = {
             "M": lambda: BeamForce(element_tag=target, component="M", end=end),
             "V": lambda: BeamForce(element_tag=target, component="V", end=end),
-            "disp": lambda: Displacement(node_tag=target, dof=1),
-            "reaction": lambda: Reaction(node_tag=target, dof=1),
+            "disp": lambda: Displacement(node_tag=target, dof=vdof),
+            "reaction": lambda: Reaction(node_tag=target, dof=vdof),
         }
         _LABEL = {
             "M": f"moment at member {target} ({end})",
@@ -954,7 +950,7 @@ class MainWindow(QMainWindow):
         units = us.label(qty)
 
         model = p.build_model(with_loads=False)
-        lane = Lane(node_tags=lane_nodes, load_dof=1, gravity_sign=-1.0)
+        lane = Lane(node_tags=lane_nodes, load_dof=vdof, gravity_sign=-1.0)
         try:
             engine = InfluenceLineEngine(model)
             il = engine.influence_line(lane, response)

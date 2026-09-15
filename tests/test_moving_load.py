@@ -368,3 +368,60 @@ class TestLaneAndErrors:
         # consistency: the single-response call gives the same thing
         il_single = eng.influence_line(lane, Reaction(node_tag=1, dof=1))
         assert np.allclose(ils["R"].values, il_single.values)
+
+
+# ============================ 3-D beam-force influence line (bridge A3.2) ==
+
+def test_3d_member_moment_matches_2d_influence_line():
+    """A 3-D girder's member-moment influence line (My under a vertical load)
+    matches the 2-D-equivalent girder's, and a static midspan point load gives
+    My = PL/4 (sagging positive)."""
+    from femsolver.elements.beam import BeamColumn3D
+    from femsolver.bridges.moving_load import (BeamForce, InfluenceLineEngine,
+                                               Lane)
+    E, A, Iz, Iy, J, L, n = 2.0e11, 0.5, 0.05, 0.05, 0.02, 24.0, 8
+
+    # static: midspan Fz = -P -> My_mid = +P L / 4
+    P = 1.0e5
+    m = Model(ndm=3, ndf=6)
+    mat = ElasticIsotropic(1, E=E, nu=0.3)
+    m.add_material(mat)
+    for i in range(n + 1):
+        m.add_node(i + 1, i * L / n, 0.0, 0.0)
+    for i in range(n):
+        m.add_element(BeamColumn3D(i + 1, (i + 1, i + 2), mat, A, Iy, Iz, J))
+    m.fix(1, [1, 1, 1, 1, 0, 0]); m.fix(n + 1, [0, 1, 1, 1, 0, 0])
+    m.add_nodal_load(n // 2 + 1, [0, 0, -P, 0, 0, 0])
+    LinearStaticAnalysis(m).run()
+    My = BeamForce(element_tag=n // 2, component="M", end="j").evaluate(m)
+    assert My == pytest.approx(P * L / 4.0, rel=1e-9)
+
+    # influence line: 3-D My == 2-D M for the same girder
+    def _il(dim):
+        if dim == 3:
+            mm = Model(ndm=3, ndf=6)
+            mm.add_material(ElasticIsotropic(1, E=E, nu=0.3))
+            for i in range(n + 1):
+                mm.add_node(i + 1, i * L / n, 0.0, 0.0)
+            for i in range(n):
+                mm.add_element(BeamColumn3D(i + 1, (i + 1, i + 2),
+                                            mm.material(1), A, Iy, Iz, J))
+            mm.fix(1, [1, 1, 1, 1, 0, 0]); mm.fix(n + 1, [0, 1, 1, 1, 0, 0])
+            ld = 2
+        else:
+            mm = Model(ndm=2, ndf=3)
+            mm.add_material(ElasticIsotropic(1, E=E, nu=0.3))
+            for i in range(n + 1):
+                mm.add_node(i + 1, i * L / n, 0.0)
+            for i in range(n):
+                mm.add_element(BeamColumn2D(i + 1, (i + 1, i + 2),
+                                            mm.material(1), A, Iz))
+            mm.fix(1, [1, 1, 0]); mm.fix(n + 1, [0, 1, 0])
+            ld = 1
+        lane = Lane(node_tags=list(range(1, n + 2)),
+                    stations=[i * L / n for i in range(n + 1)],
+                    load_dof=ld, gravity_sign=-1.0)
+        return InfluenceLineEngine(mm).influence_line(
+            lane, BeamForce(n // 2, "M", end="j")).values
+
+    assert np.max(np.abs(_il(3) - _il(2))) < 1e-9
