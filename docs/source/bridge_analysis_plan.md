@@ -51,7 +51,7 @@ where an item needs data the model does not yet carry — those are flagged
 | # | Item | Note |
 |---|---|---|
 | **T2.1** | **Vehicle–Bridge Interaction / moving-load time-history** — moving mass, dynamic amplification, EN 1991-2 HSLM high-speed-rail resonance | ✅ **DONE 2026-09-14.** T2.1a moving-force (`bridges/moving_force.py`: `VehicleAxles`, `MovingForceAnalysis` on Newmark `TransientAnalysis`, consistent Hermite distribution, dynamic vs quasi-static + DAF; validated PL³/48EI, DAF→1 slow, DAF↑ speed, train resonance; 7 tests). T2.1b **coupled sprung-mass VBI** (`bridges/vbi.py`: `SprungMassVehicle`, `VBIAnalysis` — monolithic average-accel Newmark on the coupled bridge+vehicle system, moving contact blocks `k_s NNᵀ`; returns bridge history, **contact-force history**, DAF; validated: static=WL³/48EI, DAF→1 slow, contact mean=W, matches moving-force when vehicle dynamics secondary; 8 tests). 2-D girder line; engine only. |
-| **T2.2** | **Cable-stayed initial-force optimisation** — MIDAS "Unknown Load Factor" / target-shape iteration; nonlinear staged erection (geometric NL + cable sag) | ✅ **ULF DONE 2026-09-14** (`bridges/cable_tuning.py`: `Cable`, `unknown_load_factors` — factorize-once influence matrix of unit cable pretensions vs `ResponseExtractor` targets, solve `b0+Ax=t` via lstsq; `apply_cable_tensions`; `CableTuningResult`). Validated: targets met to machine precision, positive stay tensions, independent re-solve ≈ target, member-force targets, over-/under-determined lstsq. `tests/test_bridge_cable_tuning.py` (7). **Nonlinear staged cable-stayed erection (geom NL + sag) still open.** Engine only. |
+| **T2.2** | **Cable-stayed initial-force optimisation** — MIDAS "Unknown Load Factor" / target-shape iteration; nonlinear staged erection (geometric NL + cable sag) | ✅ **ULF DONE 2026-09-14** (`bridges/cable_tuning.py`: `Cable`, `unknown_load_factors` — factorize-once influence matrix of unit cable pretensions vs `ResponseExtractor` targets, solve `b0+Ax=t` via lstsq; `apply_cable_tensions`; `CableTuningResult`). Validated: targets met to machine precision, positive stay tensions, independent re-solve ≈ target, member-force targets, over-/under-determined lstsq. `tests/test_bridge_cable_tuning.py` (7). **Nonlinear staged cable-stayed erection (geom NL + sag) ✅ DONE 2026-09-15 — see T2.2b in §3a.** Engine only. |
 | **T2.3** | **Load rating** — AASHTO LRFR, permit rating, rating factors | ✅ **DONE 2026-09-15** (`bridges/rating.py`, engine only) — see tracker below |
 
 ### Tier 3 — completeness
@@ -121,6 +121,28 @@ Aeroelastic flutter, buffeting (CFD), coupled FSI, topology optimisation.
 
 ## 3a. Tier 2 tracker
 
+- [x] **T2.2b Nonlinear staged cable-stayed erection** — ✅ DONE 2026-09-15.
+  `bridges/nonlinear_staged.py`: `NonlinearStagedErection` — a self-contained
+  active-set corotational (large-displacement) Newton driver for a 2-D
+  pin-jointed cable/truss network, consuming `CableSegment` + `ErectionStage`
+  (birth / death / incremental load / stay pretension). Captures the three
+  cable nonlinearities a one-shot linear run misses: **geometric (string /
+  P-Δ) stiffness** from the current configuration, **cable sag** via an
+  *iterated* Ernst equivalent modulus (self-consistent with the converged
+  tension — a lagged fixed point on the axial force, not a fixed operating
+  point), and **stress-free birth in the deformed geometry** (each element
+  measures strain from its birth length). Tension-only slack + staged
+  pretension (lack-of-fit initial force). Removal redistributes by re-solving
+  equilibrium of the reduced active set. Exported from `bridges/__init__`
+  (`ErectionStage` aliased `NonlinearErectionStage` to avoid the
+  linear-staged name). **Validation:** axial u=FL/EA; two-bar truss hand calc
+  (625 N); taut-string δ=PL/4T (pure geometric stiffness); Ernst
+  u=FL/(E_eff·A) to the closed form; born stay ≈0 tension at birth then loads;
+  removal raises the permanent stay; pretension between fixed anchors = T0;
+  tension-only cable slack under compression. `tests/test_bridge_nonlinear_staged.py`
+  (8). *Engine only. Deck **bending** during erection (a corotational beam
+  with a birth datum) is a documented future extension — the cable
+  nonlinearities are the distinctive staged-cable-stayed physics.*
 - [x] **T2.3 Load rating (AASHTO LRFR)** — ✅ DONE 2026-09-15.
   `bridges/rating.py` implements MBE Eq. 6A.4.2.1-1
   ``RF = (C - gamma_DC*DC - gamma_DW*DW - gamma_P*P) / (gamma_LL*(LL+IM))``

@@ -128,6 +128,14 @@ from femsolver.bridges.moving_load import (
     lane_load_response,
     moving_load_envelope,
 )
+from femsolver.bridges.nonlinear_staged import (
+    CableSegment,
+    NonlinearStagedErection,
+    NonlinearStagedResult,
+)
+from femsolver.bridges.nonlinear_staged import (
+    ErectionStage as NonlinearErectionStage,
+)
 from femsolver.bridges.rating import (
     BridgeRating,
     LoadFactors,
@@ -251,6 +259,11 @@ __all__ = [
     "CableTuningResult",
     "unknown_load_factors",
     "apply_cable_tensions",
+    # nonlinear staged cable-stayed erection (T2.2, second half)
+    "CableSegment",
+    "NonlinearErectionStage",
+    "NonlinearStagedErection",
+    "NonlinearStagedResult",
     # AASHTO LRFR load rating (T2.3)
     "LoadFactors",
     "strength_i_inventory",
