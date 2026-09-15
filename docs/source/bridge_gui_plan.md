@@ -98,10 +98,18 @@ rows — every analysis is reachable from the desktop.
   `unitsys=self._units()` from each runner — matching Moving Load. Verified a
   non-SI system converts (100 kN → "100" under kN vs "1e+05" under N).
   `tests/test_desktop_cable_tuning.py::test_results_dialog_respects_display_units`.
-- [ ] **A3 — 3-D coverage** for the cases gated to 2-D (Buckling, Moving Load,
-  Temp Gradient, Stages, Vehicle Dynamics) — needs `BeamColumn3D.
-  K_geometric_global`, 3-D moving-load beam-force ILs, and 3-D vertical-DOF
-  handling in the runners.
+- **A3 — 3-D coverage** for the cases gated to 2-D. Sub-stepped:
+  - [x] **A3.1 — 3-D buckling** ✅ DONE 2026-09-15. `BeamColumn3D.K_geometric_global`
+    (consistent axial-force geometric stiffness on both bending planes;
+    Euler-validated weak+strong axis to 0.000% at n=16); `build_buckling_model`
+    generalised to 2-D/3-D (BeamColumn3D sub-elements, Truss3D cables, 3-D node
+    interpolation, biaxial member self-weight); `run_buckling` 3-D gate removed.
+    `tests/test_buckling.py::test_3d_column_buckles_about_weak_axis`,
+    `tests/test_desktop_buckling.py` (3-D build + run-to-Euler).
+  - [ ] **A3.2 — 3-D moving load / influence lines** — vertical DOF + beam-force
+    component in 3-D; the InfluenceLineEngine already works in 3-D.
+  - [ ] **A3.3 — 3-D temperature gradient / stages / vehicle dynamics** — 3-D
+    vertical-DOF handling in those runners.
 
 ## Notes
 - Every GUI change is flagged to the user (their standing request).

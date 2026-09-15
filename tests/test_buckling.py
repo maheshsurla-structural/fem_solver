@@ -18,6 +18,7 @@ import pytest
 from femsolver import (
     BeamColumn2D,
     BeamColumn2DCorotational,
+    BeamColumn3D,
     ElasticIsotropic,
     LinearBucklingAnalysis,
     Model,
@@ -208,3 +209,28 @@ def test_buckling_raises_when_no_compression():
     m.nodes[n_elem + 1]._load[0] = +1.0
     with pytest.raises(RuntimeError, match="no buckling modes"):
         LinearBucklingAnalysis(m, num_modes=1).run()
+
+
+# ==================================== 3-D beam-column geometric stiffness ==
+
+@pytest.mark.parametrize("n_elem", [8, 16])
+def test_3d_column_buckles_about_weak_axis(n_elem):
+    """A pinned-pinned 3-D column buckles about its weaker principal axis at
+    the Euler load, via BeamColumn3D.K_geometric_global (mode 2 = strong axis)."""
+    E, A, Iz, Iy, J, L = 2.0e11, 1.0e-3, 1.0e-6, 2.0e-6, 1.0e-6, 5.0
+    mat = ElasticIsotropic(1, E=E, nu=0.3)
+    m = Model(ndm=3, ndf=6)
+    m.add_material(mat)
+    for i in range(n_elem + 1):
+        m.add_node(i + 1, i * L / n_elem, 0.0, 0.0)
+    for i in range(n_elem):
+        m.add_element(BeamColumn3D(i + 1, (i + 1, i + 2), mat, A, Iy, Iz, J))
+    m.fix(1, [1, 1, 1, 1, 0, 0])              # pinned (ux,uy,uz,rx)
+    m.fix(n_elem + 1, [0, 1, 1, 1, 0, 0])     # roller axially
+    m.add_nodal_load(n_elem + 1, [-1.0, 0, 0, 0, 0, 0])
+    res = LinearBucklingAnalysis(m, num_modes=2).run()
+    p_weak = math.pi ** 2 * E * min(Iy, Iz) / L ** 2
+    p_strong = math.pi ** 2 * E * max(Iy, Iz) / L ** 2
+    tol = 5.0e-3 if n_elem <= 8 else 1.0e-3
+    assert res["critical_load_factor"] == pytest.approx(p_weak, rel=tol)
+    assert res["load_factors"][1] == pytest.approx(p_strong, rel=tol)

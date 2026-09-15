@@ -815,6 +815,51 @@ class BeamColumn3D(Element):
         K_loc = self._K_local_numerical(use_current_state=True)
         return T.T @ K_loc @ T
 
+    def K_geometric_global(self) -> np.ndarray:
+        """Consistent geometric (stress-stiffening) stiffness in global
+        coordinates, from the current axial force ``N`` (tension positive).
+        DOF order (local) ``[u, v, w, θx, θy, θz]`` per node.
+
+        The classic axial-force geometric stiffness is applied to **both**
+        bending planes (about z on the v/θz DOFs, about y on the w/θy DOFs
+        with the θy = -dw/dx coupling-sign convention that matches the elastic
+        matrix). Torsional / warping terms are omitted, so flexural buckling is
+        recovered exactly (Euler, as the member is refined) while torsional-
+        flexural buckling is not captured. Used by eigenvalue buckling
+        ``(K + λ K_g) φ = 0`` — see :meth:`BeamColumn2D.K_geometric_global`.
+        """
+        L, _, _, _ = self.length_and_axes()
+        T = self.transform_matrix()
+        u_l = T @ self.gather_u()
+        N = self.material.E * self.area / L * (u_l[6] - u_l[0])   # tension +
+        c = N / L
+        L2 = L * L
+        kg = np.zeros((12, 12))
+        # bending about z — DOFs (v, θz) = [1, 5, 7, 11]
+        idx_z = [1, 5, 7, 11]
+        Kz = np.array([
+            [6.0 / 5, L / 10, -6.0 / 5, L / 10],
+            [L / 10, 2 * L2 / 15, -L / 10, -L2 / 30],
+            [-6.0 / 5, -L / 10, 6.0 / 5, -L / 10],
+            [L / 10, -L2 / 30, -L / 10, 2 * L2 / 15],
+        ])
+        # bending about y — DOFs (w, θy) = [2, 4, 8, 10]; translation↔rotation
+        # coupling signs flipped (θy = -dw/dx), mirroring the elastic Ky block
+        idx_y = [2, 4, 8, 10]
+        Ky = np.array([
+            [6.0 / 5, -L / 10, -6.0 / 5, -L / 10],
+            [-L / 10, 2 * L2 / 15, L / 10, -L2 / 30],
+            [-6.0 / 5, L / 10, 6.0 / 5, L / 10],
+            [-L / 10, -L2 / 30, L / 10, 2 * L2 / 15],
+        ])
+        for i, ii in enumerate(idx_z):
+            for j, jj in enumerate(idx_z):
+                kg[ii, jj] += c * Kz[i, j]
+        for i, ii in enumerate(idx_y):
+            for j, jj in enumerate(idx_y):
+                kg[ii, jj] += c * Ky[i, j]
+        return T.T @ kg @ T
+
     def f_int_global(self) -> np.ndarray:
         """Internal nodal force at the current state. For stateful
         sections, integrates ``B^T s(x)`` along the element using

@@ -56,10 +56,17 @@ def test_build_buckling_model_subdivides_and_hits_euler():
     assert res["critical_load_factor"] == pytest.approx(_P_EULER, rel=1.0e-3)
 
 
-def test_build_buckling_model_rejects_3d():
+def test_build_buckling_model_3d_uses_beamcolumn3d():
+    from femsolver import BeamColumn3D
     p = Project(ndm=3, ndf=6)
-    with pytest.raises(ValueError, match="2-D"):
-        p.build_buckling_model()
+    p.nodes = [Node(1, 0, 0, z=0, supports=(1, 1, 1, 1, 1, 1)),
+               Node(2, _L, 0, z=0)]
+    p.sections = [Section(id=1, name="s", A=_A, Iz=_Iz, Iy=2 * _Iz, J=1e-8)]
+    p.materials = [Material(1, "steel", E=_E, nu=0.3, rho=7850.0)]
+    p.members = [Member(1, 1, 2, 1, 1)]
+    model, subs = p.build_buckling_model(subdivisions=4)
+    assert len(subs[1]) == 4
+    assert isinstance(model.element(subs[1][0]), BeamColumn3D)
 
 
 # ------------------------------------------------------------------ dialog
@@ -109,18 +116,30 @@ def test_run_buckling_end_to_end(qapp):
     assert w._buckling_results_dlg.table.rowCount() == 3
 
 
-def test_run_buckling_gates_3d(qapp, monkeypatch):
-    import main_window as MW
-    monkeypatch.setattr(MW.QMessageBox, "information",
-                        staticmethod(lambda *a, **k: None))
+def test_run_buckling_3d_hits_euler(qapp):
+    """3-D coverage (A3.1): a pinned 3-D column buckles about its weak axis at
+    the Euler load, via the desktop runner."""
+    import math
+
+    from main_window import MainWindow
+    from project import Load, LoadCase
+    E, A, Iz, Iy, J, L, n = 2.0e11, 1.0e-3, 1.0e-6, 2.0e-6, 1.0e-6, 5.0, 10
     p = Project(ndm=3, ndf=6)
-    p.nodes = [Node(1, 0, 0, z=0, supports=(1,) * 6), Node(2, 0, _L, z=0)]
-    p.sections = [Section(id=1, name="s", A=_A, Iz=_Iz, Iy=_Iz, J=1e-8)]
-    p.materials = [Material(1, "steel", E=_E, nu=0.3, rho=7850.0)]
-    p.members = [Member(1, 1, 2, 1, 1)]
-    w = MW.MainWindow()
+    for i in range(n + 1):
+        p.nodes.append(Node(id=i + 1, x=i * L / n, y=0.0, z=0.0))
+    p.nodes[0].supports = (1, 1, 1, 1, 0, 0)
+    p.nodes[-1].supports = (0, 1, 1, 1, 0, 0)
+    p.sections = [Section(id=1, name="col", A=A, Iz=Iz, Iy=Iy, J=J)]
+    p.materials = [Material(1, "steel", E=E, nu=0.3, rho=7850.0)]
+    p.members = [Member(i + 1, i + 1, i + 2, 1, 1) for i in range(n)]
+    p.load_cases = [LoadCase(1, "Axial", "dead")]
+    p.loads = [Load(node=n + 1, values=(-1.0, 0, 0, 0, 0, 0), case=1)]
+    w = MainWindow()
     w.load_project(p)
-    assert w.run_buckling(config=(("all", None), 2, 4)) is None
+    info = w.run_buckling(config=(("all", None), 2, 16))
+    assert info is not None
+    p_weak = math.pi ** 2 * E * min(Iy, Iz) / L ** 2
+    assert info["critical_load_factor"] == pytest.approx(p_weak, rel=1e-3)
 
 
 def test_run_buckling_guards_no_compression(qapp, monkeypatch):

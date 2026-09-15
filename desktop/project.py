@@ -416,14 +416,17 @@ class Project:
         it. 2-D only for now (``BeamColumn2D`` carries the geometric stiffness).
 
         Returns ``(model, member_subelems)`` where ``member_subelems`` maps
-        each original member id to its list of sub-element ids."""
-        from femsolver import BeamColumn2D, ElasticIsotropic, Model
+        each original member id to its list of sub-element ids. Works for 2-D
+        (``BeamColumn2D``) and 3-D (``BeamColumn3D``) — both carry the
+        geometric stiffness eigenvalue buckling needs."""
+        from femsolver import (BeamColumn2D, BeamColumn3D, ElasticIsotropic,
+                               Model, Truss2D, Truss3D)
+        import numpy as np
 
-        if self.ndm != 2:
-            raise ValueError("linear buckling is currently 2-D only")
+        d3 = self.ndm == 3
         k = max(1, int(subdivisions))
 
-        m = Model(ndm=2, ndf=3)
+        m = Model(ndm=self.ndm, ndf=self.ndf)
         mats = {}
         for mat in self.materials:
             obj = ElasticIsotropic(mat.id, E=mat.E, nu=mat.nu,
@@ -435,21 +438,22 @@ class Project:
 
         coord = {}
         for nd in self.nodes:
-            m.add_node(nd.id, nd.x, nd.y)
-            coord[nd.id] = (nd.x, nd.y)
+            c = (nd.x, nd.y, nd.z) if d3 else (nd.x, nd.y)
+            m.add_node(nd.id, *c)
+            coord[nd.id] = np.array(c, dtype=float)
         nid = max((nd.id for nd in self.nodes), default=0) + 1
         eid = max((mb.id for mb in self.members), default=0) + 1
 
         member_subelems: dict = {}
         for mb in self.members:
             sec = secs[mb.section]
-            A, Iz, _Iy, _J = _resolve_section(sec)
+            A, Iz, Iy, J = _resolve_section(sec)
             material = mats[mb.material]
             # a cable / truss stays a single pin-ended element (no sub-division,
             # no bending — carries axial only)
             if getattr(mb, "kind", "") == "cable":
-                from femsolver import Truss2D
-                m.add_element(Truss2D(eid, (mb.n1, mb.n2), material, A))
+                cls = Truss3D if d3 else Truss2D
+                m.add_element(cls(eid, (mb.n1, mb.n2), material, A))
                 member_subelems[mb.id] = [eid]
                 eid += 1
                 continue
@@ -467,18 +471,21 @@ class Project:
                         gsd_mats[sec.id] = cm
                 if cm is not None:
                     material = cm
-            x1, y1 = coord[mb.n1]
-            x2, y2 = coord[mb.n2]
+            p1, p2 = coord[mb.n1], coord[mb.n2]
             chain = [mb.n1]
             for j in range(1, k):
                 t = j / k
-                m.add_node(nid, x1 + t * (x2 - x1), y1 + t * (y2 - y1))
+                m.add_node(nid, *(p1 + t * (p2 - p1)))
                 chain.append(nid)
                 nid += 1
             chain.append(mb.n2)
             subs = []
             for a, b in zip(chain[:-1], chain[1:]):
-                m.add_element(BeamColumn2D(eid, (a, b), material, A, Iz))
+                if d3:
+                    m.add_element(BeamColumn3D(eid, (a, b), material,
+                                               A, Iy, Iz, J))
+                else:
+                    m.add_element(BeamColumn2D(eid, (a, b), material, A, Iz))
                 subs.append(eid)
                 eid += 1
             member_subelems[mb.id] = subs
@@ -490,10 +497,14 @@ class Project:
         nodal, member = self.resolved_loads(selection)
         for node_id, comps in nodal.items():
             m.add_nodal_load(node_id, list(comps))
-        for mid, (wy, _wz) in member.items():
+        for mid, (wy, wz) in member.items():
             for sid in member_subelems.get(mid, []):
                 el = m.element(sid)
-                if hasattr(el, "add_uniform_load"):
+                if not hasattr(el, "add_uniform_load"):
+                    continue
+                if d3:
+                    el.add_uniform_load(wy, wz)
+                else:
                     el.add_uniform_load(wy)
         return m, member_subelems
 

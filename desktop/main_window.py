@@ -851,11 +851,6 @@ class MainWindow(QMainWindow):
         if p is None or not p.members:
             self.statusBar().showMessage("Add members first.")
             return None
-        if p.ndm != 2:
-            QMessageBox.information(
-                self, "Buckling",
-                "Linear buckling is currently 2-D only.")
-            return None
 
         if config is None:
             from buckling_dialog import BucklingDialog
