@@ -149,6 +149,27 @@ class NonlinearCase:
 
 
 @dataclass
+class AnalysisCase:
+    """A saved analysis case for a built-in analysis type (modal, buckling,
+    response spectrum, moving load, …) — the desktop counterpart of a
+    CSiBridge / MIDAS named load case, and the generic sibling of
+    :class:`NonlinearCase` (which keeps its own rich list).
+
+    ``type`` selects the analysis (and its setup dialog / adapter in
+    :mod:`case_types`); ``params`` is the JSON-friendly saved configuration —
+    the **inputs** the user typed (spectrum source + code parameters, lane node
+    ids, vehicle key, response target, …), *not* any derived runtime object.
+    The runtime config a ``MainWindow.run_*`` consumes is rebuilt from
+    ``params`` at Run time (``CaseType.build_config``), so a saved case runs
+    without re-prompting. ``notes`` is free-text (GUI only)."""
+    id: int
+    name: str
+    type: str                              # "modal" | "buckling" | ...
+    params: dict = field(default_factory=dict)
+    notes: str = ""
+
+
+@dataclass
 class Load:
     node: int
     values: tuple                 # nodal load vector (len ndf)
@@ -203,6 +224,7 @@ class Project:
     combinations: list = field(default_factory=list)   # LoadCombination
     stages: list = field(default_factory=list)          # Stage (construction seq)
     nonlinear_cases: list = field(default_factory=list)  # NonlinearCase (GUI-4)
+    analysis_cases: list = field(default_factory=list)  # AnalysisCase (ACM plan)
     # Saved nonlinear-run results (plan §16 G-S2) — the expensive, run-specific
     # exception to "results are recomputed": each is a lean ``nl_runs.RunRecord``
     # (curve + summary + ASCE 41 milestones). Not consumed by ``build_model``.
@@ -221,6 +243,9 @@ class Project:
 
     def nonlinear_case(self, case_id):
         return next((c for c in self.nonlinear_cases if c.id == case_id), None)
+
+    def analysis_case(self, case_id):
+        return next((c for c in self.analysis_cases if c.id == case_id), None)
 
     def default_case_id(self) -> int:
         return self.load_cases[0].id if self.load_cases else 1
@@ -327,6 +352,11 @@ class Project:
                     for s in d.get("stages", [])],
             nonlinear_cases=[NonlinearCase(**c)
                              for c in d.get("nonlinear_cases", [])],
+            analysis_cases=[AnalysisCase(id=c["id"], name=c.get("name", ""),
+                                         type=c["type"],
+                                         params=dict(c.get("params", {})),
+                                         notes=c.get("notes", ""))
+                            for c in d.get("analysis_cases", [])],
             runs=_load_runs(d.get("runs", [])),
         )
 

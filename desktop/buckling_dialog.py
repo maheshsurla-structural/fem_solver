@@ -17,14 +17,21 @@ from PySide6.QtWidgets import (QComboBox, QDialog, QLabel, QSpinBox,
                                QVBoxLayout)
 
 import style
-from analysis_ui import GroupCard, dialog_buttons
+from analysis_ui import CaseHeader, GroupCard, dialog_buttons
 
 
 class BucklingDialog(QDialog):
-    """Configure a linear-buckling analysis."""
+    """Configure a linear-buckling analysis.
+
+    Saveable as a :class:`project.AnalysisCase` (analysis-cases-manager plan):
+    ``initial`` seeds the widgets from a saved case's ``params``, and the
+    :class:`~analysis_ui.CaseHeader` collects its Name / Notes. Run directly
+    (via :meth:`configure`) the header is ignored.
+    """
 
     def __init__(self, parent, project, *, max_modes: int = 20,
-                 default_modes: int = 4):
+                 default_modes: int = 4, initial: dict | None = None,
+                 name: str = "Buckling", notes: str = ""):
         super().__init__(parent)
         self.setWindowTitle("Buckling analysis")
         max_modes = max(1, int(max_modes))
@@ -34,6 +41,9 @@ class BucklingDialog(QDialog):
         root.setContentsMargins(style.SP_LG, style.SP_LG,
                                 style.SP_LG, style.SP_LG)
         root.setSpacing(style.SP_MD)
+
+        self.header = CaseHeader(name=name, type_label="Buckling", notes=notes)
+        root.addWidget(self.header)
 
         head = QLabel("Linear buckling")
         head.setObjectName("h2")
@@ -64,6 +74,17 @@ class BucklingDialog(QDialog):
         self.subdivisions.setValue(6)
         card.add_row("Sub-divisions / member", self.subdivisions)
         root.addWidget(card)
+
+        if initial:                                    # seed from a saved case
+            sel = tuple(initial.get("selection") or ("all", None))
+            for i in range(self.reference.count()):
+                if tuple(self.reference.itemData(i) or ()) == sel:
+                    self.reference.setCurrentIndex(i)
+                    break
+            self.modes.setValue(max(1, min(int(initial.get("num_modes",
+                                                           default_modes)),
+                                          max_modes)))
+            self.subdivisions.setValue(int(initial.get("subdivisions", 6)))
 
         hint = QLabel("More sub-divisions resolve member buckling between "
                       "joints; 4–8 is usually plenty.")

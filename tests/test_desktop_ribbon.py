@@ -371,11 +371,14 @@ def test_any_analysis_run_raises_results(win, monkeypatch):
     win.load_project(demo_project())
     win._ribbon.set_collapsed(False)
     win._ribbon.set_current("Home")
-    # the user "runs modal" from the cases home; stub the dialog + the runner
+    # the user runs a saved analysis case from the cases home; stub the dialog
+    # (3-tuple: nonlinear, analysis, run-request) + the saved-case runner
     monkeypatch.setattr(
         AnalysisCasesDialog, "manage",
-        staticmethod(lambda *a, **k: (win._project.nonlinear_cases, ("modal",))))
-    monkeypatch.setattr(win, "run_modal", lambda *a, **k: None)
+        staticmethod(lambda *a, **k: (win._project.nonlinear_cases,
+                                      win._project.analysis_cases,
+                                      ("case", 1))))
+    monkeypatch.setattr(win, "_run_saved_case", lambda *a, **k: None)
     win.manage_analysis_cases()
     assert win._ribbon.tabs.tabText(win._ribbon.tabs.currentIndex()) == "Results"
     win._ribbon.set_current("Home")

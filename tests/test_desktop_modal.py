@@ -93,16 +93,32 @@ def test_modal_results_dialog_rows_and_preview(qapp):
 
 
 # ---------------------------------------------------------- analysis-cases row
-def test_analysis_cases_lists_modal_runnable(qapp):
-    from analysis_cases_dialog import AnalysisCasesDialog, _PLANNED
-    assert "Modal" not in _PLANNED
-    dlg = AnalysisCasesDialog(None, _frame())
+def test_modal_is_a_saveable_case_type(qapp):
+    # Modal is now a saved, multi-instance AnalysisCase type (Add ▾ menu), not a
+    # fixed launcher row — see the analysis-cases-manager plan.
+    import case_types
+    ct = case_types.get("modal")
+    assert ct is not None and ct.type_label == "Modal"
+    assert ct.build_config(_frame(), {"num_modes": 5, "lumped": True}) == (5, True)
+
+
+def test_analysis_cases_lists_saved_modal_case(qapp):
+    from analysis_cases_dialog import AnalysisCasesDialog
+    from project import AnalysisCase
+    p = _frame()
+    p.analysis_cases = [AnalysisCase(id=1, name="Modal-6",
+                                     type="modal",
+                                     params={"num_modes": 6, "lumped": False})]
+    dlg = AnalysisCasesDialog(None, p)
     kinds = [m["kind"] for m in dlg._row_meta]
-    assert "modal" in kinds
-    dlg.table.setCurrentCell(kinds.index("modal"), 0)
-    assert dlg._run_btn.isEnabled()
+    assert "analysis" in kinds
+    r = kinds.index("analysis")
+    dlg.table.setCurrentCell(r, 0)
+    assert dlg._run_btn.isEnabled()          # runnable
+    assert dlg._mod_btn.isEnabled()          # and now editable
+    assert dlg._del_btn.isEnabled()
     dlg._run()
-    assert dlg._run_request == ("modal",)
+    assert dlg._run_request == ("case", 1)
 
 
 # --------------------------------------------------------------- run_modal

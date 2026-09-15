@@ -93,15 +93,32 @@ def test_buckling_results_dialog_preview(qapp):
 
 
 # ---------------------------------------------------------- analysis-cases row
-def test_analysis_cases_lists_buckling(qapp):
-    from analysis_cases_dialog import AnalysisCasesDialog, _PLANNED
-    assert "Buckling" not in _PLANNED
-    dlg = AnalysisCasesDialog(None, _column())
+def test_buckling_is_a_saveable_case_type(qapp):
+    # Buckling is now a saved, multi-instance AnalysisCase type (Add ▾ menu).
+    import case_types
+    ct = case_types.get("buckling")
+    assert ct is not None and ct.type_label == "Buckling"
+    # params (JSON: list selection) rebuild the runner's config (tuple selection)
+    cfg = ct.build_config(_column(),
+                          {"selection": ["case", 2], "num_modes": 3,
+                           "subdivisions": 8})
+    assert cfg == (("case", 2), 3, 8)
+
+
+def test_analysis_cases_lists_saved_buckling_case(qapp):
+    from analysis_cases_dialog import AnalysisCasesDialog
+    from project import AnalysisCase
+    p = _column()
+    p.analysis_cases = [AnalysisCase(id=4, name="Buckling-all", type="buckling",
+                                     params={"selection": ["all", None],
+                                             "num_modes": 4, "subdivisions": 6})]
+    dlg = AnalysisCasesDialog(None, p)
     kinds = [m["kind"] for m in dlg._row_meta]
-    assert "buckling" in kinds
-    dlg.table.setCurrentCell(kinds.index("buckling"), 0)
+    assert "analysis" in kinds
+    dlg.table.setCurrentCell(kinds.index("analysis"), 0)
+    assert dlg._mod_btn.isEnabled() and dlg._del_btn.isEnabled()
     dlg._run()
-    assert dlg._run_request == ("buckling",)
+    assert dlg._run_request == ("case", 4)
 
 
 # --------------------------------------------------------------- run_buckling

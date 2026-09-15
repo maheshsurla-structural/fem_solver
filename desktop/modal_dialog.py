@@ -16,13 +16,21 @@ from PySide6.QtWidgets import (QComboBox, QDialog, QLabel, QSpinBox,
                                QVBoxLayout)
 
 import style
-from analysis_ui import GroupCard, dialog_buttons
+from analysis_ui import CaseHeader, GroupCard, dialog_buttons
 
 
 class ModalDialog(QDialog):
-    """Configure a free-vibration eigen-analysis."""
+    """Configure a free-vibration eigen-analysis.
 
-    def __init__(self, parent, *, max_modes: int = 20, default_modes: int = 6):
+    Saveable as a :class:`project.AnalysisCase` (analysis-cases-manager plan):
+    ``initial`` seeds the widgets from a saved case's ``params``, and the
+    :class:`~analysis_ui.CaseHeader` collects its Name / Notes. Run directly
+    (via :meth:`configure`) the header is ignored.
+    """
+
+    def __init__(self, parent, *, max_modes: int = 20, default_modes: int = 6,
+                 initial: dict | None = None, name: str = "Modal",
+                 notes: str = ""):
         super().__init__(parent)
         self.setWindowTitle("Modal analysis")
         max_modes = max(1, int(max_modes))
@@ -32,6 +40,9 @@ class ModalDialog(QDialog):
         root.setContentsMargins(style.SP_LG, style.SP_LG,
                                 style.SP_LG, style.SP_LG)
         root.setSpacing(style.SP_MD)
+
+        self.header = CaseHeader(name=name, type_label="Modal", notes=notes)
+        root.addWidget(self.header)
 
         head = QLabel("Free-vibration modes")
         head.setObjectName("h2")
@@ -53,6 +64,12 @@ class ModalDialog(QDialog):
         self.mass.addItem("Lumped", True)
         card.add_row("Mass matrix", self.mass)
         root.addWidget(card)
+
+        if initial:                                    # seed from a saved case
+            self.modes.setValue(max(1, min(int(initial.get("num_modes",
+                                                            default_modes)),
+                                           max_modes)))
+            self.mass.setCurrentIndex(1 if initial.get("lumped") else 0)
 
         root.addStretch(1)
         root.addWidget(dialog_buttons(self))

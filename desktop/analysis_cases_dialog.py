@@ -7,12 +7,14 @@ One table lists **every** analysis case with a Type column and icon:
   loads / combinations (a built-in launcher, not a stored entity).
 * **Nonlinear Static** — each saved :class:`project.NonlinearCase`; add / modify
   / delete these here (delegating to :class:`nonlinear_cases.NonlinearCaseDialog`).
+* **Saved analysis cases** — each saved :class:`project.AnalysisCase` for a
+  *migrated* built-in type (Modal, Buckling, … — see :mod:`case_types`). These
+  are the multi-instance, named, editable cases: **Add ▾** creates one (seeding
+  the type's setup dialog), **Modify** / **Delete** manage it, and **Run** uses
+  its stored params with no re-prompt (analysis-cases-manager plan).
 * **Time History** — a built-in launcher for the nonlinear dynamic dialog.
-* **Modal** — a built-in launcher for the free-vibration eigen-analysis.
 * **Response Spectrum** — a built-in launcher for the modal-superposition
-  seismic analysis (design spectrum → SRSS / CQC).
-* **Buckling** — a built-in launcher for linear (eigenvalue) buckling
-  ``(K + λ·K_g)·φ = 0`` on a member-sub-divided model.
+  seismic analysis (design spectrum → SRSS / CQC). *(not yet migrated)*
 * **Moving Load** — a built-in launcher for the influence-line / moving-load
   analysis (HL-93 / IRC vehicle envelopes on a lane of girder nodes).
 * **Temperature Gradient** — a built-in launcher for a vertical
@@ -30,10 +32,11 @@ One table lists **every** analysis case with a Type column and icon:
   inventory / operating, plus optional legal and permit).
 
 The dialog never runs anything itself: **Run** records a request and closes;
-the owning window dispatches it (linear-static run, or opening the pushover /
-time-history / modal runner). :meth:`manage` returns
-``(nonlinear_cases, run_request)`` or ``None`` if cancelled. Built from the L1
-scaffold; headless-constructible.
+the owning window dispatches it (a linear-static run, a launcher's setup dialog,
+or — for a saved :class:`~project.AnalysisCase` — ``("case", id)`` →
+:mod:`case_types` ``build_config`` + ``dispatch``). :meth:`manage` returns
+``(nonlinear_cases, analysis_cases, run_request)`` or ``None`` if cancelled.
+Built from the L1 scaffold; headless-constructible.
 """
 from __future__ import annotations
 
@@ -41,9 +44,10 @@ import copy
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QHBoxLayout,
-                               QHeaderView, QMessageBox, QPushButton,
+                               QHeaderView, QMenu, QMessageBox, QPushButton,
                                QTableWidget, QTableWidgetItem, QVBoxLayout)
 
+import case_types
 import style
 from project import NonlinearCase
 
@@ -70,6 +74,7 @@ class AnalysisCasesDialog(QDialog):
         self.setWindowTitle("Analysis cases")
         self._project = project
         self._cases = copy.deepcopy(project.nonlinear_cases)
+        self._acases = copy.deepcopy(getattr(project, "analysis_cases", []))
         self._row_meta: list[dict] = []          # per table row: {kind, ...}
         self._run_request = None
         self.resize(640, 460)
@@ -96,9 +101,9 @@ class AnalysisCasesDialog(QDialog):
         root.addWidget(self.table, 1)
 
         row = QHBoxLayout()
-        self._add_btn = QPushButton("Add nonlinear case…")
+        self._add_btn = QPushButton("Add ▾")
         self._add_btn.setIcon(_icon("run"))
-        self._add_btn.clicked.connect(self._add)
+        self._add_btn.setMenu(self._build_add_menu())
         self._mod_btn = QPushButton("Modify…")
         self._mod_btn.clicked.connect(self._modify)
         self._del_btn = QPushButton("Delete")
@@ -120,6 +125,19 @@ class AnalysisCasesDialog(QDialog):
         style.apply(self)
         self._refresh()
 
+    def _build_add_menu(self) -> QMenu:
+        """The Add ▾ menu: the bespoke nonlinear editor, plus one entry per
+        registered saveable analysis type (:mod:`case_types`)."""
+        menu = QMenu(self)
+        menu.addAction("Nonlinear Static…", self._add)
+        if case_types._ORDER:
+            menu.addSeparator()
+            for ct in case_types._ORDER:
+                menu.addAction(
+                    f"{ct.type_label}…",
+                    lambda _=False, t=ct.type_id: self._add_case(t))
+        return menu
+
     # ------------------------------------------------------------- table model
     def _refresh(self) -> None:
         rows: list[dict] = [
@@ -135,19 +153,24 @@ class AnalysisCasesDialog(QDialog):
                 "detail": f"{proto} · node {c.control_node} "
                           f"{_DOF.get(c.control_dof, '?')}",
                 "icon": "run", "runnable": True})
+        # saved multi-instance cases for migrated built-in types (Modal,
+        # Buckling, …) — full Add/Modify/Delete/Run via their case_types adapter
+        for i, c in enumerate(self._acases):
+            ct = case_types.get(c.type)
+            rows.append({
+                "kind": "analysis", "case_index": i, "case_id": c.id,
+                "type_id": c.type, "name": c.name,
+                "type": (ct.type_label if ct else c.type),
+                "detail": (ct.detail(self._project, c.params) if ct
+                           else "saved case"),
+                "icon": (ct.icon if ct else "run"), "runnable": True})
         rows.append({"kind": "timehistory", "name": "Time History",
                      "type": "Time History",
                      "detail": "ground-motion record", "icon": "run",
                      "runnable": True})
-        rows.append({"kind": "modal", "name": "Modal", "type": "Modal",
-                     "detail": "eigen · free vibration", "icon": "undeformed",
-                     "runnable": True})
         rows.append({"kind": "responsespectrum", "name": "Response Spectrum",
                      "type": "Response Spectrum",
                      "detail": "modal superposition · SRSS/CQC", "icon": "run",
-                     "runnable": True})
-        rows.append({"kind": "buckling", "name": "Buckling", "type": "Buckling",
-                     "detail": "eigenvalue · (K + λ·K_g)", "icon": "run",
                      "runnable": True})
         rows.append({"kind": "movingload", "name": "Moving Load",
                      "type": "Moving Load",
@@ -206,16 +229,38 @@ class AnalysisCasesDialog(QDialog):
 
     def _sync_buttons(self) -> None:
         m = self._selected()
-        is_nl = bool(m and m["kind"] == "nonlinear")
-        self._mod_btn.setEnabled(is_nl)
-        self._del_btn.setEnabled(is_nl)
+        editable = bool(m and m["kind"] in ("nonlinear", "analysis"))
+        self._mod_btn.setEnabled(editable)
+        self._del_btn.setEnabled(editable)
         self._run_btn.setEnabled(bool(m and m.get("runnable")))
 
     # ---------------------------------------------------------------- actions
     def _proxy_project(self):
         proxy = copy.copy(self._project)
         proxy.nonlinear_cases = self._cases
+        proxy.analysis_cases = self._acases
         return proxy
+
+    def _next_case_id(self) -> int:
+        return max((c.id for c in self._acases), default=0) + 1
+
+    def _select_case(self, case_id) -> None:
+        for r, meta in enumerate(self._row_meta):
+            if meta["kind"] == "analysis" and meta["case_id"] == case_id:
+                self.table.setCurrentCell(r, 0)
+                return
+
+    def _add_case(self, type_id: str) -> None:
+        ct = case_types.get(type_id)
+        if ct is None:
+            return
+        case = ct.edit(self, self._proxy_project())
+        if case is None:
+            return
+        case.id = self._next_case_id()
+        self._acases.append(case)
+        self._refresh()
+        self._select_case(case.id)
 
     def _add(self) -> None:
         from nonlinear_cases import NonlinearCaseDialog
@@ -230,10 +275,24 @@ class AnalysisCasesDialog(QDialog):
         self.table.setCurrentCell(len(self._cases), 0)      # +1 for linear row
 
     def _modify(self) -> None:
-        from nonlinear_cases import NonlinearCaseDialog
         m = self._selected()
-        if not (m and m["kind"] == "nonlinear"):
+        if not m:
             return
+        if m["kind"] == "analysis":
+            ct = case_types.get(m["type_id"])
+            if ct is None:
+                return
+            idx = m["case_index"]
+            case = ct.edit(self, self._proxy_project(), self._acases[idx])
+            if case is not None:
+                case.id = self._acases[idx].id       # id is not user-editable
+                self._acases[idx] = case
+                self._refresh()
+                self._select_case(case.id)
+            return
+        if m["kind"] != "nonlinear":
+            return
+        from nonlinear_cases import NonlinearCaseDialog
         idx = m["case_index"]
         c = NonlinearCaseDialog.edit(self, self._proxy_project(),
                                      self._cases[idx])
@@ -243,7 +302,13 @@ class AnalysisCasesDialog(QDialog):
 
     def _delete(self) -> None:
         m = self._selected()
-        if not (m and m["kind"] == "nonlinear"):
+        if not m:
+            return
+        if m["kind"] == "analysis":
+            del self._acases[m["case_index"]]
+            self._refresh()
+            return
+        if m["kind"] != "nonlinear":
             return
         cid = m["case_id"]
         used = [c.id for c in self._cases if c.continue_from == cid]
@@ -262,14 +327,12 @@ class AnalysisCasesDialog(QDialog):
             self._run_request = ("linear",)
         elif m["kind"] == "nonlinear":
             self._run_request = ("nonlinear", m["case_id"])
+        elif m["kind"] == "analysis":
+            self._run_request = ("case", m["case_id"])
         elif m["kind"] == "timehistory":
             self._run_request = ("timehistory",)
-        elif m["kind"] == "modal":
-            self._run_request = ("modal",)
         elif m["kind"] == "responsespectrum":
             self._run_request = ("responsespectrum",)
-        elif m["kind"] == "buckling":
-            self._run_request = ("buckling",)
         elif m["kind"] == "movingload":
             self._run_request = ("movingload",)
         elif m["kind"] == "tempgradient":
@@ -291,7 +354,7 @@ class AnalysisCasesDialog(QDialog):
         dlg = cls(parent, project)
         if not dlg.exec():
             return None
-        return dlg._cases, dlg._run_request
+        return dlg._cases, dlg._acases, dlg._run_request
 
 
 def _muted():

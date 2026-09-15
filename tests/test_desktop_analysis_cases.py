@@ -17,8 +17,8 @@ _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 sys.path.insert(0, str(_ROOT / "desktop"))
 
-from project import (LoadCase, Material, Member, NonlinearCase,  # noqa: E402
-                     Node, Project, Section)
+from project import (AnalysisCase, LoadCase, Material, Member,  # noqa: E402
+                     NonlinearCase, Node, Project, Section)
 
 
 @pytest.fixture(scope="module")
@@ -46,9 +46,14 @@ def test_lists_builtin_nonlinear_and_planned(qapp):
     kinds = [m["kind"] for m in dlg._row_meta]
     assert kinds[0] == "linear"
     assert "nonlinear" in kinds and "timehistory" in kinds
-    # every analysis is now wired — modal / RS / buckling / moving load live
-    for k in ("modal", "responsespectrum", "buckling", "movingload"):
+    # un-migrated types are still launcher rows
+    for k in ("responsespectrum", "movingload", "loadrating"):
         assert k in kinds
+    # migrated types (modal / buckling) are no longer fixed launcher rows —
+    # they are saved AnalysisCase types offered in the Add ▾ menu
+    assert "modal" not in kinds and "buckling" not in kinds
+    import case_types
+    assert case_types.get("modal") and case_types.get("buckling")
     assert kinds.count("planned") == len(_PLANNED)
     if _PLANNED:                                   # any remaining planned rows
         planned_row = kinds.index("planned")       # are greyed / not selectable
@@ -111,3 +116,91 @@ def test_main_window_wires_analysis_cases(qapp):
     w.load_project(_project())
     assert hasattr(w, "act_analysiscases")
     assert callable(w.manage_analysis_cases)
+
+
+# ------------------------------------------------ saved AnalysisCase CRUD (ACM)
+def test_add_case_appends_and_selects(qapp, monkeypatch):
+    import case_types
+    from analysis_cases_dialog import AnalysisCasesDialog
+    dlg = AnalysisCasesDialog(None, _project())
+    monkeypatch.setattr(case_types.TYPES["modal"], "edit",
+                        lambda parent, project, case=None:
+                        AnalysisCase(id=0, name="Modal-A", type="modal",
+                                     params={"num_modes": 4, "lumped": True}))
+    dlg._add_case("modal")
+    assert len(dlg._acases) == 1
+    new = dlg._acases[-1]
+    assert new.id >= 1 and new.name == "Modal-A"
+    m = dlg._row_meta[dlg.table.currentRow()]     # the new row is selected
+    assert m["kind"] == "analysis" and m["case_id"] == new.id
+
+
+def test_modify_case_replaces_params(qapp, monkeypatch):
+    import case_types
+    from analysis_cases_dialog import AnalysisCasesDialog
+    p = _project()
+    p.analysis_cases = [AnalysisCase(id=7, name="Modal-7", type="modal",
+                                     params={"num_modes": 6, "lumped": False})]
+    dlg = AnalysisCasesDialog(None, p)
+    monkeypatch.setattr(case_types.TYPES["modal"], "edit",
+                        lambda parent, project, case=None:
+                        AnalysisCase(id=case.id, name="Modal-7b", type="modal",
+                                     params={"num_modes": 9, "lumped": True}))
+    kinds = [m["kind"] for m in dlg._row_meta]
+    dlg.table.setCurrentCell(kinds.index("analysis"), 0)
+    dlg._modify()
+    assert dlg._acases[0].params["num_modes"] == 9
+    assert dlg._acases[0].name == "Modal-7b" and dlg._acases[0].id == 7
+
+
+def test_delete_case(qapp):
+    from analysis_cases_dialog import AnalysisCasesDialog
+    p = _project()
+    p.analysis_cases = [AnalysisCase(id=1, name="M", type="modal",
+                                     params={"num_modes": 4, "lumped": False})]
+    dlg = AnalysisCasesDialog(None, p)
+    kinds = [m["kind"] for m in dlg._row_meta]
+    dlg.table.setCurrentCell(kinds.index("analysis"), 0)
+    dlg._delete()
+    assert dlg._acases == []
+
+
+def test_manage_returns_three_tuple(qapp, monkeypatch):
+    from analysis_cases_dialog import AnalysisCasesDialog
+    monkeypatch.setattr(AnalysisCasesDialog, "exec", lambda self: True)
+    res = AnalysisCasesDialog.manage(None, _project())
+    assert res is not None and len(res) == 3
+    cases, acases, run = res
+    assert isinstance(cases, list) and isinstance(acases, list) and run is None
+
+
+def test_run_saved_case_dispatches(qapp, monkeypatch):
+    import case_types
+    from main_window import MainWindow
+    p = _project()
+    p.analysis_cases = [AnalysisCase(id=3, name="Modal-3", type="modal",
+                                     params={"num_modes": 5, "lumped": True})]
+    w = MainWindow()
+    w.load_project(p)
+    seen = {}
+    monkeypatch.setattr(case_types.TYPES["modal"], "dispatch",
+                        lambda win, config: seen.setdefault("config", config))
+    w._run_saved_case(3)
+    assert seen["config"] == (5, True)      # build_config(params) → runtime cfg
+
+
+def test_analysis_case_serialization_round_trip():
+    p = Project(ndm=2, ndf=3)
+    p.analysis_cases = [
+        AnalysisCase(id=1, name="Modal-6", type="modal",
+                     params={"num_modes": 6, "lumped": False}, notes="n"),
+        AnalysisCase(id=2, name="Buckling", type="buckling",
+                     params={"selection": ["case", 2], "num_modes": 4,
+                             "subdivisions": 8}),
+    ]
+    back = Project.from_json(p.to_json())
+    assert len(back.analysis_cases) == 2
+    a, b = back.analysis_cases
+    assert a.id == 1 and a.type == "modal" and a.params["num_modes"] == 6
+    assert a.notes == "n"
+    assert b.params["selection"] == ["case", 2] and b.params["subdivisions"] == 8

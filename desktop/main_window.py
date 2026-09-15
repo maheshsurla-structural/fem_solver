@@ -2197,11 +2197,13 @@ class MainWindow(QMainWindow):
         res = AnalysisCasesDialog.manage(self, self._project)
         if res is None:
             return
-        cases, run = res
-        if cases != self._project.nonlinear_cases:
-            self._apply_edit(
-                "Edit analysis cases",
-                lambda: setattr(self._project, "nonlinear_cases", cases))
+        cases, acases, run = res
+        if (cases != self._project.nonlinear_cases
+                or acases != self._project.analysis_cases):
+            def _commit():
+                self._project.nonlinear_cases = cases
+                self._project.analysis_cases = acases
+            self._apply_edit("Edit analysis cases", _commit)
         if run is None:
             return
         kind = run[0]
@@ -2209,14 +2211,12 @@ class MainWindow(QMainWindow):
             self.run_linear_static()
         elif kind == "nonlinear":
             self.run_pushover_dialog(preselect_case=run[1])
+        elif kind == "case":
+            self._run_saved_case(run[1])
         elif kind == "timehistory":
             self.run_timehistory_dialog()
-        elif kind == "modal":
-            self.run_modal()
         elif kind == "responsespectrum":
             self.run_response_spectrum()
-        elif kind == "buckling":
-            self.run_buckling()
         elif kind == "movingload":
             self.run_moving_load()
         elif kind == "tempgradient":
@@ -2235,6 +2235,23 @@ class MainWindow(QMainWindow):
         # from the cases home, surface the Results tab (History/diagrams/design
         # all live there). A no-op when the ribbon is collapsed.
         self._show_results_tab()
+
+    def _run_saved_case(self, case_id):
+        """Run a saved :class:`project.AnalysisCase` from its stored params —
+        the type's :mod:`case_types` adapter rebuilds the runtime config
+        (``build_config``) and invokes the matching ``run_*`` (``dispatch``).
+        No re-prompt."""
+        import case_types
+        c = self._project.analysis_case(case_id)
+        if c is None:
+            return None
+        ct = case_types.get(c.type)
+        if ct is None:
+            QMessageBox.warning(self, "Analysis case",
+                                f"Unknown analysis type '{c.type}'.")
+            return None
+        config = ct.build_config(self._project, c.params)
+        return ct.dispatch(self, config)
 
     def _on_double_click(self, item, _col) -> None:
         ref = item.data(0, Qt.ItemDataRole.UserRole)
