@@ -79,7 +79,21 @@ runs; the first increments keep config transient (like Modal/RS/Buckling).
   type is a future refinement). Analysis-cases "Cable Tuning" row live.
   `tests/test_desktop_cable_tuning.py` (4).
 
-**GUI plan COMPLETE (G1–G6, 2026-09-14).** Analysis-cases home has 11 live
+- [x] **G7 — Load rating (AASHTO LRFR)** ✅ DONE 2026-09-15.
+  `load_rating_dialog.py` (lane multi-select; rated effect = moment/shear at a
+  member end; capacity Rn + dead-load effects DC/DW/P in display units →
+  converted to SI; resistance φ + condition φc + system φs factor combos +
+  dynamic allowance IM; rating levels — inventory/operating always, legal by
+  ADTT, permit by γLL), `load_rating_results_dialog.py` (RF bar chart with the
+  RF = 1 threshold, coloured green/red per level; per-level table γLL/RF/
+  status/capacity, in display units), `MainWindow.run_load_rating`
+  (`InfluenceLineEngine` builds the rated-effect IL → `live_load_effect` pulls
+  HL-93 LL+IM → `rate_member` → `BridgeRating`; guards zero live effect;
+  renders the results dialog + status/log). Analysis-cases "Load Rating" row
+  live. **2-D or 3-D** girder lines (uses the A3.2 3-D influence-line path).
+  `tests/test_desktop_load_rating.py` (10).
+
+**GUI plan COMPLETE (G1–G7, 2026-09-15).** Analysis-cases home has 12 live
 rows — every analysis is reachable from the desktop.
 
 ## Track A — polish / coverage (harden what G1–G6 built)

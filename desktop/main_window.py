@@ -1494,6 +1494,82 @@ class MainWindow(QMainWindow):
             f"max tension {max(abs(t) for t in res.tensions) / 1e3:.0f} kN")
         return {"tensions": res.tensions, "residual": res.residual}
 
+    def run_load_rating(self, config=None):
+        """AASHTO LRFR load rating (Analysis-cases ▸ Load Rating).
+
+        Builds the influence line for a rated member effect (moment or shear),
+        pulls the HL-93 live-load effect (incl. IM + lane) from it, then
+        computes the LRFR rating factors — design inventory + operating, and
+        optionally legal (by ADTT) and permit — via
+        :func:`femsolver.bridges.rate_member`. ``config`` bypasses the setup
+        dialog (tests) and carries SI capacity / dead-load effects; see
+        :class:`load_rating_dialog.LoadRatingDialog`. 2-D or 3-D girder lines.
+        """
+        from femsolver.bridges import (BeamForce, InfluenceLineEngine, Lane,
+                                       live_load_effect, rate_member)
+
+        p = self._project
+        if p is None or not p.members:
+            self.statusBar().showMessage("Add members first.")
+            return None
+        if config is None:
+            from load_rating_dialog import LoadRatingDialog
+            config = LoadRatingDialog.configure(self, p)
+            if config is None:
+                return None
+        lane_nodes = config["lane"]
+        if len(lane_nodes) < 2:
+            QMessageBox.information(self, "Load rating",
+                                   "Select at least two lane nodes.")
+            return None
+
+        vdof = 2 if p.ndm == 3 else 1                   # vertical translation DOF
+        comp, target, end = config["response"]
+        qty = Quantity.MOMENT if comp == "M" else Quantity.FORCE
+        label = {"M": f"moment at member {target} ({end})",
+                 "V": f"shear at member {target} ({end})"}[comp]
+
+        model = p.build_model(with_loads=False)
+        lane = Lane(node_tags=lane_nodes, load_dof=vdof, gravity_sign=-1.0)
+        try:
+            engine = InfluenceLineEngine(model)
+            il = engine.influence_line(
+                lane, BeamForce(element_tag=target, component=comp, end=end))
+            ll_im = live_load_effect(il, im=config.get("im", 0.33))
+        except Exception as exc:                           # noqa: BLE001
+            QMessageBox.warning(self, "Load rating",
+                                f"Could not build the live-load effect:\n\n{exc}")
+            return None
+
+        if ll_im <= 0.0:
+            QMessageBox.information(
+                self, "Load rating",
+                "The HL-93 live-load effect is zero for this location — pick a "
+                "member/end that the lane actually loads.")
+            return None
+
+        rating = rate_member(
+            Rn=config["Rn"], DC=config["DC"], DW=config["DW"], LL_IM=ll_im,
+            phi=config.get("phi", 1.0), phi_c=config.get("phi_c", 1.0),
+            phi_s=config.get("phi_s", 1.0), P=config.get("P", 0.0),
+            adtt=config.get("adtt"),
+            permit_gamma_LL=config.get("permit_gamma_LL"))
+
+        us = self._units()
+        from load_rating_results_dialog import LoadRatingResultsDialog
+        self._load_rating_results_dlg = LoadRatingResultsDialog.show_results(
+            self, rating, effect_label=label, ll_im=ll_im, unitsys=us,
+            quantity=qty)
+        ctrl = rating.controlling
+        self.log.appendPlainText(
+            f"Load rating solved: {label}; controlling {ctrl.level} "
+            f"RF = {ctrl.rf:.3f} "
+            f"({'adequate' if ctrl.adequate else 'DEFICIENT'})")
+        self.statusBar().showMessage(
+            f"Load rating · controlling RF {ctrl.rf:.2f} "
+            f"({'OK' if ctrl.adequate else 'deficient'})")
+        return {"rating": rating, "ll_im": ll_im, "il": il}
+
     def run_pushover_dialog(self, preselect_case=None) -> None:
         from pushover_dialog import PushoverDialog
         p = self._project
@@ -2151,6 +2227,8 @@ class MainWindow(QMainWindow):
             self.run_influence_surface()
         elif kind == "cabletuning":
             self.run_cable_tuning()
+        elif kind == "loadrating":
+            self.run_load_rating()
 
     def _on_double_click(self, item, _col) -> None:
         ref = item.data(0, Qt.ItemDataRole.UserRole)

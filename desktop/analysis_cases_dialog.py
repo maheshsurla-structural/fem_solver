@@ -25,6 +25,9 @@ One table lists **every** analysis case with a Type column and icon:
   influence surface + AASHTO multi-lane vehicle envelope (needs a 3-D deck).
 * **Cable Tuning** — a built-in launcher for cable-stayed initial-force
   optimisation (unknown load factor → stay pretensions for a target profile).
+* **Load Rating** — a built-in launcher for AASHTO LRFR load rating: the
+  HL-93 live-load effect of a rated member force → rating factors (design
+  inventory / operating, plus optional legal and permit).
 
 The dialog never runs anything itself: **Run** records a request and closes;
 the owning window dispatches it (linear-static run, or opening the pushover /
@@ -170,6 +173,10 @@ class AnalysisCasesDialog(QDialog):
                      "type": "Cable Tuning",
                      "detail": "cable-stayed · unknown load factor",
                      "icon": "run", "runnable": True})
+        rows.append({"kind": "loadrating", "name": "Load Rating",
+                     "type": "Load Rating",
+                     "detail": "AASHTO LRFR · rating factors (inv/op/legal)",
+                     "icon": "run", "runnable": True})
         for name in _PLANNED:
             rows.append({"kind": "planned", "name": name, "type": name,
                          "detail": "planned", "icon": None, "runnable": False})
@@ -275,6 +282,8 @@ class AnalysisCasesDialog(QDialog):
             self._run_request = ("influencesurface",)
         elif m["kind"] == "cabletuning":
             self._run_request = ("cabletuning",)
+        elif m["kind"] == "loadrating":
+            self._run_request = ("loadrating",)
         self.accept()
 
     @classmethod
