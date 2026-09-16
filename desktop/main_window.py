@@ -1599,7 +1599,7 @@ class MainWindow(QMainWindow):
         if res is not None and res.has_shape:
             self.set_nl_results(res)
 
-    def run_timehistory_dialog(self) -> None:
+    def run_timehistory_dialog(self, seed=None) -> None:
         from timehistory_dialog import TimeHistoryDialog
         p = self._project
         if not p.members:
@@ -1610,7 +1610,7 @@ class MainWindow(QMainWindow):
                 "Nonlinear time history needs a Section Designer (fiber) "
                 "section on a member.")
             return
-        dlg = TimeHistoryDialog(self, p)
+        dlg = TimeHistoryDialog(self, p, seed=seed)
         dlg.exec()
         res = getattr(dlg, "_result", None)
         if res and res.get("disp"):
@@ -2229,8 +2229,6 @@ class MainWindow(QMainWindow):
             self.run_pushover_dialog(preselect_case=run[1])
         elif kind == "case":
             self._run_saved_case(run[1])
-        elif kind == "timehistory":
-            self.run_timehistory_dialog()
         elif kind == "stages":
             self.run_construction_stages()
         # R10: broaden R4's contextual raise — after *any* analysis dispatched
@@ -2254,7 +2252,12 @@ class MainWindow(QMainWindow):
             return None
         self.log.appendPlainText(
             f"Analysis case '{c.name}' ({ct.type_label}) — running…")
-        config = ct.build_config(self._project, c.params)
+        try:
+            config = ct.build_config(self._project, c.params)
+        except Exception as exc:                           # noqa: BLE001
+            QMessageBox.warning(self, "Analysis case",
+                                f"Cannot run '{c.name}':\n\n{exc}")
+            return None
         return ct.dispatch(self, config)
 
     def _on_double_click(self, item, _col) -> None:

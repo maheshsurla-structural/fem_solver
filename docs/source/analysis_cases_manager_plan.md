@@ -137,14 +137,16 @@ already consumes.
     in-use guard vs referencing TH cases). New `function` icon; `act_th_functions`
     homed in ribbon Analysis ▸ Functions; `manage_th_functions`. 7 tests + ribbon
     invariant green.
-  - [ ] **TH-2 — TH as a saved case.** Refactor `TimeHistoryDialog`: replace
-    "Load record…" with a **function picker** (combo of `th_functions`; in_g moves
-    to the function), add `CaseHeader` + `initial` + a config-collect path.
-    `case_types.TimeHistoryType`: `edit` collects params `{function_id,
-    control_node, direction, scale, zeta, density}`; `build_config` loads the
-    referenced function; `dispatch` opens the (interactive) runner seeded, ready
-    to Run. Drop the launcher row; add to Add ▾. Needs a `run_timehistory(config=)`
-    seed path on the runner.
+  - [x] **TH-2 — TH as a saved case** ✅ 2026-09-16. New config-only
+    `TimeHistoryCaseDialog` (CaseHeader + **function picker** combo of
+    `th_functions` + monitor/direction/scale/ζ/density; `params()`/`_seed`;
+    accept() requires a function). `case_types.TimeHistoryType`: `build_config`
+    resolves the function → the runner **seed** (raises if the function was
+    deleted); `dispatch` → `run_timehistory_dialog(seed=…)`. `TimeHistoryDialog`
+    gained `seed=` / `_apply_seed` (pre-fills record + settings, ready to Run);
+    file-import path kept for the legacy/RunAnalysis flow. Launcher row dropped;
+    TH now in Add ▾ (11 types). `_run_saved_case` wraps `build_config` in a
+    warn-on-error guard. Tests updated; end-state verified headless.
 - [ ] **M9 — Construction Stages** — **STAYS A LAUNCHER by design.** Its config
   *is* the project-global `stages` list (already persisted, edited via
   `StageManagerDialog`); there is one stage sequence per model, so a
@@ -160,12 +162,12 @@ already consumes.
   threading the case name into each runner's `RunRecord` (only a log line so
   far); user-guide docs.
 
-**End state:** 9 types are saved, multi-instance AnalysisCases (Modal, Buckling,
+**End state:** 10 types are saved, multi-instance AnalysisCases (Modal, Buckling,
 Moving Load, Temp Gradient, Load Rating, Response Spectrum, Vehicle Dynamics,
-Influence Surface, Cable Tuning); **Time History is being migrated** via the
-function-library route (TH-1 done, TH-2 next). Two remain launchers **by
+Influence Surface, Cable Tuning, Time History). Two remain launchers **by
 design**: Linear Static (the always-available current-model run) and Construction
-Stages (operates on the shared stage set).
+Stages (operates on the shared, already-persistent stage set). **Migration
+complete.**
 
 ## Decisions / open questions
 

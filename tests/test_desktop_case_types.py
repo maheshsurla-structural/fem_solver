@@ -53,13 +53,17 @@ class _FakeWin:
     def run_load_rating(self, config=None):
         self.calls.append(("run_load_rating", config))
 
+    def run_timehistory_dialog(self, seed=None):
+        self.calls.append(("run_timehistory_dialog", seed))
+
 
 def test_registry_has_migrated_types():
     import case_types
     assert set(case_types.TYPES) >= {"modal", "buckling", "movingload",
                                      "tempgradient", "loadrating",
                                      "responsespectrum", "vehicledynamics",
-                                     "influencesurface", "cabletuning"}
+                                     "influencesurface", "cabletuning",
+                                     "timehistory"}
     # every registered type carries a label + icon and lands in the ordered list
     for ct in case_types._ORDER:
         assert ct.type_id and ct.type_label and ct.icon
@@ -101,6 +105,20 @@ def test_edit_cap_is_a_positive_bound():
     import case_types
     ct = case_types.get("modal")
     assert ct._edit_cap(_project()) >= 1
+
+
+def test_timehistory_dispatch_seeds_the_runner():
+    import case_types
+    from project import TimeHistoryFunction
+    p = _project()
+    p.th_functions = [TimeHistoryFunction(id=1, name="EC", dt=0.02,
+                                          values=[0.1, 0.2, 0.3])]
+    ct = case_types.get("timehistory")
+    cfg = ct.build_config(p, {"function_id": 1, "control_node": 2,
+                              "direction": "y", "scale": 1.0})
+    win = _FakeWin()
+    ct.dispatch(win, cfg)
+    assert win.calls == [("run_timehistory_dialog", cfg)]   # opens seeded
 
 
 def test_dict_config_types_dispatch_by_identity():

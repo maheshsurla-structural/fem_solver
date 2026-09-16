@@ -45,16 +45,15 @@ def test_lists_builtin_nonlinear_and_planned(qapp):
     dlg = AnalysisCasesDialog(None, _project())
     kinds = [m["kind"] for m in dlg._row_meta]
     assert kinds[0] == "linear"
-    assert "nonlinear" in kinds and "timehistory" in kinds
-    # un-migrated types are still launcher rows
-    for k in ("timehistory", "stages"):
-        assert k in kinds
+    assert "nonlinear" in kinds
+    # Construction Stages stays a launcher row (operates on shared project.stages)
+    assert "stages" in kinds
     # migrated types are no longer fixed launcher rows — they are saved
     # AnalysisCase types offered in the Add ▾ menu
     import case_types
     for t in ("modal", "buckling", "movingload", "tempgradient", "loadrating",
               "responsespectrum", "vehicledynamics", "influencesurface",
-              "cabletuning"):
+              "cabletuning", "timehistory"):
         assert t not in kinds
         assert case_types.get(t)
     assert kinds.count("planned") == len(_PLANNED)
@@ -257,6 +256,25 @@ def test_move_reorders_within_list(qapp):
     assert dlg._row_meta[dlg.table.currentRow()]["case_id"] == 1  # follows
     dlg._move(-1)                                          # back up
     assert [c.id for c in dlg._acases] == [1, 2]
+
+
+def test_analysis_cases_lists_saved_timehistory_case(qapp):
+    from analysis_cases_dialog import AnalysisCasesDialog
+    from project import TimeHistoryFunction
+    p = _project()
+    p.th_functions = [TimeHistoryFunction(id=1, name="EC", dt=0.02,
+                                          values=[0.1, 0.2, 0.3])]
+    p.analysis_cases = [AnalysisCase(id=1, name="TH-EC", type="timehistory",
+                                     params={"function_id": 1, "control_node": 2,
+                                             "direction": "y", "scale": 1.0})]
+    dlg = AnalysisCasesDialog(None, p)
+    kinds = [m["kind"] for m in dlg._row_meta]
+    r = kinds.index("analysis")
+    assert "EC" in dlg._row_meta[r]["detail"]       # detail resolves the function
+    dlg.table.setCurrentCell(r, 0)
+    assert dlg._mod_btn.isEnabled() and dlg._del_btn.isEnabled()
+    dlg._run()
+    assert dlg._run_request == ("case", 1)
 
 
 def test_move_and_dup_buttons_gate(qapp):

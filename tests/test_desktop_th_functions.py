@@ -111,3 +111,62 @@ def test_main_window_wires_th_functions(qapp):
     w.load_project(_project())
     assert hasattr(w, "act_th_functions")
     assert callable(w.manage_th_functions)
+
+
+# --------------------------------------------- TH-2: Time History as a saved case
+def _project_with_fn():
+    p = _project()
+    p.th_functions = [TimeHistoryFunction(id=1, name="EC", dt=0.02,
+                                          values=[0.1, -0.2, 0.3, 0.0],
+                                          in_g=True)]
+    return p
+
+
+def test_timehistory_case_dialog_params_round_trip(qapp):
+    from timehistory_dialog import TimeHistoryCaseDialog
+    initial = {"function_id": 1, "control_node": 2, "direction": "y",
+               "scale": 1.5, "zeta": 0.03, "density": 2500.0}
+    dlg = TimeHistoryCaseDialog(None, _project_with_fn(), initial=initial,
+                                name="TH-Y")
+    assert dlg.params() == initial
+    assert dlg.header.name() == "TH-Y"
+
+
+def test_timehistory_case_dialog_accept_requires_function(qapp, monkeypatch):
+    import timehistory_dialog as thd
+    monkeypatch.setattr(thd.QMessageBox, "warning",
+                        staticmethod(lambda *a, **k: None))
+    dlg = thd.TimeHistoryCaseDialog(None, _project())       # no functions
+    dlg.accept()
+    assert dlg.result() == 0                                 # refused
+
+
+def test_timehistory_adapter_build_config_and_detail(qapp):
+    import case_types
+    p = _project_with_fn()
+    ct = case_types.get("timehistory")
+    assert ct is not None and ct.type_label == "Time History"
+    params = {"function_id": 1, "control_node": 2, "direction": "y",
+              "scale": 2.0, "zeta": 0.05, "density": 2400.0}
+    cfg = ct.build_config(p, params)
+    assert cfg["values"] == [0.1, -0.2, 0.3, 0.0] and cfg["dt"] == 0.02
+    assert cfg["in_g"] is True and cfg["scale"] == 2.0 and cfg["name"] == "EC"
+    assert "EC" in ct.detail(p, params)
+
+
+def test_timehistory_build_config_missing_function_raises(qapp):
+    import case_types
+    ct = case_types.get("timehistory")
+    with pytest.raises(ValueError):
+        ct.build_config(_project(), {"function_id": 999})
+
+
+def test_timehistory_runner_apply_seed(qapp):
+    from timehistory_dialog import TimeHistoryDialog
+    seed = {"values": [0.1, 0.2, 0.3], "dt": 0.02, "in_g": True, "name": "EC",
+            "control_node": 2, "direction": "y", "scale": 1.0, "zeta": 0.05,
+            "density": 2400.0}
+    dlg = TimeHistoryDialog(None, _project(), seed=seed)
+    assert dlg._accel is not None and dlg._accel.size == 3
+    assert dlg.run_btn.isEnabled()
+    assert dlg.dt.value() == 0.02 and dlg.in_g.currentIndex() == 1

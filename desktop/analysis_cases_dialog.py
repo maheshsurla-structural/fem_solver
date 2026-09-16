@@ -10,12 +10,11 @@ One table lists **every** analysis case with a Type column and icon:
 * **Saved analysis cases** — each saved :class:`project.AnalysisCase`, the
   multi-instance, named, editable cases for the migrated built-in types (Modal,
   Buckling, Moving Load, Temperature Gradient, Load Rating, Response Spectrum,
-  Vehicle Dynamics, Influence Surface, Cable Tuning — see :mod:`case_types`).
-  **Add ▾** creates one (seeding the type's setup dialog), **Modify** /
-  **Delete** manage it, and **Run** uses its stored params with no re-prompt
-  (analysis-cases-manager plan).
-* **Time History** — a built-in launcher for the nonlinear dynamic dialog (a
-  runner-dialog + ground-motion record → left a launcher, see the plan).
+  Vehicle Dynamics, Influence Surface, Cable Tuning, and Time History — see
+  :mod:`case_types`). **Add ▾** creates one (seeding the type's setup dialog),
+  **Modify** / **Delete** manage it, and **Run** uses its stored params. Time
+  History references a :class:`project.TimeHistoryFunction` and, being an
+  interactive fiber solve, opens its runner *seeded* rather than headlessly.
 * **Construction Stages** — a built-in launcher for the incremental erection
   sequence under self-weight, reporting the camber; operates on the shared,
   already-persistent ``project.stages`` (so left a launcher).
@@ -165,10 +164,6 @@ class AnalysisCasesDialog(QDialog):
                            else "saved case"),
                 "notes": getattr(c, "notes", ""),
                 "icon": (ct.icon if ct else "run"), "runnable": True})
-        rows.append({"kind": "timehistory", "name": "Time History",
-                     "type": "Time History",
-                     "detail": "ground-motion record", "icon": "run",
-                     "runnable": True})
         rows.append({"kind": "stages", "name": "Construction Stages",
                      "type": "Construction Stages",
                      "detail": "incremental erection · camber",
@@ -362,8 +357,6 @@ class AnalysisCasesDialog(QDialog):
             self._run_request = ("nonlinear", m["case_id"])
         elif m["kind"] == "analysis":
             self._run_request = ("case", m["case_id"])
-        elif m["kind"] == "timehistory":
-            self._run_request = ("timehistory",)
         elif m["kind"] == "stages":
             self._run_request = ("stages",)
         self.accept()

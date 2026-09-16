@@ -16,9 +16,9 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as Canvas
 from matplotlib.figure import Figure
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtWidgets import (QComboBox, QDialog, QDoubleSpinBox, QFileDialog,
-                               QFormLayout, QHBoxLayout, QLabel, QPlainTextEdit,
-                               QProgressBar, QPushButton, QSpinBox, QVBoxLayout,
-                               QWidget)
+                               QFormLayout, QHBoxLayout, QLabel, QMessageBox,
+                               QPlainTextEdit, QProgressBar, QPushButton,
+                               QSpinBox, QVBoxLayout, QWidget)
 
 import analysis_ui as ui
 import nonlinear as NL
@@ -74,8 +74,11 @@ class TimeHistoryWorker(QThread):
             self.failed.emit(str(exc))
 
 
+_DIR_DOF = {"x": 0, "y": 1, "z": 2}
+
+
 class TimeHistoryDialog(QDialog):
-    def __init__(self, parent, project):
+    def __init__(self, parent, project, seed: dict | None = None):
         super().__init__(parent)
         self.setWindowTitle("Nonlinear time history")
         self._project = project
@@ -170,8 +173,31 @@ class TimeHistoryDialog(QDialog):
         qrow.addStretch(1)
         rv.addLayout(qrow)
         outer.addWidget(rightw, 1)
+        if seed:
+            self._apply_seed(seed)
         self._draw()
         style.apply(self)
+
+    def _apply_seed(self, seed: dict) -> None:
+        """Pre-fill the runner from a saved Time-History case (its referenced
+        function's record + the case settings), ready for the user to Run."""
+        vals = seed.get("values") or []
+        self._accel = np.asarray(vals, dtype=float)
+        self.dt.setValue(float(seed.get("dt", 0.01)))
+        self.in_g.setCurrentIndex(1 if seed.get("in_g") else 0)
+        ni = self.node.findData(seed.get("control_node"))
+        if ni >= 0:
+            self.node.setCurrentIndex(ni)
+        direction = seed.get("direction", "y")
+        di = self.direction.findData((direction, _DIR_DOF.get(direction, 1)))
+        if di >= 0:
+            self.direction.setCurrentIndex(di)
+        self.scale.setValue(float(seed.get("scale", 1.0)))
+        self.zeta.setValue(float(seed.get("zeta", 0.05)))
+        self.density.setValue(float(seed.get("density", 2400.0)))
+        self.rec_lbl.setText(f"{seed.get('name', 'function')} "
+                             f"— {self._accel.size} pts")
+        self.run_btn.setEnabled(self._accel.size >= 2)
 
     # ------------------------------------------------ helpers
     @staticmethod
@@ -282,3 +308,120 @@ class TimeHistoryDialog(QDialog):
                           fontsize=8, color="0.5")
         self._ax.grid(True, alpha=0.25)
         self._canvas.draw_idle()
+
+
+class TimeHistoryCaseDialog(QDialog):
+    """Config-only editor for a saved Time-History :class:`project.AnalysisCase`
+    (analysis-cases-manager TH-2). It picks a **function** from the project's
+    time-history library plus the monitor / scale / damping / mass — no run, no
+    file import. The interactive solve happens later in :class:`TimeHistoryDialog`
+    (opened seeded from these params). Built on the L1 card scaffold; pure Qt,
+    headless-constructible.
+    """
+
+    def __init__(self, parent, project, *, initial: dict | None = None,
+                 name: str = "Time History", notes: str = ""):
+        super().__init__(parent)
+        self.setWindowTitle("Time-history case")
+        self._project = project
+        node_ids = [n.id for n in project.nodes]
+        free = [n.id for n in project.nodes
+                if not (n.supports and any(n.supports))]
+        default_node = (free[-1] if free else
+                        (node_ids[-1] if node_ids else None))
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(style.SP_LG, style.SP_LG,
+                                style.SP_LG, style.SP_LG)
+        root.setSpacing(style.SP_MD)
+        self.header = ui.CaseHeader(name=name, type_label="Time History",
+                                    notes=notes)
+        root.addWidget(self.header)
+
+        monitor = ui.GroupCard("Monitor")
+        self.node = self._combo([(str(i), i) for i in node_ids],
+                                default=default_node)
+        self.direction = self._combo(_DIRS, default=("y", 1))
+        monitor.add_row("Monitor node", self.node)
+        monitor.add_row("Direction", self.direction)
+
+        gm = ui.GroupCard("Ground motion")
+        self.function = QComboBox()
+        for f in project.th_functions:
+            self.function.addItem(
+                f"{f.name}  ({f.npts} pts · {f.duration:.3g}s"
+                f"{' · g' if f.in_g else ''})", f.id)
+        gm.add_row("Function", self.function)
+        self._no_fn = QLabel("No time-history functions yet — define them in "
+                             "Analysis ▸ Functions.")
+        self._no_fn.setObjectName("hintLabel")
+        self._no_fn.setWordWrap(True)
+        self._no_fn.setVisible(self.function.count() == 0)
+        gm.add_full_row(self._no_fn)
+        self.scale = self._spin(1.0, decimals=4, step=0.1)
+        gm.add_row("Scale factor", self.scale)
+
+        model = ui.GroupCard("Damping & mass")
+        self.zeta = self._spin(0.05, decimals=3, step=0.01)
+        self.density = self._spin(2400.0, decimals=1, step=100.0, big=True)
+        model.add_row("Damping ζ", self.zeta)
+        model.add_row(f"Density [kg/{project.length_unit}³]", self.density)
+
+        root.addWidget(ui.two_column(monitor, gm, model))
+        root.addWidget(ui.dialog_buttons(self))
+        if initial:
+            self._seed(initial)
+        style.apply(self)
+
+    @staticmethod
+    def _combo(items, default=None):
+        c = QComboBox()
+        for label, data in items:
+            c.addItem(label, data)
+        if default is not None:
+            i = c.findData(default)
+            if i >= 0:
+                c.setCurrentIndex(i)
+        return c
+
+    @staticmethod
+    def _spin(value, *, decimals=3, step=0.1, big=False):
+        s = QDoubleSpinBox()
+        s.setRange(0.0, 1e15 if big else 1e6)
+        s.setDecimals(decimals)
+        s.setSingleStep(step)
+        s.setValue(value)
+        return s
+
+    def _seed(self, p: dict) -> None:
+        ni = self.node.findData(p.get("control_node"))
+        if ni >= 0:
+            self.node.setCurrentIndex(ni)
+        want = p.get("direction", "y")
+        for i in range(self.direction.count()):
+            if self.direction.itemData(i)[0] == want:
+                self.direction.setCurrentIndex(i)
+                break
+        fi = self.function.findData(p.get("function_id"))
+        if fi >= 0:
+            self.function.setCurrentIndex(fi)
+        self.scale.setValue(float(p.get("scale", 1.0)))
+        self.zeta.setValue(float(p.get("zeta", 0.05)))
+        self.density.setValue(float(p.get("density", 2400.0)))
+
+    def accept(self) -> None:
+        if self.function.count() == 0 or self.function.currentData() is None:
+            QMessageBox.warning(
+                self, "Time history",
+                "Define a time-history function (Analysis ▸ Functions) and "
+                "select it first.")
+            return
+        super().accept()
+
+    def params(self) -> dict:
+        return {"function_id": self.function.currentData(),
+                "control_node": self.node.currentData(),
+                "direction": self.direction.currentData()[0],
+                "scale": float(self.scale.value()),
+                "zeta": float(self.zeta.value()),
+                "density": float(self.density.value())}

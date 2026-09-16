@@ -377,12 +377,63 @@ class CableTuningType(CaseType):
         return win.run_cable_tuning(config=config)
 
 
-# Ordered registry — also the order of the Add ▾ menu. Extend as types migrate
-# (time history, construction stages, …).
+class TimeHistoryType(CaseType):
+    """Nonlinear time history → the interactive :meth:`run_timehistory_dialog`.
+
+    References a :class:`project.TimeHistoryFunction` by id (the record lives in
+    the project's function library, TH-1); ``build_config`` resolves it into the
+    runner's seed. The run is interactive (fiber solve + response plot), so
+    ``dispatch`` opens the runner *seeded* rather than running headlessly."""
+
+    type_id = "timehistory"
+    type_label = "Time History"
+    icon = "function"
+
+    def default_params(self, project):
+        fid = project.th_functions[0].id if project.th_functions else None
+        return {"function_id": fid, "control_node": None, "direction": "y",
+                "scale": 1.0, "zeta": 0.05, "density": 2400.0}
+
+    def detail(self, project, params):
+        f = project.th_function(params.get("function_id"))
+        fname = f.name if f else "(function deleted)"
+        return (f"{fname} · node {params.get('control_node')} "
+                f"{str(params.get('direction', 'y')).upper()} · "
+                f"×{params.get('scale', 1.0):g}")
+
+    def edit(self, parent, project, case=None):
+        from timehistory_dialog import TimeHistoryCaseDialog
+        dlg = TimeHistoryCaseDialog(
+            parent, project, initial=(dict(case.params) if case else None),
+            name=(case.name if case else "Time History"),
+            notes=(case.notes if case else ""))
+        if not dlg.exec():
+            return None
+        return self._mk(case, name=dlg.header.name() or "Time History",
+                        params=dlg.params(), notes=dlg.header.notes())
+
+    def build_config(self, project, params):
+        f = project.th_function(params.get("function_id"))
+        if f is None:
+            raise ValueError("the referenced time-history function was deleted "
+                             "— pick another in the case's Modify dialog")
+        return {"values": list(f.values), "dt": f.dt, "in_g": f.in_g,
+                "name": f.name, "control_node": params.get("control_node"),
+                "direction": params.get("direction", "y"),
+                "scale": float(params.get("scale", 1.0)),
+                "zeta": float(params.get("zeta", 0.05)),
+                "density": float(params.get("density", 2400.0))}
+
+    def dispatch(self, win, config):
+        return win.run_timehistory_dialog(seed=config)
+
+
+# Ordered registry — also the order of the Add ▾ menu.
 _ORDER: list[CaseType] = [ModalType(), BucklingType(), MovingLoadType(),
                           TemperatureGradientType(), LoadRatingType(),
                           ResponseSpectrumType(), VehicleDynamicsType(),
-                          InfluenceSurfaceType(), CableTuningType()]
+                          InfluenceSurfaceType(), CableTuningType(),
+                          TimeHistoryType()]
 TYPES: dict[str, CaseType] = {ct.type_id: ct for ct in _ORDER}
 
 
