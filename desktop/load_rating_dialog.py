@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox,
 
 import style
 from analysis_ui import CaseHeader, GroupCard, dialog_buttons
+from pick import PickDialog
 from units import Quantity, UnitSystem
 
 # label -> (component, quantity) — LRFR rates a force effect (moment or shear)
@@ -59,8 +60,9 @@ def _spin(value, lo=0.0, hi=1.0e12, step=1.0, decimals=3):
     return sb
 
 
-class LoadRatingDialog(QDialog):
-    """Configure an AASHTO LRFR load-rating case."""
+class LoadRatingDialog(PickDialog):
+    """Configure an AASHTO LRFR load-rating case. The rated member and lane
+    nodes can be picked in the model while open (see :mod:`pick`)."""
 
     def __init__(self, parent, project, *, initial: dict | None = None,
                  name: str = "Load Rating", notes: str = ""):
@@ -115,6 +117,9 @@ class LoadRatingDialog(QDialog):
         for mb in project.members:
             self.member.addItem(f"member {mb.id}  ({mb.n1}→{mb.n2})", mb.id)
         eff.add_row("Member", self.member)
+        # Pick the rated member (combo) or toggle lane nodes (list) in the model.
+        self.register_pick_field("member", self.member)
+        self.register_pick_field("node", self.lane_list)
         self.end = QComboBox()
         self.end.addItem("end i", "i")
         self.end.addItem("end j", "j")

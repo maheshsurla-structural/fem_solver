@@ -131,6 +131,10 @@ class MainWindow(QMainWindow):
         # (in leaf mode); in summary mode the viewport / tables drive it. Every
         # consumer (move/copy/delete/Properties/highlight) reads _selected_refs.
         self._selection: list = []
+        # Open node/member dialogs register here (as a stack, so a nested one
+        # wins) so a viewport click flows into the dialog instead of changing the
+        # selection — the modeless "pick from the model" path (see pick.py).
+        self._pick_sinks: list = []
         self._summary_mode = self._settings.value(
             "nav/summary", False, type=bool)
         saved = self._settings.value("nav/expanded", None)
@@ -2614,7 +2618,30 @@ class MainWindow(QMainWindow):
         self._selection = refs
         self._apply_selection_effects()
 
+    # ---- modeless "pick from the model" for node/member dialogs -----------
+    # An open PickDialog (pick.py) pushes itself here; while one is active a
+    # viewport click fills its armed field instead of driving the selection.
+    def push_pick_sink(self, sink) -> None:
+        self._pick_sinks.append(sink)
+
+    def pop_pick_sink(self, sink) -> None:
+        if sink in self._pick_sinks:
+            self._pick_sinks.remove(sink)
+        # Restore the real selection highlight the transient pick feedback hid.
+        self._apply_selection_effects()
+
+    def _active_pick_sink(self):
+        return self._pick_sinks[-1] if self._pick_sinks else None
+
     def _on_pick(self, kind, ident) -> None:
+        sink = self._active_pick_sink()
+        if sink is not None:
+            try:
+                if sink.accept_pick(kind, ident):
+                    self.view.highlight([(kind, ident)])   # transient feedback
+                    return
+            except Exception:                              # never break a click
+                pass
         additive = bool(QApplication.keyboardModifiers() & (
             Qt.KeyboardModifier.ShiftModifier
             | Qt.KeyboardModifier.ControlModifier))

@@ -23,10 +23,12 @@ from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDialog,
 
 import style
 from analysis_ui import CaseHeader, GroupCard, dialog_buttons
+from pick import PickDialog
 
 
-class TemperatureGradientDialog(QDialog):
-    """Configure a temperature-gradient load case."""
+class TemperatureGradientDialog(PickDialog):
+    """Configure a temperature-gradient load case. Apply-to members can be
+    toggled by clicking them in the model while open (see :mod:`pick`)."""
 
     def __init__(self, parent, project, *, initial: dict | None = None,
                  name: str = "Temperature Gradient", notes: str = ""):
@@ -83,6 +85,7 @@ class TemperatureGradientDialog(QDialog):
             self.members.addItem(it)
             it.setSelected(True)                        # default: all
         apply_card.body_layout().addWidget(self.members)
+        self.register_pick_field("member", self.members)  # click members in model
         root.addWidget(apply_card)
 
         self.source.currentIndexChanged.connect(self.stack.setCurrentIndex)

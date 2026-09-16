@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox, QDialog,
 
 import style
 from analysis_ui import CaseHeader, GroupCard, dialog_buttons
+from pick import PickDialog
 
 _ROLE = 0x0100                                          # Qt.UserRole
 _VEHICLES = [
@@ -37,8 +38,11 @@ _RESPONSES = [
 ]
 
 
-class InfluenceSurfaceDialog(QDialog):
-    """Configure an influence-surface / multi-lane analysis (3-D deck)."""
+class InfluenceSurfaceDialog(PickDialog):
+    """Configure an influence-surface / multi-lane analysis (3-D deck).
+
+    Deck nodes and the response node can be picked by clicking in the model
+    while the dialog is open (see :mod:`pick`)."""
 
     def __init__(self, parent, project, *, initial: dict | None = None,
                  name: str = "Influence Surface", notes: str = ""):
@@ -90,6 +94,10 @@ class InfluenceSurfaceDialog(QDialog):
         if project.nodes:
             self.node.setCurrentIndex(len(project.nodes) // 2)
         cfg.add_row("At node", self.node)
+        # Pick the response node (combo) or toggle deck nodes (list) by clicking
+        # in the model; focus a field to aim picks at it.
+        self.register_pick_field("node", self.node)
+        self.register_pick_field("node", self.deck_list)
         self.vehicle = QComboBox()
         for label, key in _VEHICLES:
             self.vehicle.addItem(label, key)

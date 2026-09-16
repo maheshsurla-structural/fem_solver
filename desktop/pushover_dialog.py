@@ -29,6 +29,7 @@ import analysis_ui as ui
 import nonlinear as NL
 import style
 from nl_results import NonlinearResults
+from pick import PickDialog
 from unit_widgets import UnitSpin
 from units import Quantity, UnitSystem
 
@@ -79,7 +80,7 @@ class PushoverWorker(QThread):
             self.failed.emit(str(exc))
 
 
-class PushoverDialog(QDialog):
+class PushoverDialog(PickDialog):
     def __init__(self, parent, project):
         super().__init__(parent)
         self.setWindowTitle("Nonlinear pushover")
@@ -124,6 +125,10 @@ class PushoverDialog(QDialog):
         self.axial_node = self._combo([(str(i), i) for i in node_ids],
                                       default=(free[-1] if free else None))
         self.axial_dof = self._combo(dof_items, default=0)
+        # Pick the control / axial node by clicking it in the model (focus a
+        # field to aim picks at it).
+        self.register_pick_field("node", self.node)
+        self.register_pick_field("node", self.axial_node)
         # saved nonlinear cases (GUI-4): pick one to run it (monotonic/cyclic/
         # staged), or "— manual —" to use the quick inputs below.
         self.case_combo = self._combo(

@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDialog,
 
 import style
 from analysis_ui import CaseHeader, GroupCard, dialog_buttons
+from pick import PickDialog
 
 _ROLE = 0x0100                                          # Qt.UserRole
 # label -> MovingLoad preset key (axle trains for the moving-force model)
@@ -34,8 +35,9 @@ _VEHICLES = [
 ]
 
 
-class VehicleDynamicsDialog(QDialog):
-    """Configure a vehicle-dynamics (moving-load time-history) analysis."""
+class VehicleDynamicsDialog(PickDialog):
+    """Configure a vehicle-dynamics (moving-load time-history) analysis. The
+    response node and lane nodes can be picked in the model (see :mod:`pick`)."""
 
     def __init__(self, parent, project, *, initial: dict | None = None,
                  name: str = "Vehicle Dynamics", notes: str = ""):
@@ -100,6 +102,9 @@ class VehicleDynamicsDialog(QDialog):
         if project.nodes:                              # default: a mid node
             self.node.setCurrentIndex(len(project.nodes) // 2)
         cfg.add_row("Response node", self.node)
+        # Pick the response node (combo) or toggle lane nodes (list) in the model.
+        self.register_pick_field("node", self.node)
+        self.register_pick_field("node", self.lane_list)
         root.addWidget(cfg)
 
         if initial:

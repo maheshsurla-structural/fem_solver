@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDialog, QLabel,
 
 import style
 from analysis_ui import CaseHeader, GroupCard, dialog_buttons
+from pick import PickDialog
 
 # label -> vehicle key ("hl93" = full HL-93 envelope, else a MovingLoad preset)
 _VEHICLES = [
@@ -37,8 +38,9 @@ _RESPONSES = [
 ]
 
 
-class MovingLoadDialog(QDialog):
-    """Configure a moving-load / influence-line analysis."""
+class MovingLoadDialog(PickDialog):
+    """Configure a moving-load / influence-line analysis. The response member /
+    node and the lane nodes can be picked in the model (see :mod:`pick`)."""
 
     def __init__(self, parent, project, *, initial: dict | None = None,
                  name: str = "Moving Load", notes: str = ""):
@@ -106,6 +108,11 @@ class MovingLoadDialog(QDialog):
         for nd in project.nodes:
             self.node.addItem(f"node {nd.id}", nd.id)
         cfg.add_row("Node", self.node)
+        # Pick the response member / node (combos) or toggle lane nodes (list) by
+        # clicking in the model; focus a field to aim picks at it.
+        self.register_pick_field("member", self.member)
+        self.register_pick_field("node", self.node)
+        self.register_pick_field("node", self.lane_list)
         root.addWidget(cfg)
 
         self._member_rows = (self.member, self.end)

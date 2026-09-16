@@ -18,12 +18,14 @@ from PySide6.QtWidgets import (QAbstractItemView, QDialog, QLabel, QListWidget,
 
 import style
 from analysis_ui import CaseHeader, GroupCard, dialog_buttons
+from pick import PickDialog
 
 _ROLE = 0x0100                                          # Qt.UserRole
 
 
-class CableTuningDialog(QDialog):
-    """Pick the stay members to tune and the deck nodes to target."""
+class CableTuningDialog(PickDialog):
+    """Pick the stay members to tune and the deck nodes to target — by clicking
+    them in the model while open, too (see :mod:`pick`)."""
 
     def __init__(self, parent, project, *, initial: dict | None = None,
                  name: str = "Cable Tuning", notes: str = ""):
@@ -72,6 +74,10 @@ class CableTuningDialog(QDialog):
             self.targets.addItem(it)
         tgt.body_layout().addWidget(self.targets)
         root.addWidget(tgt)
+        # Click stay members / target nodes in the model to toggle them; focus a
+        # list to aim picks at it.
+        self.register_pick_field("member", self.cables)
+        self.register_pick_field("node", self.targets)
 
         if initial:
             self._seed(initial)

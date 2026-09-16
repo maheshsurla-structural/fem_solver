@@ -11,11 +11,12 @@ runs it modally and returns the ``MemberLoad`` (or ``None`` if cancelled).
 """
 from __future__ import annotations
 
-from PySide6.QtWidgets import (QComboBox, QDialog, QDoubleSpinBox, QHBoxLayout,
+from PySide6.QtWidgets import (QComboBox, QDoubleSpinBox, QHBoxLayout,
                                QLabel, QVBoxLayout, QWidget)
 
 import analysis_ui as ui
 import style
+from pick import PickDialog
 from project import MemberLoad
 from unit_widgets import UnitSpin
 from units import Quantity, UnitSystem
@@ -53,8 +54,9 @@ def _with_hint(spin: QDoubleSpinBox, hint: str) -> QWidget:
     return host
 
 
-class MemberLoadDialog(QDialog):
-    """Add / edit a uniform line load on a member."""
+class MemberLoadDialog(PickDialog):
+    """Add / edit a uniform line load on a member. The member can be chosen by
+    clicking it in the model while the dialog is open (see :mod:`pick`)."""
 
     def __init__(self, parent, project, mload=None):
         super().__init__(parent)
@@ -69,6 +71,7 @@ class MemberLoadDialog(QDialog):
 
         self.member = _combo([(f"{m.id}:  {m.n1} → {m.n2}", m.id)
                               for m in project.members])
+        self.register_pick_field("member", self.member)  # click a member in model
         if mload is not None:
             _select(self.member, mload.member)
         self.case = _combo([(c.name, c.id) for c in project.load_cases])
@@ -78,6 +81,11 @@ class MemberLoadDialog(QDialog):
         applied = ui.GroupCard("Applied to")
         applied.add_row("Member", self.member)
         applied.add_row("Load case", self.case)
+        _hint = QLabel("Tip: click a member in the model to set it here — no "
+                       "need to close this window.")
+        _hint.setObjectName("hintLabel")
+        _hint.setWordWrap(True)
+        applied.add_full_row(_hint)
 
         loads = ui.GroupCard(f"Uniform line load  [{unit}]")
         self.wy = _udl_spin(self._us, mload.wy if mload else 0.0)

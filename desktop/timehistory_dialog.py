@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (QComboBox, QDialog, QDoubleSpinBox, QFileDialog,
 import analysis_ui as ui
 import nonlinear as NL
 import style
+from pick import PickDialog
 
 # direction label -> (direction string, translational DOF index)
 _DIRS = [("X", ("x", 0)), ("Y", ("y", 1)), ("Z", ("z", 2))]
@@ -77,7 +78,7 @@ class TimeHistoryWorker(QThread):
 _DIR_DOF = {"x": 0, "y": 1, "z": 2}
 
 
-class TimeHistoryDialog(QDialog):
+class TimeHistoryDialog(PickDialog):
     def __init__(self, parent, project, seed: dict | None = None):
         super().__init__(parent)
         self.setWindowTitle("Nonlinear time history")
@@ -99,6 +100,7 @@ class TimeHistoryDialog(QDialog):
         self.node = self._combo([(str(i), i) for i in node_ids],
                                 default=(free[-1] if free else
                                          (node_ids[-1] if node_ids else None)))
+        self.register_pick_field("node", self.node)   # click monitor node in model
         self.direction = self._combo(_DIRS, default=("y", 1))
         self.rec_btn = QPushButton("Load record…")
         self.rec_btn.clicked.connect(self._load_record)
@@ -310,7 +312,7 @@ class TimeHistoryDialog(QDialog):
         self._canvas.draw_idle()
 
 
-class TimeHistoryCaseDialog(QDialog):
+class TimeHistoryCaseDialog(PickDialog):
     """Config-only editor for a saved Time-History :class:`project.AnalysisCase`
     (analysis-cases-manager TH-2). It picks a **function** from the project's
     time-history library plus the monitor / scale / damping / mass — no run, no
@@ -341,6 +343,7 @@ class TimeHistoryCaseDialog(QDialog):
         monitor = ui.GroupCard("Monitor")
         self.node = self._combo([(str(i), i) for i in node_ids],
                                 default=default_node)
+        self.register_pick_field("node", self.node)   # click monitor node in model
         self.direction = self._combo(_DIRS, default=("y", 1))
         monitor.add_row("Monitor node", self.node)
         monitor.add_row("Direction", self.direction)

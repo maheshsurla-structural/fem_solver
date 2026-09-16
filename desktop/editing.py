@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox,
 import analysis_ui as ui
 import icons
 import style
+from pick import PickDialog
 from project import (Load, LoadCase, Member, NATURE_ASCE, NATURE_LABELS, Node,
                      Section)
 from unit_widgets import UnitSpin, labeled
@@ -106,7 +107,7 @@ class NodeDialog(QDialog):
         return dlg.data() if dlg.exec() else None
 
 
-class MemberDialog(QDialog):
+class MemberDialog(PickDialog):
     def __init__(self, parent, project, member=None):
         super().__init__(parent)
         self.setWindowTitle("Edit member" if member else "Add member")
@@ -119,6 +120,9 @@ class MemberDialog(QDialog):
 
         self.n1 = _combo([(str(n.id), n.id) for n in project.nodes])
         self.n2 = _combo([(str(n.id), n.id) for n in project.nodes])
+        # Pick start/end node by clicking in the model (whichever field has focus).
+        self.register_pick_field("node", self.n1)
+        self.register_pick_field("node", self.n2)
         self.sec = _combo([(f"{s.id}: {s.name}", s.id) for s in project.sections])
         self.mat = _combo([(f"{m.id}: {m.name}", m.id) for m in project.materials])
         self.kind = _combo([("Beam / column", "beamcolumn2d"),
@@ -139,6 +143,8 @@ class MemberDialog(QDialog):
 
         form.addRow("Start node", self.n1)
         form.addRow("End node", self.n2)
+        form.addRow("", _pick_hint("Tip: click a node in the model to fill the "
+                                   "focused end."))
         form.addRow("Section", self.sec)
         form.addRow("Material", self.mat)
         form.addRow("Type", self.kind)
@@ -166,11 +172,12 @@ class MemberDialog(QDialog):
         return dlg.data() if dlg.exec() else None
 
 
-class LoadDialog(QDialog):
+class LoadDialog(PickDialog):
     """Add / edit a nodal load, laid out as grouped cards (plan L4): an
     *Applied to* card (node + load case) over a *Components* card whose rows
     each pair a force/moment spin with a sign-convention hint. Built from the
-    L1 scaffold; ``.edit()`` return contract unchanged."""
+    L1 scaffold; ``.edit()`` return contract unchanged. The node can be chosen
+    by clicking it in the model while the dialog is open (see :mod:`pick`)."""
 
     def __init__(self, parent, project, load=None):
         super().__init__(parent)
@@ -182,6 +189,7 @@ class LoadDialog(QDialog):
         outer.setSpacing(style.SP_MD)
 
         self.node = _combo([(str(n.id), n.id) for n in project.nodes])
+        self.register_pick_field("node", self.node)   # click a node in the model
         if load:
             _select(self.node, load.node)
         self.case = _combo([(c.name, c.id) for c in project.load_cases])
@@ -191,6 +199,9 @@ class LoadDialog(QDialog):
         applied = ui.GroupCard("Applied to")
         applied.add_row("Node", self.node)
         applied.add_row("Load case", self.case)
+        applied.add_full_row(_pick_hint("Tip: click a node in the model to "
+                                        "set it here — no need to close this "
+                                        "window."))
 
         # Components mix forces (translational DOFs) and moments (rotational),
         # so units live per-row, not in one card header.
@@ -462,6 +473,15 @@ def _buttons(dialog: QDialog) -> QDialogButtonBox:
     bb.accepted.connect(dialog.accept)
     bb.rejected.connect(dialog.reject)
     return bb
+
+
+def _pick_hint(text: str) -> QLabel:
+    """A muted one-line hint that the field can be filled by clicking the model
+    (the dialog is modeless — see :mod:`pick`)."""
+    lbl = QLabel(text)
+    lbl.setObjectName("hintLabel")
+    lbl.setWordWrap(True)
+    return lbl
 
 
 def _int_spin(value, lo, hi):
