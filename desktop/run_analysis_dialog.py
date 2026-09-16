@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (QComboBox, QDialog, QDialogButtonBox,
                                QHBoxLayout, QHeaderView, QPushButton,
                                QTableWidget, QTableWidgetItem, QVBoxLayout)
 
+import case_types
 import style
 from project import NonlinearCase  # noqa: F401  (type hint / clarity)
 
@@ -81,8 +82,16 @@ class RunAnalysisDialog(QDialog):
         for c in self._project.nonlinear_cases:
             rows.append({"kind": "nonlinear", "case_id": c.id, "name": c.name,
                          "type": "Nonlinear Static", "default_run": False})
-        rows.append({"kind": "timehistory", "name": "Time History",
-                     "type": "Time History", "default_run": False})
+        # Every saved, multi-instance analysis case (Modal, Buckling, Response
+        # Spectrum, Moving Load, …, and Time History) — dispatched through its
+        # case_types adapter, so the run control lists *every* analysis, matching
+        # the Analysis-cases home (E5a). Time History is one of these now, so the
+        # old standalone launcher row is gone.
+        for c in getattr(self._project, "analysis_cases", []):
+            ct = case_types.get(c.type)
+            rows.append({"kind": "analysis", "case_id": c.id, "name": c.name,
+                         "type": (ct.type_label if ct else c.type),
+                         "default_run": False})
         return rows
 
     def _build_rows(self) -> None:
@@ -121,12 +130,12 @@ class RunAnalysisDialog(QDialog):
                     self._set_status(r, f"Failed: {exc}")
                 else:
                     self._set_status(r, "Done" if ok else "No model")
-            else:                                          # nonlinear / TH
-                if meta["kind"] == "nonlinear":
-                    self._requests.append(("nonlinear", meta["case_id"]))
-                else:
-                    self._requests.append(("timehistory",))
+            elif meta["kind"] == "nonlinear":
+                self._requests.append(("nonlinear", meta["case_id"]))
                 self._set_status(r, "Queued (opens dialog)")
+            else:                                          # saved analysis case
+                self._requests.append(("case", meta["case_id"]))
+                self._set_status(r, "Queued")
 
     def deferred_requests(self) -> list:
         return list(self._requests)

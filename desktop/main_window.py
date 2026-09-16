@@ -2374,8 +2374,8 @@ class MainWindow(QMainWindow):
         for req in requests:
             if req[0] == "nonlinear":
                 self.run_pushover_dialog(preselect_case=req[1])
-            elif req[0] == "timehistory":
-                self.run_timehistory_dialog()
+            elif req[0] == "case":            # a saved AnalysisCase (E5a)
+                self._run_saved_case(req[1])
 
     def manage_analysis_cases(self) -> None:
         """Open the unified analysis-cases home (plan A1): one list of every
