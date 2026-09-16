@@ -95,12 +95,22 @@ class AnalysisCasesDialog(QDialog):
         self._add_btn.setMenu(self._build_add_menu())
         self._mod_btn = QPushButton("Modify…")
         self._mod_btn.clicked.connect(self._modify)
+        self._dup_btn = QPushButton("Duplicate")
+        self._dup_btn.setToolTip("Create a copy of the selected case to tweak")
+        self._dup_btn.clicked.connect(self._duplicate)
         self._del_btn = QPushButton("Delete")
         self._del_btn.clicked.connect(self._delete)
+        self._up_btn = QPushButton("↑")
+        self._up_btn.setToolTip("Move the selected case up")
+        self._up_btn.clicked.connect(lambda: self._move(-1))
+        self._down_btn = QPushButton("↓")
+        self._down_btn.setToolTip("Move the selected case down")
+        self._down_btn.clicked.connect(lambda: self._move(1))
         self._run_btn = QPushButton("Run")
         self._run_btn.setIcon(_icon("run"))
         self._run_btn.clicked.connect(self._run)
-        for b in (self._add_btn, self._mod_btn, self._del_btn):
+        for b in (self._add_btn, self._mod_btn, self._dup_btn, self._del_btn,
+                  self._up_btn, self._down_btn):
             row.addWidget(b)
         row.addStretch(1)
         row.addWidget(self._run_btn)
@@ -199,7 +209,15 @@ class AnalysisCasesDialog(QDialog):
         m = self._selected()
         editable = bool(m and m["kind"] in ("nonlinear", "analysis"))
         self._mod_btn.setEnabled(editable)
+        self._dup_btn.setEnabled(editable)
         self._del_btn.setEnabled(editable)
+        can_up = can_down = False
+        if editable:                                 # reorder within its own list
+            lst = self._cases if m["kind"] == "nonlinear" else self._acases
+            can_up = m["case_index"] > 0
+            can_down = m["case_index"] < len(lst) - 1
+        self._up_btn.setEnabled(can_up)
+        self._down_btn.setEnabled(can_down)
         self._run_btn.setEnabled(bool(m and m.get("runnable")))
 
     # ---------------------------------------------------------------- actions
@@ -224,11 +242,44 @@ class AnalysisCasesDialog(QDialog):
             i += 1
         return f"{name} ({i})"
 
-    def _select_case(self, case_id) -> None:
+    def _select_row(self, kind: str, case_id) -> None:
         for r, meta in enumerate(self._row_meta):
-            if meta["kind"] == "analysis" and meta["case_id"] == case_id:
+            if meta["kind"] == kind and meta.get("case_id") == case_id:
                 self.table.setCurrentCell(r, 0)
                 return
+
+    def _duplicate(self) -> None:
+        """Clone the selected saved case (nonlinear or built-in) — the fast way
+        to define a variant (an RS-X → RS-Y, a Moving HL-93 → Moving Permit)."""
+        m = self._selected()
+        if not (m and m["kind"] in ("nonlinear", "analysis")):
+            return
+        if m["kind"] == "analysis":
+            clone = copy.deepcopy(self._acases[m["case_index"]])
+            clone.id = self._next_case_id()
+            clone.name = self._unique_name(f"{clone.name} (copy)")
+            self._acases.append(clone)
+        else:
+            clone = copy.deepcopy(self._cases[m["case_index"]])
+            clone.id = max((c.id for c in self._cases), default=0) + 1
+            clone.name = f"{clone.name} (copy)"
+            self._cases.append(clone)
+        self._refresh()
+        self._select_row(m["kind"], clone.id)
+
+    def _move(self, delta: int) -> None:
+        """Reorder the selected case within its own list (nonlinear or saved)."""
+        m = self._selected()
+        if not (m and m["kind"] in ("nonlinear", "analysis")):
+            return
+        lst = self._cases if m["kind"] == "nonlinear" else self._acases
+        i = m["case_index"]
+        j = i + delta
+        if not (0 <= j < len(lst)):
+            return
+        lst[i], lst[j] = lst[j], lst[i]
+        self._refresh()
+        self._select_row(m["kind"], m["case_id"])
 
     def _add_case(self, type_id: str) -> None:
         ct = case_types.get(type_id)
@@ -241,7 +292,7 @@ class AnalysisCasesDialog(QDialog):
         case.name = self._unique_name(case.name)
         self._acases.append(case)
         self._refresh()
-        self._select_case(case.id)
+        self._select_row("analysis", case.id)
 
     def _add(self) -> None:
         from nonlinear_cases import NonlinearCaseDialog
@@ -270,7 +321,7 @@ class AnalysisCasesDialog(QDialog):
                 case.name = self._unique_name(case.name, exclude_id=case.id)
                 self._acases[idx] = case
                 self._refresh()
-                self._select_case(case.id)
+                self._select_row("analysis", case.id)
             return
         if m["kind"] != "nonlinear":
             return

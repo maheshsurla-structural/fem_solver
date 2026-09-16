@@ -219,6 +219,61 @@ def test_saved_case_notes_shown_as_tooltip(qapp):
     assert "design basis event" in dlg.table.item(r, 0).toolTip()
 
 
+def _two_modal(p):
+    p.analysis_cases = [
+        AnalysisCase(id=1, name="A", type="modal",
+                     params={"num_modes": 2, "lumped": False}),
+        AnalysisCase(id=2, name="B", type="modal",
+                     params={"num_modes": 3, "lumped": False}),
+    ]
+    return p
+
+
+def test_duplicate_analysis_case(qapp):
+    from analysis_cases_dialog import AnalysisCasesDialog
+    p = _project()
+    p.analysis_cases = [AnalysisCase(id=1, name="RS-X", type="responsespectrum",
+                                     params={"source": "asce7", "num_modes": 6})]
+    dlg = AnalysisCasesDialog(None, p)
+    kinds = [m["kind"] for m in dlg._row_meta]
+    dlg.table.setCurrentCell(kinds.index("analysis"), 0)
+    dlg._duplicate()
+    assert len(dlg._acases) == 2
+    clone = dlg._acases[-1]
+    assert clone.name == "RS-X (copy)" and clone.id != 1
+    assert clone.params == dlg._acases[0].params          # copied content
+    assert clone.params is not dlg._acases[0].params      # but a distinct object
+    m = dlg._row_meta[dlg.table.currentRow()]             # clone is selected
+    assert m["kind"] == "analysis" and m["case_id"] == clone.id
+
+
+def test_move_reorders_within_list(qapp):
+    from analysis_cases_dialog import AnalysisCasesDialog
+    dlg = AnalysisCasesDialog(None, _two_modal(_project()))
+    kinds = [m["kind"] for m in dlg._row_meta]
+    dlg.table.setCurrentCell(kinds.index("analysis"), 0)  # case A (id 1)
+    dlg._move(1)                                           # down
+    assert [c.id for c in dlg._acases] == [2, 1]
+    assert dlg._row_meta[dlg.table.currentRow()]["case_id"] == 1  # follows
+    dlg._move(-1)                                          # back up
+    assert [c.id for c in dlg._acases] == [1, 2]
+
+
+def test_move_and_dup_buttons_gate(qapp):
+    from analysis_cases_dialog import AnalysisCasesDialog
+    dlg = AnalysisCasesDialog(None, _two_modal(_project()))
+    kinds = [m["kind"] for m in dlg._row_meta]
+    rows = [i for i, k in enumerate(kinds) if k == "analysis"]
+    dlg.table.setCurrentCell(rows[0], 0)                  # first: up off, down on
+    assert not dlg._up_btn.isEnabled() and dlg._down_btn.isEnabled()
+    assert dlg._dup_btn.isEnabled()
+    dlg.table.setCurrentCell(rows[1], 0)                  # last: up on, down off
+    assert dlg._up_btn.isEnabled() and not dlg._down_btn.isEnabled()
+    dlg.table.setCurrentCell(kinds.index("linear"), 0)    # launcher: none apply
+    assert not dlg._dup_btn.isEnabled()
+    assert not dlg._up_btn.isEnabled() and not dlg._down_btn.isEnabled()
+
+
 def test_analysis_case_serialization_round_trip():
     p = Project(ndm=2, ndf=3)
     p.analysis_cases = [
