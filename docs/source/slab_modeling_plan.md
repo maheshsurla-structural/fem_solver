@@ -5,8 +5,10 @@ desktop commercial roadmap. Analysis + engine are largely done; this plan is
 almost entirely a **desktop GUI + data-model** effort. Work happens on branch
 `feat/slab-modeling` (worktree off `main`). Phase A shipped S0→S1→S4→S2→S5→S6→S7:
 you can now draw a slab, give it a thickness, load it (gravity/pressure), solve,
-and see the deflection contour. Next: Phase B (S3 auto-mesh, richer S7
-moment/stress contours, S8 diaphragms).*
+and see the deflection contour. Phase B underway: **S3 auto-mesh done** (a quad
+area is subdivided n1×n2 with coincident-node merge; validated against the
+analytical clamped-plate deflection). Next: richer S7 moment/stress contours,
+S8 diaphragms.*
 
 ---
 
@@ -231,7 +233,7 @@ layered/RC/CLT sections in S4, S7 section cuts, S10 robustness.
 | S0 | `Area` + `ShellSection` data model | GUI | ✅ 9af7a54 (8 tests) |
 | S1 | build_model emits shells | GUI | ✅ (10 tests) |
 | S2 | Draw/edit areas (`AreaDialog`, from-selection) | GUI | ✅ (7 tests); click-to-draw mode deferred |
-| S3 | Auto-mesh + node merge | GUI | ☐ |
+| S3 | Auto-mesh + coincident-node merge | GUI | ✅ (7 tests, converges to analytical) |
 | S4 | Shell-section (thickness) manager | GUI | ✅ (6 tests) |
 | S5a | Shell `f_eq` pressure/body loads | **Engine** | ✅ (6 tests) |
 | S5b | `AreaLoad` + dialog + apply_loads | GUI | ✅ (7 tests) |

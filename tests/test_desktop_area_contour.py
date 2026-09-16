@@ -19,7 +19,7 @@ sys.path.insert(0, str(_ROOT / "desktop"))
 from femsolver.analysis.linear_static import LinearStaticAnalysis  # noqa: E402
 
 import model_geometry as mg  # noqa: E402
-from project import (AREA_TAG_BASE, Area, AreaLoad, Material,  # noqa: E402
+from project import (Area, AreaLoad, Material,  # noqa: E402
                      Node, Project, ShellSection)
 
 

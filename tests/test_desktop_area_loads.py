@@ -21,8 +21,8 @@ sys.path.insert(0, str(_ROOT / "desktop"))
 
 from femsolver.analysis.linear_static import LinearStaticAnalysis  # noqa: E402
 
-from project import (AREA_TAG_BASE, Area, AreaLoad, Material, Node,  # noqa: E402
-                     Project, ShellSection)
+from project import (Area, AreaLoad, Material, Node,  # noqa: E402
+                     Project, ShellSection, area_element_tag)
 
 
 def _slab_project(kind="gravity", w=5000.0):
@@ -62,7 +62,7 @@ def test_backward_compat_no_area_loads_key():
 def test_gravity_area_load_compiles_to_element():
     p = _slab_project(kind="gravity", w=5000.0)
     m = p.build_model(with_loads=True)           # sums all cases (case 1)
-    el = m.element(AREA_TAG_BASE + 1)
+    el = m.element(area_element_tag(1, 0))
     A = 4.0 * 3.0
     total = el.f_eq_global().reshape(4, 6)[:, :3].sum(axis=0)
     assert total[2] == pytest.approx(-5000.0 * A)     # global −Z gravity
@@ -72,7 +72,7 @@ def test_gravity_area_load_compiles_to_element():
 def test_pressure_area_load_compiles_to_element():
     p = _slab_project(kind="pressure", w=800.0)
     m = p.build_model(with_loads=True)
-    el = m.element(AREA_TAG_BASE + 1)
+    el = m.element(area_element_tag(1, 0))
     # flat XY slab → normal is ±Z, so pressure resolves onto Z
     A = 4.0 * 3.0
     total = el.f_eq_global().reshape(4, 6)[:, :3].sum(axis=0)
@@ -83,7 +83,7 @@ def test_area_load_scales_with_combination_factor():
     p = _slab_project(kind="gravity", w=1000.0)
     m = p.build_model(with_loads=False)
     p.apply_case(m, case_id=1, factor=1.6)       # LRFR-style factor
-    el = m.element(AREA_TAG_BASE + 1)
+    el = m.element(area_element_tag(1, 0))
     A = 4.0 * 3.0
     total = el.f_eq_global().reshape(4, 6)[:, 2].sum()
     assert total == pytest.approx(-1.6 * 1000.0 * A)

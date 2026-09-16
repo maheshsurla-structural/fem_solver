@@ -203,6 +203,15 @@ class AreaDialog(PickDialog):
                            for s in project.shell_sections])
         self.mat = _combo([(f"{m.id}: {m.name}", m.id) for m in project.materials])
 
+        # mesh divisions (slab S3): a quad is subdivided n1 × n2 at solve time
+        default_mesh = area.mesh if area else (2, 2)
+        self.n1 = QSpinBox()
+        self.n1.setRange(1, 200)
+        self.n1.setValue(int(default_mesh[0]))
+        self.n2 = QSpinBox()
+        self.n2.setRange(1, 200)
+        self.n2.setValue(int(default_mesh[1]))
+
         seed = list(area.nodes) if area else list(seed_nodes or [])
         for i, combo in enumerate(self.corners):
             if i < len(seed):
@@ -220,6 +229,14 @@ class AreaDialog(PickDialog):
                                    "panel (no crossing)."))
         form.addRow("Thickness", self.sec)
         form.addRow("Material", self.mat)
+        mesh_row = QWidget()
+        mh = QHBoxLayout(mesh_row)
+        mh.setContentsMargins(0, 0, 0, 0)
+        mh.addWidget(self.n1)
+        mh.addWidget(QLabel("×"))
+        mh.addWidget(self.n2)
+        mh.addStretch(1)
+        form.addRow("Mesh (quad)", mesh_row)
         form.addRow(_buttons(self))
 
     def _node_list(self):
@@ -244,7 +261,8 @@ class AreaDialog(PickDialog):
     def data(self) -> Area:
         return Area(id=self.id_spin.value(), nodes=self._node_list(),
                     shell_section=self.sec.currentData(),
-                    material=self.mat.currentData())
+                    material=self.mat.currentData(),
+                    mesh=(self.n1.value(), self.n2.value()))
 
     @classmethod
     def edit(cls, parent, project, area=None, seed_nodes=None):

@@ -21,10 +21,35 @@ SCHEMA = "femsolver-project/1"
 
 # Element-tag offset for surface (Area) elements so they never collide with
 # member ids (which are used directly as element tags). Comfortably above any
-# realistic node/member count; S3 meshing will allocate sub-element tags from
-# ``AREA_TAG_BASE + area.id * AREA_TAG_STRIDE``.
+# realistic node/member count; each area owns a contiguous ``AREA_TAG_STRIDE``
+# block for its mesh sub-elements (slab S3).
 AREA_TAG_BASE = 2_000_000
 AREA_TAG_STRIDE = 10_000
+
+
+def area_element_tag(area_id: int, k: int = 0) -> int:
+    """Deterministic engine element tag for sub-element ``k`` of area
+    ``area_id`` — so the load path (:meth:`Project._area_element_tags`) can name
+    an area's mesh elements without carrying build state."""
+    return AREA_TAG_BASE + area_id * AREA_TAG_STRIDE + k
+
+
+def _coord_key(p, tol: float = 1.0e-6):
+    """Rounded-coordinate key for merging coincident mesh nodes (µm tolerance)."""
+    q = round(1.0 / tol)
+    return (round(p[0] * q), round(p[1] * q), round(p[2] * q))
+
+
+def _bilinear(corners, s: float, t: float):
+    """Point on a 4-corner quad by bilinear map of the unit square: ``s`` runs
+    along edge P0→P1, ``t`` along edge P0→P3. Corners are CCW ``[P0,P1,P2,P3]``
+    (each an (x, y, z) tuple)."""
+    p0, p1, p2, p3 = corners
+    a = (1.0 - s) * (1.0 - t)
+    b = s * (1.0 - t)
+    c = s * t
+    d = (1.0 - s) * t
+    return tuple(a * p0[k] + b * p1[k] + c * p2[k] + d * p3[k] for k in range(3))
 
 
 @dataclass
@@ -599,28 +624,75 @@ class Project:
             else:
                 m.add_element(BeamColumn2D(mb.id, (mb.n1, mb.n2),
                                            material, A, Iz))
-        # ---- surface (shell / plate) area objects (slab plan S1) -----------
+        # ---- surface (shell / plate) area objects (slab plan S1 + S3 mesh) --
         # Areas are a 3-D feature — shells need ndf=6, so a 2-D model has no
-        # surface elements. One element per area for now (mesh subdivision is
-        # S3). Element tags are offset (``AREA_TAG_BASE``) so they never collide
-        # with member ids used directly as element tags.
+        # surface elements. Each quad area is meshed into its ``mesh`` = (n1, n2)
+        # sub-elements; coincident mesh nodes are merged so adjacent areas stay
+        # compatible. Sub-element tags come from ``area_element_tag`` so the load
+        # path can find them without build state.
         if self.ndm == 3 and self.areas:
-            shsecs = {s.id: s for s in self.shell_sections}
-            for a in self.areas:
-                ss = shsecs.get(a.shell_section)
-                mat = mats.get(a.material)
-                if ss is None or mat is None:
-                    continue
-                elem = _build_shell_element(AREA_TAG_BASE + a.id, a.nodes,
-                                            mat, ss)
-                if elem is not None:
-                    m.add_element(elem)
+            self._mesh_and_add_areas(m, mats)
         for nd in self.nodes:
             if nd.supports and any(nd.supports):
                 m.fix(nd.id, list(nd.supports))
         if with_loads:
             self.apply_loads(m, ("all", None))
         return m
+
+    def _mesh_and_add_areas(self, model, mats) -> None:
+        """Mesh every ``Area`` into shell elements and add them to ``model``
+        (slab S1 + S3). Quads are subdivided ``mesh`` = (n1, n2) times by a
+        bilinear map; a triangle stays a single element. Generated nodes are
+        merged by coordinate (so shared edges/corners across areas — and the
+        original corner nodes — collapse to one), keeping meshes compatible."""
+        shsecs = {s.id: s for s in self.shell_sections}
+        ncoord = {nd.id: (nd.x, nd.y, nd.z) for nd in self.nodes}
+        # coord -> model node id, seeded with the nodes already in the model
+        registry = {_coord_key(c): nid for nid, c in ncoord.items()}
+        next_nid = max(ncoord, default=0) + 1
+
+        def _node_at(p):
+            nonlocal next_nid
+            key = _coord_key(p)
+            nid = registry.get(key)
+            if nid is None:
+                nid = next_nid
+                next_nid += 1
+                registry[key] = nid
+                model.add_node(nid, *p)
+            return nid
+
+        for a in self.areas:
+            ss = shsecs.get(a.shell_section)
+            mat = mats.get(a.material)
+            if ss is None or mat is None:
+                continue
+            if any(nid not in ncoord for nid in a.nodes):
+                continue                          # dangling node reference
+            if len(a.nodes) == 4:
+                corners = [ncoord[nid] for nid in a.nodes]
+                n1 = max(1, int(a.mesh[0]))
+                n2 = max(1, int(a.mesh[1]))
+                grid = {}
+                for j in range(n2 + 1):
+                    for i in range(n1 + 1):
+                        grid[(i, j)] = _node_at(
+                            _bilinear(corners, i / n1, j / n2))
+                k = 0
+                for j in range(n2):
+                    for i in range(n1):
+                        quad = [grid[(i, j)], grid[(i + 1, j)],
+                                grid[(i + 1, j + 1)], grid[(i, j + 1)]]
+                        el = _build_shell_element(
+                            area_element_tag(a.id, k), quad, mat, ss)
+                        if el is not None:
+                            model.add_element(el)
+                        k += 1
+            else:                                 # triangle → single element
+                el = _build_shell_element(area_element_tag(a.id, 0),
+                                          a.nodes, mat, ss)
+                if el is not None:
+                    model.add_element(el)
 
     def build_buckling_model(self, selection=("all", None),
                              subdivisions: int = 6):
@@ -788,9 +860,14 @@ class Project:
             el.add_uniform_load(ml.wy * factor)
 
     def _area_element_tags(self, area) -> list:
-        """Engine element tag(s) for an ``Area`` (slab S5). One element per area
-        today (S1); S3 meshing will return the full sub-element list here."""
-        return [AREA_TAG_BASE + area.id]
+        """Engine element tag(s) for an ``Area`` — every mesh sub-element (slab
+        S3). A quad owns ``n1·n2`` sub-elements; a triangle owns one. Matches
+        the deterministic tags emitted by :meth:`_mesh_and_add_areas`."""
+        if len(area.nodes) == 4:
+            n = max(1, int(area.mesh[0])) * max(1, int(area.mesh[1]))
+        else:
+            n = 1
+        return [area_element_tag(area.id, k) for k in range(n)]
 
     def _apply_area_load(self, model, al, factor: float) -> None:
         a = self.area(al.area)

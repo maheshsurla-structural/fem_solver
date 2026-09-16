@@ -23,13 +23,13 @@ from femsolver import ShellDKMQ4, ShellMITC4, ShellTri3  # noqa: E402
 from femsolver.analysis.linear_static import LinearStaticAnalysis  # noqa: E402
 
 from project import (  # noqa: E402
-    AREA_TAG_BASE,
     Area,
     Material,
     Node,
     Project,
     ShellSection,
     _ModifiedShellSection,
+    area_element_tag,
 )
 
 
@@ -64,7 +64,7 @@ def test_build_emits_shell_quad_mitc4():
     assert len(els) == 1
     e = els[0]
     assert isinstance(e, ShellMITC4)
-    assert e.tag == AREA_TAG_BASE + 1
+    assert e.tag == area_element_tag(1, 0)
     assert tuple(e.node_tags) == (1, 2, 3, 4)
     assert e.thickness == pytest.approx(0.20)
 
