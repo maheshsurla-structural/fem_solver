@@ -411,6 +411,8 @@ class MainWindow(QMainWindow):
                                      self.manage_materials, "materials")
         self.act_hinges = _action(self, "&Hinges…", None, self.manage_hinges,
                                   "hinge")
+        self.act_th_functions = _action(self, "Time-history &functions…", None,
+                                        self.manage_th_functions, "function")
         self.act_assign_hinges = _action(self, "Assign &hinges…", None,
                                          self.assign_hinges, "assignhinge")
         self.act_genloads = _action(self, "Generate &loads…", None,
@@ -588,6 +590,7 @@ class MainWindow(QMainWindow):
                          (self.act_run, "Linear"))),
             ("Hinges", ((self.act_hinges, "Define"),
                         (self.act_assign_hinges, "Assign"))),
+            ("Functions", ((self.act_th_functions, "Time History"),)),
         ))
         rb.add_tab("Results", (
             ("Diagrams", ((self.act_undef, "Undeformed"),
@@ -2158,6 +2161,19 @@ class MainWindow(QMainWindow):
         self._apply_edit(
             "Edit hinges",
             lambda: setattr(self._project, "hinges", result))
+
+    def manage_th_functions(self) -> None:
+        """Open the time-history function library (analysis-cases-manager TH-1):
+        named ground-motion records referenced by Time-History cases."""
+        if self._project is None:
+            return
+        from th_functions import TimeHistoryFunctionManagerDialog
+        result = TimeHistoryFunctionManagerDialog.manage(self, self._project)
+        if result is None:
+            return
+        self._apply_edit(
+            "Edit time-history functions",
+            lambda: setattr(self._project, "th_functions", result))
 
     def assign_hinges(self) -> None:
         result = HingeAssignmentDialog.assign(self, self._project)

@@ -170,6 +170,29 @@ class AnalysisCase:
 
 
 @dataclass
+class TimeHistoryFunction:
+    """A named ground-motion / time-history function — the desktop counterpart of
+    CSiBridge / MIDAS *Define ▸ Functions ▸ Time History*. Equally-spaced
+    acceleration ordinates ``values`` at step ``dt`` seconds, given in *g* when
+    ``in_g`` else m/s². Defined once here and referenced (by ``id``) from a saved
+    Time-History :class:`AnalysisCase`; ``source`` keeps the import filename."""
+    id: int
+    name: str
+    dt: float = 0.01
+    values: list = field(default_factory=list)
+    in_g: bool = False
+    source: str = ""
+
+    @property
+    def npts(self) -> int:
+        return len(self.values)
+
+    @property
+    def duration(self) -> float:
+        return max(0, len(self.values) - 1) * float(self.dt)
+
+
+@dataclass
 class Load:
     node: int
     values: tuple                 # nodal load vector (len ndf)
@@ -225,6 +248,7 @@ class Project:
     stages: list = field(default_factory=list)          # Stage (construction seq)
     nonlinear_cases: list = field(default_factory=list)  # NonlinearCase (GUI-4)
     analysis_cases: list = field(default_factory=list)  # AnalysisCase (ACM plan)
+    th_functions: list = field(default_factory=list)   # TimeHistoryFunction (ACM)
     # Saved nonlinear-run results (plan §16 G-S2) — the expensive, run-specific
     # exception to "results are recomputed": each is a lean ``nl_runs.RunRecord``
     # (curve + summary + ASCE 41 milestones). Not consumed by ``build_model``.
@@ -246,6 +270,9 @@ class Project:
 
     def analysis_case(self, case_id):
         return next((c for c in self.analysis_cases if c.id == case_id), None)
+
+    def th_function(self, func_id):
+        return next((f for f in self.th_functions if f.id == func_id), None)
 
     def default_case_id(self) -> int:
         return self.load_cases[0].id if self.load_cases else 1
@@ -357,6 +384,11 @@ class Project:
                                          params=dict(c.get("params", {})),
                                          notes=c.get("notes", ""))
                             for c in d.get("analysis_cases", [])],
+            th_functions=[TimeHistoryFunction(
+                id=f["id"], name=f.get("name", ""), dt=float(f.get("dt", 0.01)),
+                values=[float(v) for v in f.get("values", [])],
+                in_g=bool(f.get("in_g", False)), source=f.get("source", ""))
+                for f in d.get("th_functions", [])],
             runs=_load_runs(d.get("runs", [])),
         )
 

@@ -126,14 +126,25 @@ already consumes.
 - [x] **M7 — Vehicle Dynamics / Influence Surface / Cable Tuning** ✅ 2026-09-15.
   dict configs of primitives; header + `initial` + `_seed` each (vehicle dynamics
   reverses its t/%/km-h→SI conversions on seed). Round-trip verified headless.
-- [ ] **M8 — Time History** — **DEFERRED (stays a launcher by design).**
-  Unlike the other launchers, `run_timehistory_dialog` takes **no `config`**:
-  `TimeHistoryDialog` *runs the nonlinear dynamic analysis internally* (like the
-  pushover dialog) and needs a fiber (GSD) section. Migrating it needs a
-  config/run split **and** ground-motion-record persistence (file ref or array)
-  — a separate, larger piece that belongs with the nonlinear/pushover machinery
-  (its own `NonlinearCase`-style list), not the generic AnalysisCase registry.
-  Left as a launcher row.
+- **M8 — Time History** — **IN PROGRESS via a Time-History Function library**
+  (user chose this over path/embedded/leave-as-launcher, 2026-09-16). CSiBridge
+  model: named ground-motion records persisted once, cases reference one by id.
+  - [x] **TH-1 — Function library** ✅ 2026-09-16. `project.TimeHistoryFunction`
+    (id, name, dt, values, in_g, source; `npts`/`duration` props) +
+    `Project.th_functions` + `th_function(id)` + serialization. `th_functions.py`:
+    `TimeHistoryFunctionDialog` (name/dt/units + import via `load_accel_record`
+    + live preview) and `TimeHistoryFunctionManagerDialog` (list/add/edit/delete,
+    in-use guard vs referencing TH cases). New `function` icon; `act_th_functions`
+    homed in ribbon Analysis ▸ Functions; `manage_th_functions`. 7 tests + ribbon
+    invariant green.
+  - [ ] **TH-2 — TH as a saved case.** Refactor `TimeHistoryDialog`: replace
+    "Load record…" with a **function picker** (combo of `th_functions`; in_g moves
+    to the function), add `CaseHeader` + `initial` + a config-collect path.
+    `case_types.TimeHistoryType`: `edit` collects params `{function_id,
+    control_node, direction, scale, zeta, density}`; `build_config` loads the
+    referenced function; `dispatch` opens the (interactive) runner seeded, ready
+    to Run. Drop the launcher row; add to Add ▾. Needs a `run_timehistory(config=)`
+    seed path on the runner.
 - [ ] **M9 — Construction Stages** — **STAYS A LAUNCHER by design.** Its config
   *is* the project-global `stages` list (already persisted, edited via
   `StageManagerDialog`); there is one stage sequence per model, so a
@@ -151,10 +162,10 @@ already consumes.
 
 **End state:** 9 types are saved, multi-instance AnalysisCases (Modal, Buckling,
 Moving Load, Temp Gradient, Load Rating, Response Spectrum, Vehicle Dynamics,
-Influence Surface, Cable Tuning). Three remain launchers **by design**: Linear
-Static (the always-available current-model run), Construction Stages (operates on
-the shared stage set), and Time History (a nonlinear dynamic runner-dialog —
-deferred to a nonlinear-style follow-up).
+Influence Surface, Cable Tuning); **Time History is being migrated** via the
+function-library route (TH-1 done, TH-2 next). Two remain launchers **by
+design**: Linear Static (the always-available current-model run) and Construction
+Stages (operates on the shared stage set).
 
 ## Decisions / open questions
 
