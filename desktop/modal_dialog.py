@@ -16,7 +16,8 @@ from PySide6.QtWidgets import (QComboBox, QDialog, QLabel, QSpinBox,
                                QVBoxLayout)
 
 import style
-from analysis_ui import CaseHeader, GroupCard, dialog_buttons
+from analysis_ui import (CaseHeader, GroupCard, InitialConditionCard,
+                         dialog_buttons)
 
 
 class ModalDialog(QDialog):
@@ -29,7 +30,8 @@ class ModalDialog(QDialog):
     """
 
     def __init__(self, parent, *, max_modes: int = 20, default_modes: int = 6,
-                 initial: dict | None = None, name: str = "Modal",
+                 initial: dict | None = None, sources=None,
+                 initial_ic: tuple = ("zero",), name: str = "Modal",
                  notes: str = ""):
         super().__init__(parent)
         self.setWindowTitle("Modal analysis")
@@ -71,6 +73,15 @@ class ModalDialog(QDialog):
                                            max_modes)))
             self.mass.setCurrentIndex(1 if initial.get("lumped") else 0)
 
+        # Stiffness-to-use (E2) — modes of a preloaded structure include P-Δ.
+        # Only shown when saving a case (sources given); the direct-run
+        # `configure` path always starts unstressed.
+        self.initial = None
+        if sources is not None:
+            self.initial = InitialConditionCard(sources, show_hold=False)
+            self.initial.set_value(initial_ic)
+            root.addWidget(self.initial)
+
         root.addStretch(1)
         root.addWidget(dialog_buttons(self))
         style.apply(self)
@@ -78,6 +89,9 @@ class ModalDialog(QDialog):
     def result(self) -> tuple[int, bool]:
         """``(num_modes, lumped)``."""
         return int(self.modes.value()), bool(self.mass.currentData())
+
+    def initial_condition(self) -> tuple:
+        return self.initial.value() if self.initial is not None else ("zero",)
 
     @classmethod
     def configure(cls, parent, *, max_modes: int = 20,

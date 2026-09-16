@@ -48,6 +48,7 @@ class EigenAnalysis:
         num_modes: int = 6,
         *,
         lumped: bool = False,
+        stiffness: str = "elastic",
         constraints: str = "transformation",
         numberer: str = "default",
     ):
@@ -56,6 +57,15 @@ class EigenAnalysis:
             raise ValueError("num_modes must be >= 1")
         self.num_modes = int(num_modes)
         self.lumped = bool(lumped)
+        # "elastic" (default) = small-displacement stiffness; "tangent" = the
+        # tangent stiffness K + K_g at the model's current committed state, so
+        # modes of a preloaded structure include the P-Δ / geometric-stiffness
+        # effect (E2 — modal after a nonlinear preload). On an unstressed model
+        # the two coincide (K_g = 0), so the default is unchanged.
+        if stiffness not in ("elastic", "tangent"):
+            raise ValueError(f"unknown stiffness {stiffness!r} "
+                             "(expected 'elastic' or 'tangent')")
+        self.stiffness = stiffness
         if constraints != "transformation":
             raise ValueError(
                 "EigenAnalysis only supports the transformation handler "
@@ -84,7 +94,22 @@ class EigenAnalysis:
                 "no free DOFs — model is fully constrained or empty"
             )
 
-        K = assemble_stiffness(m)
+        if self.stiffness == "tangent":
+            # Tangent stiffness K + K_g at the committed state — mirrors
+            # LinearBucklingAnalysis: elements exposing a dedicated
+            # K_geometric_global (elastic beams) get it added to the elastic K;
+            # elements whose geometric content lives only in a state-dependent
+            # K_tangent_global (fibre / corotational / shells) use that tangent.
+            from femsolver.analysis.static_integrator import (
+                _assemble_geometric, _assemble_tangent)
+            K_e = assemble_stiffness(m)
+            els = list(m.elements.values())
+            if els and all(hasattr(e, "K_geometric_global") for e in els):
+                K = (K_e + _assemble_geometric(m)).tocsc()
+            else:
+                K = _assemble_tangent(m)
+        else:
+            K = assemble_stiffness(m)
         M = assemble_mass(m, lumped=self.lumped)
         self.K, self.M = K, M
 

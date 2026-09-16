@@ -95,25 +95,31 @@ class ModalType(CaseType):
     def edit(self, parent, project, case=None):
         from modal_dialog import ModalDialog
         params = dict(case.params) if case else self.default_params(project)
-        dlg = ModalDialog(parent, max_modes=self._edit_cap(project),
-                          default_modes=int(params.get("num_modes", 6)),
-                          initial=params,
-                          name=(case.name if case else "Modal"),
-                          notes=(case.notes if case else ""))
+        dlg = ModalDialog(
+            parent, max_modes=self._edit_cap(project),
+            default_modes=int(params.get("num_modes", 6)), initial=params,
+            sources=[(c.id, c.name) for c in project.nonlinear_cases],
+            initial_ic=(case.initial_condition if case else ("zero",)),
+            name=(case.name if case else "Modal"),
+            notes=(case.notes if case else ""))
         if not dlg.exec():
             return None
         num_modes, lumped = dlg.result()
-        return self._mk(case, name=dlg.header.name() or "Modal",
-                        params={"num_modes": int(num_modes),
-                                "lumped": bool(lumped)},
-                        notes=dlg.header.notes())
+        out = self._mk(case, name=dlg.header.name() or "Modal",
+                       params={"num_modes": int(num_modes),
+                               "lumped": bool(lumped)},
+                       notes=dlg.header.notes())
+        out.initial_condition = dlg.initial_condition()   # E2d stiffness-to-use
+        return out
 
     def build_config(self, project, params, *, initial_condition=("zero",)):
-        return (int(params.get("num_modes", 6)), bool(params.get("lumped")))
+        return (int(params.get("num_modes", 6)), bool(params.get("lumped")),
+                initial_condition)
 
     def dispatch(self, win, config):
-        num_modes, lumped = config
-        return win.run_modal(num_modes=num_modes, lumped=lumped)
+        num_modes, lumped, ic = config
+        return win.run_modal(num_modes=num_modes, lumped=lumped,
+                             initial_condition=ic)
 
 
 class BucklingType(CaseType):

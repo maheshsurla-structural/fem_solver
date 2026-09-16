@@ -188,7 +188,8 @@ def test_run_saved_case_dispatches(qapp, monkeypatch):
     monkeypatch.setattr(case_types.TYPES["modal"], "dispatch",
                         lambda win, config: seen.setdefault("config", config))
     w._run_saved_case(3)
-    assert seen["config"] == (5, True)      # build_config(params) → runtime cfg
+    # build_config(params) → runtime cfg; now carries the E2 initial condition
+    assert seen["config"] == (5, True, ("zero",))
     assert "Modal-3" in w.log.toPlainText()  # run log names the case
 
 

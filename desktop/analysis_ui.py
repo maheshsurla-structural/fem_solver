@@ -179,8 +179,9 @@ class InitialConditionCard(GroupCard):
     ``set_value(ic, hold)`` seeds both. Pure Qt, headless-constructible.
     """
 
-    def __init__(self, sources, parent=None):
+    def __init__(self, sources, parent=None, *, show_hold: bool = True):
         super().__init__("Stiffness to use", parent)
+        self._show_hold = bool(show_hold)
         self._zero = QRadioButton("Zero initial conditions — unstressed state")
         self._state = QRadioButton("State at end of nonlinear case")
         self._grp = QButtonGroup(self)
@@ -191,9 +192,15 @@ class InitialConditionCard(GroupCard):
         self._src = QComboBox()
         for cid, nm in sources:
             self._src.addItem(nm, cid)
+        # The hold-loads checkbox only matters for analyses that apply loads
+        # during the run (e.g. time history); an eigen solve (modal / response
+        # spectrum / buckling) inherits stiffness + state only, so hide it there.
         self._hold = QCheckBox("Hold source loads constant")
         self._hold.setChecked(True)
-        note = QLabel("Loads from the nonlinear case are not otherwise included "
+        note = QLabel("Only the stiffness and deformed state at the end of the "
+                      "nonlinear case are used; its loads are not carried into "
+                      "this case." if not self._show_hold else
+                      "Loads from the nonlinear case are not otherwise included "
                       "in this case.")
         note.setObjectName("hintLabel")
         note.setWordWrap(True)
@@ -201,7 +208,8 @@ class InitialConditionCard(GroupCard):
         self.add_full_row(self._zero)
         self.add_full_row(self._state)
         self.add_row("From case", self._src)
-        self.add_full_row(self._hold)
+        if self._show_hold:
+            self.add_full_row(self._hold)
         self.add_full_row(note)
         if not sources:                          # nothing to continue from
             self._state.setEnabled(False)
@@ -223,7 +231,7 @@ class InitialConditionCard(GroupCard):
         return ("zero",)
 
     def hold(self) -> bool:
-        return bool(self._hold.isChecked())
+        return self._show_hold and bool(self._hold.isChecked())
 
     def set_value(self, ic, hold: bool = True) -> None:
         if ic and ic[0] == "state" and self._src.findData(ic[1]) >= 0:

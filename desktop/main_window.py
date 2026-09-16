@@ -677,7 +677,8 @@ class MainWindow(QMainWindow):
         self._show_results_tab()               # R4: jump to Results after a run
         return info
 
-    def run_modal(self, num_modes=None, lumped=None):
+    def run_modal(self, num_modes=None, lumped=None,
+                  initial_condition=("zero",)):
         """Free-vibration modal analysis (Analysis-cases ▸ Modal).
 
         Builds the model (geometry + supports; loads are irrelevant to an
@@ -686,12 +687,23 @@ class MainWindow(QMainWindow):
         results table whose selection previews each mode shape on the view.
         Mass comes from material density — a zero-mass model is reported
         with a pointer to the Material editor rather than a solver error.
+
+        With ``initial_condition = ("state", nl_case_id)`` (E2d) the modes are
+        taken at the committed state of that Nonlinear Static case using the
+        **tangent** stiffness ``K + K_g`` — i.e. P-Δ modal on a preloaded
+        structure — instead of the unstressed elastic stiffness.
         """
         import numpy as np
 
         from femsolver import EigenAnalysis
 
-        ready = self._modal_ready_model()
+        ic = initial_condition or ("zero",)
+        if ic[0] == "state":
+            ready = self._seed_modal_model(ic[1])
+            stiffness = "tangent"
+        else:
+            ready = self._modal_ready_model()
+            stiffness = "elastic"
         if ready is None:
             return None
         model, neq = ready
@@ -708,8 +720,8 @@ class MainWindow(QMainWindow):
         lumped = bool(lumped)
 
         try:
-            info = EigenAnalysis(model, num_modes=num_modes,
-                                 lumped=lumped).run()
+            info = EigenAnalysis(model, num_modes=num_modes, lumped=lumped,
+                                 stiffness=stiffness).run()
         except Exception as exc:                           # noqa: BLE001
             QMessageBox.warning(
                 self, "Modal analysis",
@@ -769,6 +781,49 @@ class MainWindow(QMainWindow):
                 self, "Analysis",
                 "The model has no mass — every material's density is zero.\n\n"
                 "Open the Material editor and set a density (ρ, kg/m³) on the "
+                "materials your members use, then run again.")
+            return None
+        return model, model.neq
+
+    def _seed_modal_model(self, nl_case_id):
+        """Build a fiber model at the committed state of nonlinear case
+        ``nl_case_id`` for a modal-based analysis *from that state* (E2d).
+
+        The seeded model carries the deformed geometry + committed element state
+        (so its tangent stiffness includes K_g), plus mass from the materials'
+        density (a representative ρ — exact for a single-material column, which is
+        the usual fiber case). Returns ``(model, neq)`` or ``None`` (with a
+        reason shown), mirroring :meth:`_modal_ready_model`."""
+        import nonlinear as NL
+        from femsolver.analysis.assembler import assemble_mass
+
+        p = self._project
+        src = p.nonlinear_case(nl_case_id)
+        if src is None:
+            QMessageBox.warning(
+                self, "Modal analysis",
+                f"The initial-condition source case {nl_case_id} was deleted — "
+                "pick another in the case's Modify dialog.")
+            return None
+        density = max((float(getattr(m, "rho", 0.0)) for m in p.materials),
+                      default=0.0)
+        try:
+            model, _f = NL.seed_to_committed_state(p, src, density=density)
+        except Exception as exc:                           # noqa: BLE001
+            QMessageBox.warning(
+                self, "Modal analysis",
+                f"Could not establish the initial state from '{src.name}':"
+                f"\n\n{exc}")
+            return None
+        model.number_dofs()
+        if model.neq < 2:
+            QMessageBox.information(
+                self, "Analysis", "The model has too few free DOFs.")
+            return None
+        if abs(assemble_mass(model)).max() <= 0.0:
+            QMessageBox.information(
+                self, "Analysis",
+                "The model has no mass — set a density (ρ, kg/m³) on the "
                 "materials your members use, then run again.")
             return None
         return model, model.neq
