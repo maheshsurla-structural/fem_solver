@@ -172,16 +172,23 @@ class ResponseSpectrumAnalysis:
         direction: str = "x",
         combination: str = "cqc",
         damping_ratio: float | None = None,
+        stiffness: str = "elastic",
     ):
         if num_modes < 1:
             raise ValueError("num_modes must be >= 1")
         if combination not in ("srss", "cqc"):
             raise ValueError(f"unknown combination {combination!r}")
+        if stiffness not in ("elastic", "tangent"):
+            raise ValueError(f"unknown stiffness {stiffness!r}")
         self.model = model
         self.spectrum = spectrum
         self.num_modes = int(num_modes)
         self.direction = direction
         self.combination = combination
+        # "tangent" runs the modal basis on the committed-state tangent stiffness
+        # (K + K_g) — response spectrum of a preloaded structure (E2); it also
+        # preserves that committed state (no reset_results) so K_g survives.
+        self.stiffness = stiffness
         self.damping_ratio = (
             float(damping_ratio) if damping_ratio is not None
             else spectrum.damping_ratio
@@ -193,13 +200,15 @@ class ResponseSpectrumAnalysis:
     # ------------------------------------------------------------ run
     def run(self) -> dict:
         m = self.model
-        m.reset_results()
+        if self.stiffness != "tangent":     # keep the committed state for K_g
+            m.reset_results()
         m.number_dofs()
         if m.neq == 0:
             raise RuntimeError("no free DOFs — fully-constrained model")
 
         # --- Eigen analysis: periods, frequencies, mode shapes ---
-        eig = EigenAnalysis(m, num_modes=self.num_modes).run()
+        eig = EigenAnalysis(m, num_modes=self.num_modes,
+                            stiffness=self.stiffness).run()
         T_modes = np.array(eig["periods_s"])
         omega_modes = 2.0 * math.pi / T_modes
 

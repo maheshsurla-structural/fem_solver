@@ -333,3 +333,51 @@ def test_modal_from_state_softens_frequency_on_fiber_path():
     f0 = f_tangent(0.0)
     fP = f_tangent(4.0e5)              # axial compression
     assert fP < 0.95 * f0             # preload softens the fundamental mode
+
+
+# ------------------------------------------ E2d Response Spectrum from state
+
+def test_rs_build_config_threads_initial_condition():
+    import case_types
+    p = _gsd_column_project()
+    ct = case_types.get("responsespectrum")
+    params = {"source": "asce7", "num_modes": 4, "direction": "x",
+              "combination": "srss", "asce7": {"SDS": 1.0, "SD1": 0.6,
+                                               "TL": 8.0}}
+    cfg = ct.build_config(p, params, initial_condition=("state", 9))
+    assert len(cfg) == 5 and cfg[4] == ("state", 9)
+    assert ct.build_config(p, params)[4] == ("zero",)
+
+
+def test_rs_dialog_carries_ic(qapp):
+    from response_spectrum_dialog import ResponseSpectrumDialog
+    dlg = ResponseSpectrumDialog(None, ndm=2, max_modes=10,
+                                 sources=[(1, "PRELOAD")],
+                                 initial_ic=("state", 1))
+    assert dlg.initial_condition() == ("state", 1)
+    dlg2 = ResponseSpectrumDialog(None, ndm=2, max_modes=10)   # no sources
+    assert dlg2.initial_condition() == ("zero",)
+
+
+def test_rs_from_state_lengthens_period_on_fiber_path(qapp):
+    """RS from a preloaded state uses the tangent modal basis (and preserves the
+    committed state — no reset), so the fundamental period lengthens (E2d)."""
+    from femsolver import ResponseSpectrumAnalysis
+    from response_spectrum_dialog import spectrum_from_params
+    spec = spectrum_from_params({"source": "asce7", "damping": 0.05,
+                                 "asce7": {"SDS": 1.0, "SD1": 0.6, "TL": 8.0}})
+
+    def period(axial):
+        p = _slender_fiber_column()
+        c = NonlinearCase(id=1, name="ax", control_node=2, control_dof=1,
+                          target=1e-6, n_steps=2, axial=axial, axial_node=2,
+                          axial_dof=0)
+        p.nonlinear_cases = [c]
+        m, _ = NL.seed_to_committed_state(p, c, density=2400.0)
+        m.number_dofs()
+        info = ResponseSpectrumAnalysis(m, spec, num_modes=1, direction="y",
+                                        combination="srss",
+                                        stiffness="tangent").run()
+        return info["modal_results"][0]["period"]
+
+    assert period(4.0e5) > 1.02 * period(0.0)

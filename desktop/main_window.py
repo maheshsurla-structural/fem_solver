@@ -835,33 +835,45 @@ class MainWindow(QMainWindow):
         Extracts modes, samples the design spectrum, combines the modal peaks
         (SRSS / CQC) into a single peak response drawn on the view, and reports
         per-mode participation. ``config`` = ``(spectrum, num_modes, direction,
-        combination)`` bypasses the setup dialog (for tests / scripting).
+        combination[, initial_condition])`` bypasses the setup dialog (for tests
+        / scripting). With ``initial_condition = ("state", nl_case_id)`` (E2d) the
+        modal basis is taken at that nonlinear case's committed state on the
+        tangent stiffness — a response spectrum of a preloaded structure.
         """
         import numpy as np
 
         from femsolver import ResponseSpectrumAnalysis
         from femsolver.analysis.assembler import assemble_mass
 
-        ready = self._modal_ready_model()
-        if ready is None:
-            return None
-        model, neq = ready
-        max_modes = max(1, neq - 1)
-
-        if config is None:
+        if config is None:                       # legacy direct-run via dialog
+            ready = self._modal_ready_model()
+            if ready is None:
+                return None
+            model, neq = ready
             from response_spectrum_dialog import ResponseSpectrumDialog
+            mm = max(1, neq - 1)
             config = ResponseSpectrumDialog.configure(
-                self, ndm=self._project.ndm, max_modes=max_modes,
-                default_modes=min(6, max_modes))
+                self, ndm=self._project.ndm, max_modes=mm,
+                default_modes=min(6, mm))
             if config is None:
                 return None
-        spectrum, num_modes, direction, combination = config
-        num_modes = max(1, min(int(num_modes), max_modes))
+            ic = ("zero",)
+        else:                                    # saved AnalysisCase dispatch
+            ic = config[4] if len(config) > 4 else ("zero",)
+            ready = (self._seed_modal_model(ic[1]) if ic[0] == "state"
+                     else self._modal_ready_model())
+            if ready is None:
+                return None
+            model, neq = ready
+
+        spectrum, num_modes, direction, combination = config[:4]
+        num_modes = max(1, min(int(num_modes), max(1, neq - 1)))
+        stiffness = "tangent" if ic[0] == "state" else "elastic"
 
         try:
             info = ResponseSpectrumAnalysis(
                 model, spectrum, num_modes=num_modes, direction=direction,
-                combination=combination).run()
+                combination=combination, stiffness=stiffness).run()
         except Exception as exc:                           # noqa: BLE001
             QMessageBox.warning(
                 self, "Response spectrum",

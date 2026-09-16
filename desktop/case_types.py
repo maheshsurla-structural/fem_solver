@@ -284,6 +284,8 @@ class ResponseSpectrumType(CaseType):
         dlg = ResponseSpectrumDialog(
             parent, ndm=project.ndm, max_modes=self._edit_cap(project),
             default_modes=6, initial=(dict(case.params) if case else None),
+            sources=[(c.id, c.name) for c in project.nonlinear_cases],
+            initial_ic=(case.initial_condition if case else ("zero",)),
             name=(case.name if case else "Response Spectrum"),
             notes=(case.notes if case else ""))
         while dlg.exec():
@@ -293,16 +295,18 @@ class ResponseSpectrumType(CaseType):
             except ValueError as exc:
                 QMessageBox.warning(dlg, "Response spectrum", str(exc))
                 continue
-            return self._mk(case,
-                            name=dlg.header.name() or "Response Spectrum",
-                            params=params, notes=dlg.header.notes())
+            out = self._mk(case,
+                           name=dlg.header.name() or "Response Spectrum",
+                           params=params, notes=dlg.header.notes())
+            out.initial_condition = dlg.initial_condition()   # E2d
+            return out
         return None
 
     def build_config(self, project, params, *, initial_condition=("zero",)):
         from response_spectrum_dialog import spectrum_from_params
         return (spectrum_from_params(params), int(params.get("num_modes", 6)),
                 params.get("direction", "x"),
-                params.get("combination", "cqc"))
+                params.get("combination", "cqc"), initial_condition)
 
     def dispatch(self, win, config):
         return win.run_response_spectrum(config=config)
