@@ -105,12 +105,17 @@ class AnalysisCasesDialog(QDialog):
         self._down_btn = QPushButton("↓")
         self._down_btn.setToolTip("Move the selected case down")
         self._down_btn.clicked.connect(lambda: self._move(1))
+        self._tree_btn = QPushButton("Tree…")
+        self._tree_btn.setToolTip("Show the case dependency tree "
+                                  "(what continues from / starts from what)")
+        self._tree_btn.clicked.connect(self._show_tree)
         self._run_btn = QPushButton("Run")
         self._run_btn.setIcon(_icon("run"))
         self._run_btn.clicked.connect(self._run)
         for b in (self._add_btn, self._mod_btn, self._dup_btn, self._del_btn,
                   self._up_btn, self._down_btn):
             row.addWidget(b)
+        row.addWidget(self._tree_btn)
         row.addStretch(1)
         row.addWidget(self._run_btn)
         root.addLayout(row)
@@ -368,6 +373,13 @@ class AnalysisCasesDialog(QDialog):
             return
         del self._cases[m["case_index"]]
         self._refresh()
+
+    def _show_tree(self) -> None:
+        """Open the read-only Load Case Tree on the *in-progress* edits (so it
+        reflects unsaved Add / Modify / Delete), matching CSiBridge's *Show Load
+        Case Tree*."""
+        from case_tree_dialog import CaseTreeDialog
+        CaseTreeDialog.show_tree(self, self._proxy_project())
 
     def _run(self) -> None:
         m = self._selected()
