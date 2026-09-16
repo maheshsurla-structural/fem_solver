@@ -222,6 +222,17 @@ def _check_nonlinear_cases(project) -> list[Check]:
         if c.continue_from is not None and c.continue_from not in case_ids:
             out.append(Check("error", f"{tag}: continues from missing case "
                              f"{c.continue_from}.", "Fix the staged sequence."))
+    # E2: an initial condition ("state", id) must name an existing nonlinear
+    # case — on nonlinear *and* saved analysis cases (a dangling reference is
+    # left by deleting the source, or by importing a partial project).
+    both = list(project.nonlinear_cases) + list(
+        getattr(project, "analysis_cases", []))
+    for c in both:
+        ic = tuple(getattr(c, "initial_condition", ("zero",)) or ("zero",))
+        if len(ic) >= 2 and ic[0] == "state" and ic[1] not in case_ids:
+            out.append(Check("error", f"Case '{c.name}': initial condition "
+                             f"references missing nonlinear case {ic[1]}.",
+                             "Pick an existing source case, or start unstressed."))
     return out
 
 

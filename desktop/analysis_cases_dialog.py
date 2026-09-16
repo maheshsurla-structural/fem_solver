@@ -350,10 +350,21 @@ class AnalysisCasesDialog(QDialog):
         if m["kind"] != "nonlinear":
             return
         cid = m["case_id"]
-        used = [c.id for c in self._cases if c.continue_from == cid]
-        if used:
-            QMessageBox.warning(self, "In use", f"Case {cid} is continued-from "
-                                f"by case(s) {', '.join(map(str, used))}.")
+        # Block deletion while another case depends on this one: a staged
+        # continuation (continue_from) or, since E2, a case that starts from this
+        # case's committed state via its initial_condition (any nonlinear or
+        # saved analysis case). Name the dependents so the fix is obvious.
+        blockers = [c.name for c in self._cases if c.continue_from == cid]
+        blockers += [c.name for c in (self._cases + self._acases)
+                     if tuple(getattr(c, "initial_condition", ("zero",)))
+                     == ("state", cid)]
+        blockers = sorted(dict.fromkeys(blockers))     # de-dup, keep order-ish
+        if blockers:
+            QMessageBox.warning(
+                self, "In use",
+                f"'{m['name']}' is used as the initial condition / continuation "
+                f"of: {', '.join(blockers)}.\n\nEdit or delete those cases "
+                "first.")
             return
         del self._cases[m["case_index"]]
         self._refresh()

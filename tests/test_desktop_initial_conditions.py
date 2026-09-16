@@ -404,3 +404,45 @@ def test_buckling_dialog_carries_ic(qapp):
     assert dlg.initial_condition() == ("state", 1)
     dlg2 = BucklingDialog(None, p)                    # no sources -> zero
     assert dlg2.initial_condition() == ("zero",)
+
+
+# ---------------------------------------------- E2-ui referential-integrity
+
+def test_delete_guard_blocks_nonlinear_case_referenced_by_ic(qapp, monkeypatch):
+    import analysis_cases_dialog as acd
+    from analysis_cases_dialog import AnalysisCasesDialog
+    warned = []
+    monkeypatch.setattr(acd.QMessageBox, "warning",
+                        staticmethod(lambda *a, **k: warned.append(a)))
+    p = _gsd_column_project()
+    p.nonlinear_cases = [NonlinearCase(id=1, name="PRELOAD", control_node=2)]
+    p.analysis_cases = [AnalysisCase(id=1, name="modal-after", type="modal",
+                                     params={"num_modes": 4, "lumped": False},
+                                     initial_condition=("state", 1))]
+    dlg = AnalysisCasesDialog(None, p)
+    r = next(i for i, m in enumerate(dlg._row_meta) if m["kind"] == "nonlinear")
+    dlg.table.setCurrentCell(r, 0)
+    dlg._delete()
+    assert len(dlg._cases) == 1                # not deleted — still referenced
+    assert warned and "modal-after" in warned[0][2]
+
+
+def test_delete_guard_allows_unreferenced_nonlinear_case(qapp):
+    from analysis_cases_dialog import AnalysisCasesDialog
+    p = _gsd_column_project()
+    p.nonlinear_cases = [NonlinearCase(id=1, name="free", control_node=2)]
+    dlg = AnalysisCasesDialog(None, p)
+    r = next(i for i, m in enumerate(dlg._row_meta) if m["kind"] == "nonlinear")
+    dlg.table.setCurrentCell(r, 0)
+    dlg._delete()
+    assert dlg._cases == []                    # unreferenced -> deleted
+
+
+def test_model_checks_flags_dangling_initial_condition():
+    import model_checks
+    p = _gsd_column_project()
+    p.analysis_cases = [AnalysisCase(id=1, name="rs-after",
+                                     type="responsespectrum", params={},
+                                     initial_condition=("state", 99))]
+    msgs = [c.message for c in model_checks.check_project(p)]
+    assert any("missing nonlinear case 99" in msg for msg in msgs)
