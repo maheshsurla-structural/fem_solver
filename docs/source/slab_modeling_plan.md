@@ -1,9 +1,12 @@
 # Slab / surface (shell) modeling — commercial-parity roadmap
 
-*Status: **IN PROGRESS**. Successor context to the desktop commercial roadmap.
-Analysis + engine are largely done; this plan is almost entirely a **desktop
-GUI + data-model** effort. Work happens on branch `feat/slab-modeling`
-(worktree off `main`).*
+*Status: **IN PROGRESS — MVP (Phase A) complete**. Successor context to the
+desktop commercial roadmap. Analysis + engine are largely done; this plan is
+almost entirely a **desktop GUI + data-model** effort. Work happens on branch
+`feat/slab-modeling` (worktree off `main`). Phase A shipped S0→S1→S4→S2→S5→S6→S7:
+you can now draw a slab, give it a thickness, load it (gravity/pressure), solve,
+and see the deflection contour. Next: Phase B (S3 auto-mesh, richer S7
+moment/stress contours, S8 diaphragms).*
 
 ---
 
@@ -233,7 +236,7 @@ layered/RC/CLT sections in S4, S7 section cuts, S10 robustness.
 | S5a | Shell `f_eq` pressure/body loads | **Engine** | ✅ (6 tests) |
 | S5b | `AreaLoad` + dialog + apply_loads | GUI | ✅ (7 tests) |
 | S6 | Filled faces render (`areas_mesh`) | GUI | ✅ lite (local axes / selection later) |
-| S7 | Result contours (U/σ/M/V) + cuts | GUI | ☐ |
+| S7 | Result contours (U/σ/M/V) + cuts | GUI | ✅ displacement (4 tests); σ/M/V + cuts next |
 | S8 | Diaphragm assignment | GUI | ☐ |
 | S9 | Slab/punching/diaphragm design | GUI+wire | ☐ |
 | S10 | Meshing robustness & parity polish | both | ☐ |

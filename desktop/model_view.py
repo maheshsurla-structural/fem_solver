@@ -882,6 +882,40 @@ class ModelView(QtInteractor):
         self._draw_grid()
         self._frame(model)
 
+    def show_area_contour(self, model, quantity: str = "Umag"):
+        """Colour-map a nodal displacement quantity over the surface (slab)
+        elements (slab plan S7), over a grey ghost of the members. Returns the
+        peak |value|, or 0.0 when the model has no areas."""
+        self._model = model
+        self._replay = partial(self.show_area_contour, model, quantity)
+        self.clear()
+        span = mg.model_span(model)
+
+        ref = mg.members_mesh(model)
+        if ref is not None:
+            self.add_mesh(ref.tube(radius=max(span * 0.0025, 1e-3)),
+                          color=style.V_REFERENCE, name="members")
+
+        poly = mg.areas_contour_mesh(model, quantity)
+        if poly is None or poly.n_points == 0:
+            self._draw_grid()
+            self._frame(model)
+            return 0.0
+        vmax = float(np.max(np.abs(poly.point_data["value"])))
+        title = mg.AREA_CONTOUR_QUANTITIES.get(quantity, quantity)
+        self.add_mesh(poly, scalars="value", cmap="viridis", show_edges=True,
+                      edge_color=style.V_MEMBER, name="area_contour",
+                      scalar_bar_args={"title": title})
+
+        supports = mg.support_points(model)
+        if len(supports):
+            self.add_points(supports, color=style.V_SUPPORT,
+                            render_points_as_spheres=True, point_size=18,
+                            name="supports")
+        self._draw_grid()
+        self._frame(model)
+        return vmax
+
     def show_diagram(self, model, kind: str):
         """Draw the N / V / M diagram over grey members; return max |value|."""
         self._replay = partial(self.show_diagram, model, kind)

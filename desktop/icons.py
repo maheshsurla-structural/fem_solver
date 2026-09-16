@@ -31,6 +31,9 @@ _ICONS = {
     # slab / shell area — a plate panel drawn in perspective with a mesh line
     "slab": '<path d="M2 9l8-4 12 4-8 4z"/>'
             '<path d="M2 9v4l8 4 12-4V9"/><path d="M6 7l12 4"/>',
+    # contour — nested iso-bands (a filled-contour / result map glyph)
+    "contour": '<path d="M4 18h16"/><path d="M6 18a6 6 0 0 1 12 0"/>'
+               '<path d="M9 18a3 3 0 0 1 6 0"/>',
     "function": '<path d="M3 12q3-7 6 0t6 0t6 0"/>',   # time-history waveform
     "load": '<path d="M12 4v13M6 11l6 6 6-6"/>',
     "delete": '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',

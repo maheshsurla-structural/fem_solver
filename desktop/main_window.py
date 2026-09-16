@@ -476,6 +476,10 @@ class MainWindow(QMainWindow):
         self.act_diag_v.triggered.connect(lambda *_: self.show_diagram("V"))
         self.act_diag_m = _set_icon(QAction("Moment &M", self), "moment")
         self.act_diag_m.triggered.connect(lambda *_: self.show_diagram("M"))
+        self.act_area_contour = _set_icon(
+            QAction("De&flection contour", self), "contour")
+        self.act_area_contour.triggered.connect(
+            lambda *_: self.show_deflection_contour("Umag"))
         self.act_design = _set_icon(QAction("&Design (DCR)", self), "design")
         self.act_design.triggered.connect(self.show_design)
         self.act_loadcases = _action(self, "Load &cases…", None,
@@ -609,7 +613,8 @@ class MainWindow(QMainWindow):
             ("Diagrams", ((self.act_undef, "Undeformed"),
                           (self.act_diag_n, "Axial"),
                           (self.act_diag_v, "Shear"),
-                          (self.act_diag_m, "Moment"))),
+                          (self.act_diag_m, "Moment"),
+                          (self.act_area_contour, "Deflection"))),
             ("Reports", ((self.act_runhistory, "History"),)),
             ("Design", ((self.act_design, "Design"),
                         (self.act_checkmodel, "Check"))),
@@ -1762,6 +1767,24 @@ class MainWindow(QMainWindow):
             f"{names[kind]} diagram — max |{kind}| = {vd:.4e} {unit}")
         self.statusBar().showMessage(
             f"{names[kind]} · max |{kind}| {vd:.3e} {unit}")
+
+    def show_deflection_contour(self, quantity: str = "Umag") -> None:
+        """Colour-map a nodal displacement quantity over the slab/shell areas
+        (slab plan S7). Solves first, like the member diagrams."""
+        if not getattr(self._project, "areas", None):
+            QMessageBox.information(
+                self, "Deflection contour",
+                "Add an area (Draw ▸ Area) to contour a surface.")
+            return
+        if self._solve() is None:
+            return
+        vmax = self.view.show_area_contour(self._model, quantity)
+        us = self._units()
+        vd, unit = us.to_display(vmax, Quantity.DISP), us.label(Quantity.DISP)
+        self.log.appendPlainText(
+            f"Deflection contour — max |U| = {vd:.4e} {unit}")
+        self.statusBar().showMessage(f"Contour · max |U| {vd:.3e} {unit}")
+        self._show_results_tab()
 
     def show_design(self) -> None:
         import design

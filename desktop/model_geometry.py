@@ -72,6 +72,43 @@ def areas_mesh(model):
     return pv.PolyData(pts, faces=np.asarray(faces, dtype=np.int64))
 
 
+# quantity -> label for the area displacement contour (slab plan S7)
+AREA_CONTOUR_QUANTITIES = {
+    "Umag": "|U| (total)", "Uz": "Uz (vertical)",
+    "Ux": "Ux", "Uy": "Uy",
+}
+
+
+def _node_disp_scalar(model, quantity: str):
+    """Per-node scalar (aligned with :func:`node_points` order) for an area
+    displacement contour, read from each node's solved ``disp`` vector."""
+    tags, _pts, _index = node_points(model)
+    vals = np.zeros(len(tags))
+    for i, t in enumerate(tags):
+        d = np.asarray(model.nodes[t].disp, dtype=float).ravel()
+        tr = d[:3] if d.size >= 3 else np.pad(d, (0, 3 - d.size))
+        if quantity == "Ux":
+            vals[i] = tr[0]
+        elif quantity == "Uy":
+            vals[i] = tr[1]
+        elif quantity == "Uz":
+            vals[i] = tr[2]
+        else:                                    # "Umag" (default)
+            vals[i] = float(np.linalg.norm(tr))
+    return vals
+
+
+def areas_contour_mesh(model, quantity: str = "Umag"):
+    """Filled-face PolyData of the surface elements carrying a per-node
+    displacement scalar in ``point_data['value']`` (slab plan S7). ``None``
+    when the model has no surface elements."""
+    poly = areas_mesh(model)
+    if poly is None:
+        return None
+    poly.point_data["value"] = _node_disp_scalar(model, quantity)
+    return poly
+
+
 def support_points(model):
     """Coordinates of nodes carrying any single-point constraint (a support)."""
     pts = [to_xyz(n.coords) for n in model.nodes.values()
