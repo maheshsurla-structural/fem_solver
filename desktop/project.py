@@ -55,6 +55,57 @@ class Section:
     gsd_code: str = ""
 
 
+# Shell / plate element formulations offered to an ``Area`` via its
+# ``ShellSection``. Maps the user-facing "type" to the engine element the
+# builder (S1) will emit. Mirrors the SAP2000/ETABS area-section menu.
+SHELL_KINDS = ("shell-thin", "shell-thick", "plate-thin", "plate-thick",
+               "membrane")
+SHELL_KIND_LABELS = {
+    "shell-thin": "Shell — thin (MITC, DKMQ)",
+    "shell-thick": "Shell — thick (MITC)",
+    "plate-thin": "Plate — thin (bending only)",
+    "plate-thick": "Plate — thick (bending only)",
+    "membrane": "Membrane (in-plane only)",
+}
+
+
+@dataclass
+class ShellSection:
+    """A shell / plate *thickness* property — the surface-element analogue of
+    :class:`Section` (which serves line members). Where a beam ``Section``
+    carries (A, Iz, Iy, J), a shell section carries the through-thickness
+    description that maps membrane strains, curvatures and transverse shear to
+    stress resultants per unit width.
+
+    ``kind`` selects the element formulation the builder emits (see
+    ``SHELL_KINDS``): a general *shell* (membrane + bending + drilling, the
+    MITC/DKMQ workhorse), a *plate* (bending only), or a *membrane* (in-plane
+    only). Like a line ``Section`` this is pure geometry/formulation — the
+    material is carried by the owning ``Area`` (mirroring ``Member.material``),
+    so the same section can be reused with different materials.
+
+    ``modifiers`` are SAP-style stiffness/mass/weight scale factors applied to
+    the element's constitutive matrices; any missing key defaults to 1.0. Keys:
+    ``f11 f22 f12`` (membrane), ``m11 m22 m12`` (bending), ``v13 v23`` (shear),
+    ``mass``, ``weight``.
+
+    ``layers`` is reserved for the layered / RC-layered path (S4/Phase C);
+    empty means the single isotropic layer of ``thickness`` (the MVP path)."""
+    id: int
+    name: str
+    thickness: float                       # total thickness (m), stored SI
+    kind: str = "shell-thin"               # one of SHELL_KINDS
+    modifiers: dict = field(default_factory=dict)   # SAP stiffness modifiers
+    layers: list = field(default_factory=list)      # future: layered/RC stack
+
+    def modifier(self, key: str) -> float:
+        """Stiffness/mass/weight modifier ``key`` (1.0 if unset)."""
+        try:
+            return float(self.modifiers.get(key, 1.0))
+        except (TypeError, ValueError):
+            return 1.0
+
+
 @dataclass
 class Node:
     id: int
@@ -91,6 +142,39 @@ class Member:
     material: int
     kind: str = "beamcolumn2d"
     hinge: int | None = None      # Hinge property id (None = distributed/elastic)
+
+
+@dataclass
+class Area:
+    """A surface (shell / plate) *area object* — the 2-D analogue of
+    :class:`Member`. ``nodes`` is a list of 3 (triangle) or 4 (quad) corner
+    node ids, ordered counter-clockwise when viewed from the positive-normal
+    (top / local-3) side — the ordering ``ShellMITC4`` / ``ShellTri3`` expect.
+
+    ``shell_section`` references a :class:`ShellSection` (thickness +
+    formulation); ``material`` is the node-material id, carried here rather than
+    on the section exactly as ``Member.material`` is (so one thickness property
+    serves many materials).
+
+    Following SAP2000/ETABS, the drawn *area object* is deliberately distinct
+    from its analysis *mesh*: ``mesh`` = ``(n1, n2)`` internal-mesh divisions is
+    a property resolved to elements at solve time (S3), keeping the model
+    editable and the tree clean. ``(1, 1)`` (the default) means the area is a
+    single element. ``local_axis`` rotates the in-plane local axes about the
+    element normal (degrees), for oriented results / orthotropic sections."""
+    id: int
+    nodes: list                   # 3 or 4 corner node ids, CCW from +normal
+    shell_section: int
+    material: int
+    mesh: tuple = (1, 1)          # (n1, n2) auto-mesh divisions (S3)
+    local_axis: float = 0.0       # local-axis rotation about the normal (deg)
+
+    def __post_init__(self):
+        # JSON round-trips ``nodes``/``mesh`` as lists; normalize types so
+        # equality and downstream indexing behave.
+        self.nodes = [int(n) for n in self.nodes]
+        m = tuple(int(x) for x in self.mesh)
+        self.mesh = (m + (1, 1))[:2] if m else (1, 1)
 
 
 # Load "nature" -> ASCE 7 pattern key used by the code combinations. ``None``
@@ -238,9 +322,11 @@ class Project:
     design_code: str = "AISC 360"
     materials: list = field(default_factory=list)
     sections: list = field(default_factory=list)
+    shell_sections: list = field(default_factory=list)  # ShellSection (slab plan S0)
     hinges: list = field(default_factory=list)         # Hinge properties (GUI-3)
     nodes: list = field(default_factory=list)
     members: list = field(default_factory=list)
+    areas: list = field(default_factory=list)          # Area (shell/plate; slab S0)
     load_cases: list = field(default_factory=list)    # LoadCase
     loads: list = field(default_factory=list)          # nodal Load
     member_loads: list = field(default_factory=list)   # MemberLoad (line loads)
@@ -264,6 +350,19 @@ class Project:
 
     def combination(self, combo_id):
         return next((c for c in self.combinations if c.id == combo_id), None)
+
+    # ------------------------------------------------------- shells / areas (S0)
+    def shell_section(self, sec_id):
+        return next((s for s in self.shell_sections if s.id == sec_id), None)
+
+    def area(self, area_id):
+        return next((a for a in self.areas if a.id == area_id), None)
+
+    def next_shell_section_id(self) -> int:
+        return max((s.id for s in self.shell_sections), default=0) + 1
+
+    def next_area_id(self) -> int:
+        return max((a.id for a in self.areas), default=0) + 1
 
     def nonlinear_case(self, case_id):
         return next((c for c in self.nonlinear_cases if c.id == case_id), None)
@@ -359,9 +458,17 @@ class Project:
             design_code=d.get("design_code", "AISC 360"),
             materials=[Material(**m) for m in d.get("materials", [])],
             sections=[Section(**s) for s in d.get("sections", [])],
+            shell_sections=[ShellSection(**s)
+                            for s in d.get("shell_sections", [])],
             hinges=[Hinge(**h) for h in d.get("hinges", [])],
             nodes=[Node(**_coerce_node(n)) for n in d.get("nodes", [])],
             members=[Member(**m) for m in d.get("members", [])],
+            areas=[Area(id=a["id"], nodes=list(a.get("nodes", [])),
+                        shell_section=a["shell_section"],
+                        material=a.get("material", 0),
+                        mesh=tuple(a.get("mesh", (1, 1))),
+                        local_axis=float(a.get("local_axis", 0.0)))
+                   for a in d.get("areas", [])],
             load_cases=cases,
             loads=[Load(node=x["node"], values=tuple(x["values"]),
                         case=x.get("case", default_id))
