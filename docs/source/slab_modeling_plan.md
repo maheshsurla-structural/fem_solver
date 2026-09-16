@@ -230,8 +230,8 @@ layered/RC/CLT sections in S4, S7 section cuts, S10 robustness.
 | S2 | Draw/edit areas (`AreaDialog`, from-selection) | GUI | ✅ (7 tests); click-to-draw mode deferred |
 | S3 | Auto-mesh + node merge | GUI | ☐ |
 | S4 | Shell-section (thickness) manager | GUI | ✅ (6 tests) |
-| S5a | Shell `f_eq` pressure/body loads | **Engine** | ☐ |
-| S5b | `AreaLoad` + dialog + apply_loads | GUI | ☐ |
+| S5a | Shell `f_eq` pressure/body loads | **Engine** | ✅ (6 tests) |
+| S5b | `AreaLoad` + dialog + apply_loads | GUI | ✅ (7 tests) |
 | S6 | Filled faces render (`areas_mesh`) | GUI | ✅ lite (local axes / selection later) |
 | S7 | Result contours (U/σ/M/V) + cuts | GUI | ☐ |
 | S8 | Diaphragm assignment | GUI | ☐ |

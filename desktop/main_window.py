@@ -411,6 +411,8 @@ class MainWindow(QMainWindow):
                                     "load")
         self.act_add_lineload = _action(self, "Add l&ine load…", None,
                                         self.add_line_load, "load")
+        self.act_add_areaload = _action(self, "Add a&rea load…", None,
+                                        self.add_area_load, "load")
         self.act_add_section = _action(self, "Add &section…", None,
                                        self.add_section, "section")
         self.act_shell_sections = _action(self, "&Thickness…", None,
@@ -590,6 +592,7 @@ class MainWindow(QMainWindow):
             ("Loads", ((self.act_loadcases, "Cases"),
                        (self.act_add_load, "Nodal"),
                        (self.act_add_lineload, "Line"),
+                       (self.act_add_areaload, "Area"),
                        (self.act_genloads, "Generate"))),
             ("Combinations", ((self.act_editcombos, "Combos"),
                               (self.act_gencombos, "ASCE-7"))),
@@ -2173,6 +2176,21 @@ class MainWindow(QMainWindow):
                          lambda: self._project.member_loads.append(ml),
                          ("member_load", idx))
 
+    def add_area_load(self) -> None:
+        """Add a uniform area (surface / pressure) load (slab plan S5b)."""
+        if not getattr(self._project, "areas", None):
+            QMessageBox.information(self, "Add area load",
+                                   "Add an area (Draw ▸ Area) first.")
+            return
+        from area_load_dialog import AreaLoadDialog
+        al = AreaLoadDialog.edit(self, self._project)
+        if al is None:
+            return
+        idx = len(self._project.area_loads)
+        self._apply_edit("Add area load",
+                         lambda: self._project.area_loads.append(al),
+                         ("area_load", idx))
+
     def add_section(self) -> None:
         section = SectionDialog.edit(self, self._project)
         if section is None:
@@ -2595,6 +2613,8 @@ class MainWindow(QMainWindow):
             return 0 <= key < len(p.loads)
         if kind == "member_load":
             return 0 <= key < len(p.member_loads)
+        if kind == "area_load":
+            return 0 <= key < len(getattr(p, "area_loads", []))
         return False
 
     def _apply_selection_effects(self) -> None:

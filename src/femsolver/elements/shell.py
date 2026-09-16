@@ -218,6 +218,14 @@ class ShellMITC4(Element):
             # Lazy construction below: D_* methods read from material/thickness.
             self.section = None
         self.drilling_factor = float(drilling_factor)
+        # Distributed surface loads (populated via add_surface_load / add_pressure;
+        # consumed by f_eq_global; reset by clear_distributed_loads):
+        #   _traction_global — uniform traction (fx, fy, fz) per unit area in
+        #                      GLOBAL axes (e.g. gravity area load (0, 0, -w)).
+        #   _pressure        — uniform pressure per unit area along the element's
+        #                      local +3 normal (e.g. wind on a wall).
+        self._traction_global = np.zeros(3)
+        self._pressure = 0.0
         # Per-Gauss-point recovery buffers (populated by .recover())
         self.gp_membrane_strain: list[np.ndarray] = []
         self.gp_bending_curvature: list[np.ndarray] = []
@@ -430,6 +438,50 @@ class ShellMITC4(Element):
         T = self._T_global_to_local(R)
         K_loc = self._K_local_6dof()
         return T.T @ K_loc @ T
+
+    # ----------------------------------------------------- distributed loads
+    def add_surface_load(self, tx: float, ty: float = 0.0,
+                         tz: float = 0.0) -> None:
+        """Accumulate a uniform surface traction ``(tx, ty, tz)`` per unit area
+        in GLOBAL axes — e.g. a gravity area load ``(0, 0, -w)`` [force/area]."""
+        self._traction_global = self._traction_global + np.array(
+            [float(tx), float(ty), float(tz)])
+
+    def add_pressure(self, q: float) -> None:
+        """Accumulate a uniform pressure ``q`` per unit area acting along the
+        element's local +3 normal (positive = along the outward normal)."""
+        self._pressure += float(q)
+
+    def clear_distributed_loads(self) -> None:
+        self._traction_global = np.zeros(3)
+        self._pressure = 0.0
+
+    def _shape_area_integrals(self) -> np.ndarray:
+        """``∫ N_i dA`` over the element for each of the 4 nodes (m²), by the
+        same 2×2 Gauss rule the stiffness uses."""
+        _, Xl = self._local_geom()
+        xi, eta, w = gauss_legendre_2d_quad(2)
+        integ = np.zeros(4)
+        for q in range(xi.size):
+            xq, yq, wq = float(xi[q]), float(eta[q]), float(w[q])
+            _, detJ, _ = _jacobian2d(xq, yq, Xl)
+            integ += _N(xq, yq) * (detJ * wq)
+        return integ
+
+    def f_eq_global(self) -> np.ndarray:
+        """Consistent nodal load vector (24,) in GLOBAL DOFs from the stored
+        uniform surface traction + normal pressure. Translational DOFs only
+        (a uniform traction on a flat element induces no nodal moments)."""
+        R, _ = self._local_geom()
+        traction = np.array(self._traction_global, dtype=float)
+        if self._pressure:
+            traction = traction + self._pressure * R[:, 2]   # normal → global
+        f = np.zeros(24)
+        if not np.any(traction):
+            return f
+        for i, ai in enumerate(self._shape_area_integrals()):
+            f[6 * i:6 * i + 3] = traction * ai
+        return f
 
     # ----------------------------------------------------- geometric stiffness
     @staticmethod

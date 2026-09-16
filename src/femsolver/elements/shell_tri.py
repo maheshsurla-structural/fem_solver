@@ -124,6 +124,10 @@ class ShellTri3(Element):
         self.bending_curvature: np.ndarray | None = None
         self.shear_strain: np.ndarray | None = None
         self.resultants: np.ndarray | None = None
+        # Distributed surface loads (see ShellMITC4 for the convention):
+        # global traction (fx, fy, fz)/area + normal pressure /area.
+        self._traction_global = np.zeros(3)
+        self._pressure = 0.0
 
     # ----------------------------------------------------- constitutive
     def _D_membrane(self) -> np.ndarray:
@@ -254,6 +258,37 @@ class ShellTri3(Element):
         T = self._T_global_to_local(R)
         K_loc = self._K_local()
         return T.T @ K_loc @ T
+
+    # ----------------------------------------------------- distributed loads
+    def add_surface_load(self, tx: float, ty: float = 0.0,
+                         tz: float = 0.0) -> None:
+        """Uniform surface traction ``(tx, ty, tz)`` per unit area, GLOBAL axes."""
+        self._traction_global = self._traction_global + np.array(
+            [float(tx), float(ty), float(tz)])
+
+    def add_pressure(self, q: float) -> None:
+        """Uniform pressure ``q`` per unit area along the local +3 normal."""
+        self._pressure += float(q)
+
+    def clear_distributed_loads(self) -> None:
+        self._traction_global = np.zeros(3)
+        self._pressure = 0.0
+
+    def f_eq_global(self) -> np.ndarray:
+        """Consistent nodal loads (18,) in GLOBAL DOFs from the uniform traction
+        + normal pressure. Linear triangle: ``∫ N_i dA = A/3`` at each node;
+        translational DOFs only."""
+        R, _, A = self._local_geom()
+        traction = np.array(self._traction_global, dtype=float)
+        if self._pressure:
+            traction = traction + self._pressure * R[:, 2]
+        f = np.zeros(18)
+        if not np.any(traction):
+            return f
+        share = traction * (A / 3.0)
+        for i in range(3):
+            f[6 * i:6 * i + 3] = share
+        return f
 
     # ----------------------------------------------------- mass
     def M_global(self, *, lumped: bool = False) -> np.ndarray:

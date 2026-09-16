@@ -301,6 +301,25 @@ class MemberLoad:
 
 
 @dataclass
+class AreaLoad:
+    """A uniform load on a surface (``Area``) object (slab plan S5), magnitude
+    ``w`` in pressure units (Pa = N/m²):
+
+    * ``kind="gravity"`` — a downward area load, applied as the global traction
+      ``(0, 0, -w)`` (the common slab dead/live/superimposed case).
+    * ``kind="pressure"`` — ``w`` acting normal to the area (its local +3),
+      e.g. wind on a wall or hydrostatic face pressure.
+
+    ``case`` is the owning LoadCase id. Compiled onto the area's shell
+    element(s) by :meth:`Project.apply_case` via the element's
+    ``add_surface_load`` / ``add_pressure`` (see slab S5a)."""
+    area: int
+    w: float = 0.0                # magnitude (Pa = N/m²)
+    kind: str = "gravity"         # "gravity" (global -Z) | "pressure" (normal)
+    case: int = 1                 # owning LoadCase id
+
+
+@dataclass
 class LoadCombination:
     """A weighted sum of load cases. ``factors`` maps case id -> factor."""
     id: int
@@ -337,6 +356,7 @@ class Project:
     load_cases: list = field(default_factory=list)    # LoadCase
     loads: list = field(default_factory=list)          # nodal Load
     member_loads: list = field(default_factory=list)   # MemberLoad (line loads)
+    area_loads: list = field(default_factory=list)      # AreaLoad (slab plan S5)
     combinations: list = field(default_factory=list)   # LoadCombination
     stages: list = field(default_factory=list)          # Stage (construction seq)
     nonlinear_cases: list = field(default_factory=list)  # NonlinearCase (GUI-4)
@@ -484,6 +504,10 @@ class Project:
                                      wz=x.get("wz", 0.0),
                                      case=x.get("case", default_id))
                           for x in d.get("member_loads", [])],
+            area_loads=[AreaLoad(area=x["area"], w=x.get("w", 0.0),
+                                 kind=x.get("kind", "gravity"),
+                                 case=x.get("case", default_id))
+                        for x in d.get("area_loads", [])],
             combinations=[LoadCombination(
                 id=c["id"], name=c["name"],
                 factors={int(k): v for k, v in c.get("factors", {}).items()})
@@ -763,6 +787,25 @@ class Project:
         else:
             el.add_uniform_load(ml.wy * factor)
 
+    def _area_element_tags(self, area) -> list:
+        """Engine element tag(s) for an ``Area`` (slab S5). One element per area
+        today (S1); S3 meshing will return the full sub-element list here."""
+        return [AREA_TAG_BASE + area.id]
+
+    def _apply_area_load(self, model, al, factor: float) -> None:
+        a = self.area(al.area)
+        if a is None:
+            return
+        for tag in self._area_element_tags(a):
+            try:
+                el = model.element(tag)
+            except KeyError:
+                continue
+            if al.kind == "pressure" and hasattr(el, "add_pressure"):
+                el.add_pressure(al.w * factor)
+            elif hasattr(el, "add_surface_load"):
+                el.add_surface_load(0.0, 0.0, -al.w * factor)   # global −Z
+
     def apply_case(self, model, case_id: int, factor: float = 1.0) -> None:
         """Add one case's nodal + line loads to a built model, scaled by
         ``factor`` (additive — pair with ``model.clear_loads()`` between
@@ -773,6 +816,9 @@ class Project:
         for ml in self.member_loads:
             if ml.case == case_id:
                 self._apply_member_load(model, ml, factor)
+        for al in self.area_loads:
+            if al.case == case_id:
+                self._apply_area_load(model, al, factor)
 
     def load_patterns(self) -> dict:
         """{str(case_id): LoadPattern} for the engine's combination/envelope
