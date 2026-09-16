@@ -51,8 +51,14 @@ class CaseType:
         raise NotImplementedError
 
     # ---------------------------------------------------------------- run
-    def build_config(self, project, params: dict):             # noqa: ARG002
-        """Rebuild the runtime config the runner consumes. Default: identity."""
+    def build_config(self, project, params: dict, *,           # noqa: ARG002
+                     initial_condition=("zero",)):
+        """Rebuild the runtime config the runner consumes. Default: identity.
+
+        ``initial_condition`` (E2) is the case's stiffness-to-use setting
+        (``("zero",)`` or ``("state", nl_case_id)``). Most types ignore it (they
+        run against the current model); a type that can start from a nonlinear
+        case's committed state threads it into its config here."""
         return params
 
     def dispatch(self, win, config):
@@ -102,7 +108,7 @@ class ModalType(CaseType):
                                 "lumped": bool(lumped)},
                         notes=dlg.header.notes())
 
-    def build_config(self, project, params):
+    def build_config(self, project, params, *, initial_condition=("zero",)):
         return (int(params.get("num_modes", 6)), bool(params.get("lumped")))
 
     def dispatch(self, win, config):
@@ -145,7 +151,7 @@ class BucklingType(CaseType):
                                 "subdivisions": int(subdivisions)},
                         notes=dlg.header.notes())
 
-    def build_config(self, project, params):
+    def build_config(self, project, params, *, initial_condition=("zero",)):
         sel = tuple(params.get("selection") or ("all", None))
         return (sel, int(params.get("num_modes", 4)),
                 int(params.get("subdivisions", 6)))
@@ -286,7 +292,7 @@ class ResponseSpectrumType(CaseType):
                             params=params, notes=dlg.header.notes())
         return None
 
-    def build_config(self, project, params):
+    def build_config(self, project, params, *, initial_condition=("zero",)):
         from response_spectrum_dialog import spectrum_from_params
         return (spectrum_from_params(params), int(params.get("num_modes", 6)),
                 params.get("direction", "x"),
@@ -405,14 +411,17 @@ class TimeHistoryType(CaseType):
         from timehistory_dialog import TimeHistoryCaseDialog
         dlg = TimeHistoryCaseDialog(
             parent, project, initial=(dict(case.params) if case else None),
+            initial_ic=(case.initial_condition if case else ("zero",)),
             name=(case.name if case else "Time History"),
             notes=(case.notes if case else ""))
         if not dlg.exec():
             return None
-        return self._mk(case, name=dlg.header.name() or "Time History",
-                        params=dlg.params(), notes=dlg.header.notes())
+        out = self._mk(case, name=dlg.header.name() or "Time History",
+                       params=dlg.params(), notes=dlg.header.notes())
+        out.initial_condition = dlg.initial_condition()   # E2 stiffness-to-use
+        return out
 
-    def build_config(self, project, params):
+    def build_config(self, project, params, *, initial_condition=("zero",)):
         f = project.th_function(params.get("function_id"))
         if f is None:
             raise ValueError("the referenced time-history function was deleted "
@@ -422,7 +431,10 @@ class TimeHistoryType(CaseType):
                 "direction": params.get("direction", "y"),
                 "scale": float(params.get("scale", 1.0)),
                 "zeta": float(params.get("zeta", 0.05)),
-                "density": float(params.get("density", 2400.0))}
+                "density": float(params.get("density", 2400.0)),
+                "initial_condition": initial_condition,
+                "hold_source_loads": bool(
+                    params.get("hold_source_loads", False))}
 
     def dispatch(self, win, config):
         return win.run_timehistory_dialog(seed=config)

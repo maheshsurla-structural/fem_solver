@@ -15,6 +15,7 @@ Contract (do not rename / resignature — later phases import these)::
 
     GroupCard(title, *, form=True)     .add_row(label, widget) / .body_layout()
     CaseHeader(*, name, type_label, notes="")   .name() / .notes() / .type_label()
+    InitialConditionCard(sources)   .value() / .hold() / .set_value(ic, hold)
     LoadsAppliedTable(columns, *, on_add=None, on_edit=None)  .rows() / .set_rows(rows)
     two_column(*cards) -> QWidget          # responsive 2-col grid of GroupCards
     dialog_buttons(dialog) -> QDialogButtonBox   # Ok|Cancel, wired
@@ -25,9 +26,10 @@ from __future__ import annotations
 from typing import Callable
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (QAbstractItemView, QDialog, QDialogButtonBox,
-                               QFormLayout, QGridLayout, QHBoxLayout, QLabel,
-                               QLineEdit, QPlainTextEdit, QPushButton,
+from PySide6.QtWidgets import (QAbstractItemView, QButtonGroup, QCheckBox,
+                               QComboBox, QDialog, QDialogButtonBox, QFormLayout,
+                               QGridLayout, QHBoxLayout, QLabel, QLineEdit,
+                               QPlainTextEdit, QPushButton, QRadioButton,
                                QTableWidget, QTableWidgetItem, QVBoxLayout,
                                QWidget)
 
@@ -159,6 +161,78 @@ class CaseHeader(QWidget):
 
     def type_label(self) -> str:
         return self._type.text()
+
+
+# -------------------------------------------------------- InitialConditionCard
+class InitialConditionCard(GroupCard):
+    """The *Stiffness to Use* group of a Load-Case-Data dialog (E2) — the desktop
+    counterpart of SAP2000's initial-condition radio.
+
+    Choose an **unstressed** start, or continue from the committed **state +
+    stiffness** at the end of a nonlinear case (``sources`` = eligible
+    ``(id, name)`` pairs). As in SAP the source case's *loads* are not otherwise
+    carried; the **Hold source loads constant** checkbox re-applies them (interim
+    until an explicit Loads-Applied list exists), which a dynamic run needs so the
+    preload stays in equilibrium.
+
+    ``value()`` → ``("zero",)`` or ``("state", id)``; ``hold()`` → the checkbox;
+    ``set_value(ic, hold)`` seeds both. Pure Qt, headless-constructible.
+    """
+
+    def __init__(self, sources, parent=None):
+        super().__init__("Stiffness to use", parent)
+        self._zero = QRadioButton("Zero initial conditions — unstressed state")
+        self._state = QRadioButton("State at end of nonlinear case")
+        self._grp = QButtonGroup(self)
+        self._grp.addButton(self._zero, 0)
+        self._grp.addButton(self._state, 1)
+        self._zero.setChecked(True)
+
+        self._src = QComboBox()
+        for cid, nm in sources:
+            self._src.addItem(nm, cid)
+        self._hold = QCheckBox("Hold source loads constant")
+        self._hold.setChecked(True)
+        note = QLabel("Loads from the nonlinear case are not otherwise included "
+                      "in this case.")
+        note.setObjectName("hintLabel")
+        note.setWordWrap(True)
+
+        self.add_full_row(self._zero)
+        self.add_full_row(self._state)
+        self.add_row("From case", self._src)
+        self.add_full_row(self._hold)
+        self.add_full_row(note)
+        if not sources:                          # nothing to continue from
+            self._state.setEnabled(False)
+            empty = QLabel("No nonlinear cases defined to continue from.")
+            empty.setObjectName("hintLabel")
+            empty.setWordWrap(True)
+            self.add_full_row(empty)
+        self._state.toggled.connect(lambda *_: self._sync())
+        self._sync()
+
+    def _sync(self) -> None:
+        on = self._state.isChecked()
+        self._src.setEnabled(on and self._src.count() > 0)
+        self._hold.setEnabled(on)
+
+    def value(self) -> tuple:
+        if self._state.isChecked() and self._src.currentData() is not None:
+            return ("state", int(self._src.currentData()))
+        return ("zero",)
+
+    def hold(self) -> bool:
+        return bool(self._hold.isChecked())
+
+    def set_value(self, ic, hold: bool = True) -> None:
+        if ic and ic[0] == "state" and self._src.findData(ic[1]) >= 0:
+            self._src.setCurrentIndex(self._src.findData(ic[1]))
+            self._state.setChecked(True)
+        else:
+            self._zero.setChecked(True)
+        self._hold.setChecked(bool(hold))
+        self._sync()
 
 
 # ------------------------------------------------------------- LoadsAppliedTable

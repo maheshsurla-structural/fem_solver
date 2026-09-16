@@ -86,6 +86,8 @@ class TimeHistoryDialog(PickDialog):
         self._worker: TimeHistoryWorker | None = None
         self._accel: np.ndarray | None = None
         self._result: dict | None = None
+        self._initial_case = None            # E2: source nonlinear-case id
+        self._hold_source_loads = False
         outer = QHBoxLayout(self)
 
         # ---- left: grouped inputs + run controls (plan A3) ----
@@ -111,6 +113,7 @@ class TimeHistoryDialog(PickDialog):
         self.in_g.addItems(["record in m/s²", "record in g"])
         self.zeta = self._spin(0.05, decimals=3, step=0.01)
         self.density = self._spin(2400.0, decimals=1, step=100.0, big=True)
+        self.ic_lbl = QLabel("unstressed")     # E2: initial-state summary
 
         monitor = ui.GroupCard("Monitor")
         monitor.add_row("Monitor node", self.node)
@@ -126,6 +129,7 @@ class TimeHistoryDialog(PickDialog):
         gm.add_row("dt [s]", self.dt)
         gm.add_row("Scale factor", self.scale)
         gm.add_row("Units", self.in_g)
+        gm.add_row("Initial state", self.ic_lbl)
 
         model = ui.GroupCard("Damping & mass")
         model.add_row("Damping ζ", self.zeta)
@@ -201,6 +205,18 @@ class TimeHistoryDialog(PickDialog):
                              f"— {self._accel.size} pts")
         self.run_btn.setEnabled(self._accel.size >= 2)
 
+        ic = seed.get("initial_condition") or ("zero",)
+        self._hold_source_loads = bool(seed.get("hold_source_loads", False))
+        if ic and ic[0] == "state":
+            self._initial_case = ic[1]
+            src = self._project.nonlinear_case(ic[1])
+            nm = src.name if src else f"case {ic[1]}"
+            self.ic_lbl.setText(nm + (" · loads held" if self._hold_source_loads
+                                      else " · state only"))
+        else:
+            self._initial_case = None
+            self.ic_lbl.setText("unstressed")
+
     # ------------------------------------------------ helpers
     @staticmethod
     def _combo(items, default=None):
@@ -243,7 +259,9 @@ class TimeHistoryDialog(PickDialog):
         direction, dof = self.direction.currentData()
         return dict(control_node=self.node.currentData(), control_dof=dof,
                     direction=direction, zeta=float(self.zeta.value()),
-                    density=float(self.density.value()))
+                    density=float(self.density.value()),
+                    initial_case=self._initial_case,
+                    hold_source_loads=self._hold_source_loads)
 
     def _scaled_accel(self):
         a = self._accel * float(self.scale.value())
@@ -322,6 +340,7 @@ class TimeHistoryCaseDialog(PickDialog):
     """
 
     def __init__(self, parent, project, *, initial: dict | None = None,
+                 initial_ic: tuple = ("zero",),
                  name: str = "Time History", notes: str = ""):
         super().__init__(parent)
         self.setWindowTitle("Time-history case")
@@ -370,10 +389,16 @@ class TimeHistoryCaseDialog(PickDialog):
         model.add_row("Damping ζ", self.zeta)
         model.add_row(f"Density [kg/{project.length_unit}³]", self.density)
 
+        sources = [(c.id, c.name) for c in project.nonlinear_cases]
+        self.initial = ui.InitialConditionCard(sources)
+
         root.addWidget(ui.two_column(monitor, gm, model))
+        root.addWidget(self.initial)
         root.addWidget(ui.dialog_buttons(self))
         if initial:
             self._seed(initial)
+        self.initial.set_value(
+            initial_ic, bool((initial or {}).get("hold_source_loads", True)))
         style.apply(self)
 
     @staticmethod
@@ -421,10 +446,14 @@ class TimeHistoryCaseDialog(PickDialog):
             return
         super().accept()
 
+    def initial_condition(self) -> tuple:
+        return self.initial.value()
+
     def params(self) -> dict:
         return {"function_id": self.function.currentData(),
                 "control_node": self.node.currentData(),
                 "direction": self.direction.currentData()[0],
                 "scale": float(self.scale.value()),
                 "zeta": float(self.zeta.value()),
-                "density": float(self.density.value())}
+                "density": float(self.density.value()),
+                "hold_source_loads": self.initial.hold()}

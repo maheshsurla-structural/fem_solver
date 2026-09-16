@@ -373,6 +373,7 @@ def run_time_history(project, accel, dt, *, control_node: int,
                      zeta: float = 0.05, density: float = 2400.0,
                      num_steps: int | None = None, tol: float = 1.0,
                      max_iter: int = 30, materials=None,
+                     initial_case=None, hold_source_loads: bool = False,
                      on_step=None, should_cancel=None) -> dict:
     """Nonlinear **dynamic time-history** of the fiber model under rigid-base
     ground acceleration (plan §16 C3).
@@ -388,6 +389,16 @@ def run_time_history(project, accel, dt, *, control_node: int,
     "protocol": "time_history"}`` — the monitored DOF's response history (the
     standard seismic demand). ``control_dof`` defaults to 1 (Uy); ``direction``
     sets the excitation axis.
+
+    **Initial conditions (E2):** when ``initial_case`` names a Nonlinear Static
+    case, the run starts from *its* committed deformed + materially-committed
+    state (via :func:`seed_to_committed_state`) instead of the unstressed state —
+    the base excitation then perturbs the preloaded structure. With
+    ``hold_source_loads`` the source case's held force is carried through the
+    dynamic run (added as a constant term to the excitation) so the preload stays
+    in equilibrium; without it only the stiffness + state are inherited (SAP
+    semantics). The held vector and the excitation share the model's stable DOF
+    numbering, so they superpose in equation space.
     """
     import numpy as np
     from femsolver import EigenAnalysis, NonlinearTransientAnalysis, RayleighDamping
@@ -398,7 +409,20 @@ def run_time_history(project, accel, dt, *, control_node: int,
         raise ValueError("accel must have at least two samples")
     n = int(num_steps) if num_steps is not None else accel.size - 1
 
-    m = build_nonlinear_model(project, materials=materials, density=density)
+    F_hold = None
+    if initial_case is not None:
+        src = (initial_case if hasattr(initial_case, "control_node")
+               else project.nonlinear_case(initial_case))
+        if src is None:
+            raise ValueError(
+                f"the initial-condition source case {initial_case!r} was "
+                "deleted — pick another in the case's Modify dialog")
+        m, F_const = seed_to_committed_state(project, src, materials=materials,
+                                             density=density)
+        if hold_source_loads:
+            F_hold = F_const
+    else:
+        m = build_nonlinear_model(project, materials=materials, density=density)
     m.number_dofs()
     if m.neq == 0:
         raise RuntimeError("model is fully constrained — no dynamic DOFs")
@@ -431,6 +455,13 @@ def run_time_history(project, accel, dt, *, control_node: int,
         return float(accel[i] * (1.0 - frac) + accel[i + 1] * frac)
 
     load_fn = ground_motion_force(m, direction=direction, accel_function=accel_fn)
+
+    if F_hold is not None:                     # hold the source loads (E2): the
+        base_fn = load_fn                      # excitation + a constant preload
+        F_hold = np.asarray(F_hold, dtype=float).ravel()
+
+        def load_fn(t, _base=base_fn, _hold=F_hold):
+            return np.asarray(_base(t), dtype=float).ravel() + _hold
 
     def _step_cb(info):
         if on_step is not None:
@@ -612,11 +643,15 @@ def run_case(project, case, *, on_step=None, should_cancel=None,
     return result
 
 
-def seed_to_committed_state(project, case, *, materials=None):
+def seed_to_committed_state(project, case, *, materials=None, density=0.0):
     """Run a Nonlinear Static ``case`` (its axial preload + ``continue_from``
     push chain) to its committed **end state**, without recording pushover curves
     or capture frames, and return ``(model, F_const)`` for a downstream analysis
     to build on (E2 — initial conditions).
+
+    ``density`` is forwarded to :func:`build_nonlinear_model` so a downstream
+    *dynamic* analysis (time history) receives a mass-bearing model; it does not
+    affect the static committed state (the preload applies no mass-based load).
 
     * ``model`` is left at the committed deformed + materially-committed state
       (element / material history intact), ready to hand to a modal / response-
@@ -634,7 +669,7 @@ def seed_to_committed_state(project, case, *, materials=None):
     from femsolver import StagedAnalysis
     from femsolver.analysis.assembler import assemble_force
 
-    m = build_nonlinear_model(project, materials=materials)
+    m = build_nonlinear_model(project, materials=materials, density=density)
     chain = _case_chain(project, case)
     root = chain[0]
     need_axial = bool(root.axial and root.axial_node)

@@ -151,17 +151,29 @@ Correctness is provable in closed form; each becomes a `tests/` case:
   default `("zero",)`); manager `detail` suffix. *No behaviour change yet.*
 - [ ] **E2b** `seed_to_committed_state` helper (E2-eng-1) + refactor `run_case`
   onto it (pushover unchanged — regression-guarded by existing tests).
-- [ ] **E2c** **Time History from state** (E2-eng-4 + `run_timehistory_dialog`
-  prelude + held-load checkbox). *First user-visible win — it's the `FH1_TH_*`
-  workflow.* Validation: gravity-hold equilibrium test.
+- [x] **E2c** **Time History from state** ✅ 2026-09-16. `run_time_history` gains
+  `initial_case` + `hold_source_loads`: when set it seeds via
+  `seed_to_committed_state` (with `density`, so the model bears mass) and, when
+  held, adds `F_const` as a constant term to the excitation so the preload stays
+  in equilibrium. Reusable **`analysis_ui.InitialConditionCard`** (Stiffness-to-
+  use radio + source combo + hold checkbox + SAP note) built here and dropped
+  into `TimeHistoryCaseDialog`; the case now carries `AnalysisCase.initial_condition`
+  + `params["hold_source_loads"]`. `CaseType.build_config` threads
+  `initial_condition` (base + Modal/Buckling/RS accept-and-ignore, TH consumes);
+  `_run_saved_case` passes `c.initial_condition`. Runner shows the initial-state
+  summary. **Validation: gravity-hold equilibrium test green** (preload + zero
+  motion + hold ⇒ structure stays at rest; without hold it springs back).
 - [ ] **E2d** **P-Δ Modal + Response Spectrum** (E2-eng-2 tangent modal +
   preludes). Validation: axial-softening frequency benchmark.
 - [ ] **E2e** **Buckling from state** (E2-eng-3 + prelude). Validation:
   consistency vs reference-load buckling.
-- [ ] **E2-ui** `InitialConditionWidget` across the migrated dialogs (or into
-  E1). Referential-integrity guard: block deleting a nonlinear case referenced
-  by another case's `initial_condition` (extend the existing `continue_from`
-  guard in `analysis_cases_dialog._delete` + `model_checks`).
+- [ ] **E2-ui** adopt `InitialConditionCard` (built in E2c) across the remaining
+  migrated dialogs (or into E1). Referential-integrity guard: block deleting a
+  nonlinear case referenced by another case's `initial_condition` (extend the
+  existing `continue_from` guard in `analysis_cases_dialog._delete` +
+  `model_checks`). *(Not yet done — a state-seeded case's source can still be
+  deleted; the manager shows "· from (missing case)" and the run raises a
+  friendly error, but a pre-delete guard is the finish.)*
 
 **Recommended order:** E2a → E2b → **E2c (Time History)** first — it's mostly
 plumbing (transient already honours IC state), needs no new eigensolver work, and

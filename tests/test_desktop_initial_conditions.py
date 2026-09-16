@@ -27,7 +27,8 @@ sys.path.insert(0, str(_ROOT / "desktop"))
 
 import nonlinear as NL                                      # noqa: E402
 from project import (AnalysisCase, Material, Member, Node,  # noqa: E402
-                     NonlinearCase, Project, Section, _coerce_ic)
+                     NonlinearCase, Project, Section,
+                     TimeHistoryFunction, _coerce_ic)
 
 
 def _gsd_column_project(*, D=0.6, L=3.0):
@@ -160,3 +161,118 @@ def test_seed_is_nondestructive_to_load_pattern():
     p.nonlinear_cases = [c]
     model, _ = NL.seed_to_committed_state(p, c)
     assert all(not np.any(n._load) for n in model.nodes.values())
+
+
+# ------------------------------------------------------- E2c Time History
+
+def test_time_history_from_state_gravity_hold_stays_at_rest():
+    """The E2 equilibrium check: seed a time history from a nonlinear case's
+    committed state, hold the source loads, and excite with ZERO ground motion —
+    the preloaded structure must stay put (velocity ~ 0 at its committed
+    displacement). Without the hold the preload is unbalanced and it moves."""
+    p = _gsd_column_project()
+    preload = NonlinearCase(id=1, name="push", control_node=2, control_dof=1,
+                            target=0.005, n_steps=5)
+    p.nonlinear_cases = [preload]
+    accel = np.zeros(20)                       # no ground motion
+    seeded, _ = NL.seed_to_committed_state(p, preload, density=2400.0)
+    delta = float(seeded.nodes[2].disp[1])     # committed lateral displacement
+
+    held = NL.run_time_history(p, accel, 0.02, control_node=2, control_dof=1,
+                               direction="y", density=2400.0,
+                               initial_case=1, hold_source_loads=True)
+    assert held["disp"][0] == pytest.approx(delta, abs=5e-4)   # stays deformed
+    assert max(abs(v) for v in held["velocity"]) < 5e-3        # at rest
+
+    free = NL.run_time_history(p, accel, 0.02, control_node=2, control_dof=1,
+                               direction="y", density=2400.0,
+                               initial_case=1, hold_source_loads=False)
+    # unbalanced preload -> the structure springs back and moves
+    assert max(abs(v) for v in free["velocity"]) > \
+        20 * max(abs(v) for v in held["velocity"]) + 1e-3
+
+
+def test_time_history_missing_source_raises():
+    p = _gsd_column_project()
+    with pytest.raises(ValueError, match="deleted"):
+        NL.run_time_history(p, np.zeros(10), 0.02, control_node=2,
+                            control_dof=1, initial_case=999,
+                            hold_source_loads=True)
+
+
+def test_th_build_config_threads_initial_condition():
+    import case_types
+    p = _gsd_column_project()
+    p.th_functions = [TimeHistoryFunction(id=1, name="rec", dt=0.01,
+                                          values=[0.0, 1.0, 0.0, -1.0, 0.0])]
+    ct = case_types.get("timehistory")
+    params = {"function_id": 1, "control_node": 2, "direction": "y",
+              "scale": 1.0, "zeta": 0.05, "density": 2400.0,
+              "hold_source_loads": True}
+    cfg = ct.build_config(p, params, initial_condition=("state", 7))
+    assert cfg["initial_condition"] == ("state", 7)
+    assert cfg["hold_source_loads"] is True
+    # default (zero) still works and defaults the hold off
+    cfg0 = ct.build_config(p, {"function_id": 1})
+    assert cfg0["initial_condition"] == ("zero",)
+    assert cfg0["hold_source_loads"] is False
+
+
+def test_initial_condition_card_roundtrip(qapp):
+    from analysis_ui import InitialConditionCard
+    card = InitialConditionCard([(1, "PRELOAD"), (2, "OTHER")])
+    assert card.value() == ("zero",)                   # default unstressed
+    card.set_value(("state", 2), hold=False)
+    assert card.value() == ("state", 2)
+    assert card.hold() is False
+    card.set_value(("zero",))
+    assert card.value() == ("zero",)
+    # a source that no longer exists falls back to zero, not a crash
+    card.set_value(("state", 404))
+    assert card.value() == ("zero",)
+
+
+def test_initial_condition_card_empty_disables_state(qapp):
+    from analysis_ui import InitialConditionCard
+    card = InitialConditionCard([])                    # no nonlinear cases
+    card.set_value(("state", 1))
+    assert card.value() == ("zero",)                   # cannot select state
+
+
+def test_th_case_dialog_carries_ic_and_hold(qapp):
+    from timehistory_dialog import TimeHistoryCaseDialog
+    p = _gsd_column_project()
+    p.nonlinear_cases = [NonlinearCase(id=5, name="PRELOAD", control_node=2)]
+    p.th_functions = [TimeHistoryFunction(id=1, name="rec", dt=0.01,
+                                          values=[0.0, 1.0, 0.0])]
+    dlg = TimeHistoryCaseDialog(
+        None, p, initial={"function_id": 1, "control_node": 2,
+                          "hold_source_loads": True},
+        initial_ic=("state", 5))
+    assert dlg.initial_condition() == ("state", 5)
+    assert dlg.params()["hold_source_loads"] is True
+
+
+def test_th_edit_sets_case_initial_condition(qapp, monkeypatch):
+    """The adapter round-trips the IC onto the saved AnalysisCase."""
+    import case_types
+    from timehistory_dialog import TimeHistoryCaseDialog
+    p = _gsd_column_project()
+    p.nonlinear_cases = [NonlinearCase(id=3, name="PRELOAD", control_node=2)]
+    p.th_functions = [TimeHistoryFunction(id=1, name="rec", dt=0.01,
+                                          values=[0.0, 1.0, 0.0])]
+    ct = case_types.get("timehistory")
+    # drive the dialog headlessly: seed a state IC, then accept
+    monkeypatch.setattr(TimeHistoryCaseDialog, "exec", lambda self: True)
+
+    orig_init = TimeHistoryCaseDialog.__init__
+
+    def _init(self, *a, **k):
+        orig_init(self, *a, **k)
+        self.initial.set_value(("state", 3), hold=True)
+    monkeypatch.setattr(TimeHistoryCaseDialog, "__init__", _init)
+
+    case = ct.edit(None, p)
+    assert case is not None
+    assert case.initial_condition == ("state", 3)
+    assert case.params["hold_source_loads"] is True

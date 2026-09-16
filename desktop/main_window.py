@@ -2257,7 +2257,8 @@ class MainWindow(QMainWindow):
         self.log.appendPlainText(
             f"Analysis case '{c.name}' ({ct.type_label}) — running…")
         try:
-            config = ct.build_config(self._project, c.params)
+            config = ct.build_config(self._project, c.params,
+                                     initial_condition=c.initial_condition)
         except Exception as exc:                           # noqa: BLE001
             QMessageBox.warning(self, "Analysis case",
                                 f"Cannot run '{c.name}':\n\n{exc}")

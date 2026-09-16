@@ -125,7 +125,8 @@ def _project_with_fn():
 def test_timehistory_case_dialog_params_round_trip(qapp):
     from timehistory_dialog import TimeHistoryCaseDialog
     initial = {"function_id": 1, "control_node": 2, "direction": "y",
-               "scale": 1.5, "zeta": 0.03, "density": 2500.0}
+               "scale": 1.5, "zeta": 0.03, "density": 2500.0,
+               "hold_source_loads": True}        # E2 stiffness-to-use default
     dlg = TimeHistoryCaseDialog(None, _project_with_fn(), initial=initial,
                                 name="TH-Y")
     assert dlg.params() == initial
