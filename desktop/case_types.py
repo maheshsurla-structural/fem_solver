@@ -143,24 +143,28 @@ class BucklingType(CaseType):
     def edit(self, parent, project, case=None):
         from buckling_dialog import BucklingDialog
         params = dict(case.params) if case else self.default_params(project)
-        dlg = BucklingDialog(parent, project, max_modes=self._edit_cap(project),
-                             default_modes=int(params.get("num_modes", 4)),
-                             initial=params,
-                             name=(case.name if case else "Buckling"),
-                             notes=(case.notes if case else ""))
+        dlg = BucklingDialog(
+            parent, project, max_modes=self._edit_cap(project),
+            default_modes=int(params.get("num_modes", 4)), initial=params,
+            sources=[(c.id, c.name) for c in project.nonlinear_cases],
+            initial_ic=(case.initial_condition if case else ("zero",)),
+            name=(case.name if case else "Buckling"),
+            notes=(case.notes if case else ""))
         if not dlg.exec():
             return None
         selection, num_modes, subdivisions = dlg.result()
-        return self._mk(case, name=dlg.header.name() or "Buckling",
-                        params={"selection": list(selection),
-                                "num_modes": int(num_modes),
-                                "subdivisions": int(subdivisions)},
-                        notes=dlg.header.notes())
+        out = self._mk(case, name=dlg.header.name() or "Buckling",
+                       params={"selection": list(selection),
+                               "num_modes": int(num_modes),
+                               "subdivisions": int(subdivisions)},
+                       notes=dlg.header.notes())
+        out.initial_condition = dlg.initial_condition()       # E2e
+        return out
 
     def build_config(self, project, params, *, initial_condition=("zero",)):
         sel = tuple(params.get("selection") or ("all", None))
         return (sel, int(params.get("num_modes", 4)),
-                int(params.get("subdivisions", 6)))
+                int(params.get("subdivisions", 6)), initial_condition)
 
     def dispatch(self, win, config):
         return win.run_buckling(config=config)

@@ -98,10 +98,10 @@ def test_buckling_adapter_contract():
     # runner expects
     cfg = ct.build_config(p, {"selection": ["case", 2], "num_modes": 3,
                               "subdivisions": 5})
-    assert cfg == (("case", 2), 3, 5)
+    assert cfg == (("case", 2), 3, 5, ("zero",))    # E2e initial condition
     win = _FakeWin()
     ct.dispatch(win, cfg)
-    assert win.calls == [("run_buckling", (("case", 2), 3, 5))]
+    assert win.calls == [("run_buckling", (("case", 2), 3, 5, ("zero",)))]
 
 
 def test_edit_cap_is_a_positive_bound():

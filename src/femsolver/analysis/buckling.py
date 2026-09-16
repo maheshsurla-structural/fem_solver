@@ -94,7 +94,8 @@ class LinearBucklingAnalysis:
     """
 
     def __init__(self, model, num_modes: int = 4, *,
-                 numberer: str = "default", mode: str = "sparse"):
+                 numberer: str = "default", mode: str = "sparse",
+                 prestress: str = "reference"):
         if num_modes < 1:
             raise ValueError("num_modes must be >= 1")
         if numberer not in ("default", "rcm"):
@@ -103,10 +104,19 @@ class LinearBucklingAnalysis:
             raise ValueError(
                 f"mode must be 'sparse' or 'dense', got {mode!r}"
             )
+        if prestress not in ("reference", "current_state"):
+            raise ValueError(f"unknown prestress {prestress!r} "
+                             "(expected 'reference' or 'current_state')")
         self.model = model
         self.num_modes = int(num_modes)
         self.numberer = numberer
         self.mode = mode
+        # "reference" (default): apply the model's reference load via a linear
+        # static solve, then form K_g from the induced forces. "current_state"
+        # (E2): the model is already at a committed (e.g. nonlinear-preload)
+        # state — keep it and form K_g from that state, so the critical factor
+        # multiplies *that* state's load. Buckling from a nonlinear case.
+        self.prestress = prestress
 
         # Results, populated by run()
         self.load_factors: np.ndarray | None = None
@@ -115,7 +125,9 @@ class LinearBucklingAnalysis:
     # ------------------------------------------------------------------ run
     def run(self) -> dict:
         m = self.model
-        m.reset_results()
+        from_state = self.prestress == "current_state"
+        if not from_state:                 # keep a committed state for K_g (E2)
+            m.reset_results()
         if self.numberer == "rcm":
             rcm_renumber(m)
         else:
@@ -130,7 +142,10 @@ class LinearBucklingAnalysis:
         # and element internal-state is consistent with it (for
         # corotational elements, K_tangent_global will pick up the
         # geometric softening from the induced internal forces).
-        LinearStaticAnalysis(m).run()
+        # For prestress="current_state" the model already carries a committed
+        # (e.g. nonlinear-preload) state, so we buckle from that instead.
+        if not from_state:
+            LinearStaticAnalysis(m).run()
 
         # Step 3: assemble K (initial) and the geometric stiffness K_g.
         # Elements that expose a dedicated K_geometric_global (the elastic

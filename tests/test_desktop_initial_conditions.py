@@ -381,3 +381,26 @@ def test_rs_from_state_lengthens_period_on_fiber_path(qapp):
         return info["modal_results"][0]["period"]
 
     assert period(4.0e5) > 1.02 * period(0.0)
+
+
+# --------------------------------------------------- E2e Buckling from state
+
+def test_buckling_build_config_threads_initial_condition():
+    import case_types
+    p = _gsd_column_project()
+    ct = case_types.get("buckling")
+    cfg = ct.build_config(p, {"selection": ["all", None], "num_modes": 3,
+                              "subdivisions": 6}, initial_condition=("state", 2))
+    assert cfg == (("all", None), 3, 6, ("state", 2))
+    assert ct.build_config(p, {})[3] == ("zero",)
+
+
+def test_buckling_dialog_carries_ic(qapp):
+    from buckling_dialog import BucklingDialog
+    p = _gsd_column_project()
+    p.nonlinear_cases = [NonlinearCase(id=1, name="PRELOAD", control_node=2)]
+    dlg = BucklingDialog(None, p, sources=[(1, "PRELOAD")],
+                         initial_ic=("state", 1))
+    assert dlg.initial_condition() == ("state", 1)
+    dlg2 = BucklingDialog(None, p)                    # no sources -> zero
+    assert dlg2.initial_condition() == ("zero",)

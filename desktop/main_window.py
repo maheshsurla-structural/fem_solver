@@ -699,7 +699,7 @@ class MainWindow(QMainWindow):
 
         ic = initial_condition or ("zero",)
         if ic[0] == "state":
-            ready = self._seed_modal_model(ic[1])
+            ready = self._seed_state_model(ic[1])
             stiffness = "tangent"
         else:
             ready = self._modal_ready_model()
@@ -785,15 +785,18 @@ class MainWindow(QMainWindow):
             return None
         return model, model.neq
 
-    def _seed_modal_model(self, nl_case_id):
+    def _seed_state_model(self, nl_case_id, *, require_mass=True):
         """Build a fiber model at the committed state of nonlinear case
-        ``nl_case_id`` for a modal-based analysis *from that state* (E2d).
+        ``nl_case_id`` for an analysis *from that state* (E2 — modal / response
+        spectrum / buckling).
 
         The seeded model carries the deformed geometry + committed element state
-        (so its tangent stiffness includes K_g), plus mass from the materials'
-        density (a representative ρ — exact for a single-material column, which is
-        the usual fiber case). Returns ``(model, neq)`` or ``None`` (with a
-        reason shown), mirroring :meth:`_modal_ready_model`."""
+        (so its tangent + geometric stiffness reflect the preload), plus mass
+        from the materials' density (a representative ρ — exact for a
+        single-material column, the usual fiber case). ``require_mass`` gates the
+        density check: modal / response spectrum need mass, buckling does not.
+        Returns ``(model, neq)`` or ``None`` (with a reason shown), mirroring
+        :meth:`_modal_ready_model`."""
         import nonlinear as NL
         from femsolver.analysis.assembler import assemble_mass
 
@@ -801,7 +804,7 @@ class MainWindow(QMainWindow):
         src = p.nonlinear_case(nl_case_id)
         if src is None:
             QMessageBox.warning(
-                self, "Modal analysis",
+                self, "Analysis",
                 f"The initial-condition source case {nl_case_id} was deleted — "
                 "pick another in the case's Modify dialog.")
             return None
@@ -811,7 +814,7 @@ class MainWindow(QMainWindow):
             model, _f = NL.seed_to_committed_state(p, src, density=density)
         except Exception as exc:                           # noqa: BLE001
             QMessageBox.warning(
-                self, "Modal analysis",
+                self, "Analysis",
                 f"Could not establish the initial state from '{src.name}':"
                 f"\n\n{exc}")
             return None
@@ -820,7 +823,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self, "Analysis", "The model has too few free DOFs.")
             return None
-        if abs(assemble_mass(model)).max() <= 0.0:
+        if require_mass and abs(assemble_mass(model)).max() <= 0.0:
             QMessageBox.information(
                 self, "Analysis",
                 "The model has no mass — set a density (ρ, kg/m³) on the "
@@ -860,7 +863,7 @@ class MainWindow(QMainWindow):
             ic = ("zero",)
         else:                                    # saved AnalysisCase dispatch
             ic = config[4] if len(config) > 4 else ("zero",)
-            ready = (self._seed_modal_model(ic[1]) if ic[0] == "state"
+            ready = (self._seed_state_model(ic[1]) if ic[0] == "state"
                      else self._modal_ready_model())
             if ready is None:
                 return None
@@ -947,16 +950,29 @@ class MainWindow(QMainWindow):
             config = BucklingDialog.configure(self, p)
             if config is None:
                 return None
-        selection, num_modes, subdivisions = config
+        selection, num_modes, subdivisions = config[0], config[1], config[2]
+        ic = config[3] if len(config) > 3 else ("zero",)
 
-        model, _subs = p.build_buckling_model(selection=selection,
-                                              subdivisions=subdivisions)
-        model.number_dofs()
+        if ic[0] == "state":            # buckle from a nonlinear preload (E2e)
+            ready = self._seed_state_model(ic[1], require_mass=False)
+            if ready is None:
+                return None
+            model, _neq = ready
+            prestress = "current_state"
+            src = p.nonlinear_case(ic[1])
+            ref_label = f"state of {src.name}" if src else "committed state"
+        else:
+            model, _subs = p.build_buckling_model(selection=selection,
+                                                  subdivisions=subdivisions)
+            model.number_dofs()
+            prestress = "reference"
+            ref_label = self._reference_load_label(selection)
         max_modes = max(1, model.neq - 2)
         num_modes = max(1, min(int(num_modes), max_modes))
 
         try:
-            info = LinearBucklingAnalysis(model, num_modes=num_modes).run()
+            info = LinearBucklingAnalysis(model, num_modes=num_modes,
+                                          prestress=prestress).run()
         except Exception as exc:                           # noqa: BLE001
             QMessageBox.warning(
                 self, "Buckling",
@@ -976,7 +992,6 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(
                 f"Buckling mode {k + 1}: λ = {info['load_factors'][k]:.4g}")
 
-        ref_label = self._reference_load_label(selection)
         from buckling_results_dialog import BucklingResultsDialog
         self._buckling_results_dlg = BucklingResultsDialog.show_results(
             self, info, ref_label, _show_mode)
