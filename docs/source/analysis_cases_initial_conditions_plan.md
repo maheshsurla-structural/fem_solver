@@ -166,8 +166,16 @@ Correctness is provable in closed form; each becomes a `tests/` case:
   `_run_saved_case` passes `c.initial_condition`. Runner shows the initial-state
   summary. **Validation: gravity-hold equilibrium test green** (preload + zero
   motion + hold ⇒ structure stays at rest; without hold it springs back).
-- [ ] **E2d** **P-Δ Modal + Response Spectrum** (E2-eng-2 tangent modal +
-  preludes). Validation: axial-softening frequency benchmark.
+- [x] **E2d** **P-Δ Modal + Response Spectrum** ✅ 2026-09-16. `EigenAnalysis`
+  gains `stiffness="elastic"|"tangent"` (tangent = `K + K_g` at the committed
+  state, mirroring buckling's dedicated-K_g / state-tangent split);
+  `ResponseSpectrumAnalysis` threads it and skips `reset_results` so the seeded
+  state survives. `run_modal` / `run_response_spectrum` seed a fiber model from
+  the source case (`_seed_modal_model`, mass from material ρ) and solve on the
+  tangent basis; both dialogs carry the `InitialConditionCard` (`show_hold`
+  toggle added — eigen inherits stiffness+state only). Validation:
+  `tests/test_pdelta_modal.py` (ω(P)=ω₀√(1−P/Pcr) within 5%, ω→0 at Pcr,
+  tangent==elastic unstressed) + fiber-path softening / RS period-lengthening.
 - [ ] **E2e** **Buckling from state** (E2-eng-3 + prelude). Validation:
   consistency vs reference-load buckling.
 - [ ] **E2-ui** adopt `InitialConditionCard` (built in E2c) across the remaining
@@ -178,11 +186,10 @@ Correctness is provable in closed form; each becomes a `tests/` case:
   deleted; the manager shows "· from (missing case)" and the run raises a
   friendly error, but a pre-delete guard is the finish.)*
 
-**Recommended order:** E2a ✅ → E2b ✅ → **E2c (Time History)** ✅ done — plumbing
-that serves the user's validation campaign. **← we are here.** Next: **E2d** (the
-P-Δ modal solver capability — the only remaining *new* solver work), then **E2e**
-(buckling from state), then **E2-ui** (adopt the card in the other dialogs + the
-delete-guard).
+**Recommended order:** E2a ✅ → E2b ✅ → **E2c (Time History)** ✅ → **E2d
+(P-Δ modal + RS)** ✅ done. **← we are here.** Next: **E2e** (buckling from state
+— reuse the same tangent/seed machinery), then **E2-ui** (adopt the card in the
+remaining dialogs + the referential-integrity delete-guard).
 
 ## 10. Risks & decisions
 

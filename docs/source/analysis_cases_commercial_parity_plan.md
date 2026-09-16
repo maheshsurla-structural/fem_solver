@@ -249,9 +249,9 @@ actually needs.
 * [ ] **E1** `CaseEditor` unified shell (strangler over the per-type bodies)
 * [x] **E2a–c** Initial-conditions / state chaining — data model, seeding helper,
   **Time History from state** ✅ 2026-09-16 (`ead1d26`/`422b230`/`7889505`) *(sub-plan)*
-* [ ] **E2d / E2e / E2-ui** P-Δ modal + Response Spectrum from state · buckling
-  from state · adopt `InitialConditionCard` elsewhere + referential-integrity
-  delete-guard *(sub-plan)*
+* [x] **E2d** P-Δ modal + Response Spectrum from state ✅ 2026-09-16 (sub-plan)
+* [ ] **E2e / E2-ui** buckling from state · adopt `InitialConditionCard`
+  elsewhere + referential-integrity delete-guard *(sub-plan)*
 * [ ] **E5b/c/d** Run All (topo) · persisted status/last-run · results association
 * [ ] **E3b** Loads-Applied spec · **E3c** result combinations
 * [ ] **E6c** Design… classification · **E7** integrity/validation/versioning
