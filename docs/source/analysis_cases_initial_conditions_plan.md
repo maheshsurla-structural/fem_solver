@@ -2,7 +2,9 @@
 
 **Created:** 2026-09-16
 **Parent:** [`analysis_cases_commercial_parity_plan.md`](analysis_cases_commercial_parity_plan.md) ▸ **E2** (the headline feature)
-**Status:** proposed (awaiting go-ahead)
+**Status:** **E2a–E2c DONE + merged to `main` (`7889505`) 2026-09-16** — a saved
+Time-History case can start from a nonlinear case's committed state.
+**Pending: E2d, E2e, E2-ui** (see §9).
 **Reference:** SAP2000 *Load Case Data* ▸ **Stiffness to Use** — *"Zero Initial
 Conditions – Unstressed State"* vs *"Stiffness at End of Nonlinear Case,"* with
 the note *"Loads from the Nonlinear Case are NOT included in the current case."*
@@ -147,10 +149,11 @@ Correctness is provable in closed form; each becomes a `tests/` case:
 
 ## 9. Sequencing (strangler, shippable each step)
 
-- [ ] **E2a** data model + serialization + migration (`initial_condition`,
-  default `("zero",)`); manager `detail` suffix. *No behaviour change yet.*
-- [ ] **E2b** `seed_to_committed_state` helper (E2-eng-1) + refactor `run_case`
-  onto it (pushover unchanged — regression-guarded by existing tests).
+- [x] **E2a** ✅ 2026-09-16 (`422b230`). `initial_condition` on both case classes
+  + `_coerce_ic` + serialization/migration + manager `· from ‹source›` suffix.
+- [x] **E2b** ✅ 2026-09-16 (`422b230`). `seed_to_committed_state` helper +
+  `run_case` refactored onto shared module-level stage factories (pushover
+  behaviour-identical); `StagedAnalysis.const_force_final` exposed.
 - [x] **E2c** **Time History from state** ✅ 2026-09-16. `run_time_history` gains
   `initial_case` + `hold_source_loads`: when set it seeds via
   `seed_to_committed_state` (with `density`, so the model bears mass) and, when
@@ -175,10 +178,11 @@ Correctness is provable in closed form; each becomes a `tests/` case:
   deleted; the manager shows "· from (missing case)" and the run raises a
   friendly error, but a pre-delete guard is the finish.)*
 
-**Recommended order:** E2a → E2b → **E2c (Time History)** first — it's mostly
-plumbing (transient already honours IC state), needs no new eigensolver work, and
-directly serves the user's validation campaign. Then E2d (the P-Δ modal solver
-capability), then E2e, then the shared UI widget.
+**Recommended order:** E2a ✅ → E2b ✅ → **E2c (Time History)** ✅ done — plumbing
+that serves the user's validation campaign. **← we are here.** Next: **E2d** (the
+P-Δ modal solver capability — the only remaining *new* solver work), then **E2e**
+(buckling from state), then **E2-ui** (adopt the card in the other dialogs + the
+delete-guard).
 
 ## 10. Risks & decisions
 

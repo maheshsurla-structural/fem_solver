@@ -1,9 +1,14 @@
 # Analysis cases → commercial parity — the "finest level" roadmap
 
 **Created:** 2026-09-16
-**Status:** proposed (awaiting go-ahead) — successor to
-[`analysis_cases_manager_plan.md`](analysis_cases_manager_plan.md), which is
-**complete** (10 saved, named, multi-instance types).
+**Status:** IN PROGRESS — successor to
+[`analysis_cases_manager_plan.md`](analysis_cases_manager_plan.md) (complete: 10
+saved, named, multi-instance types). **Shipped to `main` (`7889505`) 2026-09-16:**
+the first slices of **E2** — E2a/E2b (initial-condition data model + the
+`seed_to_committed_state` engine helper) and **E2c** (Time History from a
+nonlinear case's committed state); see the
+[E2 sub-plan](analysis_cases_initial_conditions_plan.md). **Everything else in
+this roadmap is still pending** — see §4 sequencing and the §6 tracker.
 **Reference:** SAP2000 / CSiBridge *Define ▸ Load Cases* + *Load Case Data*
 dialogs (the user's benchmark).
 **Scope:** close the gap from "a working saved-case manager" to a
@@ -242,7 +247,11 @@ actually needs.
 * [ ] **E4** Load Case Tree (DAG + cycle/stale)
 * [ ] **E3a** `LoadCase` → "Load Pattern" relabel
 * [ ] **E1** `CaseEditor` unified shell (strangler over the per-type bodies)
-* [ ] **E2a–d** Initial-conditions / state chaining *(sub-plan)*
+* [x] **E2a–c** Initial-conditions / state chaining — data model, seeding helper,
+  **Time History from state** ✅ 2026-09-16 (`ead1d26`/`422b230`/`7889505`) *(sub-plan)*
+* [ ] **E2d / E2e / E2-ui** P-Δ modal + Response Spectrum from state · buckling
+  from state · adopt `InitialConditionCard` elsewhere + referential-integrity
+  delete-guard *(sub-plan)*
 * [ ] **E5b/c/d** Run All (topo) · persisted status/last-run · results association
 * [ ] **E3b** Loads-Applied spec · **E3c** result combinations
 * [ ] **E6c** Design… classification · **E7** integrity/validation/versioning
