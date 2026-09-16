@@ -225,8 +225,8 @@ layered/RC/CLT sections in S4, S7 section cuts, S10 robustness.
 
 | ID | Item | Layer | Status |
 |---|---|---|---|
-| S0 | `Area` + `ShellSection` data model | GUI | ☐ |
-| S1 | build_model emits shells | GUI | ☐ |
+| S0 | `Area` + `ShellSection` data model | GUI | ✅ 9af7a54 (8 tests) |
+| S1 | build_model emits shells | GUI | ✅ (10 tests) |
 | S2 | Draw/edit areas (rect → poly) | GUI | ☐ |
 | S3 | Auto-mesh + node merge | GUI | ☐ |
 | S4 | Shell-section (thickness) manager | GUI | ☐ |

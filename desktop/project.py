@@ -19,6 +19,13 @@ from pathlib import Path
 
 SCHEMA = "femsolver-project/1"
 
+# Element-tag offset for surface (Area) elements so they never collide with
+# member ids (which are used directly as element tags). Comfortably above any
+# realistic node/member count; S3 meshing will allocate sub-element tags from
+# ``AREA_TAG_BASE + area.id * AREA_TAG_STRIDE``.
+AREA_TAG_BASE = 2_000_000
+AREA_TAG_STRIDE = 10_000
+
 
 @dataclass
 class Material:
@@ -568,6 +575,22 @@ class Project:
             else:
                 m.add_element(BeamColumn2D(mb.id, (mb.n1, mb.n2),
                                            material, A, Iz))
+        # ---- surface (shell / plate) area objects (slab plan S1) -----------
+        # Areas are a 3-D feature — shells need ndf=6, so a 2-D model has no
+        # surface elements. One element per area for now (mesh subdivision is
+        # S3). Element tags are offset (``AREA_TAG_BASE``) so they never collide
+        # with member ids used directly as element tags.
+        if self.ndm == 3 and self.areas:
+            shsecs = {s.id: s for s in self.shell_sections}
+            for a in self.areas:
+                ss = shsecs.get(a.shell_section)
+                mat = mats.get(a.material)
+                if ss is None or mat is None:
+                    continue
+                elem = _build_shell_element(AREA_TAG_BASE + a.id, a.nodes,
+                                            mat, ss)
+                if elem is not None:
+                    m.add_element(elem)
         for nd in self.nodes:
             if nd.supports and any(nd.supports):
                 m.fix(nd.id, list(nd.supports))
@@ -800,6 +823,105 @@ def _resolve_section(section):
     Iy = section.Iy or section.Iz
     J = section.J or (0.1 * section.Iz)
     return section.A, section.Iz, Iy, J
+
+
+# ---------------------------------------------------- shell / area resolution (S1)
+
+def _has_modifiers(mods) -> bool:
+    """True if any modifier deviates from 1.0 (so the fast, section-free path
+    can be used when they are all unity)."""
+    if not mods:
+        return False
+    try:
+        return any(abs(float(v) - 1.0) > 1e-12 for v in mods.values())
+    except (TypeError, ValueError):
+        return True
+
+
+class _ModifiedShellSection:
+    """Wrap an engine ``ShellSectionBase`` and scale its constitutive matrices
+    by SAP-style stiffness modifiers (all default 1.0):
+
+    * membrane ``f11 f22 f12`` scale ``D_membrane``,
+    * bending  ``m11 m22 m12`` scale ``D_bending``,
+    * shear    ``v13 v23``     scale ``D_shear``.
+
+    Each 3×3 (or 2×2) matrix entry (i, j) is scaled by ``sqrt(s_i * s_j)`` so
+    the result stays symmetric and reduces to uniform scaling when the factors
+    are equal — the standard interpretation of area stiffness modifiers. Passed
+    to ``ShellMITC4`` / ``ShellTri3`` via ``section=``. Mass/weight modifiers
+    are applied later (loads), not here."""
+
+    def __init__(self, base, modifiers: dict):
+        self._base = base
+        self._m = {k: float(v) for k, v in (modifiers or {}).items()}
+
+    @property
+    def thickness(self) -> float:
+        return self._base.thickness
+
+    @property
+    def density(self) -> float:
+        return self._base.density
+
+    @property
+    def k_shear(self) -> float:
+        return float(getattr(self._base, "k_shear", 5.0 / 6.0))
+
+    def _scale(self, D, keys):
+        import numpy as np
+        s = np.array([self._m.get(k, 1.0) for k in keys], dtype=float)
+        return np.asarray(D) * np.sqrt(np.outer(s, s))
+
+    def D_membrane(self):
+        return self._scale(self._base.D_membrane(), ("f11", "f22", "f12"))
+
+    def D_bending(self):
+        return self._scale(self._base.D_bending(), ("m11", "m22", "m12"))
+
+    def D_coupling(self):
+        return self._base.D_coupling()
+
+    def D_shear(self):
+        return self._scale(self._base.D_shear(), ("v13", "v23"))
+
+
+def _build_shell_element(tag: int, node_tags, material, shell_section):
+    """Build one engine surface element for an ``Area`` (S1: one element per
+    area; S3 meshes). Maps the ``ShellSection.kind`` to an element:
+
+    * ``shell-*`` / ``membrane`` → ``ShellMITC4`` (quad) or ``ShellTri3`` (tri)
+      — the general shells, which accept a ``section=`` so stiffness modifiers
+      apply. (A dedicated 6-DOF membrane element is deferred; the general shell
+      is used, its bending negligible for in-plane-loaded panels.)
+    * ``plate-*`` → ``ShellDKMQ4`` (quad) or ``ShellDKT3`` (tri) — bending-only
+      plates (material + thickness; modifiers not yet supported on these).
+
+    Returns the element, or ``None`` for an unbuildable area (bad node count /
+    non-positive thickness)."""
+    nt = tuple(int(n) for n in node_tags)
+    n = len(nt)
+    if n not in (3, 4):
+        return None
+    kind = getattr(shell_section, "kind", "shell-thin")
+    t = float(getattr(shell_section, "thickness", 0.0))
+    if t <= 0.0:
+        return None
+    mods = getattr(shell_section, "modifiers", None)
+
+    if kind.startswith("plate"):
+        from femsolver import ShellDKMQ4, ShellDKT3
+        cls = ShellDKMQ4 if n == 4 else ShellDKT3
+        return cls(tag, nt, material, t)
+
+    # general shell (default) and membrane fall-back
+    from femsolver import ShellMITC4, ShellTri3
+    cls = ShellMITC4 if n == 4 else ShellTri3
+    if _has_modifiers(mods):
+        from femsolver import ElasticShellSection
+        base = ElasticShellSection(material, t)
+        return cls(tag, nt, material, section=_ModifiedShellSection(base, mods))
+    return cls(tag, nt, material, t)
 
 
 def _spec_from_gsd(gsd_spec: dict):
