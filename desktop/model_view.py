@@ -720,6 +720,12 @@ class ModelView(QtInteractor):
         self.clear()
 
         span = mg.model_span(model)
+        # surface (slab/shell) fill first, so the member tubes overlay its edges
+        areas = mg.areas_mesh(model)
+        if areas is not None:
+            self.add_mesh(areas, color=style.V_AREA, opacity=0.35,
+                          show_edges=True, edge_color=style.V_MEMBER,
+                          name="areas")
         mesh = mg.members_mesh(model)
         if mesh is not None:
             self.add_mesh(mesh.tube(radius=max(span * 0.004, 1e-3)),

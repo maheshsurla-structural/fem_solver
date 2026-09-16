@@ -17,8 +17,8 @@ import analysis_ui as ui
 import icons
 import style
 from pick import PickDialog
-from project import (Load, LoadCase, Member, NATURE_ASCE, NATURE_LABELS, Node,
-                     Section)
+from project import (Area, Load, LoadCase, Member, NATURE_ASCE, NATURE_LABELS,
+                     Node, Section)
 from unit_widgets import UnitSpin, labeled
 from units import Quantity, UnitSystem
 
@@ -169,6 +169,86 @@ class MemberDialog(PickDialog):
     @classmethod
     def edit(cls, parent, project, member=None):
         dlg = cls(parent, project, member)
+        return dlg.data() if dlg.exec() else None
+
+
+class AreaDialog(PickDialog):
+    """Add / edit a surface (shell / plate) *area object* — the 2-D analogue of
+    ``MemberDialog`` (slab plan S2). Pick 3 (triangle) or 4 (quad) corner nodes,
+    a thickness (shell section) and a material. Corners can be filled by clicking
+    nodes in the model (the focused corner field). ``seed_nodes`` pre-selects
+    corners (e.g. from the current selection)."""
+
+    def __init__(self, parent, project, area=None, seed_nodes=None):
+        super().__init__(parent)
+        self.setWindowTitle("Edit area" if area else "Add area")
+        form = QFormLayout(self)
+
+        self.id_spin = _id_spin(
+            area.id if area else _next_id([a.id for a in project.areas]),
+            editing=area is not None)
+        form.addRow("Area id", self.id_spin)
+
+        node_items = [(str(n.id), n.id) for n in project.nodes]
+        none_item = ("— none (triangle) —", None)
+        self.corners = []
+        for i in range(4):
+            # corner 4 is optional (None -> triangle); corners 1-3 required
+            items = node_items if i < 3 else [none_item] + node_items
+            combo = _combo(items)
+            self.register_pick_field("node", combo)
+            self.corners.append(combo)
+
+        self.sec = _combo([(f"{s.id}: {s.name}", s.id)
+                           for s in project.shell_sections])
+        self.mat = _combo([(f"{m.id}: {m.name}", m.id) for m in project.materials])
+
+        seed = list(area.nodes) if area else list(seed_nodes or [])
+        for i, combo in enumerate(self.corners):
+            if i < len(seed):
+                _select(combo, seed[i])
+            elif i < 3 and combo.count() > i:
+                combo.setCurrentIndex(min(i, combo.count() - 1))
+        if area:
+            _select(self.sec, area.shell_section)
+            _select(self.mat, area.material)
+
+        for i, combo in enumerate(self.corners, start=1):
+            form.addRow(f"Corner {i}", combo)
+        form.addRow("", _pick_hint("Tip: click a node in the model to fill the "
+                                   "focused corner. Order corners around the "
+                                   "panel (no crossing)."))
+        form.addRow("Thickness", self.sec)
+        form.addRow("Material", self.mat)
+        form.addRow(_buttons(self))
+
+    def _node_list(self):
+        return [c.currentData() for c in self.corners if c.currentData() is not None]
+
+    def accept(self) -> None:
+        nodes = self._node_list()
+        if len(nodes) < 3:
+            QMessageBox.warning(self, "Invalid area",
+                                "An area needs 3 or 4 corner nodes.")
+            return
+        if len(set(nodes)) != len(nodes):
+            QMessageBox.warning(self, "Invalid area",
+                                "Corner nodes must all differ.")
+            return
+        if self.sec.currentData() is None:
+            QMessageBox.warning(self, "No thickness",
+                                "Define a thickness (shell section) first.")
+            return
+        super().accept()
+
+    def data(self) -> Area:
+        return Area(id=self.id_spin.value(), nodes=self._node_list(),
+                    shell_section=self.sec.currentData(),
+                    material=self.mat.currentData())
+
+    @classmethod
+    def edit(cls, parent, project, area=None, seed_nodes=None):
+        dlg = cls(parent, project, area, seed_nodes=seed_nodes)
         return dlg.data() if dlg.exec() else None
 
 

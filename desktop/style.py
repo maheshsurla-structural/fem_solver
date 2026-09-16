@@ -46,7 +46,7 @@ _LIGHT = dict(
     VIEW_BG="#f6f8fb", VIEW_GRID="#d7deea", VIEW_AXIS="#9aa6b8",
     V_MEMBER="#3b6d11", V_NODE="#185fa5", V_SUPPORT="#a32d2d",
     V_REFERENCE="#c2c8d0", V_DEFORMED="#d85a30", V_DEFORMED_NODE="#993c1d",
-    V_SELECTION="#f59e0b", V_HINGE="#e11d9c",
+    V_SELECTION="#f59e0b", V_HINGE="#e11d9c", V_AREA="#5b8ccc",
     V_DIAG_N="#1d4ed8", V_DIAG_V="#0f766e", V_DIAG_M="#b45309",
 )
 _DARK = dict(
@@ -66,7 +66,7 @@ _DARK = dict(
     VIEW_BG="#12161e", VIEW_GRID="#2b3340", VIEW_AXIS="#5f6a7b",
     V_MEMBER="#6cc24a", V_NODE="#5b93f7", V_SUPPORT="#f0616d",
     V_REFERENCE="#465061", V_DEFORMED="#f2795f", V_DEFORMED_NODE="#d9694f",
-    V_SELECTION="#f5b544", V_HINGE="#e879f9",
+    V_SELECTION="#f5b544", V_HINGE="#e879f9", V_AREA="#6ea8e6",
     V_DIAG_N="#5b93f7", V_DIAG_V="#2dd4bf", V_DIAG_M="#e3a008",
 )
 _PALETTES = {"light": _LIGHT, "dark": _DARK}

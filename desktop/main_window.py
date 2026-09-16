@@ -26,8 +26,8 @@ import icons
 import model_geometry as mg
 import style
 from commands import EditCommand
-from editing import (LoadDialog, MemberDialog, NodeDialog, SectionDialog,
-                     dof_labels)
+from editing import (AreaDialog, LoadDialog, MemberDialog, NodeDialog,
+                     SectionDialog, dof_labels)
 from hinge_editor import HingeAssignmentDialog, HingeManagerDialog
 from material_editor import MaterialManagerDialog
 from model_view import ModelView
@@ -405,6 +405,8 @@ class MainWindow(QMainWindow):
                                     self.add_node, "node")
         self.act_add_member = _action(self, "Add &member…", "Ctrl+Shift+M",
                                       self.add_member, "member")
+        self.act_add_area = _action(self, "Add &area…", None,
+                                    self.add_area, "slab")
         self.act_add_load = _action(self, "Add &load…", None, self.add_load,
                                     "load")
         self.act_add_lineload = _action(self, "Add l&ine load…", None,
@@ -573,6 +575,7 @@ class MainWindow(QMainWindow):
         rb.add_tab("Draw", (
             ("Draw", ((self.act_draw_node, "Node"),
                       (self.act_draw_member, "Member"),
+                      (self.act_add_area, "Area"),
                       (self.act_snap, "Snap"), self.snap_spin)),
             ("Select", ((self.act_select, "Select"),
                         (self.act_sel_window, "Window"),
@@ -2116,6 +2119,35 @@ class MainWindow(QMainWindow):
                          lambda: self._project.members.append(member),
                          ("member", member.id))
 
+    def add_area(self) -> None:
+        """Add a surface (shell / plate) area object (slab plan S2). Areas are a
+        3-D feature — shells carry 6 DOF/node — so this requires a 3-D model and
+        at least one thickness (shell section) + material."""
+        p = self._project
+        if p.ndm != 3:
+            QMessageBox.information(
+                self, "Add area",
+                "Areas (slabs / walls / shells) are a 3-D feature. Start a 3-D "
+                "model (File ▸ New 3-D) to model surfaces.")
+            return
+        if len(p.nodes) < 3 or not p.shell_sections or not p.materials:
+            QMessageBox.information(
+                self, "Add area",
+                "Need at least three nodes, one thickness (Home ▸ Thickness) "
+                "and one material first.")
+            return
+        seed = [key for kind, key in self._selected_refs() if kind == "node"]
+        area = AreaDialog.edit(self, p, seed_nodes=seed[:4])
+        if area is None:
+            return
+        if _find(p.areas, area.id) is not None:
+            QMessageBox.warning(self, "Duplicate",
+                                f"Area {area.id} already exists.")
+            return
+        self._apply_edit("Add area",
+                         lambda: self._project.areas.append(area),
+                         ("area", area.id))
+
     def add_load(self) -> None:
         if not self._project.nodes:
             QMessageBox.information(self, "Add load", "Add a node first.")
@@ -2555,6 +2587,8 @@ class MainWindow(QMainWindow):
             return any(n.id == key for n in p.nodes)
         if kind == "member":
             return any(m.id == key for m in p.members)
+        if kind == "area":
+            return any(a.id == key for a in getattr(p, "areas", []))
         if kind == "section":
             return any(s.id == key for s in p.sections)
         if kind == "load":

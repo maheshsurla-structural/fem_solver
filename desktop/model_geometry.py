@@ -55,6 +55,23 @@ def members_mesh(model):
     return pv.PolyData(pts, lines=np.asarray(cells, dtype=np.int64))
 
 
+def areas_mesh(model):
+    """PolyData of the filled faces of every surface (3+ node) element — the
+    slab / wall / shell fill (slab plan S6). Returns ``None`` when the model
+    has no surface elements. Triangles and quads are emitted as VTK polygon
+    cells; the boundary edges are still drawn by :func:`members_mesh`."""
+    _tags, pts, index = node_points(model)
+    faces = []
+    for e in model.elements.values():
+        nt = e.node_tags
+        if len(nt) in (3, 4) and all(t in index for t in nt):
+            faces.append(len(nt))
+            faces.extend(index[t] for t in nt)
+    if not faces:
+        return None
+    return pv.PolyData(pts, faces=np.asarray(faces, dtype=np.int64))
+
+
 def support_points(model):
     """Coordinates of nodes carrying any single-point constraint (a support)."""
     pts = [to_xyz(n.coords) for n in model.nodes.values()
