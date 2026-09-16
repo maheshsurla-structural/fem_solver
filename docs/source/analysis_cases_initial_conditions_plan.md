@@ -176,20 +176,30 @@ Correctness is provable in closed form; each becomes a `tests/` case:
   toggle added — eigen inherits stiffness+state only). Validation:
   `tests/test_pdelta_modal.py` (ω(P)=ω₀√(1−P/Pcr) within 5%, ω→0 at Pcr,
   tangent==elastic unstressed) + fiber-path softening / RS period-lengthening.
-- [ ] **E2e** **Buckling from state** (E2-eng-3 + prelude). Validation:
-  consistency vs reference-load buckling.
-- [ ] **E2-ui** adopt `InitialConditionCard` (built in E2c) across the remaining
-  migrated dialogs (or into E1). Referential-integrity guard: block deleting a
-  nonlinear case referenced by another case's `initial_condition` (extend the
-  existing `continue_from` guard in `analysis_cases_dialog._delete` +
-  `model_checks`). *(Not yet done — a state-seeded case's source can still be
-  deleted; the manager shows "· from (missing case)" and the run raises a
-  friendly error, but a pre-delete guard is the finish.)*
+- [x] **E2e** **Buckling from state** ✅ 2026-09-16. `LinearBucklingAnalysis`
+  gains `prestress="reference"|"current_state"`; "current_state" skips the
+  internal static solve + reset and buckles from the committed state (λ scales
+  that state's load). `run_buckling` seeds via the shared `_seed_state_model`
+  (renamed from `_seed_modal_model`, `require_mass=False` for buckling);
+  `BucklingType` config → 4-tuple; `BucklingDialog` carries the card. Validation:
+  `tests/test_buckling_from_state.py` — from-state == reference-load buckling
+  under the same load, and recovers the analytical Euler load.
+- [x] **E2-ui (card)** ✅ 2026-09-16. The `InitialConditionCard` is now in every
+  dialog where continuing from a nonlinear state is meaningful — Time History,
+  Modal, Response Spectrum, Buckling. The other types (moving load, temp
+  gradient, load rating, vehicle dynamics, influence surface, cable tuning) have
+  no "from state" concept, so nothing to adopt there.
+- [ ] **E2-ui (delete-guard)** — the last E2 item: block deleting a nonlinear
+  case referenced by another case's `initial_condition` (extend the existing
+  `continue_from` guard in `analysis_cases_dialog._delete` + `model_checks`).
+  Today the source can still be deleted; the manager shows "· from (missing
+  case)" and the run raises a friendly error, but a pre-delete guard is the
+  finish.
 
 **Recommended order:** E2a ✅ → E2b ✅ → **E2c (Time History)** ✅ → **E2d
-(P-Δ modal + RS)** ✅ done. **← we are here.** Next: **E2e** (buckling from state
-— reuse the same tangent/seed machinery), then **E2-ui** (adopt the card in the
-remaining dialogs + the referential-integrity delete-guard).
+(P-Δ modal + RS)** ✅ → **E2e (buckling from state)** ✅ + the IC card adopted
+across all four relevant dialogs ✅. **← we are here.** Only the **E2-ui
+delete-guard** remains — after that E2 is complete.
 
 ## 10. Risks & decisions
 

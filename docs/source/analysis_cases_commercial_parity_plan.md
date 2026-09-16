@@ -250,8 +250,10 @@ actually needs.
 * [x] **E2a–c** Initial-conditions / state chaining — data model, seeding helper,
   **Time History from state** ✅ 2026-09-16 (`ead1d26`/`422b230`/`7889505`) *(sub-plan)*
 * [x] **E2d** P-Δ modal + Response Spectrum from state ✅ 2026-09-16 (sub-plan)
-* [ ] **E2e / E2-ui** buckling from state · adopt `InitialConditionCard`
-  elsewhere + referential-integrity delete-guard *(sub-plan)*
+* [x] **E2e** buckling from state + `InitialConditionCard` in all four relevant
+  dialogs ✅ 2026-09-16 (sub-plan)
+* [ ] **E2-ui delete-guard** — block deleting a nonlinear case another case's
+  `initial_condition` points to (the last E2 item) *(sub-plan)*
 * [ ] **E5b/c/d** Run All (topo) · persisted status/last-run · results association
 * [ ] **E3b** Loads-Applied spec · **E3c** result combinations
 * [ ] **E6c** Design… classification · **E7** integrity/validation/versioning
