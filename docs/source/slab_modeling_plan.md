@@ -229,7 +229,7 @@ layered/RC/CLT sections in S4, S7 section cuts, S10 robustness.
 | S1 | build_model emits shells | GUI | ✅ (10 tests) |
 | S2 | Draw/edit areas (rect → poly) | GUI | ☐ |
 | S3 | Auto-mesh + node merge | GUI | ☐ |
-| S4 | Shell-section (thickness) manager | GUI | ☐ |
+| S4 | Shell-section (thickness) manager | GUI | ✅ (6 tests) |
 | S5a | Shell `f_eq` pressure/body loads | **Engine** | ☐ |
 | S5b | `AreaLoad` + dialog + apply_loads | GUI | ☐ |
 | S6 | Filled faces / local axes / selection | GUI | ☐ |

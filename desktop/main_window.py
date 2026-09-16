@@ -411,6 +411,8 @@ class MainWindow(QMainWindow):
                                         self.add_line_load, "load")
         self.act_add_section = _action(self, "Add &section…", None,
                                        self.add_section, "section")
+        self.act_shell_sections = _action(self, "&Thickness…", None,
+                                          self.manage_shell_sections, "slab")
         self.act_materials = _action(self, "&Materials…", None,
                                      self.manage_materials, "materials")
         self.act_hinges = _action(self, "&Hinges…", None, self.manage_hinges,
@@ -557,6 +559,7 @@ class MainWindow(QMainWindow):
             ("Model", ((self.act_add_node, "Node"),
                        (self.act_add_member, "Member"),
                        (self.act_add_section, "Section"),
+                       (self.act_shell_sections, "Thickness"),
                        (self.act_materials, "Materials"))),
             ("Edit", ((self.act_undo, "Undo"), (self.act_redo, "Redo"),
                       (self.act_delete, "Delete"))),
@@ -2157,6 +2160,19 @@ class MainWindow(QMainWindow):
         self._apply_edit(
             "Edit materials",
             lambda: setattr(self._project, "materials", result))
+
+    def manage_shell_sections(self) -> None:
+        """Thickness / shell-section manager (slab plan S4): define the
+        through-thickness properties area (slab / wall / shell) objects use."""
+        if self._project is None:
+            return
+        from shell_section_editor import ShellSectionManagerDialog
+        result = ShellSectionManagerDialog.manage(self, self._project)
+        if result is None:
+            return
+        self._apply_edit(
+            "Edit thickness sections",
+            lambda: setattr(self._project, "shell_sections", result))
 
     def manage_hinges(self) -> None:
         result = HingeManagerDialog.manage(self, self._project)
