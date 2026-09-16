@@ -241,7 +241,8 @@ actually needs.
 
 ## 6. Tracker
 
-* [ ] **E5a** Run dialog includes saved `analysis_cases` *(quick win)*
+* [x] **E5a** Run-Analysis dialog lists every saved `analysis_case` ✅ 2026-09-16
+  (was stale — missed all 10 saved types; standalone TH launcher removed)
 * [ ] **E6a** Set Def Name · **E6b** Notes editor · **E6d** columns/context-menu/filter
 * [ ] **E4** Load Case Tree (DAG + cycle/stale)
 * [ ] **E3a** `LoadCase` → "Load Pattern" relabel
