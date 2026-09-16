@@ -149,7 +149,8 @@ class AnalysisCasesDialog(QDialog):
                 "kind": "nonlinear", "case_index": i, "case_id": c.id,
                 "name": c.name, "type": "Nonlinear Static",
                 "detail": f"{proto} · node {c.control_node} "
-                          f"{_DOF.get(c.control_dof, '?')}",
+                          f"{_DOF.get(c.control_dof, '?')}"
+                          + self._ic_suffix(c),
                 "notes": getattr(c, "notes", ""),
                 "icon": "run", "runnable": True})
         # saved multi-instance cases for migrated built-in types (Modal,
@@ -161,7 +162,7 @@ class AnalysisCasesDialog(QDialog):
                 "type_id": c.type, "name": c.name,
                 "type": (ct.type_label if ct else c.type),
                 "detail": (ct.detail(self._project, c.params) if ct
-                           else "saved case"),
+                           else "saved case") + self._ic_suffix(c),
                 "notes": getattr(c, "notes", ""),
                 "icon": (ct.icon if ct else "run"), "runnable": True})
         rows.append({"kind": "stages", "name": "Construction Stages",
@@ -193,6 +194,16 @@ class AnalysisCasesDialog(QDialog):
             self.table.setItem(r, 1, type_it)
             self.table.setItem(r, 2, det_it)
         self._sync_buttons()
+
+    def _ic_suffix(self, case) -> str:
+        """`" · from ‹source›"` when ``case`` starts from another case's committed
+        state (E2), else empty. The source is always a nonlinear case; a dangling
+        reference is flagged so a broken chain is visible in the list."""
+        ic = getattr(case, "initial_condition", ("zero",))
+        if not (ic and ic[0] == "state"):
+            return ""
+        src = next((c for c in self._cases if c.id == ic[1]), None)
+        return f" · from {src.name}" if src else " · from (missing case)"
 
     def _selected(self) -> dict | None:
         r = self.table.currentRow()

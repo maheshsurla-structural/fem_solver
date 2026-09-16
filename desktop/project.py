@@ -262,6 +262,15 @@ class NonlinearCase:
     tol: float = 1.0e-6
     max_iter: int = 60
     notes: str = ""                        # free-text case notes (GUI only)
+    # Initial condition (E2): ("zero",) = unstressed state, or
+    # ("state", nl_case_id) = start from the committed state + stiffness at the
+    # end of that Nonlinear Static case. Distinct from ``continue_from``, which
+    # *replays* an ancestor's push to trace a continuous pushover curve; this is
+    # the general cross-type state seed (see the initial-conditions sub-plan).
+    initial_condition: tuple = ("zero",)
+
+    def __post_init__(self):
+        self.initial_condition = _coerce_ic(self.initial_condition)
 
 
 @dataclass
@@ -283,6 +292,12 @@ class AnalysisCase:
     type: str                              # "modal" | "buckling" | ...
     params: dict = field(default_factory=dict)
     notes: str = ""
+    # Initial condition (E2) — see :class:`NonlinearCase`. ("zero",) or
+    # ("state", nl_case_id); the source is always a Nonlinear Static case.
+    initial_condition: tuple = ("zero",)
+
+    def __post_init__(self):
+        self.initial_condition = _coerce_ic(self.initial_condition)
 
 
 @dataclass
@@ -542,10 +557,10 @@ class Project:
                     for s in d.get("stages", [])],
             nonlinear_cases=[NonlinearCase(**c)
                              for c in d.get("nonlinear_cases", [])],
-            analysis_cases=[AnalysisCase(id=c["id"], name=c.get("name", ""),
-                                         type=c["type"],
-                                         params=dict(c.get("params", {})),
-                                         notes=c.get("notes", ""))
+            analysis_cases=[AnalysisCase(
+                id=c["id"], name=c.get("name", ""), type=c["type"],
+                params=dict(c.get("params", {})), notes=c.get("notes", ""),
+                initial_condition=_coerce_ic(c.get("initial_condition")))
                             for c in d.get("analysis_cases", [])],
             th_functions=[TimeHistoryFunction(
                 id=f["id"], name=f.get("name", ""), dt=float(f.get("dt", 0.01)),
@@ -916,6 +931,19 @@ def _load_runs(raw):
         return []
     from nl_runs import RunRecord
     return [RunRecord.from_dict(r) for r in raw]
+
+
+def _coerce_ic(raw) -> tuple:
+    """Normalize a stored initial condition (E2) to a canonical tuple. JSON
+    round-trips a tuple to a list, and old projects have no field at all, so
+    coerce here: ``("state", <int id>)`` when it names a source nonlinear case,
+    else the default ``("zero",)`` (unstressed)."""
+    try:
+        if raw and raw[0] == "state" and raw[1] is not None:
+            return ("state", int(raw[1]))
+    except (TypeError, IndexError, ValueError):
+        pass
+    return ("zero",)
 
 
 def _coerce_node(n: dict) -> dict:

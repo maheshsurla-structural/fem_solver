@@ -373,6 +373,7 @@ def run_time_history(project, accel, dt, *, control_node: int,
                      zeta: float = 0.05, density: float = 2400.0,
                      num_steps: int | None = None, tol: float = 1.0,
                      max_iter: int = 30, materials=None,
+                     initial_case=None, hold_source_loads: bool = False,
                      on_step=None, should_cancel=None) -> dict:
     """Nonlinear **dynamic time-history** of the fiber model under rigid-base
     ground acceleration (plan §16 C3).
@@ -388,6 +389,16 @@ def run_time_history(project, accel, dt, *, control_node: int,
     "protocol": "time_history"}`` — the monitored DOF's response history (the
     standard seismic demand). ``control_dof`` defaults to 1 (Uy); ``direction``
     sets the excitation axis.
+
+    **Initial conditions (E2):** when ``initial_case`` names a Nonlinear Static
+    case, the run starts from *its* committed deformed + materially-committed
+    state (via :func:`seed_to_committed_state`) instead of the unstressed state —
+    the base excitation then perturbs the preloaded structure. With
+    ``hold_source_loads`` the source case's held force is carried through the
+    dynamic run (added as a constant term to the excitation) so the preload stays
+    in equilibrium; without it only the stiffness + state are inherited (SAP
+    semantics). The held vector and the excitation share the model's stable DOF
+    numbering, so they superpose in equation space.
     """
     import numpy as np
     from femsolver import EigenAnalysis, NonlinearTransientAnalysis, RayleighDamping
@@ -398,7 +409,20 @@ def run_time_history(project, accel, dt, *, control_node: int,
         raise ValueError("accel must have at least two samples")
     n = int(num_steps) if num_steps is not None else accel.size - 1
 
-    m = build_nonlinear_model(project, materials=materials, density=density)
+    F_hold = None
+    if initial_case is not None:
+        src = (initial_case if hasattr(initial_case, "control_node")
+               else project.nonlinear_case(initial_case))
+        if src is None:
+            raise ValueError(
+                f"the initial-condition source case {initial_case!r} was "
+                "deleted — pick another in the case's Modify dialog")
+        m, F_const = seed_to_committed_state(project, src, materials=materials,
+                                             density=density)
+        if hold_source_loads:
+            F_hold = F_const
+    else:
+        m = build_nonlinear_model(project, materials=materials, density=density)
     m.number_dofs()
     if m.neq == 0:
         raise RuntimeError("model is fully constrained — no dynamic DOFs")
@@ -431,6 +455,13 @@ def run_time_history(project, accel, dt, *, control_node: int,
         return float(accel[i] * (1.0 - frac) + accel[i + 1] * frac)
 
     load_fn = ground_motion_force(m, direction=direction, accel_function=accel_fn)
+
+    if F_hold is not None:                     # hold the source loads (E2): the
+        base_fn = load_fn                      # excitation + a constant preload
+        F_hold = np.asarray(F_hold, dtype=float).ravel()
+
+        def load_fn(t, _base=base_fn, _hold=F_hold):
+            return np.asarray(_base(t), dtype=float).ravel() + _hold
 
     def _step_cb(info):
         if on_step is not None:
@@ -499,6 +530,50 @@ def case_total_steps(project, case) -> int:
     return sum(_case_du(c)[1] for c in _case_chain(project, case))
 
 
+def _push_factory(ndf, c, *, step_cb=None, on_active=None):
+    """A displacement-controlled push stage for nonlinear case ``c`` (its own
+    monotonic/cyclic protocol). ``on_active(True)`` marks the stage as recorded
+    (progress + capture); ``step_cb`` is the per-step hook. Shared by
+    :func:`run_case` and :func:`seed_to_committed_state` so a case seeds to
+    exactly the state its own pushover reaches."""
+    from femsolver import NonlinearStaticAnalysis
+    from femsolver.analysis.static_integrator import DisplacementControl
+    du, nsteps = _case_du(c)
+    ref = [0.0] * ndf
+    ref[c.control_dof] = -1.0
+
+    def factory(mm):
+        if on_active is not None:
+            on_active(True)
+        mm.add_nodal_load(c.control_node, ref)
+        return NonlinearStaticAnalysis(
+            mm, num_steps=nsteps,
+            integrator=DisplacementControl(c.control_node, c.control_dof, du),
+            track=(c.control_node, c.control_dof),
+            tol=float(c.tol), max_iter=int(c.max_iter),
+            step_callback=step_cb, substep=True)   # C4 (monotonic only; a
+        # cyclic schedule advertises supports_substep=False -> no-op)
+    return factory
+
+
+def _axial_factory(ndf, c, *, step_cb=None, on_active=None):
+    """A load-controlled axial-preload stage, held constant by
+    :class:`StagedAnalysis` while later stages run. ``on_active(False)`` keeps
+    the preload out of the recorded pushover."""
+    from femsolver import NonlinearStaticAnalysis
+    aref = [0.0] * ndf
+    aref[c.axial_dof] = -abs(float(c.axial))
+
+    def factory(mm):
+        if on_active is not None:
+            on_active(False)                  # don't record the preload stage
+        mm.add_nodal_load(c.axial_node, aref)
+        return NonlinearStaticAnalysis(
+            mm, num_steps=8, dlambda=0.125, integrator="load_control",
+            tol=float(c.tol), max_iter=int(c.max_iter), step_callback=step_cb)
+    return factory
+
+
 def run_case(project, case, *, on_step=None, should_cancel=None,
              capture_fibers: bool = False, capture_shape: bool = False,
              materials=None) -> dict:
@@ -508,8 +583,7 @@ def run_case(project, case, *, on_step=None, should_cancel=None,
     Returns ``{"disp", "shear", "protocol"}`` (signed control-DOF displacement
     and total base shear, so cyclic runs trace the hysteresis) plus the GUI-6
     capture frames. Progress/cancel hooks match :func:`run_pushover`."""
-    from femsolver import NonlinearStaticAnalysis, StagedAnalysis
-    from femsolver.analysis.static_integrator import DisplacementControl
+    from femsolver import StagedAnalysis
 
     m = build_nonlinear_model(project, materials=materials)
     chain = _case_chain(project, case)
@@ -534,49 +608,25 @@ def run_case(project, case, *, on_step=None, should_cancel=None,
             return False
         return True
 
-    def _push_factory(c):
-        du, nsteps = _case_du(c)
-        ref = [0.0] * project.ndf
-        ref[c.control_dof] = -1.0
+    def _on_active(v):                        # toggle stage recording
+        state["active"] = v
 
-        def factory(mm):
-            state["active"] = True
-            mm.add_nodal_load(c.control_node, ref)
-            return NonlinearStaticAnalysis(
-                mm, num_steps=nsteps,
-                integrator=DisplacementControl(c.control_node, c.control_dof,
-                                               du),
-                track=(c.control_node, c.control_dof),
-                tol=float(c.tol), max_iter=int(c.max_iter),
-                step_callback=_step_cb, substep=True)   # C4 (monotonic only;
-            # a cyclic schedule advertises supports_substep=False -> no-op)
-        return factory
-
-    def _axial_factory(c):
-        aref = [0.0] * project.ndf
-        aref[c.axial_dof] = -abs(float(c.axial))
-
-        def factory(mm):
-            state["active"] = False           # don't record the preload stage
-            mm.add_nodal_load(c.axial_node, aref)
-            return NonlinearStaticAnalysis(
-                mm, num_steps=8, dlambda=0.125, integrator="load_control",
-                tol=float(c.tol), max_iter=int(c.max_iter),
-                step_callback=_step_cb)
-        return factory
-
+    ndf = project.ndf
     disp: list = []
     shear: list = []
     if len(chain) == 1 and not need_axial:
-        out = _push_factory(case)(m).run()
+        out = _push_factory(ndf, case, step_cb=_step_cb,
+                            on_active=_on_active)(m).run()
         disp = [float(x) for x in out["tracked"]]
         shear = [-float(x) for x in out["lambdas"]]
     else:
         sa = StagedAnalysis(m)
         if need_axial:
-            sa.add_stage("axial", _axial_factory(root))
+            sa.add_stage("axial", _axial_factory(ndf, root, step_cb=_step_cb,
+                                                 on_active=_on_active))
         for i, c in enumerate(chain):
-            sa.add_stage(f"push{i}", _push_factory(c))
+            sa.add_stage(f"push{i}", _push_factory(ndf, c, step_cb=_step_cb,
+                                                   on_active=_on_active))
         out = sa.run()
         offset = 0.0                          # cumulative held lateral factor
         for i in range(len(chain)):
@@ -591,3 +641,52 @@ def run_case(project, case, *, on_step=None, should_cancel=None,
     cap.result_into(result)
     _add_accept_milestones(result)
     return result
+
+
+def seed_to_committed_state(project, case, *, materials=None, density=0.0):
+    """Run a Nonlinear Static ``case`` (its axial preload + ``continue_from``
+    push chain) to its committed **end state**, without recording pushover curves
+    or capture frames, and return ``(model, F_const)`` for a downstream analysis
+    to build on (E2 — initial conditions).
+
+    ``density`` is forwarded to :func:`build_nonlinear_model` so a downstream
+    *dynamic* analysis (time history) receives a mass-bearing model; it does not
+    affect the static committed state (the preload applies no mass-based load).
+
+    * ``model`` is left at the committed deformed + materially-committed state
+      (element / material history intact), ready to hand to a modal / response-
+      spectrum / buckling / time-history solve seeded from this state.
+    * ``F_const`` is the eqn-space constant-force vector summing every stage's
+      converged applied load — the "held source loads" a downstream case carries
+      when the user opts to hold them. SAP carries stiffness + state only, so
+      holding these loads is opt-in (E2 checkbox); the model's own load pattern
+      is cleared, so the held load lives *only* in the returned vector.
+
+    Physics is identical to :func:`run_case`'s state production (same stage
+    factories), so a case seeds to exactly the state its own pushover reaches.
+    ``case`` is a :class:`project.NonlinearCase`; only nonlinear cases are valid
+    initial-condition sources (SAP parity)."""
+    from femsolver import StagedAnalysis
+    from femsolver.analysis.assembler import assemble_force
+
+    m = build_nonlinear_model(project, materials=materials, density=density)
+    chain = _case_chain(project, case)
+    root = chain[0]
+    need_axial = bool(root.axial and root.axial_node)
+    ndf = project.ndf
+
+    if len(chain) == 1 and not need_axial:
+        analysis = _push_factory(ndf, case)(m)
+        analysis.run()
+        f_const = float(analysis.integrator.lambd) * assemble_force(m)
+        for node in m.nodes.values():         # held load lives in f_const only
+            node._load[:] = 0.0
+        return m, f_const
+
+    sa = StagedAnalysis(m)
+    if need_axial:
+        sa.add_stage("axial", _axial_factory(ndf, root))
+    for i, c in enumerate(chain):
+        sa.add_stage(f"push{i}", _push_factory(ndf, c))
+    sa.run()
+    return m, sa.const_force_final
