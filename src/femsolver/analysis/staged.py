@@ -58,6 +58,11 @@ class StagedAnalysis:
     def __init__(self, model):
         self.model = model
         self._stages: list[tuple[str, object]] = []
+        # After run(): the eqn-space constant-force vector held into a
+        # (hypothetical) further stage — the sum of every stage's converged
+        # applied load. Exposed so a downstream analysis seeded from this
+        # committed state can optionally hold these loads (E2). None until run.
+        self.const_force_final = None
 
     def add_stage(self, name: str, analysis_factory) -> "StagedAnalysis":
         """Add a stage. ``analysis_factory(model)`` must set the stage's
@@ -90,4 +95,5 @@ class StagedAnalysis:
             # clear the load pattern so the next stage defines its own
             for node in self.model.nodes.values():
                 node._load[:] = 0.0
+        self.const_force_final = F_const
         return results
