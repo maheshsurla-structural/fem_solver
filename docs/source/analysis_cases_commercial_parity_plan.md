@@ -3,12 +3,11 @@
 **Created:** 2026-09-16
 **Status:** IN PROGRESS — successor to
 [`analysis_cases_manager_plan.md`](analysis_cases_manager_plan.md) (complete: 10
-saved, named, multi-instance types). **Shipped to `main` (`7889505`) 2026-09-16:**
-the first slices of **E2** — E2a/E2b (initial-condition data model + the
-`seed_to_committed_state` engine helper) and **E2c** (Time History from a
-nonlinear case's committed state); see the
-[E2 sub-plan](analysis_cases_initial_conditions_plan.md). **Everything else in
-this roadmap is still pending** — see §4 sequencing and the §6 tracker.
+saved, named, multi-instance types). **✅ E2 (initial conditions / state chaining)
+COMPLETE + shipped to `main` 2026-09-16** — Time History, P-Δ Modal, Response
+Spectrum and Buckling can all start from a nonlinear case's committed state; see
+the [E2 sub-plan](analysis_cases_initial_conditions_plan.md). **The rest of the
+roadmap (E1, E3–E8) is still pending** — see §4 sequencing and the §6 tracker.
 **Reference:** SAP2000 / CSiBridge *Define ▸ Load Cases* + *Load Case Data*
 dialogs (the user's benchmark).
 **Scope:** close the gap from "a working saved-case manager" to a
@@ -252,8 +251,8 @@ actually needs.
 * [x] **E2d** P-Δ modal + Response Spectrum from state ✅ 2026-09-16 (sub-plan)
 * [x] **E2e** buckling from state + `InitialConditionCard` in all four relevant
   dialogs ✅ 2026-09-16 (sub-plan)
-* [ ] **E2-ui delete-guard** — block deleting a nonlinear case another case's
-  `initial_condition` points to (the last E2 item) *(sub-plan)*
+* [x] **E2-ui delete-guard** ✅ 2026-09-16 — deletion + `model_checks` referential
+  integrity for `initial_condition` *(sub-plan)*. **E2 COMPLETE.**
 * [ ] **E5b/c/d** Run All (topo) · persisted status/last-run · results association
 * [ ] **E3b** Loads-Applied spec · **E3c** result combinations
 * [ ] **E6c** Design… classification · **E7** integrity/validation/versioning

@@ -2,9 +2,11 @@
 
 **Created:** 2026-09-16
 **Parent:** [`analysis_cases_commercial_parity_plan.md`](analysis_cases_commercial_parity_plan.md) ▸ **E2** (the headline feature)
-**Status:** **E2a–E2c DONE + merged to `main` (`7889505`) 2026-09-16** — a saved
-Time-History case can start from a nonlinear case's committed state.
-**Pending: E2d, E2e, E2-ui** (see §9).
+**Status:** ✅ **COMPLETE 2026-09-16** — Time History, P-Δ Modal, Response
+Spectrum and Buckling can all start from a nonlinear case's committed state
+(E2a–E2e), the Stiffness-to-use card is in every relevant dialog, and dangling
+references are prevented + detected (E2-ui). E2a–E2e merged + pushed to
+`origin/main`; the E2-ui delete-guard is the final commit.
 **Reference:** SAP2000 *Load Case Data* ▸ **Stiffness to Use** — *"Zero Initial
 Conditions – Unstressed State"* vs *"Stiffness at End of Nonlinear Case,"* with
 the note *"Loads from the Nonlinear Case are NOT included in the current case."*
@@ -189,17 +191,14 @@ Correctness is provable in closed form; each becomes a `tests/` case:
   Modal, Response Spectrum, Buckling. The other types (moving load, temp
   gradient, load rating, vehicle dynamics, influence surface, cable tuning) have
   no "from state" concept, so nothing to adopt there.
-- [ ] **E2-ui (delete-guard)** — the last E2 item: block deleting a nonlinear
-  case referenced by another case's `initial_condition` (extend the existing
-  `continue_from` guard in `analysis_cases_dialog._delete` + `model_checks`).
-  Today the source can still be deleted; the manager shows "· from (missing
-  case)" and the run raises a friendly error, but a pre-delete guard is the
-  finish.
+- [x] **E2-ui (delete-guard)** ✅ 2026-09-16. `analysis_cases_dialog._delete`
+  refuses to delete a nonlinear case referenced by another case's `continue_from`
+  or `initial_condition` (names the dependents); `model_checks` flags a dangling
+  `initial_condition` on nonlinear + analysis cases.
 
-**Recommended order:** E2a ✅ → E2b ✅ → **E2c (Time History)** ✅ → **E2d
-(P-Δ modal + RS)** ✅ → **E2e (buckling from state)** ✅ + the IC card adopted
-across all four relevant dialogs ✅. **← we are here.** Only the **E2-ui
-delete-guard** remains — after that E2 is complete.
+**Sequence (all done):** E2a ✅ → E2b ✅ → E2c (Time History) ✅ → E2d
+(P-Δ modal + RS) ✅ → E2e (buckling from state) ✅ + IC card in all four relevant
+dialogs ✅ → E2-ui delete-guard ✅. **E2 is complete.**
 
 ## 10. Risks & decisions
 
