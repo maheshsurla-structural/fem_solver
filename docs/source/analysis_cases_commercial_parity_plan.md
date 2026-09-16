@@ -244,7 +244,10 @@ actually needs.
 * [x] **E5a** Run-Analysis dialog lists every saved `analysis_case` ✅ 2026-09-16
   (was stale — missed all 10 saved types; standalone TH launcher removed)
 * [ ] **E6a** Set Def Name · **E6b** Notes editor · **E6d** columns/context-menu/filter
-* [ ] **E4** Load Case Tree (DAG + cycle/stale)
+* [x] **E4** Load Case Tree ✅ 2026-09-16 — `case_graph` dependency forest +
+  `CaseTreeDialog` + "Tree…" button; nests dependents under their source, flags
+  dangling refs + cycles. (The "stale" flag — source changed since last run —
+  waits on E5c run-status tracking.)
 * [ ] **E3a** `LoadCase` → "Load Pattern" relabel
 * [ ] **E1** `CaseEditor` unified shell (strangler over the per-type bodies)
 * [x] **E2a–c** Initial-conditions / state chaining — data model, seeding helper,
