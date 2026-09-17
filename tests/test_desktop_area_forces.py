@@ -123,6 +123,65 @@ def test_wood_armer_scalar_adds_twist():
     assert mg._resultant_scalar(res, "WAx_top") == pytest.approx(0.0)   # no hogging
 
 
+def test_gp2node_extrapolation_partition_of_unity():
+    # each corner's extrapolation weights must sum to 1 (reproduces a constant)
+    assert np.allclose(mg._GP2NODE_Q4.sum(axis=1), 1.0)
+
+
+def test_nodal_resultants_extrapolated_shape():
+    from femsolver import ShellMITC4
+    m = _slab(mesh=(3, 2)).build_model(with_loads=True)
+    _fix_where(m, lambda x, y: x in (0.0, 5.0), [1, 1, 1, 0, 0, 0])
+    LinearStaticAnalysis(m).run()
+    quad = next(e for e in m.elements.values() if isinstance(e, ShellMITC4))
+    nodal = mg._element_nodal_resultants(quad)
+    assert nodal.shape == (4, 8)                 # a value per corner, extrapolated
+
+
+def _clamped_square(n, L=6.0, t=0.25, q=12_000.0):
+    p = Project(ndm=3, ndf=6)
+    p.materials.append(Material(id=1, name="C", E=30e9, nu=0.2))
+    p.shell_sections.append(ShellSection(id=1, name="T", thickness=t))
+    p.nodes.extend([
+        Node(id=1, x=0, y=0, z=0), Node(id=2, x=L, y=0, z=0),
+        Node(id=3, x=L, y=L, z=0), Node(id=4, x=0, y=L, z=0),
+    ])
+    p.areas.append(Area(id=1, nodes=[1, 2, 3, 4], shell_section=1, material=1,
+                        mesh=(n, n)))
+    p.area_loads.append(AreaLoad(area=1, w=q, kind="gravity", case=1))
+    m = p.build_model(with_loads=True)
+    _fix_where(m, lambda x, y: x in (0.0, L) or y in (0.0, L),
+               [1, 1, 1, 1, 1, 1])
+    LinearStaticAnalysis(m).run()
+    return m
+
+
+def test_extrapolation_sharpens_coarse_edge_peak():
+    # on a coarse clamped plate, GP→node extrapolation recovers a sharper
+    # support-moment peak than scattering the element mean.
+    m = _clamped_square(4)
+    extrap = float(np.max(np.abs(mg.areas_result_mesh(m, "M11").point_data["value"])))
+    # element-mean peak (the pre-refinement recovery) for comparison
+    tags, _p, idx = mg.node_points(m)
+    acc = np.zeros(len(tags))
+    cnt = np.zeros(len(tags))
+    for e in m.elements.values():
+        nt = getattr(e, "node_tags", ())
+        if len(nt) not in (3, 4):
+            continue
+        r = mg._element_resultant(e)
+        if r is None:
+            continue
+        for t in nt:
+            j = idx.get(t)
+            if j is not None:
+                acc[j] += r[3]
+                cnt[j] += 1
+    mean = float(np.max(np.abs(
+        np.divide(acc, cnt, out=np.zeros_like(acc), where=cnt > 0))))
+    assert extrap > 1.15 * mean                  # meaningfully sharper
+
+
 def test_wood_armer_bottom_contour_matches_m11_without_twist():
     # a one-way slab has ~zero twist at midspan, so WAx_bot ≈ peak M11
     L, B, t, w = 5.0, 1.0, 0.20, 10_000.0

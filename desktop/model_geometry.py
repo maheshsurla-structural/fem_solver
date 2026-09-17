@@ -143,6 +143,42 @@ def _element_resultant(el):
     return np.asarray(r, dtype=float) if r is not None else None
 
 
+# Gauss-point → corner-node extrapolation for a 2×2 quad (slab plan S7 refine).
+# GP order from gauss_legendre_2d_quad(2): (-g,-g),(-g,+g),(+g,-g),(+g,+g);
+# node order (MITC4 _N): (-1,-1),(+1,-1),(+1,+1),(-1,+1). Bilinear extrapolation
+# with a=1+√3/2 (GP at the node's corner), c=1-√3/2 (opposite), b=-1/2 (adjacent).
+_A_EXT = 1.0 + np.sqrt(3.0) / 2.0
+_C_EXT = 1.0 - np.sqrt(3.0) / 2.0
+_GP2NODE_Q4 = np.array([
+    [_A_EXT, -0.5, -0.5, _C_EXT],
+    [-0.5, _C_EXT, _A_EXT, -0.5],
+    [_C_EXT, -0.5, -0.5, _A_EXT],
+    [-0.5, _A_EXT, _C_EXT, -0.5],
+])
+
+
+def _element_nodal_resultants(el):
+    """Stress resultants at the element's own nodes, shape ``(n_nodes, 8)``.
+
+    A 4-node/4-GP quad (MITC4) extrapolates its 2×2 Gauss values to the corners
+    — sharper support-moment peaks than scattering a single element mean. Other
+    elements (Tri3 single value, DKMQ4 3×3 GPs) repeat their mean/value to each
+    node. ``None`` if the element has no recovered resultants."""
+    gp = getattr(el, "gp_resultants", None)
+    nt = getattr(el, "node_tags", ())
+    if gp:
+        arr = np.asarray(gp, dtype=float)
+        if arr.shape[0] == 4 and len(nt) == 4:
+            return _GP2NODE_Q4 @ arr             # (4, 8) extrapolated to corners
+        n = len(nt) or arr.shape[0]
+        return np.tile(arr.mean(axis=0), (n, 1))
+    r = getattr(el, "resultants", None)
+    if r is not None:
+        n = len(nt) or 1
+        return np.tile(np.asarray(r, dtype=float), (n, 1))
+    return None
+
+
 def _resultant_scalar(res, quantity: str):
     if res is None:
         return None
@@ -162,10 +198,11 @@ def _resultant_scalar(res, quantity: str):
 
 def areas_result_mesh(model, quantity: str = "M11"):
     """Filled-face PolyData of the surface elements carrying a **nodal-averaged**
-    stress-resultant scalar in ``point_data['value']`` (slab plan S7): each area
-    element's representative resultant is scattered to its nodes and averaged, so
-    the field is smooth across the mesh. ``None`` when there are no surfaces.
-    Values are in the elements' local axes (fine for a flat slab)."""
+    stress-resultant scalar in ``point_data['value']`` (slab plan S7). Each
+    element's Gauss-point resultants are extrapolated to its own nodes
+    (:func:`_element_nodal_resultants`) then averaged across the elements meeting
+    at each node, so peaks (e.g. clamped-edge moments) stay sharp. ``None`` when
+    there are no surfaces. Values are in the elements' local axes."""
     poly = areas_mesh(model)
     if poly is None:
         return None
@@ -176,10 +213,13 @@ def areas_result_mesh(model, quantity: str = "M11"):
         nt = getattr(el, "node_tags", ())
         if len(nt) not in (3, 4):
             continue
-        s = _resultant_scalar(_element_resultant(el), quantity)
-        if s is None:
+        nodal = _element_nodal_resultants(el)
+        if nodal is None:
             continue
-        for t in nt:
+        for k, t in enumerate(nt):
+            s = _resultant_scalar(nodal[k], quantity)
+            if s is None:
+                continue
             r = index.get(t)
             if r is not None:
                 acc[r] += s
@@ -222,27 +262,25 @@ def areas_reinforcement_mesh(model, quantity: str = "As_x_bot", *,
         nt = getattr(e, "node_tags", ())
         if len(nt) not in (3, 4):
             continue
-        res = _element_resultant(e)
-        if res is None:
+        nodal = _element_nodal_resultants(e)     # GP→node extrapolated (S7)
+        if nodal is None:
             continue
-        # shell convention: negative M = sagging; negate for Wood-Armer
-        wa = wood_armer_moments(-res[3], -res[4], -res[5])
-        m_star = abs(getattr(wa, comp))
         d = float(getattr(e, "thickness", 0.0)) - cover
         if d <= 0.0:
             continue
-        try:
-            As = required_reinforcement(m_star, d, fy, fc) * 1.0e6  # mm²/m
-            for t in nt:
-                r = index.get(t)
-                if r is not None:
-                    acc[r] += As
-                    cnt[r] += 1.0
-        except ValueError:                       # section inadequate here
-            for t in nt:
-                r = index.get(t)
-                if r is not None:
-                    bad[r] = True
+        for k, t in enumerate(nt):
+            r = index.get(t)
+            if r is None:
+                continue
+            res = nodal[k]
+            # shell convention: negative M = sagging; negate for Wood-Armer
+            wa = wood_armer_moments(-res[3], -res[4], -res[5])
+            m_star = abs(getattr(wa, comp))
+            try:
+                acc[r] += required_reinforcement(m_star, d, fy, fc) * 1.0e6
+                cnt[r] += 1.0
+            except ValueError:                   # section inadequate at this node
+                bad[r] = True
     vals = np.divide(acc, cnt, out=np.zeros_like(acc), where=cnt > 0)
     vals[bad & (cnt == 0)] = np.nan              # flag inadequate-only nodes
     poly.point_data["value"] = vals
