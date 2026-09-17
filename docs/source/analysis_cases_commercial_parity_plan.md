@@ -251,11 +251,11 @@ actually needs.
   dangling refs + cycles, and (with E5c) **stale** cases whose source ran later.
 * [ ] **E3a** `LoadCase` → "Load Pattern" relabel
 * [~] **E1** `CaseEditorDialog` unified Load-Case-Data shell (Type ▾ swaps the
-  body) — **slices 1–2 ✅ 2026-09-16**: shell + `case_bodies` for the full eigen
-  family (ModalBody, BucklingBody, ResponseSpectrumBody); those three adapters
-  route through it. Remaining: migrate the other 7 types onto bodies (moving
-  load, temp gradient, load rating, vehicle dynamics, influence surface, cable
-  tuning, time history), then retire the standalone dialogs.
+  body) — **slices 1–3 ✅ 2026-09-16**: shell + `case_bodies` for **5 of 10**
+  types (Modal, Buckling, Response Spectrum, Temperature Gradient, Cable Tuning);
+  a `SUPPORTS_IC` flag hides the Stiffness-to-use card for static/influence
+  types. Remaining: migrate moving load, load rating, influence surface, vehicle
+  dynamics, time history, then retire the standalone dialogs.
 * [x] **E2a–c** Initial-conditions / state chaining — data model, seeding helper,
   **Time History from state** ✅ 2026-09-16 (`ead1d26`/`422b230`/`7889505`) *(sub-plan)*
 * [x] **E2d** P-Δ modal + Response Spectrum from state ✅ 2026-09-16 (sub-plan)
