@@ -251,12 +251,12 @@ DXF/table import-export of areas).
 |---|---|---|---|
 | S0 | `Area` + `ShellSection` data model | GUI | ✅ 9af7a54 (8 tests) |
 | S1 | build_model emits shells | GUI | ✅ (10 tests) |
-| S2 | Draw/edit areas (`AreaDialog`, from-selection) | GUI | ✅ (7 tests); click-to-draw mode deferred |
+| S2 | Draw/edit areas (`AreaDialog` + click-to-draw mode) | GUI | ✅ (7+5 tests; viewport draw_area quad/tri); polygon areas later |
 | S3 | Auto-mesh + coincident-node merge | GUI | ✅ (7 tests, converges to analytical) |
 | S4 | Shell-section (thickness) manager | GUI | ✅ (6 tests) |
 | S5a | Shell `f_eq` pressure/body loads | **Engine** | ✅ (6 tests) |
 | S5b | `AreaLoad` + dialog + apply_loads | GUI | ✅ (7 tests) |
-| S6 | Filled faces render (`areas_mesh`) | GUI | ✅ lite (local axes / selection later) |
+| S6 | Filled faces + local-axis triads | GUI | ✅ (`areas_mesh` + `area_local_axes` toggle); area selection/picking later |
 | S7 | Result contours (U/σ/M/V) + cuts | GUI | ✅ displacement + moment/force (M/N/V, nodal-avg; 10 tests, one-way = wL²/8); GP-extrapolation & section cuts next |
 | S8 | Diaphragm assignment (rigid) | GUI | ✅ (9 tests; RigidDiaphragm, auto master, rigid-floor solve) |
 | S9 | Slab/punching/diaphragm design | GUI+wire | ☐ |

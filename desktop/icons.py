@@ -42,6 +42,10 @@ _ICONS = {
     "diaphragm": '<rect x="4" y="6" width="16" height="12" rx="1"/>'
                  '<circle cx="12" cy="12" r="1.6" fill="{c}" stroke="none"/>'
                  '<path d="M12 12L4 6M12 12l8-6M12 12l-8 6M12 12l8 6"/>',
+    # axes — a small 3-axis triad (local-axis triads toggle)
+    "axes": '<path d="M6 18V7"/><path d="M6 18h11"/><path d="M6 18l-2.5 2.5"/>'
+            '<path d="M6 7l-2 3h4z" fill="{c}" stroke="none"/>'
+            '<path d="M17 18l-3-2v4z" fill="{c}" stroke="none"/>',
     "function": '<path d="M3 12q3-7 6 0t6 0t6 0"/>',   # time-history waveform
     "load": '<path d="M12 4v13M6 11l6 6 6-6"/>',
     "delete": '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',

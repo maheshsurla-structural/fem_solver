@@ -175,6 +175,59 @@ def areas_result_mesh(model, quantity: str = "M11"):
     return poly
 
 
+def _area_frame(pts):
+    """Orthonormal local frame (e1, e2, e3=normal) at a 3/4-node area's centroid,
+    matching the shell elements' local axes. ``pts`` is (3or4, 3)."""
+    pts = np.asarray(pts, dtype=float)
+    if len(pts) == 4:
+        r1 = 0.5 * ((pts[1] - pts[0]) + (pts[2] - pts[3]))
+        r2 = 0.5 * ((pts[3] - pts[0]) + (pts[2] - pts[1]))
+    else:
+        r1 = pts[1] - pts[0]
+        r2 = pts[2] - pts[0]
+    n = np.cross(r1, r2)
+    nn = np.linalg.norm(n)
+    if nn < 1e-12 or np.linalg.norm(r1) < 1e-12:
+        return None
+    e3 = n / nn
+    e1 = r1 / np.linalg.norm(r1)
+    e2 = np.cross(e3, e1)
+    return pts.mean(axis=0), e1, e2, e3
+
+
+def area_local_axes(model, scale: float | None = None):
+    """Local-axis triads for every surface element (slab plan S6): returns
+    ``(e1_poly, e2_poly, e3_poly)`` line-segment PolyData (centroid → centroid +
+    scale·axis) so the view can draw them red/green/blue, or ``None`` if there
+    are no areas. ``scale`` defaults to ~5% of the model span."""
+    _tags, _pts, index = node_points(model)
+    coords = {t: to_xyz(model.nodes[t].coords) for t in model.nodes}
+    if scale is None:
+        scale = max(model_span(model) * 0.05, 1e-3)
+    segs = ([], [], [])                           # e1, e2, e3 point pairs
+    for e in model.elements.values():
+        nt = getattr(e, "node_tags", ())
+        if len(nt) not in (3, 4) or any(t not in coords for t in nt):
+            continue
+        frame = _area_frame([coords[t] for t in nt])
+        if frame is None:
+            continue
+        c, e1, e2, e3 = frame
+        for k, ax in enumerate((e1, e2, e3)):
+            segs[k].append((c, c + scale * ax))
+    out = []
+    for pairs in segs:
+        if not pairs:
+            out.append(None)
+            continue
+        pts = np.array([p for pair in pairs for p in pair], dtype=float)
+        lines = []
+        for i in range(len(pairs)):
+            lines += [2, 2 * i, 2 * i + 1]
+        out.append(pv.PolyData(pts, lines=np.asarray(lines, dtype=np.int64)))
+    return tuple(out)
+
+
 def support_points(model):
     """Coordinates of nodes carrying any single-point constraint (a support)."""
     pts = [to_xyz(n.coords) for n in model.nodes.values()

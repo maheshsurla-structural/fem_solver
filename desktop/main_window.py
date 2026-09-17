@@ -175,6 +175,7 @@ class MainWindow(QMainWindow):
         self.view.set_pick_callback(self._on_pick)
         self.view.set_add_node_callback(self._draw_add_node)
         self.view.set_add_member_callback(self._draw_add_member)
+        self.view.set_add_area_callback(self._draw_add_area)
         self.view.set_region_callback(self._on_region_select)
         # keep the ribbon's selection group in step with the viewport's own
         # navigation toolbar (orbit / pan / zoom-window have no ribbon entry).
@@ -495,6 +496,10 @@ class MainWindow(QMainWindow):
                                      self.generate_combinations, "loadsgen")
         self.act_drawings = _action(self, "&Drawings…", None, self.open_drawings,
                                     "drawings")
+        self.act_area_axes = _set_icon(QAction("Local a&xes", self), "axes")
+        self.act_area_axes.setCheckable(True)
+        self.act_area_axes.toggled.connect(
+            lambda on: self.view.set_area_axes(on))
         self.act_sectiondesigner = _action(
             self, "&Section Designer…", None, self.open_section_designer,
             "sectiondesigner")
@@ -525,9 +530,13 @@ class MainWindow(QMainWindow):
         self.act_draw_member.setCheckable(True)
         self.act_draw_member.triggered.connect(
             lambda: self._set_mode("draw_member"))
+        self.act_draw_area = _set_icon(QAction("Draw a&rea", self), "slab")
+        self.act_draw_area.setCheckable(True)
+        self.act_draw_area.triggered.connect(
+            lambda: self._set_mode("draw_area"))
         self._mode_group = QActionGroup(self)
         for a in (self.act_select, self.act_sel_window, self.act_sel_poly,
-                  self.act_draw_node, self.act_draw_member):
+                  self.act_draw_node, self.act_draw_member, self.act_draw_area):
             self._mode_group.addAction(a)
         self.act_snap = _set_icon(QAction("&Snap to grid", self), "snap")
         self.act_snap.setCheckable(True)
@@ -587,7 +596,8 @@ class MainWindow(QMainWindow):
         rb.add_tab("Draw", (
             ("Draw", ((self.act_draw_node, "Node"),
                       (self.act_draw_member, "Member"),
-                      (self.act_add_area, "Area"),
+                      (self.act_draw_area, "Area"),
+                      (self.act_add_area, "Area…"),
                       (self.act_snap, "Snap"), self.snap_spin)),
             ("Select", ((self.act_select, "Select"),
                         (self.act_sel_window, "Window"),
@@ -633,7 +643,8 @@ class MainWindow(QMainWindow):
                         (self.act_v_right, "Right"), (self.act_v_left, "Left"),
                         (self.act_v_back, "Back"),
                         (self.act_v_bottom, "Bottom"))),
-            ("Display", ((self.act_drawings, "Drawings"),)),
+            ("Display", ((self.act_drawings, "Drawings"),
+                         (self.act_area_axes, "Local axes"))),
             ("Appearance", ((self.act_theme, "Theme"),
                             (self.act_density, "Compact"))),
         ))
@@ -3033,7 +3044,8 @@ class MainWindow(QMainWindow):
         Viewport-only nav tools (orbit / pan / zoom-window) leave none checked."""
         ribbon = {"select": self.act_select, "window": self.act_sel_window,
                   "polygon": self.act_sel_poly, "draw_node": self.act_draw_node,
-                  "draw_member": self.act_draw_member}
+                  "draw_member": self.act_draw_member,
+                  "draw_area": self.act_draw_area}
         act = ribbon.get(mode)
         if act is not None:
             act.setChecked(True)
@@ -3053,7 +3065,9 @@ class MainWindow(QMainWindow):
                        "right-click to close.",
             "draw_node": "Draw node — click the ground plane to place nodes "
                          "(snapped to 0.5 m).",
-            "draw_member": "Draw member — click two nodes to connect them."}
+            "draw_member": "Draw member — click two nodes to connect them.",
+            "draw_area": "Draw area — click 3–4 corner nodes; click the first "
+                         "again to close a triangle."}
         self.statusBar().showMessage(hints.get(mode, ""))
         rb = getattr(self, "_ribbon", None)    # R4: surface the Draw tab
         if rb is not None and not rb.is_collapsed():
@@ -3108,6 +3122,29 @@ class MainWindow(QMainWindow):
                         material=p.materials[0].id)
         self._apply_edit("Draw member",
                          lambda: p.members.append(member), ("member", mid))
+
+    def _draw_add_area(self, node_ids) -> None:
+        """Create an Area from corner nodes picked in the viewport (slab S2
+        click-to-draw). Uses the first thickness + material and a 2×2 mesh; edit
+        it afterwards via the properties panel / Area dialog."""
+        from project import Area
+        p = self._project
+        if p.ndm != 3:
+            QMessageBox.information(self, "Draw area", "Areas need a 3-D model.")
+            return
+        if not p.shell_sections or not p.materials:
+            QMessageBox.information(
+                self, "Draw area",
+                "Add a thickness (Home ▸ Thickness) and a material first.")
+            return
+        nodes = [int(n) for n in node_ids]
+        if len(nodes) < 3 or len(set(nodes)) != len(nodes):
+            return
+        aid = p.next_area_id()
+        area = Area(id=aid, nodes=nodes, shell_section=p.shell_sections[0].id,
+                    material=p.materials[0].id, mesh=(2, 2))
+        self._apply_edit("Draw area",
+                         lambda: p.areas.append(area), ("area", aid))
 
     def _apply_from_inspector(self, kind, key, new) -> None:
         p = self._project

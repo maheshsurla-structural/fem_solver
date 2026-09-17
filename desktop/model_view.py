@@ -158,8 +158,11 @@ class ModelView(QtInteractor):
         self._pick_cb = None
         self._add_node_cb = None
         self._add_member_cb = None
+        self._add_area_cb = None
+        self._show_area_axes = False           # local-axis triads overlay (S6)
         self._mode = "select"
         self._member_start = None
+        self._area_pick: list = []            # nodes collected in draw_area mode
         self._snap_on = True
         self._snap_grid = 0.5
         self._region_cb = None
@@ -205,6 +208,28 @@ class ModelView(QtInteractor):
 
     def set_add_member_callback(self, fn) -> None:
         self._add_member_cb = fn
+
+    def set_add_area_callback(self, fn) -> None:
+        self._add_area_cb = fn
+
+    def set_area_axes(self, on: bool) -> None:
+        """Toggle the per-area local-axis triads (slab plan S6) and redraw."""
+        self._show_area_axes = bool(on)
+        if self._replay is not None:
+            try:
+                self._replay()
+            except Exception:
+                pass
+
+    def _draw_area_axes(self, model) -> None:
+        triads = mg.area_local_axes(model)
+        if triads is None:
+            return
+        colors = ("#d64545", "#3faf5a", "#3b7dd8")   # e1 red, e2 green, e3 blue
+        for poly, color, name in zip(triads, colors,
+                                     ("axis1", "axis2", "axis3")):
+            if poly is not None:
+                self.add_mesh(poly, color=color, line_width=3, name=name)
 
     def set_snap(self, on: bool, grid: float) -> None:
         self._snap_on = bool(on)
@@ -563,11 +588,13 @@ class ModelView(QtInteractor):
         "window": Qt.CursorShape.CrossCursor,
         "draw_node": Qt.CursorShape.CrossCursor,
         "draw_member": Qt.CursorShape.CrossCursor,
+        "draw_area": Qt.CursorShape.CrossCursor,
     }
 
     def set_mode(self, mode: str) -> None:
         self._mode = mode
         self._member_start = None
+        self._area_pick = []
         self._nav = None
         self.remove_actor("groundplane", render=False)
         if mode == "draw_node":
@@ -632,8 +659,31 @@ class ModelView(QtInteractor):
                     self._add_member_cb(self._member_start, sel[1])
                 self._member_start = None
             return
+        if self._mode == "draw_area":
+            if sel[0] != "node":
+                return
+            nid = sel[1]
+            # click the first corner again to close a triangle/quad early
+            if self._area_pick and nid == self._area_pick[0] \
+                    and len(self._area_pick) >= 3:
+                self._finish_area()
+                return
+            if nid in self._area_pick:
+                return                            # ignore repeats mid-loop
+            self._area_pick.append(nid)
+            self.highlight([("node", n) for n in self._area_pick])
+            if len(self._area_pick) == 4:         # quad auto-closes at 4 corners
+                self._finish_area()
+            return
         if self._pick_cb is not None:
             self._pick_cb(*sel)
+
+    def _finish_area(self) -> None:
+        nodes = list(self._area_pick)
+        self._area_pick = []
+        self.clear_highlight()
+        if len(nodes) >= 3 and self._add_area_cb is not None:
+            self._add_area_cb(nodes)
 
     def highlight(self, items) -> None:
         """Highlight a set of [(kind, id), …] — all selected nodes + members."""
@@ -726,6 +776,8 @@ class ModelView(QtInteractor):
             self.add_mesh(areas, color=style.V_AREA, opacity=0.35,
                           show_edges=True, edge_color=style.V_MEMBER,
                           name="areas")
+            if self._show_area_axes:
+                self._draw_area_axes(model)
         mesh = mg.members_mesh(model)
         if mesh is not None:
             self.add_mesh(mesh.tube(radius=max(span * 0.004, 1e-3)),
