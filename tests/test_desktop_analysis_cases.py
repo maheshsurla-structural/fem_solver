@@ -308,3 +308,40 @@ def test_analysis_case_serialization_round_trip():
     assert a.id == 1 and a.type == "modal" and a.params["num_modes"] == 6
     assert a.notes == "n"
     assert b.params["selection"] == ["case", 2] and b.params["subdivisions"] == 8
+
+
+# --------------------------------------------------------- E6 manager chrome
+
+def test_filter_hides_nonmatching_rows(qapp):
+    from analysis_cases_dialog import AnalysisCasesDialog
+    p = _project()
+    p.analysis_cases = [AnalysisCase(id=1, name="Modal-6", type="modal",
+                                     params={"num_modes": 6, "lumped": False})]
+    dlg = AnalysisCasesDialog(None, p)
+    rows = {m["name"]: r for r, m in enumerate(dlg._row_meta)}
+    dlg._filter.setText("modal")
+    assert not dlg.table.isRowHidden(rows["Modal-6"])       # matches
+    assert dlg.table.isRowHidden(rows["Linear Static"])     # hidden
+    dlg._filter.setText("")                                  # cleared -> all show
+    assert not dlg.table.isRowHidden(rows["Linear Static"])
+
+
+def test_context_menu_offers_actions_per_row(qapp):
+    from analysis_cases_dialog import AnalysisCasesDialog
+    p = _project()
+    p.analysis_cases = [AnalysisCase(id=1, name="Modal-6", type="modal",
+                                     params={"num_modes": 6, "lumped": False})]
+    dlg = AnalysisCasesDialog(None, p)
+    # a saved analysis case row: Run/Modify/Duplicate/Delete enabled
+    r = next(i for i, m in enumerate(dlg._row_meta) if m["kind"] == "analysis")
+    dlg.table.setCurrentCell(r, 0)
+    labels = {a.text(): a.isEnabled() for a in dlg._build_context_menu().actions()
+              if a.text()}
+    assert labels.get("Run") and labels.get("Modify…") and labels.get("Delete")
+    assert "Show tree…" in labels
+    # a linear-static row: Run enabled, Modify/Delete disabled (not editable)
+    lr = next(i for i, m in enumerate(dlg._row_meta) if m["kind"] == "linear")
+    dlg.table.setCurrentCell(lr, 0)
+    labels = {a.text(): a.isEnabled() for a in dlg._build_context_menu().actions()
+              if a.text()}
+    assert labels.get("Run") and not labels.get("Modify…")

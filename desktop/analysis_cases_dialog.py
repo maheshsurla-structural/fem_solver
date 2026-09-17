@@ -32,8 +32,9 @@ import copy
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QHBoxLayout,
-                               QHeaderView, QMenu, QMessageBox, QPushButton,
-                               QTableWidget, QTableWidgetItem, QVBoxLayout)
+                               QHeaderView, QLineEdit, QMenu, QMessageBox,
+                               QPushButton, QTableWidget, QTableWidgetItem,
+                               QVBoxLayout)
 
 import case_types
 import style
@@ -72,6 +73,12 @@ class AnalysisCasesDialog(QDialog):
                                 style.SP_LG, style.SP_LG)
         root.setSpacing(style.SP_MD)
 
+        self._filter = QLineEdit()
+        self._filter.setPlaceholderText("Filter cases by name or type…")
+        self._filter.setClearButtonEnabled(True)
+        self._filter.textChanged.connect(lambda *_: self._apply_filter())
+        root.addWidget(self._filter)
+
         self.table = QTableWidget(0, 3)
         self.table.setHorizontalHeaderLabels(["Case", "Type", "Details"])
         self.table.verticalHeader().setVisible(False)
@@ -80,6 +87,9 @@ class AnalysisCasesDialog(QDialog):
         self.table.setSelectionMode(
             self.table.SelectionMode.SingleSelection)
         self.table.setEditTriggers(self.table.EditTrigger.NoEditTriggers)
+        self.table.setContextMenuPolicy(
+            Qt.ContextMenuPolicy.CustomContextMenu)
+        self.table.customContextMenuRequested.connect(self._context_menu)
         hdr = self.table.horizontalHeader()
         hdr.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         hdr.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
@@ -199,6 +209,7 @@ class AnalysisCasesDialog(QDialog):
             self.table.setItem(r, 1, type_it)
             self.table.setItem(r, 2, det_it)
         self._sync_buttons()
+        self._apply_filter()
 
     def _ic_suffix(self, case) -> str:
         """`" · from ‹source›"` when ``case`` starts from another case's committed
@@ -380,6 +391,41 @@ class AnalysisCasesDialog(QDialog):
         Case Tree*."""
         from case_tree_dialog import CaseTreeDialog
         CaseTreeDialog.show_tree(self, self._proxy_project())
+
+    def _apply_filter(self) -> None:
+        """Hide rows whose name / type / details don't contain the filter text
+        (case-insensitive). A blank filter shows everything."""
+        text = self._filter.text().strip().lower()
+        for r, meta in enumerate(self._row_meta):
+            hay = (f"{meta.get('name', '')} {meta.get('type', '')} "
+                   f"{meta.get('detail', '')}").lower()
+            self.table.setRowHidden(r, bool(text) and text not in hay)
+
+    def _context_menu(self, pos) -> None:
+        """Right-click actions for the row under the cursor — the same Run /
+        Modify / Duplicate / Delete / Show-tree the buttons offer, gated the
+        same way."""
+        it = self.table.itemAt(pos)
+        if it is not None:
+            self.table.setCurrentCell(it.row(), 0)
+        self._build_context_menu().exec(
+            self.table.viewport().mapToGlobal(pos))
+
+    def _build_context_menu(self) -> QMenu:
+        """Build (but don't show) the context menu for the current selection —
+        split out from :meth:`_context_menu` so it is testable without the
+        blocking modal ``exec``."""
+        m = self._selected()
+        editable = bool(m and m["kind"] in ("nonlinear", "analysis"))
+        menu = QMenu(self)
+        menu.addAction("Run", self._run).setEnabled(bool(m and m.get("runnable")))
+        menu.addSeparator()
+        menu.addAction("Modify…", self._modify).setEnabled(editable)
+        menu.addAction("Duplicate", self._duplicate).setEnabled(editable)
+        menu.addAction("Delete", self._delete).setEnabled(editable)
+        menu.addSeparator()
+        menu.addAction("Show tree…", self._show_tree)
+        return menu
 
     def _run(self) -> None:
         m = self._selected()
