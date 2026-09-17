@@ -17,7 +17,8 @@ from PySide6.QtWidgets import (QComboBox, QDialog, QLabel, QSpinBox,
                                QVBoxLayout)
 
 import style
-from analysis_ui import CaseHeader, GroupCard, dialog_buttons
+from analysis_ui import (CaseHeader, GroupCard, InitialConditionCard,
+                         dialog_buttons)
 
 
 class BucklingDialog(QDialog):
@@ -31,6 +32,7 @@ class BucklingDialog(QDialog):
 
     def __init__(self, parent, project, *, max_modes: int = 20,
                  default_modes: int = 4, initial: dict | None = None,
+                 sources=None, initial_ic: tuple = ("zero",),
                  name: str = "Buckling", notes: str = ""):
         super().__init__(parent)
         self.setWindowTitle("Buckling analysis")
@@ -92,6 +94,15 @@ class BucklingDialog(QDialog):
         hint.setWordWrap(True)
         root.addWidget(hint)
 
+        # Stiffness-to-use (E2e) — buckle from a nonlinear case's committed
+        # state (its own load, not the reference above). Only shown when saving
+        # a case; the direct-run `configure` path always uses the reference load.
+        self.initial = None
+        if sources is not None:
+            self.initial = InitialConditionCard(sources, show_hold=False)
+            self.initial.set_value(initial_ic)
+            root.addWidget(self.initial)
+
         root.addStretch(1)
         root.addWidget(dialog_buttons(self))
         style.apply(self)
@@ -100,6 +111,9 @@ class BucklingDialog(QDialog):
         """``(selection, num_modes, subdivisions)``."""
         return (self.reference.currentData(), int(self.modes.value()),
                 int(self.subdivisions.value()))
+
+    def initial_condition(self) -> tuple:
+        return self.initial.value() if self.initial is not None else ("zero",)
 
     @classmethod
     def configure(cls, parent, project, *, max_modes: int = 20,

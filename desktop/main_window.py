@@ -668,7 +668,9 @@ class MainWindow(QMainWindow):
     def run_linear_static(self):
         info = self._solve()
         if info is None:
+            self._project.set_case_status(("linear",), "No model")
             return None
+        self._project.set_case_status(("linear",), "Finished")
         dmax = mg.max_translation(self._model)
         span = mg.model_span(self._model)
         scale = (0.08 * span / dmax) if dmax > 0 else 1.0
@@ -681,7 +683,8 @@ class MainWindow(QMainWindow):
         self._show_results_tab()               # R4: jump to Results after a run
         return info
 
-    def run_modal(self, num_modes=None, lumped=None):
+    def run_modal(self, num_modes=None, lumped=None,
+                  initial_condition=("zero",)):
         """Free-vibration modal analysis (Analysis-cases ▸ Modal).
 
         Builds the model (geometry + supports; loads are irrelevant to an
@@ -690,12 +693,23 @@ class MainWindow(QMainWindow):
         results table whose selection previews each mode shape on the view.
         Mass comes from material density — a zero-mass model is reported
         with a pointer to the Material editor rather than a solver error.
+
+        With ``initial_condition = ("state", nl_case_id)`` (E2d) the modes are
+        taken at the committed state of that Nonlinear Static case using the
+        **tangent** stiffness ``K + K_g`` — i.e. P-Δ modal on a preloaded
+        structure — instead of the unstressed elastic stiffness.
         """
         import numpy as np
 
         from femsolver import EigenAnalysis
 
-        ready = self._modal_ready_model()
+        ic = initial_condition or ("zero",)
+        if ic[0] == "state":
+            ready = self._seed_state_model(ic[1])
+            stiffness = "tangent"
+        else:
+            ready = self._modal_ready_model()
+            stiffness = "elastic"
         if ready is None:
             return None
         model, neq = ready
@@ -712,8 +726,8 @@ class MainWindow(QMainWindow):
         lumped = bool(lumped)
 
         try:
-            info = EigenAnalysis(model, num_modes=num_modes,
-                                 lumped=lumped).run()
+            info = EigenAnalysis(model, num_modes=num_modes, lumped=lumped,
+                                 stiffness=stiffness).run()
         except Exception as exc:                           # noqa: BLE001
             QMessageBox.warning(
                 self, "Modal analysis",
@@ -777,6 +791,52 @@ class MainWindow(QMainWindow):
             return None
         return model, model.neq
 
+    def _seed_state_model(self, nl_case_id, *, require_mass=True):
+        """Build a fiber model at the committed state of nonlinear case
+        ``nl_case_id`` for an analysis *from that state* (E2 — modal / response
+        spectrum / buckling).
+
+        The seeded model carries the deformed geometry + committed element state
+        (so its tangent + geometric stiffness reflect the preload), plus mass
+        from the materials' density (a representative ρ — exact for a
+        single-material column, the usual fiber case). ``require_mass`` gates the
+        density check: modal / response spectrum need mass, buckling does not.
+        Returns ``(model, neq)`` or ``None`` (with a reason shown), mirroring
+        :meth:`_modal_ready_model`."""
+        import nonlinear as NL
+        from femsolver.analysis.assembler import assemble_mass
+
+        p = self._project
+        src = p.nonlinear_case(nl_case_id)
+        if src is None:
+            QMessageBox.warning(
+                self, "Analysis",
+                f"The initial-condition source case {nl_case_id} was deleted — "
+                "pick another in the case's Modify dialog.")
+            return None
+        density = max((float(getattr(m, "rho", 0.0)) for m in p.materials),
+                      default=0.0)
+        try:
+            model, _f = NL.seed_to_committed_state(p, src, density=density)
+        except Exception as exc:                           # noqa: BLE001
+            QMessageBox.warning(
+                self, "Analysis",
+                f"Could not establish the initial state from '{src.name}':"
+                f"\n\n{exc}")
+            return None
+        model.number_dofs()
+        if model.neq < 2:
+            QMessageBox.information(
+                self, "Analysis", "The model has too few free DOFs.")
+            return None
+        if require_mass and abs(assemble_mass(model)).max() <= 0.0:
+            QMessageBox.information(
+                self, "Analysis",
+                "The model has no mass — set a density (ρ, kg/m³) on the "
+                "materials your members use, then run again.")
+            return None
+        return model, model.neq
+
     def run_response_spectrum(self, config=None):
         """Response-spectrum (modal-superposition) seismic analysis
         (Analysis-cases ▸ Response Spectrum).
@@ -784,33 +844,45 @@ class MainWindow(QMainWindow):
         Extracts modes, samples the design spectrum, combines the modal peaks
         (SRSS / CQC) into a single peak response drawn on the view, and reports
         per-mode participation. ``config`` = ``(spectrum, num_modes, direction,
-        combination)`` bypasses the setup dialog (for tests / scripting).
+        combination[, initial_condition])`` bypasses the setup dialog (for tests
+        / scripting). With ``initial_condition = ("state", nl_case_id)`` (E2d) the
+        modal basis is taken at that nonlinear case's committed state on the
+        tangent stiffness — a response spectrum of a preloaded structure.
         """
         import numpy as np
 
         from femsolver import ResponseSpectrumAnalysis
         from femsolver.analysis.assembler import assemble_mass
 
-        ready = self._modal_ready_model()
-        if ready is None:
-            return None
-        model, neq = ready
-        max_modes = max(1, neq - 1)
-
-        if config is None:
+        if config is None:                       # legacy direct-run via dialog
+            ready = self._modal_ready_model()
+            if ready is None:
+                return None
+            model, neq = ready
             from response_spectrum_dialog import ResponseSpectrumDialog
+            mm = max(1, neq - 1)
             config = ResponseSpectrumDialog.configure(
-                self, ndm=self._project.ndm, max_modes=max_modes,
-                default_modes=min(6, max_modes))
+                self, ndm=self._project.ndm, max_modes=mm,
+                default_modes=min(6, mm))
             if config is None:
                 return None
-        spectrum, num_modes, direction, combination = config
-        num_modes = max(1, min(int(num_modes), max_modes))
+            ic = ("zero",)
+        else:                                    # saved AnalysisCase dispatch
+            ic = config[4] if len(config) > 4 else ("zero",)
+            ready = (self._seed_state_model(ic[1]) if ic[0] == "state"
+                     else self._modal_ready_model())
+            if ready is None:
+                return None
+            model, neq = ready
+
+        spectrum, num_modes, direction, combination = config[:4]
+        num_modes = max(1, min(int(num_modes), max(1, neq - 1)))
+        stiffness = "tangent" if ic[0] == "state" else "elastic"
 
         try:
             info = ResponseSpectrumAnalysis(
                 model, spectrum, num_modes=num_modes, direction=direction,
-                combination=combination).run()
+                combination=combination, stiffness=stiffness).run()
         except Exception as exc:                           # noqa: BLE001
             QMessageBox.warning(
                 self, "Response spectrum",
@@ -884,16 +956,29 @@ class MainWindow(QMainWindow):
             config = BucklingDialog.configure(self, p)
             if config is None:
                 return None
-        selection, num_modes, subdivisions = config
+        selection, num_modes, subdivisions = config[0], config[1], config[2]
+        ic = config[3] if len(config) > 3 else ("zero",)
 
-        model, _subs = p.build_buckling_model(selection=selection,
-                                              subdivisions=subdivisions)
-        model.number_dofs()
+        if ic[0] == "state":            # buckle from a nonlinear preload (E2e)
+            ready = self._seed_state_model(ic[1], require_mass=False)
+            if ready is None:
+                return None
+            model, _neq = ready
+            prestress = "current_state"
+            src = p.nonlinear_case(ic[1])
+            ref_label = f"state of {src.name}" if src else "committed state"
+        else:
+            model, _subs = p.build_buckling_model(selection=selection,
+                                                  subdivisions=subdivisions)
+            model.number_dofs()
+            prestress = "reference"
+            ref_label = self._reference_load_label(selection)
         max_modes = max(1, model.neq - 2)
         num_modes = max(1, min(int(num_modes), max_modes))
 
         try:
-            info = LinearBucklingAnalysis(model, num_modes=num_modes).run()
+            info = LinearBucklingAnalysis(model, num_modes=num_modes,
+                                          prestress=prestress).run()
         except Exception as exc:                           # noqa: BLE001
             QMessageBox.warning(
                 self, "Buckling",
@@ -913,7 +998,6 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(
                 f"Buckling mode {k + 1}: λ = {info['load_factors'][k]:.4g}")
 
-        ref_label = self._reference_load_label(selection)
         from buckling_results_dialog import BucklingResultsDialog
         self._buckling_results_dlg = BucklingResultsDialog.show_results(
             self, info, ref_label, _show_mode)
@@ -2326,8 +2410,8 @@ class MainWindow(QMainWindow):
         for req in requests:
             if req[0] == "nonlinear":
                 self.run_pushover_dialog(preselect_case=req[1])
-            elif req[0] == "timehistory":
-                self.run_timehistory_dialog()
+            elif req[0] == "case":            # a saved AnalysisCase (E5a)
+                self._run_saved_case(req[1])
 
     def manage_analysis_cases(self) -> None:
         """Open the unified analysis-cases home (plan A1): one list of every
@@ -2383,10 +2467,14 @@ class MainWindow(QMainWindow):
             config = ct.build_config(self._project, c.params,
                                      initial_condition=c.initial_condition)
         except Exception as exc:                           # noqa: BLE001
+            self._project.set_case_status(("analysis", case_id),
+                                          "Could not start")
             QMessageBox.warning(self, "Analysis case",
                                 f"Cannot run '{c.name}':\n\n{exc}")
             return None
-        return ct.dispatch(self, config)
+        out = ct.dispatch(self, config)
+        self._project.set_case_status(("analysis", case_id), "Finished")
+        return out
 
     def _on_double_click(self, item, _col) -> None:
         ref = item.data(0, Qt.ItemDataRole.UserRole)

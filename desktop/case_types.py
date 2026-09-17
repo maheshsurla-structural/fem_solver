@@ -93,27 +93,18 @@ class ModalType(CaseType):
         return {"num_modes": 6, "lumped": False}
 
     def edit(self, parent, project, case=None):
-        from modal_dialog import ModalDialog
-        params = dict(case.params) if case else self.default_params(project)
-        dlg = ModalDialog(parent, max_modes=self._edit_cap(project),
-                          default_modes=int(params.get("num_modes", 6)),
-                          initial=params,
-                          name=(case.name if case else "Modal"),
-                          notes=(case.notes if case else ""))
-        if not dlg.exec():
-            return None
-        num_modes, lumped = dlg.result()
-        return self._mk(case, name=dlg.header.name() or "Modal",
-                        params={"num_modes": int(num_modes),
-                                "lumped": bool(lumped)},
-                        notes=dlg.header.notes())
+        # E1: Modal is edited in the unified Load-Case-Data editor (Type ▾).
+        from case_editor import CaseEditorDialog
+        return CaseEditorDialog.edit(parent, project, self.type_id, case)
 
     def build_config(self, project, params, *, initial_condition=("zero",)):
-        return (int(params.get("num_modes", 6)), bool(params.get("lumped")))
+        return (int(params.get("num_modes", 6)), bool(params.get("lumped")),
+                initial_condition)
 
     def dispatch(self, win, config):
-        num_modes, lumped = config
-        return win.run_modal(num_modes=num_modes, lumped=lumped)
+        num_modes, lumped, ic = config
+        return win.run_modal(num_modes=num_modes, lumped=lumped,
+                             initial_condition=ic)
 
 
 class BucklingType(CaseType):
@@ -135,26 +126,14 @@ class BucklingType(CaseType):
         return {"selection": ["all", None], "num_modes": 4, "subdivisions": 6}
 
     def edit(self, parent, project, case=None):
-        from buckling_dialog import BucklingDialog
-        params = dict(case.params) if case else self.default_params(project)
-        dlg = BucklingDialog(parent, project, max_modes=self._edit_cap(project),
-                             default_modes=int(params.get("num_modes", 4)),
-                             initial=params,
-                             name=(case.name if case else "Buckling"),
-                             notes=(case.notes if case else ""))
-        if not dlg.exec():
-            return None
-        selection, num_modes, subdivisions = dlg.result()
-        return self._mk(case, name=dlg.header.name() or "Buckling",
-                        params={"selection": list(selection),
-                                "num_modes": int(num_modes),
-                                "subdivisions": int(subdivisions)},
-                        notes=dlg.header.notes())
+        # E1: Buckling is edited in the unified Load-Case-Data editor (Type ▾).
+        from case_editor import CaseEditorDialog
+        return CaseEditorDialog.edit(parent, project, self.type_id, case)
 
     def build_config(self, project, params, *, initial_condition=("zero",)):
         sel = tuple(params.get("selection") or ("all", None))
         return (sel, int(params.get("num_modes", 4)),
-                int(params.get("subdivisions", 6)))
+                int(params.get("subdivisions", 6)), initial_condition)
 
     def dispatch(self, win, config):
         return win.run_buckling(config=config)
@@ -206,16 +185,8 @@ class TemperatureGradientType(CaseType):
         return f"{grad} · {n} members"
 
     def edit(self, parent, project, case=None):
-        from temperature_gradient_dialog import TemperatureGradientDialog
-        dlg = TemperatureGradientDialog(
-            parent, project,
-            initial=(dict(case.params) if case else None),
-            name=(case.name if case else "Temperature Gradient"),
-            notes=(case.notes if case else ""))
-        if not dlg.exec():
-            return None
-        return self._mk(case, name=dlg.header.name() or "Temperature Gradient",
-                        params=dlg.result(), notes=dlg.header.notes())
+        from case_editor import CaseEditorDialog        # E1 unified editor
+        return CaseEditorDialog.edit(parent, project, self.type_id, case)
 
     def dispatch(self, win, config):
         return win.run_temperature_gradient(config=config)
@@ -271,32 +242,15 @@ class ResponseSpectrumType(CaseType):
                 f"{str(params.get('combination', 'cqc')).upper()}")
 
     def edit(self, parent, project, case=None):
-        from PySide6.QtWidgets import QMessageBox
-
-        from response_spectrum_dialog import (ResponseSpectrumDialog,
-                                              spectrum_from_params)
-        dlg = ResponseSpectrumDialog(
-            parent, ndm=project.ndm, max_modes=self._edit_cap(project),
-            default_modes=6, initial=(dict(case.params) if case else None),
-            name=(case.name if case else "Response Spectrum"),
-            notes=(case.notes if case else ""))
-        while dlg.exec():
-            params = dlg.params()
-            try:                                   # validate the custom table
-                spectrum_from_params(params)
-            except ValueError as exc:
-                QMessageBox.warning(dlg, "Response spectrum", str(exc))
-                continue
-            return self._mk(case,
-                            name=dlg.header.name() or "Response Spectrum",
-                            params=params, notes=dlg.header.notes())
-        return None
+        # E1: Response Spectrum is edited in the unified Load-Case-Data editor.
+        from case_editor import CaseEditorDialog
+        return CaseEditorDialog.edit(parent, project, self.type_id, case)
 
     def build_config(self, project, params, *, initial_condition=("zero",)):
         from response_spectrum_dialog import spectrum_from_params
         return (spectrum_from_params(params), int(params.get("num_modes", 6)),
                 params.get("direction", "x"),
-                params.get("combination", "cqc"))
+                params.get("combination", "cqc"), initial_condition)
 
     def dispatch(self, win, config):
         return win.run_response_spectrum(config=config)
@@ -369,15 +323,8 @@ class CableTuningType(CaseType):
                 f"{len(params.get('targets') or [])} target nodes")
 
     def edit(self, parent, project, case=None):
-        from cable_tuning_dialog import CableTuningDialog
-        dlg = CableTuningDialog(
-            parent, project, initial=(dict(case.params) if case else None),
-            name=(case.name if case else "Cable Tuning"),
-            notes=(case.notes if case else ""))
-        if not dlg.exec():
-            return None
-        return self._mk(case, name=dlg.header.name() or "Cable Tuning",
-                        params=dlg.result(), notes=dlg.header.notes())
+        from case_editor import CaseEditorDialog        # E1 unified editor
+        return CaseEditorDialog.edit(parent, project, self.type_id, case)
 
     def dispatch(self, win, config):
         return win.run_cable_tuning(config=config)

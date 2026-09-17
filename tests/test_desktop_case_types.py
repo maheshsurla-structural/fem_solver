@@ -38,8 +38,9 @@ class _FakeWin:
     def __init__(self):
         self.calls = []
 
-    def run_modal(self, num_modes=None, lumped=None):
-        self.calls.append(("run_modal", num_modes, lumped))
+    def run_modal(self, num_modes=None, lumped=None,
+                  initial_condition=("zero",)):
+        self.calls.append(("run_modal", num_modes, lumped, initial_condition))
 
     def run_buckling(self, config=None):
         self.calls.append(("run_buckling", config))
@@ -76,10 +77,12 @@ def test_modal_adapter_contract():
     p = _project()
     assert ct.default_params(p) == {"num_modes": 6, "lumped": False}
     assert "6 modes" in ct.detail(p, ct.default_params(p))
-    assert ct.build_config(p, {"num_modes": 8, "lumped": True}) == (8, True)
+    # config now carries the E2 initial condition (default unstressed)
+    assert ct.build_config(p, {"num_modes": 8, "lumped": True}) \
+        == (8, True, ("zero",))
     win = _FakeWin()
-    ct.dispatch(win, (8, True))
-    assert win.calls == [("run_modal", 8, True)]
+    ct.dispatch(win, (8, True, ("zero",)))
+    assert win.calls == [("run_modal", 8, True, ("zero",))]
 
 
 def test_buckling_adapter_contract():
@@ -95,10 +98,10 @@ def test_buckling_adapter_contract():
     # runner expects
     cfg = ct.build_config(p, {"selection": ["case", 2], "num_modes": 3,
                               "subdivisions": 5})
-    assert cfg == (("case", 2), 3, 5)
+    assert cfg == (("case", 2), 3, 5, ("zero",))    # E2e initial condition
     win = _FakeWin()
     ct.dispatch(win, cfg)
-    assert win.calls == [("run_buckling", (("case", 2), 3, 5))]
+    assert win.calls == [("run_buckling", (("case", 2), 3, 5, ("zero",)))]
 
 
 def test_edit_cap_is_a_positive_bound():

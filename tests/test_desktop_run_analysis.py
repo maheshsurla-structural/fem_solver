@@ -16,8 +16,8 @@ _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 sys.path.insert(0, str(_ROOT / "desktop"))
 
-from project import (LoadCase, Material, Member, NonlinearCase,  # noqa: E402
-                     Node, Project, Section)
+from project import (AnalysisCase, LoadCase, Material, Member,  # noqa: E402
+                     NonlinearCase, Node, Project, Section)
 
 
 @pytest.fixture(scope="module")
@@ -36,6 +36,8 @@ def _project():
     p.load_cases = [LoadCase(1, "Dead", "dead")]
     p.nonlinear_cases = [NonlinearCase(id=7, name="Pushover", control_node=2,
                                        control_dof=1)]
+    p.analysis_cases = [AnalysisCase(id=3, name="Modal-A", type="modal",
+                                     params={"num_modes": 4, "lumped": False})]
     return p
 
 
@@ -43,10 +45,24 @@ def test_rows_are_runnable_cases(qapp):
     from run_analysis_dialog import RunAnalysisDialog
     dlg = RunAnalysisDialog(None, _project())
     kinds = [m["kind"] for m in dlg._rows]
-    assert kinds == ["linear", "nonlinear", "timehistory"]
+    # E5a: every saved analysis case now appears; the standalone Time-History
+    # launcher is gone (Time History is a saved case).
+    assert kinds == ["linear", "nonlinear", "analysis"]
+    assert "timehistory" not in kinds
     # linear defaults to Run, the others to Do-not-run
     assert dlg._rows[0]["action"].currentData() is True
     assert dlg._rows[1]["action"].currentData() is False
+
+
+def test_analysis_case_flagged_is_queued(qapp):
+    from run_analysis_dialog import RunAnalysisDialog
+    dlg = RunAnalysisDialog(None, _project(), run_linear=lambda: {"neq": 1})
+    r = next(i for i, m in enumerate(dlg._rows) if m["kind"] == "analysis")
+    act = dlg._rows[r]["action"]
+    act.setCurrentIndex(act.findData(True))
+    dlg._run_now()
+    assert ("case", 3) in dlg.deferred_requests()
+    assert dlg.table.item(r, 3).text().startswith("Queued")
 
 
 def test_run_now_runs_linear_inline_done(qapp):

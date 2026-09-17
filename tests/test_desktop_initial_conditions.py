@@ -276,3 +276,173 @@ def test_th_edit_sets_case_initial_condition(qapp, monkeypatch):
     assert case is not None
     assert case.initial_condition == ("state", 3)
     assert case.params["hold_source_loads"] is True
+
+
+# ------------------------------------------------- E2d Modal / P-Δ from state
+
+def test_modal_build_config_threads_initial_condition():
+    import case_types
+    p = _gsd_column_project()
+    ct = case_types.get("modal")
+    cfg = ct.build_config(p, {"num_modes": 4, "lumped": True},
+                          initial_condition=("state", 2))
+    assert cfg == (4, True, ("state", 2))
+    assert ct.build_config(p, {"num_modes": 6}) == (6, False, ("zero",))
+
+
+def test_modal_dialog_carries_ic(qapp):
+    from modal_dialog import ModalDialog
+    dlg = ModalDialog(None, max_modes=10, default_modes=4,
+                      sources=[(1, "PRELOAD")], initial_ic=("state", 1))
+    assert dlg.initial_condition() == ("state", 1)
+    dlg2 = ModalDialog(None, max_modes=10, default_modes=4)   # no sources
+    assert dlg2.initial_condition() == ("zero",)
+
+
+def _slender_fiber_column(rho=2400.0, D=0.3, L=6.0):
+    import section_gui_core as core
+    spec = core.Spec(kind="Circular", D=D, fc=35e6, fy=500e6)
+    gsd = dataclasses.asdict(spec)
+    A = math.pi * D * D / 4.0
+    Iz = math.pi * D**4 / 64.0
+    p = Project()
+    p.nodes = [Node(1, 0.0, 0.0, supports=(1, 1, 1)), Node(2, L, 0.0)]
+    p.sections = [Section(id=1, name="col", A=A, Iz=Iz, gsd_spec=gsd)]
+    p.materials = [Material(1, "conc", E=30e9, nu=0.2, rho=rho)]
+    p.members = [Member(1, 1, 2, 1, 1)]
+    return p
+
+
+def test_modal_from_state_softens_frequency_on_fiber_path():
+    """P-Δ modal (E2d): tangent modal on the seeded fiber model gives a lower
+    fundamental frequency at an axial-preloaded state than at zero preload — the
+    geometric-stiffness softening a nonlinear-case initial condition captures."""
+    from femsolver.analysis.eigen import EigenAnalysis
+    p = _slender_fiber_column()
+
+    def f_tangent(axial):
+        c = NonlinearCase(id=1, name="ax", control_node=2, control_dof=1,
+                          target=1e-6, n_steps=2, axial=axial, axial_node=2,
+                          axial_dof=0)
+        p.nonlinear_cases = [c]
+        m, _ = NL.seed_to_committed_state(p, c, density=2400.0)
+        m.number_dofs()
+        return EigenAnalysis(m, num_modes=1,
+                             stiffness="tangent").run()["frequencies_hz"][0]
+
+    f0 = f_tangent(0.0)
+    fP = f_tangent(4.0e5)              # axial compression
+    assert fP < 0.95 * f0             # preload softens the fundamental mode
+
+
+# ------------------------------------------ E2d Response Spectrum from state
+
+def test_rs_build_config_threads_initial_condition():
+    import case_types
+    p = _gsd_column_project()
+    ct = case_types.get("responsespectrum")
+    params = {"source": "asce7", "num_modes": 4, "direction": "x",
+              "combination": "srss", "asce7": {"SDS": 1.0, "SD1": 0.6,
+                                               "TL": 8.0}}
+    cfg = ct.build_config(p, params, initial_condition=("state", 9))
+    assert len(cfg) == 5 and cfg[4] == ("state", 9)
+    assert ct.build_config(p, params)[4] == ("zero",)
+
+
+def test_rs_dialog_carries_ic(qapp):
+    from response_spectrum_dialog import ResponseSpectrumDialog
+    dlg = ResponseSpectrumDialog(None, ndm=2, max_modes=10,
+                                 sources=[(1, "PRELOAD")],
+                                 initial_ic=("state", 1))
+    assert dlg.initial_condition() == ("state", 1)
+    dlg2 = ResponseSpectrumDialog(None, ndm=2, max_modes=10)   # no sources
+    assert dlg2.initial_condition() == ("zero",)
+
+
+def test_rs_from_state_lengthens_period_on_fiber_path(qapp):
+    """RS from a preloaded state uses the tangent modal basis (and preserves the
+    committed state — no reset), so the fundamental period lengthens (E2d)."""
+    from femsolver import ResponseSpectrumAnalysis
+    from response_spectrum_dialog import spectrum_from_params
+    spec = spectrum_from_params({"source": "asce7", "damping": 0.05,
+                                 "asce7": {"SDS": 1.0, "SD1": 0.6, "TL": 8.0}})
+
+    def period(axial):
+        p = _slender_fiber_column()
+        c = NonlinearCase(id=1, name="ax", control_node=2, control_dof=1,
+                          target=1e-6, n_steps=2, axial=axial, axial_node=2,
+                          axial_dof=0)
+        p.nonlinear_cases = [c]
+        m, _ = NL.seed_to_committed_state(p, c, density=2400.0)
+        m.number_dofs()
+        info = ResponseSpectrumAnalysis(m, spec, num_modes=1, direction="y",
+                                        combination="srss",
+                                        stiffness="tangent").run()
+        return info["modal_results"][0]["period"]
+
+    assert period(4.0e5) > 1.02 * period(0.0)
+
+
+# --------------------------------------------------- E2e Buckling from state
+
+def test_buckling_build_config_threads_initial_condition():
+    import case_types
+    p = _gsd_column_project()
+    ct = case_types.get("buckling")
+    cfg = ct.build_config(p, {"selection": ["all", None], "num_modes": 3,
+                              "subdivisions": 6}, initial_condition=("state", 2))
+    assert cfg == (("all", None), 3, 6, ("state", 2))
+    assert ct.build_config(p, {})[3] == ("zero",)
+
+
+def test_buckling_dialog_carries_ic(qapp):
+    from buckling_dialog import BucklingDialog
+    p = _gsd_column_project()
+    p.nonlinear_cases = [NonlinearCase(id=1, name="PRELOAD", control_node=2)]
+    dlg = BucklingDialog(None, p, sources=[(1, "PRELOAD")],
+                         initial_ic=("state", 1))
+    assert dlg.initial_condition() == ("state", 1)
+    dlg2 = BucklingDialog(None, p)                    # no sources -> zero
+    assert dlg2.initial_condition() == ("zero",)
+
+
+# ---------------------------------------------- E2-ui referential-integrity
+
+def test_delete_guard_blocks_nonlinear_case_referenced_by_ic(qapp, monkeypatch):
+    import analysis_cases_dialog as acd
+    from analysis_cases_dialog import AnalysisCasesDialog
+    warned = []
+    monkeypatch.setattr(acd.QMessageBox, "warning",
+                        staticmethod(lambda *a, **k: warned.append(a)))
+    p = _gsd_column_project()
+    p.nonlinear_cases = [NonlinearCase(id=1, name="PRELOAD", control_node=2)]
+    p.analysis_cases = [AnalysisCase(id=1, name="modal-after", type="modal",
+                                     params={"num_modes": 4, "lumped": False},
+                                     initial_condition=("state", 1))]
+    dlg = AnalysisCasesDialog(None, p)
+    r = next(i for i, m in enumerate(dlg._row_meta) if m["kind"] == "nonlinear")
+    dlg.table.setCurrentCell(r, 0)
+    dlg._delete()
+    assert len(dlg._cases) == 1                # not deleted — still referenced
+    assert warned and "modal-after" in warned[0][2]
+
+
+def test_delete_guard_allows_unreferenced_nonlinear_case(qapp):
+    from analysis_cases_dialog import AnalysisCasesDialog
+    p = _gsd_column_project()
+    p.nonlinear_cases = [NonlinearCase(id=1, name="free", control_node=2)]
+    dlg = AnalysisCasesDialog(None, p)
+    r = next(i for i, m in enumerate(dlg._row_meta) if m["kind"] == "nonlinear")
+    dlg.table.setCurrentCell(r, 0)
+    dlg._delete()
+    assert dlg._cases == []                    # unreferenced -> deleted
+
+
+def test_model_checks_flags_dangling_initial_condition():
+    import model_checks
+    p = _gsd_column_project()
+    p.analysis_cases = [AnalysisCase(id=1, name="rs-after",
+                                     type="responsespectrum", params={},
+                                     initial_condition=("state", 99))]
+    msgs = [c.message for c in model_checks.check_project(p)]
+    assert any("missing nonlinear case 99" in msg for msg in msgs)

@@ -99,7 +99,9 @@ def test_modal_is_a_saveable_case_type(qapp):
     import case_types
     ct = case_types.get("modal")
     assert ct is not None and ct.type_label == "Modal"
-    assert ct.build_config(_frame(), {"num_modes": 5, "lumped": True}) == (5, True)
+    # config now carries the E2 initial condition as a third element
+    assert ct.build_config(_frame(), {"num_modes": 5, "lumped": True}) \
+        == (5, True, ("zero",))
 
 
 def test_analysis_cases_lists_saved_modal_case(qapp):

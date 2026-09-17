@@ -443,6 +443,21 @@ class Project:
     def default_case_id(self) -> int:
         return self.load_cases[0].id if self.load_cases else 1
 
+    # -------------------------------------------------- run status (E5c)
+    # Per-case session run status, keyed by ``(kind, id)`` (e.g. ("linear",),
+    # ("analysis", 3), ("nonlinear", 7), ("stages",)). Transient: results are
+    # recomputed each session, so this is NOT serialized (a plain attribute, not
+    # a dataclass field, so ``asdict`` ignores it). Each entry is
+    # ``{"status": str, "when": float epoch}``.
+    def case_status(self, key) -> dict | None:
+        return self.__dict__.get("_case_status", {}).get(tuple(key))
+
+    def set_case_status(self, key, status: str, when: float | None = None) -> None:
+        import time
+        reg = self.__dict__.setdefault("_case_status", {})
+        reg[tuple(key)] = {"status": status,
+                           "when": time.time() if when is None else float(when)}
+
     # ------------------------------------------------------------- hinges (GUI-3)
     def hinge(self, hinge_id):
         return next((h for h in self.hinges if h.id == hinge_id), None)

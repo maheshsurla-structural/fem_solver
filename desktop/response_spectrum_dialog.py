@@ -23,7 +23,8 @@ from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDialog,
                                QTableWidgetItem, QVBoxLayout, QWidget)
 
 import style
-from analysis_ui import CaseHeader, GroupCard, dialog_buttons
+from analysis_ui import (CaseHeader, GroupCard, InitialConditionCard,
+                         dialog_buttons)
 
 _G = 9.80665                    # gravity (m/s²) — converts Sa in g → m/s²
 
@@ -109,6 +110,7 @@ class ResponseSpectrumDialog(QDialog):
 
     def __init__(self, parent, *, ndm: int = 2, max_modes: int = 20,
                  default_modes: int = 6, initial: dict | None = None,
+                 sources=None, initial_ic: tuple = ("zero",),
                  name: str = "Response Spectrum", notes: str = ""):
         super().__init__(parent)
         self.setWindowTitle("Response spectrum")
@@ -168,6 +170,13 @@ class ResponseSpectrumDialog(QDialog):
         self.damping.setValue(0.05)
         an.add_row("Damping ratio ζ", self.damping)
         lv.addWidget(an)
+
+        # Stiffness-to-use (E2d) — response spectrum on a preloaded structure.
+        self.initial = None
+        if sources is not None:
+            self.initial = InitialConditionCard(sources, show_hold=False)
+            self.initial.set_value(initial_ic)
+            lv.addWidget(self.initial)
 
         lv.addStretch(1)
         lv.addWidget(dialog_buttons(self))
@@ -313,6 +322,9 @@ class ResponseSpectrumDialog(QDialog):
             seen.add(T)
             out.append((T, Sa))
         return out
+
+    def initial_condition(self) -> tuple:
+        return self.initial.value() if self.initial is not None else ("zero",)
 
     def params(self) -> dict:
         """The spectrum **inputs** as a JSON-friendly dict (all source pages, so

@@ -2,9 +2,11 @@
 
 **Created:** 2026-09-16
 **Parent:** [`analysis_cases_commercial_parity_plan.md`](analysis_cases_commercial_parity_plan.md) ▸ **E2** (the headline feature)
-**Status:** **E2a–E2c DONE + merged to `main` (`7889505`) 2026-09-16** — a saved
-Time-History case can start from a nonlinear case's committed state.
-**Pending: E2d, E2e, E2-ui** (see §9).
+**Status:** ✅ **COMPLETE 2026-09-16** — Time History, P-Δ Modal, Response
+Spectrum and Buckling can all start from a nonlinear case's committed state
+(E2a–E2e), the Stiffness-to-use card is in every relevant dialog, and dangling
+references are prevented + detected (E2-ui). E2a–E2e merged + pushed to
+`origin/main`; the E2-ui delete-guard is the final commit.
 **Reference:** SAP2000 *Load Case Data* ▸ **Stiffness to Use** — *"Zero Initial
 Conditions – Unstressed State"* vs *"Stiffness at End of Nonlinear Case,"* with
 the note *"Loads from the Nonlinear Case are NOT included in the current case."*
@@ -166,23 +168,37 @@ Correctness is provable in closed form; each becomes a `tests/` case:
   `_run_saved_case` passes `c.initial_condition`. Runner shows the initial-state
   summary. **Validation: gravity-hold equilibrium test green** (preload + zero
   motion + hold ⇒ structure stays at rest; without hold it springs back).
-- [ ] **E2d** **P-Δ Modal + Response Spectrum** (E2-eng-2 tangent modal +
-  preludes). Validation: axial-softening frequency benchmark.
-- [ ] **E2e** **Buckling from state** (E2-eng-3 + prelude). Validation:
-  consistency vs reference-load buckling.
-- [ ] **E2-ui** adopt `InitialConditionCard` (built in E2c) across the remaining
-  migrated dialogs (or into E1). Referential-integrity guard: block deleting a
-  nonlinear case referenced by another case's `initial_condition` (extend the
-  existing `continue_from` guard in `analysis_cases_dialog._delete` +
-  `model_checks`). *(Not yet done — a state-seeded case's source can still be
-  deleted; the manager shows "· from (missing case)" and the run raises a
-  friendly error, but a pre-delete guard is the finish.)*
+- [x] **E2d** **P-Δ Modal + Response Spectrum** ✅ 2026-09-16. `EigenAnalysis`
+  gains `stiffness="elastic"|"tangent"` (tangent = `K + K_g` at the committed
+  state, mirroring buckling's dedicated-K_g / state-tangent split);
+  `ResponseSpectrumAnalysis` threads it and skips `reset_results` so the seeded
+  state survives. `run_modal` / `run_response_spectrum` seed a fiber model from
+  the source case (`_seed_modal_model`, mass from material ρ) and solve on the
+  tangent basis; both dialogs carry the `InitialConditionCard` (`show_hold`
+  toggle added — eigen inherits stiffness+state only). Validation:
+  `tests/test_pdelta_modal.py` (ω(P)=ω₀√(1−P/Pcr) within 5%, ω→0 at Pcr,
+  tangent==elastic unstressed) + fiber-path softening / RS period-lengthening.
+- [x] **E2e** **Buckling from state** ✅ 2026-09-16. `LinearBucklingAnalysis`
+  gains `prestress="reference"|"current_state"`; "current_state" skips the
+  internal static solve + reset and buckles from the committed state (λ scales
+  that state's load). `run_buckling` seeds via the shared `_seed_state_model`
+  (renamed from `_seed_modal_model`, `require_mass=False` for buckling);
+  `BucklingType` config → 4-tuple; `BucklingDialog` carries the card. Validation:
+  `tests/test_buckling_from_state.py` — from-state == reference-load buckling
+  under the same load, and recovers the analytical Euler load.
+- [x] **E2-ui (card)** ✅ 2026-09-16. The `InitialConditionCard` is now in every
+  dialog where continuing from a nonlinear state is meaningful — Time History,
+  Modal, Response Spectrum, Buckling. The other types (moving load, temp
+  gradient, load rating, vehicle dynamics, influence surface, cable tuning) have
+  no "from state" concept, so nothing to adopt there.
+- [x] **E2-ui (delete-guard)** ✅ 2026-09-16. `analysis_cases_dialog._delete`
+  refuses to delete a nonlinear case referenced by another case's `continue_from`
+  or `initial_condition` (names the dependents); `model_checks` flags a dangling
+  `initial_condition` on nonlinear + analysis cases.
 
-**Recommended order:** E2a ✅ → E2b ✅ → **E2c (Time History)** ✅ done — plumbing
-that serves the user's validation campaign. **← we are here.** Next: **E2d** (the
-P-Δ modal solver capability — the only remaining *new* solver work), then **E2e**
-(buckling from state), then **E2-ui** (adopt the card in the other dialogs + the
-delete-guard).
+**Sequence (all done):** E2a ✅ → E2b ✅ → E2c (Time History) ✅ → E2d
+(P-Δ modal + RS) ✅ → E2e (buckling from state) ✅ + IC card in all four relevant
+dialogs ✅ → E2-ui delete-guard ✅. **E2 is complete.**
 
 ## 10. Risks & decisions
 

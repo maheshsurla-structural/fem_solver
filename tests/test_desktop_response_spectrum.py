@@ -113,9 +113,10 @@ def test_response_spectrum_is_a_saveable_case_type(qapp):
     params = {"source": "asce7", "damping": 0.05, "num_modes": 4,
               "direction": "x", "combination": "srss",
               "asce7": {"SDS": 1.0, "SD1": 0.6, "TL": 8.0}}
-    spec, n, direction, comb = ct.build_config(_frame(), params)
+    spec, n, direction, comb, ic = ct.build_config(_frame(), params)
     assert isinstance(spec, ResponseSpectrum)
     assert (n, direction, comb) == (4, "x", "srss")
+    assert ic == ("zero",)                    # E2d initial condition
     assert "ASCE 7" in ct.detail(_frame(), params)
 
 

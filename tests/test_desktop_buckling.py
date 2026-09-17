@@ -102,7 +102,7 @@ def test_buckling_is_a_saveable_case_type(qapp):
     cfg = ct.build_config(_column(),
                           {"selection": ["case", 2], "num_modes": 3,
                            "subdivisions": 8})
-    assert cfg == (("case", 2), 3, 8)
+    assert cfg == (("case", 2), 3, 8, ("zero",))    # E2e initial condition
 
 
 def test_analysis_cases_lists_saved_buckling_case(qapp):

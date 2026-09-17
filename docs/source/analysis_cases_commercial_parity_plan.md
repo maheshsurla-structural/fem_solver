@@ -3,12 +3,11 @@
 **Created:** 2026-09-16
 **Status:** IN PROGRESS — successor to
 [`analysis_cases_manager_plan.md`](analysis_cases_manager_plan.md) (complete: 10
-saved, named, multi-instance types). **Shipped to `main` (`7889505`) 2026-09-16:**
-the first slices of **E2** — E2a/E2b (initial-condition data model + the
-`seed_to_committed_state` engine helper) and **E2c** (Time History from a
-nonlinear case's committed state); see the
-[E2 sub-plan](analysis_cases_initial_conditions_plan.md). **Everything else in
-this roadmap is still pending** — see §4 sequencing and the §6 tracker.
+saved, named, multi-instance types). **✅ E2 (initial conditions / state chaining)
+COMPLETE + shipped to `main` 2026-09-16** — Time History, P-Δ Modal, Response
+Spectrum and Buckling can all start from a nonlinear case's committed state; see
+the [E2 sub-plan](analysis_cases_initial_conditions_plan.md). **The rest of the
+roadmap (E1, E3–E8) is still pending** — see §4 sequencing and the §6 tracker.
 **Reference:** SAP2000 / CSiBridge *Define ▸ Load Cases* + *Load Case Data*
 dialogs (the user's benchmark).
 **Scope:** close the gap from "a working saved-case manager" to a
@@ -242,17 +241,34 @@ actually needs.
 
 ## 6. Tracker
 
-* [ ] **E5a** Run dialog includes saved `analysis_cases` *(quick win)*
-* [ ] **E6a** Set Def Name · **E6b** Notes editor · **E6d** columns/context-menu/filter
-* [ ] **E4** Load Case Tree (DAG + cycle/stale)
+* [x] **E5a** Run-Analysis dialog lists every saved `analysis_case` ✅ 2026-09-16
+  (was stale — missed all 10 saved types; standalone TH launcher removed)
+* [x] **E6** manager chrome (partial) ✅ 2026-09-16 — **E6b** Notes editor (already
+  in the shared CaseHeader) · **E6d** right-click context menu + filter box ·
+  **Status / Last-run column** (via E5c). Remaining: **E6a** Set Def Name.
+* [x] **E4** Load Case Tree ✅ 2026-09-16 — `case_graph` dependency forest +
+  `CaseTreeDialog` + "Tree…" button; nests dependents under their source, flags
+  dangling refs + cycles, and (with E5c) **stale** cases whose source ran later.
 * [ ] **E3a** `LoadCase` → "Load Pattern" relabel
-* [ ] **E1** `CaseEditor` unified shell (strangler over the per-type bodies)
+* [~] **E1** `CaseEditorDialog` unified Load-Case-Data shell (Type ▾ swaps the
+  body) — **slices 1–3 ✅ 2026-09-16**: shell + `case_bodies` for **5 of 10**
+  types (Modal, Buckling, Response Spectrum, Temperature Gradient, Cable Tuning);
+  a `SUPPORTS_IC` flag hides the Stiffness-to-use card for static/influence
+  types. Remaining: migrate moving load, load rating, influence surface, vehicle
+  dynamics, time history, then retire the standalone dialogs.
 * [x] **E2a–c** Initial-conditions / state chaining — data model, seeding helper,
   **Time History from state** ✅ 2026-09-16 (`ead1d26`/`422b230`/`7889505`) *(sub-plan)*
-* [ ] **E2d / E2e / E2-ui** P-Δ modal + Response Spectrum from state · buckling
-  from state · adopt `InitialConditionCard` elsewhere + referential-integrity
-  delete-guard *(sub-plan)*
-* [ ] **E5b/c/d** Run All (topo) · persisted status/last-run · results association
+* [x] **E2d** P-Δ modal + Response Spectrum from state ✅ 2026-09-16 (sub-plan)
+* [x] **E2e** buckling from state + `InitialConditionCard` in all four relevant
+  dialogs ✅ 2026-09-16 (sub-plan)
+* [x] **E2-ui delete-guard** ✅ 2026-09-16 — deletion + `model_checks` referential
+  integrity for `initial_condition` *(sub-plan)*. **E2 COMPLETE.**
+* [x] **E5c** per-case session run status + last-run ✅ 2026-09-16 — transient
+  `project.case_status` registry; Status column in the manager; Run-Analysis
+  dialog seeds it; also lit the E4 tree **stale** flag. (E5d results-association
+  subsumed — "Finished" is the results signal for ephemeral analyses, nonlinear
+  results already persist as RunRecords.)
+* [ ] **E5b** Run All in dependency order (topological)
 * [ ] **E3b** Loads-Applied spec · **E3c** result combinations
 * [ ] **E6c** Design… classification · **E7** integrity/validation/versioning
 * [ ] **E8** new engine types (deferred)
