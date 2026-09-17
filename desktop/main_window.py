@@ -480,6 +480,9 @@ class MainWindow(QMainWindow):
             QAction("De&flection contour", self), "contour")
         self.act_area_contour.triggered.connect(
             lambda *_: self.show_deflection_contour("Umag"))
+        self.act_area_forces = _set_icon(
+            QAction("Shell &forces / moments", self), "shellforce")
+        self.act_area_forces.triggered.connect(self.pick_and_show_area_force)
         self.act_design = _set_icon(QAction("&Design (DCR)", self), "design")
         self.act_design.triggered.connect(self.show_design)
         self.act_loadcases = _action(self, "Load &cases…", None,
@@ -614,7 +617,8 @@ class MainWindow(QMainWindow):
                           (self.act_diag_n, "Axial"),
                           (self.act_diag_v, "Shear"),
                           (self.act_diag_m, "Moment"),
-                          (self.act_area_contour, "Deflection"))),
+                          (self.act_area_contour, "Deflection"),
+                          (self.act_area_forces, "Shell F/M"))),
             ("Reports", ((self.act_runhistory, "History"),)),
             ("Design", ((self.act_design, "Design"),
                         (self.act_checkmodel, "Check"))),
@@ -1784,6 +1788,36 @@ class MainWindow(QMainWindow):
         self.log.appendPlainText(
             f"Deflection contour — max |U| = {vd:.4e} {unit}")
         self.statusBar().showMessage(f"Contour · max |U| {vd:.3e} {unit}")
+        self._show_results_tab()
+
+    def pick_and_show_area_force(self) -> None:
+        """Ask which shell resultant to contour, then show it (slab plan S7)."""
+        import model_geometry as mg
+        if not getattr(self._project, "areas", None):
+            QMessageBox.information(
+                self, "Shell forces",
+                "Add an area (Draw ▸ Area) to contour shell forces / moments.")
+            return
+        from PySide6.QtWidgets import QInputDialog
+        quantities = list(mg.AREA_RESULT_QUANTITIES.keys())
+        labels = [mg.AREA_RESULT_QUANTITIES[q][0] for q in quantities]
+        label, ok = QInputDialog.getItem(self, "Shell forces / moments",
+                                         "Quantity:", labels, 0, False)
+        if not ok:
+            return
+        self._show_area_force(quantities[labels.index(label)])
+
+    def _show_area_force(self, quantity: str) -> None:
+        import model_geometry as mg
+        if self._solve() is None:
+            return
+        vmax = self.view.show_area_result(self._model, quantity)
+        label, unit, _signed = mg.AREA_RESULT_QUANTITIES.get(
+            quantity, (quantity, "", True))
+        self.log.appendPlainText(
+            f"{label} contour — max |{quantity}| = {vmax:.4e} {unit}")
+        self.statusBar().showMessage(
+            f"{label} · max {vmax:.3e} {unit}")
         self._show_results_tab()
 
     def show_design(self) -> None:

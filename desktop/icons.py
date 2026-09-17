@@ -34,6 +34,10 @@ _ICONS = {
     # contour — nested iso-bands (a filled-contour / result map glyph)
     "contour": '<path d="M4 18h16"/><path d="M6 18a6 6 0 0 1 12 0"/>'
                '<path d="M9 18a3 3 0 0 1 6 0"/>',
+    # shell forces / moments — a plate with a curved bending arrow
+    "shellforce": '<path d="M3 8l7-3 11 3-7 3z"/>'
+                  '<path d="M5 14q7 4 14 0" stroke-dasharray="2 2"/>'
+                  '<path d="M17 12l2 2-2 2"/>',
     "function": '<path d="M3 12q3-7 6 0t6 0t6 0"/>',   # time-history waveform
     "load": '<path d="M12 4v13M6 11l6 6 6-6"/>',
     "delete": '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',

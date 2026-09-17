@@ -109,6 +109,72 @@ def areas_contour_mesh(model, quantity: str = "Umag"):
     return poly
 
 
+# ---- shell stress-resultant contours (slab plan S7 rich) -------------------
+# Recovered shell resultants are the 8-vector [N11, N22, N12, M11, M22, M12,
+# V13, V23] per unit width, in the element's LOCAL axes.
+_RESULTANT_INDEX = {"N11": 0, "N22": 1, "N12": 2,
+                    "M11": 3, "M22": 4, "M12": 5, "V13": 6, "V23": 7}
+# quantity -> (label, unit, signed?) for the area force/moment contour
+AREA_RESULT_QUANTITIES = {
+    "M11": ("M11 (bending)", "N·m/m", True),
+    "M22": ("M22 (bending)", "N·m/m", True),
+    "M12": ("M12 (twist)", "N·m/m", True),
+    "N11": ("N11 (membrane)", "N/m", True),
+    "N22": ("N22 (membrane)", "N/m", True),
+    "N12": ("N12 (shear)", "N/m", True),
+    "Vmax": ("V (max transverse shear)", "N/m", False),
+}
+
+
+def _element_resultant(el):
+    """Element-representative stress resultant 8-vector (mean of the Gauss-point
+    resultants for a quad; the single value for a Tri3), or ``None`` if the
+    element has not been recovered (no solve yet) or carries no resultants."""
+    gp = getattr(el, "gp_resultants", None)
+    if gp:                                        # non-empty list of GP vectors
+        return np.mean(np.asarray(gp, dtype=float), axis=0)
+    r = getattr(el, "resultants", None)
+    return np.asarray(r, dtype=float) if r is not None else None
+
+
+def _resultant_scalar(res, quantity: str):
+    if res is None:
+        return None
+    if quantity == "Vmax":
+        return float(np.hypot(res[6], res[7]))
+    i = _RESULTANT_INDEX.get(quantity)
+    return None if i is None else float(res[i])
+
+
+def areas_result_mesh(model, quantity: str = "M11"):
+    """Filled-face PolyData of the surface elements carrying a **nodal-averaged**
+    stress-resultant scalar in ``point_data['value']`` (slab plan S7): each area
+    element's representative resultant is scattered to its nodes and averaged, so
+    the field is smooth across the mesh. ``None`` when there are no surfaces.
+    Values are in the elements' local axes (fine for a flat slab)."""
+    poly = areas_mesh(model)
+    if poly is None:
+        return None
+    tags, _pts, index = node_points(model)
+    acc = np.zeros(len(tags))
+    cnt = np.zeros(len(tags))
+    for el in model.elements.values():
+        nt = getattr(el, "node_tags", ())
+        if len(nt) not in (3, 4):
+            continue
+        s = _resultant_scalar(_element_resultant(el), quantity)
+        if s is None:
+            continue
+        for t in nt:
+            r = index.get(t)
+            if r is not None:
+                acc[r] += s
+                cnt[r] += 1.0
+    vals = np.divide(acc, cnt, out=np.zeros_like(acc), where=cnt > 0)
+    poly.point_data["value"] = vals
+    return poly
+
+
 def support_points(model):
     """Coordinates of nodes carrying any single-point constraint (a support)."""
     pts = [to_xyz(n.coords) for n in model.nodes.values()

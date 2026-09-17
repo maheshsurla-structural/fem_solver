@@ -7,8 +7,11 @@ almost entirely a **desktop GUI + data-model** effort. Work happens on branch
 you can now draw a slab, give it a thickness, load it (gravity/pressure), solve,
 and see the deflection contour. Phase B underway: **S3 auto-mesh done** (a quad
 area is subdivided n1×n2 with coincident-node merge; validated against the
-analytical clamped-plate deflection). Next: richer S7 moment/stress contours,
-S8 diaphragms.*
+analytical clamped-plate deflection), and **S7 moment/force contours done**
+(M11/M22/M12, N11/N22/N12, max shear — nodal-averaged, diverging map; one-way
+midspan moment validated against wL²/8). Next: S8 diaphragms, S9 slab design
+wiring; S7 refinements (GP→node extrapolation for sharper support peaks,
+section cuts).*
 
 ---
 
@@ -238,7 +241,7 @@ layered/RC/CLT sections in S4, S7 section cuts, S10 robustness.
 | S5a | Shell `f_eq` pressure/body loads | **Engine** | ✅ (6 tests) |
 | S5b | `AreaLoad` + dialog + apply_loads | GUI | ✅ (7 tests) |
 | S6 | Filled faces render (`areas_mesh`) | GUI | ✅ lite (local axes / selection later) |
-| S7 | Result contours (U/σ/M/V) + cuts | GUI | ✅ displacement (4 tests); σ/M/V + cuts next |
+| S7 | Result contours (U/σ/M/V) + cuts | GUI | ✅ displacement + moment/force (M/N/V, nodal-avg; 10 tests, one-way = wL²/8); GP-extrapolation & section cuts next |
 | S8 | Diaphragm assignment | GUI | ☐ |
 | S9 | Slab/punching/diaphragm design | GUI+wire | ☐ |
 | S10 | Meshing robustness & parity polish | both | ☐ |
