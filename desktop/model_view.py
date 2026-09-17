@@ -1056,6 +1056,18 @@ class ModelView(QtInteractor):
         self._frame(model)
         return vmax
 
+    def show_cut_line(self, p0, p1) -> None:
+        """Overlay a bright line for a section cut (slab plan S7 feedback)."""
+        import pyvista as pv
+        a = np.asarray(mg.to_xyz(p0), dtype=float)
+        b = np.asarray(mg.to_xyz(p1), dtype=float)
+        line = pv.PolyData(np.array([a, b]),
+                           lines=np.array([2, 0, 1], dtype=np.int64))
+        span = mg.model_span(self._model) if self._model is not None else 1.0
+        self.add_mesh(line.tube(radius=max(span * 0.004, 2e-3)),
+                      color=style.V_SELECTION, name="section_cut")
+        self.render()
+
     def show_diagram(self, model, kind: str):
         """Draw the N / V / M diagram over grey members; return max |value|."""
         self._replay = partial(self.show_diagram, model, kind)

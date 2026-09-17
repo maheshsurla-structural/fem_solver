@@ -54,6 +54,9 @@ _ICONS = {
                 'stroke="none"/>'
                 '<rect x="5" y="5" width="14" height="14" rx="1.5" '
                 'stroke-dasharray="3 2.5"/>',
+    # section cut — a dashed cut line across a panel
+    "sectioncut": '<rect x="4" y="7" width="16" height="10" rx="1"/>'
+                  '<path d="M9 4v16" stroke-dasharray="3 2.5"/>',
     "function": '<path d="M3 12q3-7 6 0t6 0t6 0"/>',   # time-history waveform
     "load": '<path d="M12 4v13M6 11l6 6 6-6"/>',
     "delete": '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',

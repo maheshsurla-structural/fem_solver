@@ -492,6 +492,9 @@ class MainWindow(QMainWindow):
         self.act_punching = _set_icon(
             QAction("&Punching check…", self), "punching")
         self.act_punching.triggered.connect(self.show_punching_check)
+        self.act_section_cut = _set_icon(
+            QAction("Section &cut…", self), "sectioncut")
+        self.act_section_cut.triggered.connect(self.show_section_cut)
         self.act_design = _set_icon(QAction("&Design (DCR)", self), "design")
         self.act_design.triggered.connect(self.show_design)
         self.act_loadcases = _action(self, "Load &cases…", None,
@@ -642,6 +645,7 @@ class MainWindow(QMainWindow):
             ("Design", ((self.act_design, "Design"),
                         (self.act_area_rebar, "Slab rebar"),
                         (self.act_punching, "Punching"),
+                        (self.act_section_cut, "Section cut"),
                         (self.act_checkmodel, "Check"))),
         ))
         rb.add_tab("View", (
@@ -1969,6 +1973,22 @@ class MainWindow(QMainWindow):
             return
         from slab_punching_dialog import SlabPunchingDialog
         SlabPunchingDialog.run(self, p, self._model)
+        self._show_results_tab()
+
+    def show_section_cut(self) -> None:
+        """Design-strip section cut: integrate a shell result along a two-node
+        cut line (slab plan S7). Builds + solves, then opens the dialog."""
+        p = self._project
+        if p.ndm != 3 or not getattr(p, "areas", None):
+            QMessageBox.information(
+                self, "Section cut",
+                "Section cuts need a 3-D slab model with at least one area.")
+            return
+        self._model = p.build_model()
+        if self._solve() is None:
+            return
+        from section_cut_dialog import SectionCutDialog
+        SectionCutDialog.run(self, p, self._model)
         self._show_results_tab()
 
     def show_design(self) -> None:

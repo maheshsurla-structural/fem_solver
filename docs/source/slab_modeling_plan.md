@@ -257,7 +257,7 @@ DXF/table import-export of areas).
 | S5a | Shell `f_eq` pressure/body loads | **Engine** | ✅ (6 tests) |
 | S5b | `AreaLoad` + dialog + apply_loads | GUI | ✅ (7 tests) |
 | S6 | Filled faces + local-axis triads + **area selection** | GUI | ✅ (`areas_mesh`, `area_local_axes`, click-select/highlight/delete/props via `nearest_item`+`area_faces_mesh`; 6 tests) |
-| S7 | Result contours (U/σ/M/V) + cuts | GUI | ✅ displacement + M/N/V + Wood-Armer + **GP→node extrapolation** (sharper peaks, +31% on coarse mesh); section cuts (design strips) next |
+| S7 | Result contours (U/σ/M/V) + cuts | GUI | ✅ displacement + M/N/V + Wood-Armer + GP→node extrapolation + **section cuts** (`section_cut`, design-strip M/V validated vs wL²/8·B; 5 tests) — COMPLETE |
 | S8 | Diaphragm assignment (rigid) | GUI | ✅ (9 tests; RigidDiaphragm, auto master, rigid-floor solve) |
 | S9 | Slab/punching/diaphragm design | GUI+wire | ✅ Wood-Armer moments + required-As contour + **punching check** (ACI, demand from node reaction; `slab_punching.py`, 29 tests). Diaphragm classification later |
 | S10 | Meshing robustness & parity polish | both | ☐ |

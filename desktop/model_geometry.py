@@ -569,6 +569,60 @@ def area_faces_mesh(model, area_id: int):
     return pv.PolyData(pts, faces=np.asarray(faces, dtype=np.int64))
 
 
+def _area_element_at(model, pt, tol):
+    """The shell element whose face contains 3-D point ``pt`` (within ``tol`` of
+    its plane), or ``None``."""
+    for _tag, e in model.elements.items():
+        nt = getattr(e, "node_tags", ())
+        if len(nt) not in (3, 4):
+            continue
+        if _point_in_area(pt, [to_xyz(model.nodes[t].coords) for t in nt], tol):
+            return e
+    return None
+
+
+def section_cut(model, p0, p1, quantity: str = "M", n: int = 64,
+                tol: float = 0.05):
+    """Integrate a shell stress resultant along the straight cut ``p0``→``p1``
+    (a 'design strip' / SAP-style section cut, slab plan S7). Returns the total
+    across the cut:
+
+    * ``quantity="M"`` — bending moment about the cut, ``∫ nᵀ·[[M11,M12],
+      [M12,M22]]·n ds`` (N·m), the design-strip moment.
+    * ``quantity="V"`` — vertical shear crossing the cut, ``∫ (V13·nx + V23·ny)
+      ds`` (N).
+
+    ``n`` midpoint samples along the length. Uses element-average resultants in
+    the elements' local axes — exact for an axis-aligned flat slab (local ≈
+    global); rotated meshes are approximate. Points off any area contribute 0."""
+    a = np.asarray(to_xyz(p0), dtype=float)
+    b = np.asarray(to_xyz(p1), dtype=float)
+    d = b - a
+    L = float(np.linalg.norm(d[:2]))
+    if L < 1e-12:
+        return 0.0
+    tdir = d[:2] / L
+    nrm = np.array([-tdir[1], tdir[0]])          # in-plane unit normal to the cut
+    ds = L / n
+    total = 0.0
+    for i in range(n):
+        s = (i + 0.5) * ds
+        pt = a + d * (s / L)
+        el = _area_element_at(model, pt, tol)
+        if el is None:
+            continue
+        res = _element_resultant(el)
+        if res is None:
+            continue
+        if quantity == "V":
+            val = res[6] * nrm[0] + res[7] * nrm[1]
+        else:                                     # "M" — moment about the cut
+            M = np.array([[res[3], res[5]], [res[5], res[4]]])
+            val = float(nrm @ M @ nrm)
+        total += val * ds
+    return total
+
+
 def nearest_item(model, point, tol):
     """Nearest ('node', tag) then ('member', tag), then the ('area', id) whose
     face contains ``point`` — within ``tol`` — or None. Nodes win ties (they sit
