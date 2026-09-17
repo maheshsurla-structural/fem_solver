@@ -250,7 +250,11 @@ actually needs.
   `CaseTreeDialog` + "Tree…" button; nests dependents under their source, flags
   dangling refs + cycles, and (with E5c) **stale** cases whose source ran later.
 * [ ] **E3a** `LoadCase` → "Load Pattern" relabel
-* [ ] **E1** `CaseEditor` unified shell (strangler over the per-type bodies)
+* [~] **E1** `CaseEditorDialog` unified Load-Case-Data shell (Type ▾ swaps the
+  body) — **slice 1 ✅ 2026-09-16**: shell + `case_bodies` (ModalBody,
+  BucklingBody); Modal/Buckling adapters route through it. Remaining slices:
+  migrate Response Spectrum + the other 7 types onto bodies, then retire the
+  standalone dialogs.
 * [x] **E2a–c** Initial-conditions / state chaining — data model, seeding helper,
   **Time History from state** ✅ 2026-09-16 (`ead1d26`/`422b230`/`7889505`) *(sub-plan)*
 * [x] **E2d** P-Δ modal + Response Spectrum from state ✅ 2026-09-16 (sub-plan)
