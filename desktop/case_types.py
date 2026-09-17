@@ -93,24 +93,9 @@ class ModalType(CaseType):
         return {"num_modes": 6, "lumped": False}
 
     def edit(self, parent, project, case=None):
-        from modal_dialog import ModalDialog
-        params = dict(case.params) if case else self.default_params(project)
-        dlg = ModalDialog(
-            parent, max_modes=self._edit_cap(project),
-            default_modes=int(params.get("num_modes", 6)), initial=params,
-            sources=[(c.id, c.name) for c in project.nonlinear_cases],
-            initial_ic=(case.initial_condition if case else ("zero",)),
-            name=(case.name if case else "Modal"),
-            notes=(case.notes if case else ""))
-        if not dlg.exec():
-            return None
-        num_modes, lumped = dlg.result()
-        out = self._mk(case, name=dlg.header.name() or "Modal",
-                       params={"num_modes": int(num_modes),
-                               "lumped": bool(lumped)},
-                       notes=dlg.header.notes())
-        out.initial_condition = dlg.initial_condition()   # E2d stiffness-to-use
-        return out
+        # E1: Modal is edited in the unified Load-Case-Data editor (Type ▾).
+        from case_editor import CaseEditorDialog
+        return CaseEditorDialog.edit(parent, project, self.type_id, case)
 
     def build_config(self, project, params, *, initial_condition=("zero",)):
         return (int(params.get("num_modes", 6)), bool(params.get("lumped")),
@@ -141,25 +126,9 @@ class BucklingType(CaseType):
         return {"selection": ["all", None], "num_modes": 4, "subdivisions": 6}
 
     def edit(self, parent, project, case=None):
-        from buckling_dialog import BucklingDialog
-        params = dict(case.params) if case else self.default_params(project)
-        dlg = BucklingDialog(
-            parent, project, max_modes=self._edit_cap(project),
-            default_modes=int(params.get("num_modes", 4)), initial=params,
-            sources=[(c.id, c.name) for c in project.nonlinear_cases],
-            initial_ic=(case.initial_condition if case else ("zero",)),
-            name=(case.name if case else "Buckling"),
-            notes=(case.notes if case else ""))
-        if not dlg.exec():
-            return None
-        selection, num_modes, subdivisions = dlg.result()
-        out = self._mk(case, name=dlg.header.name() or "Buckling",
-                       params={"selection": list(selection),
-                               "num_modes": int(num_modes),
-                               "subdivisions": int(subdivisions)},
-                       notes=dlg.header.notes())
-        out.initial_condition = dlg.initial_condition()       # E2e
-        return out
+        # E1: Buckling is edited in the unified Load-Case-Data editor (Type ▾).
+        from case_editor import CaseEditorDialog
+        return CaseEditorDialog.edit(parent, project, self.type_id, case)
 
     def build_config(self, project, params, *, initial_condition=("zero",)):
         sel = tuple(params.get("selection") or ("all", None))
