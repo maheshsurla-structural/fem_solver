@@ -46,6 +46,9 @@ _ICONS = {
     "axes": '<path d="M6 18V7"/><path d="M6 18h11"/><path d="M6 18l-2.5 2.5"/>'
             '<path d="M6 7l-2 3h4z" fill="{c}" stroke="none"/>'
             '<path d="M17 18l-3-2v4z" fill="{c}" stroke="none"/>',
+    # rebar — a reinforcing bar mat (two crossing ribbed bars)
+    "rebar": '<path d="M4 9h16M4 15h16M9 4v16M15 4v16"/>'
+             '<path d="M4 9l-1.5-1M20 15l1.5 1" stroke-width="1"/>',
     "function": '<path d="M3 12q3-7 6 0t6 0t6 0"/>',   # time-history waveform
     "load": '<path d="M12 4v13M6 11l6 6 6-6"/>',
     "delete": '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',

@@ -486,6 +486,9 @@ class MainWindow(QMainWindow):
         self.act_area_forces = _set_icon(
             QAction("Shell &forces / moments", self), "shellforce")
         self.act_area_forces.triggered.connect(self.pick_and_show_area_force)
+        self.act_area_rebar = _set_icon(
+            QAction("Slab &reinforcement…", self), "rebar")
+        self.act_area_rebar.triggered.connect(self.show_slab_reinforcement)
         self.act_design = _set_icon(QAction("&Design (DCR)", self), "design")
         self.act_design.triggered.connect(self.show_design)
         self.act_loadcases = _action(self, "Load &cases…", None,
@@ -634,6 +637,7 @@ class MainWindow(QMainWindow):
                           (self.act_area_forces, "Shell F/M"))),
             ("Reports", ((self.act_runhistory, "History"),)),
             ("Design", ((self.act_design, "Design"),
+                        (self.act_area_rebar, "Slab rebar"),
                         (self.act_checkmodel, "Check"))),
         ))
         rb.add_tab("View", (
@@ -1916,6 +1920,34 @@ class MainWindow(QMainWindow):
             f"{label} contour — max |{quantity}| = {vmax:.4e} {unit}")
         self.statusBar().showMessage(
             f"{label} · max {vmax:.3e} {unit}")
+        self._show_results_tab()
+
+    def show_slab_reinforcement(self) -> None:
+        """Required-reinforcement (As per width) contour from Wood-Armer design
+        moments (slab plan S9). Prompts for cover / fy / f'c, then solves."""
+        if not getattr(self._project, "areas", None):
+            QMessageBox.information(
+                self, "Slab reinforcement",
+                "Add an area (Draw ▸ Area) to design slab reinforcement.")
+            return
+        from slab_design_dialog import ReinforcementDialog
+        cfg = ReinforcementDialog.configure(
+            self, self._project, last=getattr(self, "_rebar_cfg", None))
+        if cfg is None:
+            return
+        self._rebar_cfg = cfg
+        if self._solve() is None:
+            return
+        import model_geometry as mg
+        vmax = self.view.show_area_reinforcement(
+            self._model, cfg["quantity"], cover=cfg["cover"], fy=cfg["fy"],
+            fc=cfg["fc"])
+        label = mg.AREA_REBAR_QUANTITIES.get(cfg["quantity"],
+                                             (cfg["quantity"], ""))[0]
+        self.log.appendPlainText(
+            f"Required reinforcement ({label}) — peak {vmax:.0f} mm²/m")
+        self.statusBar().showMessage(
+            f"{label} · peak As {vmax:.0f} mm²/m")
         self._show_results_tab()
 
     def show_design(self) -> None:

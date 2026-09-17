@@ -189,6 +189,66 @@ def areas_result_mesh(model, quantity: str = "M11"):
     return poly
 
 
+# quantity -> (label, Wood-Armer component) for the required-reinforcement
+# contour (slab plan S9). Values are As per unit width, shown in mm²/m.
+AREA_REBAR_QUANTITIES = {
+    "As_x_bot": ("As x, bottom", "mx_bot"),
+    "As_y_bot": ("As y, bottom", "my_bot"),
+    "As_x_top": ("As x, top", "mx_top"),
+    "As_y_top": ("As y, top", "my_top"),
+}
+
+
+def areas_reinforcement_mesh(model, quantity: str = "As_x_bot", *,
+                             cover: float = 0.025, fy: float = 420e6,
+                             fc: float = 30e6):
+    """Filled-face PolyData carrying the **required steel area per width** (in
+    **mm²/m**, in ``point_data['value']``) for a Wood-Armer design moment over
+    the slab elements (slab plan S9). ``cover`` is to the bar centroid; the
+    effective depth is ``element thickness − cover``. Nodal-averaged; ``None``
+    when there are no surfaces. Nodes where the section is too shallow to carry
+    the moment singly-reinforced get NaN (flagged blank in the contour)."""
+    from femsolver.design.wood_armer import (required_reinforcement,
+                                             wood_armer_moments)
+    poly = areas_mesh(model)
+    if poly is None:
+        return None
+    comp = AREA_REBAR_QUANTITIES.get(quantity, AREA_REBAR_QUANTITIES["As_x_bot"])[1]
+    tags, _pts, index = node_points(model)
+    acc = np.zeros(len(tags))
+    cnt = np.zeros(len(tags))
+    bad = np.zeros(len(tags), dtype=bool)
+    for e in model.elements.values():
+        nt = getattr(e, "node_tags", ())
+        if len(nt) not in (3, 4):
+            continue
+        res = _element_resultant(e)
+        if res is None:
+            continue
+        # shell convention: negative M = sagging; negate for Wood-Armer
+        wa = wood_armer_moments(-res[3], -res[4], -res[5])
+        m_star = abs(getattr(wa, comp))
+        d = float(getattr(e, "thickness", 0.0)) - cover
+        if d <= 0.0:
+            continue
+        try:
+            As = required_reinforcement(m_star, d, fy, fc) * 1.0e6  # mm²/m
+            for t in nt:
+                r = index.get(t)
+                if r is not None:
+                    acc[r] += As
+                    cnt[r] += 1.0
+        except ValueError:                       # section inadequate here
+            for t in nt:
+                r = index.get(t)
+                if r is not None:
+                    bad[r] = True
+    vals = np.divide(acc, cnt, out=np.zeros_like(acc), where=cnt > 0)
+    vals[bad & (cnt == 0)] = np.nan              # flag inadequate-only nodes
+    poly.point_data["value"] = vals
+    return poly
+
+
 def _area_frame(pts):
     """Orthonormal local frame (e1, e2, e3=normal) at a 3/4-node area's centroid,
     matching the shell elements' local axes. ``pts`` is (3or4, 3)."""

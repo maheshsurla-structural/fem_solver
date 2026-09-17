@@ -1008,6 +1008,42 @@ class ModelView(QtInteractor):
         self._frame(model)
         return vmax
 
+    def show_area_reinforcement(self, model, quantity: str = "As_x_bot", *,
+                                cover: float = 0.025, fy: float = 420e6,
+                                fc: float = 30e6):
+        """Colour-map the required steel area per width (mm²/m) for a Wood-Armer
+        design moment over the slab elements (slab plan S9). Returns peak As."""
+        self._model = model
+        self._replay = partial(self.show_area_reinforcement, model, quantity,
+                               cover=cover, fy=fy, fc=fc)
+        self.clear()
+        span = mg.model_span(model)
+        ref = mg.members_mesh(model)
+        if ref is not None:
+            self.add_mesh(ref.tube(radius=max(span * 0.0025, 1e-3)),
+                          color=style.V_REFERENCE, name="members")
+        poly = mg.areas_reinforcement_mesh(model, quantity, cover=cover,
+                                           fy=fy, fc=fc)
+        if poly is None or poly.n_points == 0:
+            self._draw_grid()
+            self._frame(model)
+            return 0.0
+        vals = poly.point_data["value"]
+        vmax = float(np.nanmax(vals)) if vals.size else 0.0
+        label = mg.AREA_REBAR_QUANTITIES.get(
+            quantity, (quantity, ""))[0]
+        self.add_mesh(poly, scalars="value", cmap="viridis", show_edges=True,
+                      edge_color=style.V_MEMBER, name="area_rebar",
+                      scalar_bar_args={"title": f"{label}  [mm²/m]"})
+        supports = mg.support_points(model)
+        if len(supports):
+            self.add_points(supports, color=style.V_SUPPORT,
+                            render_points_as_spheres=True, point_size=18,
+                            name="supports")
+        self._draw_grid()
+        self._frame(model)
+        return vmax
+
     def show_diagram(self, model, kind: str):
         """Draw the N / V / M diagram over grey members; return max |value|."""
         self._replay = partial(self.show_diagram, model, kind)
