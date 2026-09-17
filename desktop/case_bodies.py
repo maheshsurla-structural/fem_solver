@@ -18,17 +18,24 @@ headless-constructible.
 from __future__ import annotations
 
 from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDoubleSpinBox,
-                               QHBoxLayout, QLabel, QPushButton, QSpinBox,
-                               QStackedWidget, QTableWidget, QTableWidgetItem,
-                               QVBoxLayout, QWidget)
+                               QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
+                               QPushButton, QSpinBox, QStackedWidget,
+                               QTableWidget, QTableWidgetItem, QVBoxLayout,
+                               QWidget)
 
 import style
 from analysis_ui import GroupCard
+
+_ROLE = 0x0100                                          # Qt.UserRole
 
 
 class _Body(QWidget):
     TITLE = ""
     SUB = ""
+    # Whether this analysis can start from a nonlinear case's committed state
+    # (E2). The editor shows the Stiffness-to-use card only for such types; the
+    # rest (static / influence analyses) run against the current model.
+    SUPPORTS_IC = True
 
     def _root(self) -> QVBoxLayout:
         lay = QVBoxLayout(self)
@@ -365,9 +372,151 @@ class ResponseSpectrumBody(_Body):
             self.source.setCurrentIndex(si)
 
 
+class CableTuningBody(_Body):
+    """Cable-stayed tuning: pick the stay members + the target deck nodes."""
+
+    TITLE = "Cable-stayed tuning (unknown load factor)"
+    SUB = ("Solves the stay pretensions so the target deck nodes reach zero "
+           "vertical deflection under dead load. Define the dead load first.")
+    SUPPORTS_IC = False
+
+    def __init__(self, project, *, initial: dict | None = None,
+                 max_modes: int = 20, default_modes: int = 6):
+        super().__init__()
+        lay = self._root()
+        cab = GroupCard("Stay cables (members to tune)", form=False)
+        self.cables = _multi_list(90)
+        for mb in project.members:
+            _add_id_row(self.cables, f"member {mb.id}  ({mb.n1}→{mb.n2})", mb.id)
+        cab.body_layout().addWidget(self.cables)
+        lay.addWidget(cab)
+        tgt = GroupCard("Target nodes (zero vertical deflection)", form=False)
+        self.targets = _multi_list(90)
+        for nd in project.nodes:
+            _add_id_row(self.targets,
+                        f"node {nd.id}  ({nd.x:g}, {getattr(nd, 'y', 0):g})",
+                        nd.id)
+        tgt.body_layout().addWidget(self.targets)
+        lay.addWidget(tgt)
+        if initial:
+            _select_ids(self.cables, initial.get("cables"))
+            _select_ids(self.targets, initial.get("targets"))
+
+    def case_params(self) -> dict:
+        return {"cables": _selected_ids(self.cables),
+                "targets": _selected_ids(self.targets)}
+
+
+class TemperatureGradientBody(_Body):
+    """Temperature gradient: AASHTO / linear profile + members to apply it to."""
+
+    TITLE = "Temperature-gradient load"
+    SUB = ("A vertical gradient through the deck depth → self-equilibrated "
+           "stress (determinate) and continuity moments (continuous).")
+    SUPPORTS_IC = False
+
+    def __init__(self, project, *, initial: dict | None = None,
+                 max_modes: int = 20, default_modes: int = 6):
+        super().__init__()
+        lay = self._root()
+        card = GroupCard("Gradient")
+        self.source = QComboBox()
+        self.source.addItem("AASHTO positive vertical", "aashto")
+        self.source.addItem("Linear (top → bottom)", "linear")
+        card.add_row("Type", self.source)
+        self.stack = QStackedWidget()
+        self.zone = QComboBox()
+        for z in (1, 2, 3, 4):
+            self.zone.addItem(f"Solar zone {z}", z)
+        self.zone.setCurrentIndex(2)
+        aashto = GroupCard("AASHTO parameters")
+        aashto.add_row("Zone", self.zone)
+        self.dt_top = self._t(20.0)
+        self.dt_bot = self._t(0.0)
+        linear = GroupCard("Linear parameters")
+        linear.add_row("ΔT top [°C]", self.dt_top)
+        linear.add_row("ΔT bottom [°C]", self.dt_bot)
+        self.stack.addWidget(aashto)
+        self.stack.addWidget(linear)
+        card.add_full_row(self.stack)
+        self.alpha = QDoubleSpinBox()
+        self.alpha.setDecimals(2)
+        self.alpha.setRange(0.01, 100.0)
+        self.alpha.setSingleStep(0.1)
+        self.alpha.setValue(1.00)
+        card.add_row("Expansion α [×10⁻⁵ /°C]", self.alpha)
+        lay.addWidget(card)
+        apply_card = GroupCard("Apply to members", form=False)
+        self.members = _multi_list(100)
+        for mb in project.members:
+            it = _add_id_row(self.members, f"member {mb.id}  ({mb.n1}→{mb.n2})",
+                             mb.id)
+            it.setSelected(True)                    # default: all
+        apply_card.body_layout().addWidget(self.members)
+        lay.addWidget(apply_card)
+        self.source.currentIndexChanged.connect(self.stack.setCurrentIndex)
+        if initial:
+            self._seed(initial)
+
+    @staticmethod
+    def _t(value):
+        s = QDoubleSpinBox()
+        s.setRange(-100.0, 100.0)
+        s.setValue(value)
+        return s
+
+    def _seed(self, p: dict) -> None:
+        si = self.source.findData(p.get("source", "aashto"))
+        if si >= 0:
+            self.source.setCurrentIndex(si)
+            self.stack.setCurrentIndex(si)
+        zi = self.zone.findData(p.get("zone"))
+        if zi >= 0:
+            self.zone.setCurrentIndex(zi)
+        self.dt_top.setValue(float(p.get("dt_top", 20.0)))
+        self.dt_bot.setValue(float(p.get("dt_bot", 0.0)))
+        self.alpha.setValue(float(p.get("alpha", 1.0e-5)) / 1.0e-5)
+        _select_ids(self.members, p.get("members"))
+
+    def case_params(self) -> dict:
+        return {"source": self.source.currentData(),
+                "zone": self.zone.currentData(),
+                "dt_top": float(self.dt_top.value()),
+                "dt_bot": float(self.dt_bot.value()),
+                "alpha": float(self.alpha.value()) * 1.0e-5,
+                "members": _selected_ids(self.members)}
+
+
+def _multi_list(min_h: int) -> QListWidget:
+    lst = QListWidget()
+    lst.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
+    lst.setMinimumHeight(min_h)
+    return lst
+
+
+def _add_id_row(lst: QListWidget, label: str, ident) -> QListWidgetItem:
+    it = QListWidgetItem(label)
+    it.setData(_ROLE, ident)
+    lst.addItem(it)
+    return it
+
+
+def _selected_ids(lst: QListWidget) -> list:
+    return [it.data(_ROLE) for it in lst.selectedItems()]
+
+
+def _select_ids(lst: QListWidget, ids) -> None:
+    want = set(ids or [])
+    for i in range(lst.count()):
+        it = lst.item(i)
+        it.setSelected(it.data(_ROLE) in want)
+
+
 # type_id -> (menu label, body class). The unified editor's Type ▾ order.
 REGISTRY: list[tuple[str, str, type]] = [
     ("modal", "Modal", ModalBody),
     ("buckling", "Buckling", BucklingBody),
     ("responsespectrum", "Response Spectrum", ResponseSpectrumBody),
+    ("tempgradient", "Temperature Gradient", TemperatureGradientBody),
+    ("cabletuning", "Cable Tuning", CableTuningBody),
 ]

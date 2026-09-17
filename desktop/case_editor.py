@@ -103,7 +103,10 @@ class CaseEditorDialog(QDialog):
         style.apply(self)
 
     def _on_type(self) -> None:
-        self.stack.setCurrentIndex(self._order.index(self.type_combo.currentData()))
+        tid = self.type_combo.currentData()
+        self.stack.setCurrentIndex(self._order.index(tid))
+        # only stiffness-based analyses can continue from a nonlinear state
+        self.initial.setVisible(self._bodies[tid].SUPPORTS_IC)
 
     def _edit_notes(self) -> None:
         dlg = QDialog(self)
@@ -128,10 +131,12 @@ class CaseEditorDialog(QDialog):
 
     def _result_case(self, case_id: int) -> AnalysisCase:
         tid = self.type_combo.currentData()
+        body = self._bodies[tid]
+        ic = self.initial.value() if body.SUPPORTS_IC else ("zero",)
         return AnalysisCase(
             id=case_id, name=self.name() or self.type_combo.currentText(),
-            type=tid, params=self._bodies[tid].case_params(),
-            notes=self.notes(), initial_condition=self.initial.value())
+            type=tid, params=body.case_params(), notes=self.notes(),
+            initial_condition=ic)
 
     @classmethod
     def edit(cls, parent, project, type_id, case=None):

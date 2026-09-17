@@ -118,3 +118,48 @@ def test_rs_adapter_routes_to_editor(qapp, monkeypatch):
                     seen.append(type_id)))
     case_types.get("responsespectrum").edit(None, _project())
     assert seen == ["responsespectrum"]
+
+
+def test_case_editor_temperature_gradient(qapp):
+    from case_editor import CaseEditorDialog
+    dlg = CaseEditorDialog(None, _project(), "tempgradient")
+    body = dlg._bodies["tempgradient"]
+    body.source.setCurrentIndex(body.source.findData("aashto"))
+    case = dlg._result_case(0)
+    assert case.type == "tempgradient"
+    assert case.params["source"] == "aashto"
+    assert case.params["alpha"] == 1e-5          # stored SI
+    assert case.params["members"] == [1]         # default: all members
+    assert case.initial_condition == ("zero",)   # non-IC type
+
+
+def test_case_editor_cable_tuning(qapp):
+    from case_editor import CaseEditorDialog
+    dlg = CaseEditorDialog(None, _project(), "cabletuning")
+    body = dlg._bodies["cabletuning"]
+    body.cables.item(0).setSelected(True)        # member 1
+    body.targets.item(1).setSelected(True)       # node 2
+    case = dlg._result_case(0)
+    assert case.type == "cabletuning"
+    assert case.params == {"cables": [1], "targets": [2]}
+
+
+def test_case_editor_hides_ic_for_non_ic_types(qapp):
+    from case_editor import CaseEditorDialog
+    dlg = CaseEditorDialog(None, _project(), "modal")
+    assert not dlg.initial.isHidden()            # modal continues from a state
+    dlg.type_combo.setCurrentIndex(dlg.type_combo.findData("tempgradient"))
+    assert dlg.initial.isHidden()                # temp gradient does not
+
+
+def test_batch2_adapters_route_to_editor(qapp, monkeypatch):
+    import case_editor
+    import case_types
+    seen = []
+    monkeypatch.setattr(
+        case_editor.CaseEditorDialog, "edit",
+        classmethod(lambda cls, parent, project, type_id, case=None:
+                    seen.append(type_id)))
+    case_types.get("tempgradient").edit(None, _project())
+    case_types.get("cabletuning").edit(None, _project())
+    assert seen == ["tempgradient", "cabletuning"]

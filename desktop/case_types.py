@@ -185,16 +185,8 @@ class TemperatureGradientType(CaseType):
         return f"{grad} · {n} members"
 
     def edit(self, parent, project, case=None):
-        from temperature_gradient_dialog import TemperatureGradientDialog
-        dlg = TemperatureGradientDialog(
-            parent, project,
-            initial=(dict(case.params) if case else None),
-            name=(case.name if case else "Temperature Gradient"),
-            notes=(case.notes if case else ""))
-        if not dlg.exec():
-            return None
-        return self._mk(case, name=dlg.header.name() or "Temperature Gradient",
-                        params=dlg.result(), notes=dlg.header.notes())
+        from case_editor import CaseEditorDialog        # E1 unified editor
+        return CaseEditorDialog.edit(parent, project, self.type_id, case)
 
     def dispatch(self, win, config):
         return win.run_temperature_gradient(config=config)
@@ -331,15 +323,8 @@ class CableTuningType(CaseType):
                 f"{len(params.get('targets') or [])} target nodes")
 
     def edit(self, parent, project, case=None):
-        from cable_tuning_dialog import CableTuningDialog
-        dlg = CableTuningDialog(
-            parent, project, initial=(dict(case.params) if case else None),
-            name=(case.name if case else "Cable Tuning"),
-            notes=(case.notes if case else ""))
-        if not dlg.exec():
-            return None
-        return self._mk(case, name=dlg.header.name() or "Cable Tuning",
-                        params=dlg.result(), notes=dlg.header.notes())
+        from case_editor import CaseEditorDialog        # E1 unified editor
+        return CaseEditorDialog.edit(parent, project, self.type_id, case)
 
     def dispatch(self, win, config):
         return win.run_cable_tuning(config=config)
