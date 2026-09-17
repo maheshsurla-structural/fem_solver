@@ -243,7 +243,10 @@ actually needs.
 
 * [x] **E5a** Run-Analysis dialog lists every saved `analysis_case` ✅ 2026-09-16
   (was stale — missed all 10 saved types; standalone TH launcher removed)
-* [ ] **E6a** Set Def Name · **E6b** Notes editor · **E6d** columns/context-menu/filter
+* [x] **E6** manager chrome (partial) ✅ 2026-09-16 — **E6b** Notes editor (already
+  in the shared CaseHeader) · **E6d** right-click context menu + filter box.
+  Remaining: **E6a** Set Def Name and the **Status / Last-run columns** (fold into
+  E5c run-status).
 * [x] **E4** Load Case Tree ✅ 2026-09-16 — `case_graph` dependency forest +
   `CaseTreeDialog` + "Tree…" button; nests dependents under their source, flags
   dangling refs + cycles. (The "stale" flag — source changed since last run —
