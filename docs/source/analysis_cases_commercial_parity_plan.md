@@ -244,13 +244,11 @@ actually needs.
 * [x] **E5a** Run-Analysis dialog lists every saved `analysis_case` ✅ 2026-09-16
   (was stale — missed all 10 saved types; standalone TH launcher removed)
 * [x] **E6** manager chrome (partial) ✅ 2026-09-16 — **E6b** Notes editor (already
-  in the shared CaseHeader) · **E6d** right-click context menu + filter box.
-  Remaining: **E6a** Set Def Name and the **Status / Last-run columns** (fold into
-  E5c run-status).
+  in the shared CaseHeader) · **E6d** right-click context menu + filter box ·
+  **Status / Last-run column** (via E5c). Remaining: **E6a** Set Def Name.
 * [x] **E4** Load Case Tree ✅ 2026-09-16 — `case_graph` dependency forest +
   `CaseTreeDialog` + "Tree…" button; nests dependents under their source, flags
-  dangling refs + cycles. (The "stale" flag — source changed since last run —
-  waits on E5c run-status tracking.)
+  dangling refs + cycles, and (with E5c) **stale** cases whose source ran later.
 * [ ] **E3a** `LoadCase` → "Load Pattern" relabel
 * [ ] **E1** `CaseEditor` unified shell (strangler over the per-type bodies)
 * [x] **E2a–c** Initial-conditions / state chaining — data model, seeding helper,
@@ -260,7 +258,12 @@ actually needs.
   dialogs ✅ 2026-09-16 (sub-plan)
 * [x] **E2-ui delete-guard** ✅ 2026-09-16 — deletion + `model_checks` referential
   integrity for `initial_condition` *(sub-plan)*. **E2 COMPLETE.**
-* [ ] **E5b/c/d** Run All (topo) · persisted status/last-run · results association
+* [x] **E5c** per-case session run status + last-run ✅ 2026-09-16 — transient
+  `project.case_status` registry; Status column in the manager; Run-Analysis
+  dialog seeds it; also lit the E4 tree **stale** flag. (E5d results-association
+  subsumed — "Finished" is the results signal for ephemeral analyses, nonlinear
+  results already persist as RunRecords.)
+* [ ] **E5b** Run All in dependency order (topological)
 * [ ] **E3b** Loads-Applied spec · **E3c** result combinations
 * [ ] **E6c** Design… classification · **E7** integrity/validation/versioning
 * [ ] **E8** new engine types (deferred)
