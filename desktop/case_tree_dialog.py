@@ -79,6 +79,8 @@ class CaseTreeDialog(QDialog):
             flags.append("source missing")
         if node["key"] in cycle_set:
             flags.append("cycle")
+        if node.get("stale"):
+            flags.append("stale — source ran later")
         if flags:
             name = f"{name}  ⚠ {', '.join(flags)}"
         it = QTreeWidgetItem([name, node["type"]])
@@ -91,11 +93,14 @@ class CaseTreeDialog(QDialog):
         n = _count(forest) if forest else 0
         parts = [f"{n} case{'s' if n != 1 else ''}"]
         dangling = _count(forest, key=lambda x: x["dangling"])
+        stale = _count(forest, key=lambda x: x.get("stale"))
         if dangling:
             parts.append(f"{dangling} with a missing source")
+        if stale:
+            parts.append(f"{stale} stale")
         if cycles:
             parts.append(f"{len(cycles)} in a dependency cycle")
-        return " · ".join(parts) if (dangling or cycles) else ""
+        return " · ".join(parts) if (dangling or stale or cycles) else ""
 
     @classmethod
     def show_tree(cls, parent, project):

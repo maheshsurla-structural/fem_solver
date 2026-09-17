@@ -106,9 +106,22 @@ class RunAnalysisDialog(QDialog):
             action.addItem("Do not run", False)
             action.setCurrentIndex(0 if meta["default_run"] else 1)
             self.table.setCellWidget(r, 2, action)
-            self.table.setItem(r, 3, QTableWidgetItem("Not run"))
+            # seed the last-known session status (E5c) instead of a flat "Not run"
+            key = self._status_key(meta)
+            st = self._project.case_status(key) if key else None
+            self.table.setItem(
+                r, 3, QTableWidgetItem(st["status"] if st else "Not run"))
             meta["action"] = action
             self._rows.append(meta)
+
+    @staticmethod
+    def _status_key(meta):
+        kind = meta["kind"]
+        if kind == "linear":
+            return ("linear",)
+        if kind in ("nonlinear", "analysis"):
+            return (kind, meta["case_id"])
+        return None
 
     def _set_status(self, r: int, text: str) -> None:
         self.table.item(r, 3).setText(text)

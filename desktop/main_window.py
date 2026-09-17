@@ -664,7 +664,9 @@ class MainWindow(QMainWindow):
     def run_linear_static(self):
         info = self._solve()
         if info is None:
+            self._project.set_case_status(("linear",), "No model")
             return None
+        self._project.set_case_status(("linear",), "Finished")
         dmax = mg.max_translation(self._model)
         span = mg.model_span(self._model)
         scale = (0.08 * span / dmax) if dmax > 0 else 1.0
@@ -2431,10 +2433,14 @@ class MainWindow(QMainWindow):
             config = ct.build_config(self._project, c.params,
                                      initial_condition=c.initial_condition)
         except Exception as exc:                           # noqa: BLE001
+            self._project.set_case_status(("analysis", case_id),
+                                          "Could not start")
             QMessageBox.warning(self, "Analysis case",
                                 f"Cannot run '{c.name}':\n\n{exc}")
             return None
-        return ct.dispatch(self, config)
+        out = ct.dispatch(self, config)
+        self._project.set_case_status(("analysis", case_id), "Finished")
+        return out
 
     def _on_double_click(self, item, _col) -> None:
         ref = item.data(0, Qt.ItemDataRole.UserRole)

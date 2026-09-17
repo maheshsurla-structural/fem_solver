@@ -79,8 +79,9 @@ class AnalysisCasesDialog(QDialog):
         self._filter.textChanged.connect(lambda *_: self._apply_filter())
         root.addWidget(self._filter)
 
-        self.table = QTableWidget(0, 3)
-        self.table.setHorizontalHeaderLabels(["Case", "Type", "Details"])
+        self.table = QTableWidget(0, 4)
+        self.table.setHorizontalHeaderLabels(["Case", "Type", "Details",
+                                              "Status"])
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(
             self.table.SelectionBehavior.SelectRows)
@@ -94,6 +95,7 @@ class AnalysisCasesDialog(QDialog):
         hdr.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         hdr.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         hdr.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        hdr.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
         self.table.itemSelectionChanged.connect(self._sync_buttons)
         self.table.doubleClicked.connect(lambda *_: self._run())
         root.addWidget(self.table, 1)
@@ -196,20 +198,48 @@ class AnalysisCasesDialog(QDialog):
                 name_it.setIcon(_icon(meta["icon"]))
             type_it = QTableWidgetItem(meta["type"])
             det_it = QTableWidgetItem(meta["detail"])
+            stat_text, stat_tip = self._status_cell(meta)
+            stat_it = QTableWidgetItem(stat_text)
+            if stat_tip:
+                stat_it.setToolTip(stat_tip)
             notes = (meta.get("notes") or "").strip()
             if notes:                                    # surface notes on hover
                 tip = f"{meta['name']} — {notes}"
                 for it in (name_it, type_it, det_it):
                     it.setToolTip(tip)
             if meta["kind"] == "planned":                # greyed + not selectable
-                for it in (name_it, type_it, det_it):
+                for it in (name_it, type_it, det_it, stat_it):
                     it.setFlags(Qt.ItemFlag.NoItemFlags)
                     it.setForeground(_muted())
             self.table.setItem(r, 0, name_it)
             self.table.setItem(r, 1, type_it)
             self.table.setItem(r, 2, det_it)
+            self.table.setItem(r, 3, stat_it)
         self._sync_buttons()
         self._apply_filter()
+
+    def _status_key(self, meta) -> tuple | None:
+        """The ``project.case_status`` key for a row, or None (planned rows)."""
+        kind = meta["kind"]
+        if kind in ("linear", "stages"):
+            return (kind,)
+        if kind in ("nonlinear", "analysis"):
+            return (kind, meta["case_id"])
+        return None
+
+    def _status_cell(self, meta) -> tuple[str, str]:
+        """``(text, tooltip)`` for the Status column — the case's session run
+        status (E5c), e.g. ``Finished`` with the run time on hover; ``—`` when it
+        has not run this session."""
+        import time
+        key = self._status_key(meta)
+        st = self._project.case_status(key) if key else None
+        if not st:
+            return "—", ""
+        when = st.get("when")
+        tip = (f"Last run {time.strftime('%H:%M:%S', time.localtime(when))}"
+               if when else "")
+        return st.get("status", "—"), tip
 
     def _ic_suffix(self, case) -> str:
         """`" · from ‹source›"` when ``case`` starts from another case's committed

@@ -50,7 +50,22 @@ def case_nodes(project) -> list[dict]:
                     "name": c.name, "type": (ct.type_label if ct else c.type),
                     "parent": (("nonlinear", pid) if pid is not None else None),
                     "dangling": pid is not None and pid not in nl_ids})
+    for n in out:                              # E5c/E4: stale = source ran later
+        n["stale"] = _is_stale(project, n["key"], n["parent"])
     return out
+
+
+def _is_stale(project, key, parent) -> bool:
+    """True when the case's source ran *after* the case last ran — so the case's
+    result is out of date. Needs both run times (session status, E5c); unknown
+    when either hasn't run."""
+    if parent is None or not hasattr(project, "case_status"):
+        return False
+    ns = project.case_status(key)
+    ps = project.case_status(parent)
+    if not (ns and ps and ns.get("when") and ps.get("when")):
+        return False
+    return ps["when"] > ns["when"]
 
 
 def case_forest(project):
