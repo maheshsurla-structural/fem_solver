@@ -287,6 +287,37 @@ def areas_reinforcement_mesh(model, quantity: str = "As_x_bot", *,
     return poly
 
 
+def slab_results_table(model):
+    """Per-node slab results for export/reporting (slab plan S9): one row per
+    node that belongs to a surface element, with displacement + nodal-averaged
+    stress resultants. Returns ``(headers, rows)`` or ``None`` if the model has
+    no areas. Resultants are in the elements' local axes."""
+    tags, pts, index = node_points(model)
+    area_nodes = set()
+    for e in model.elements.values():
+        if len(getattr(e, "node_tags", ())) in (3, 4):
+            area_nodes.update(e.node_tags)
+    if not area_nodes:
+        return None
+    uz = _node_disp_scalar(model, "Uz")
+    umag = _node_disp_scalar(model, "Umag")
+    res = {q: areas_result_mesh(model, q)
+           for q in ("M11", "M22", "M12", "Vmax")}
+    headers = ["node", "x", "y", "z", "Uz", "|U|",
+               "M11", "M22", "M12", "Vmax"]
+    rows = []
+    for i, t in enumerate(tags):
+        if t not in area_nodes:
+            continue
+        x, y, z = (float(v) for v in pts[i])
+        row = [t, x, y, z, float(uz[i]), float(umag[i])]
+        for q in ("M11", "M22", "M12", "Vmax"):
+            m = res[q]
+            row.append(float(m.point_data["value"][i]) if m is not None else 0.0)
+        rows.append(row)
+    return headers, rows
+
+
 def _area_frame(pts):
     """Orthonormal local frame (e1, e2, e3=normal) at a 3/4-node area's centroid,
     matching the shell elements' local axes. ``pts`` is (3or4, 3)."""

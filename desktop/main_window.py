@@ -454,6 +454,8 @@ class MainWindow(QMainWindow):
                                        self.run_timehistory_dialog, "run")
         self.act_runhistory = _action(self, "Run &history…", None,
                                       self.show_run_history, "history")
+        self.act_export_slab = _action(self, "&Export slab results…", None,
+                                       self.export_slab_results, "export")
         self.act_checkmodel = _action(self, "&Check model…", None,
                                       self.check_model, "checkmodel")
         self.act_undef = _action(self, "&Undeformed", None,
@@ -641,7 +643,8 @@ class MainWindow(QMainWindow):
                           (self.act_diag_m, "Moment"),
                           (self.act_area_contour, "Deflection"),
                           (self.act_area_forces, "Shell F/M"))),
-            ("Reports", ((self.act_runhistory, "History"),)),
+            ("Reports", ((self.act_runhistory, "History"),
+                         (self.act_export_slab, "Export slab"))),
             ("Design", ((self.act_design, "Design"),
                         (self.act_area_rebar, "Slab rebar"),
                         (self.act_punching, "Punching"),
@@ -1974,6 +1977,34 @@ class MainWindow(QMainWindow):
         from slab_punching_dialog import SlabPunchingDialog
         SlabPunchingDialog.run(self, p, self._model)
         self._show_results_tab()
+
+    def export_slab_results(self) -> None:
+        """Export per-node slab results (displacement + M/N/V) to CSV (slab S9).
+        Builds + solves, then writes a table for every area node."""
+        p = self._project
+        if p.ndm != 3 or not getattr(p, "areas", None):
+            QMessageBox.information(
+                self, "Export slab results",
+                "Need a 3-D slab model with at least one area.")
+            return
+        self._model = p.build_model()
+        if self._solve() is None:
+            return
+        import model_geometry as mg
+        table = mg.slab_results_table(self._model)
+        if table is None:
+            QMessageBox.information(self, "Export slab results",
+                                   "No slab results to export.")
+            return
+        from PySide6.QtWidgets import QFileDialog
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export slab results", "slab_results.csv",
+            "CSV files (*.csv)")
+        if not path:
+            return
+        _write_slab_csv(path, table)
+        self.statusBar().showMessage(
+            f"Exported {len(table[1])} slab node rows → {path}")
 
     def show_section_cut(self) -> None:
         """Design-strip section cut: integrate a shell result along a two-node
@@ -4008,6 +4039,17 @@ def _ribbon_group(caption, items) -> QWidget:
     cap.setAlignment(Qt.AlignmentFlag.AlignHCenter)
     col.addWidget(cap)
     return box
+
+
+def _write_slab_csv(path, table) -> None:
+    """Write a ``(headers, rows)`` slab-results table to ``path`` as CSV
+    (slab plan S9 export)."""
+    import csv
+    headers, rows = table
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(headers)
+        w.writerows(rows)
 
 
 def _find(items, item_id):
