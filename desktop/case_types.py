@@ -250,30 +250,9 @@ class ResponseSpectrumType(CaseType):
                 f"{str(params.get('combination', 'cqc')).upper()}")
 
     def edit(self, parent, project, case=None):
-        from PySide6.QtWidgets import QMessageBox
-
-        from response_spectrum_dialog import (ResponseSpectrumDialog,
-                                              spectrum_from_params)
-        dlg = ResponseSpectrumDialog(
-            parent, ndm=project.ndm, max_modes=self._edit_cap(project),
-            default_modes=6, initial=(dict(case.params) if case else None),
-            sources=[(c.id, c.name) for c in project.nonlinear_cases],
-            initial_ic=(case.initial_condition if case else ("zero",)),
-            name=(case.name if case else "Response Spectrum"),
-            notes=(case.notes if case else ""))
-        while dlg.exec():
-            params = dlg.params()
-            try:                                   # validate the custom table
-                spectrum_from_params(params)
-            except ValueError as exc:
-                QMessageBox.warning(dlg, "Response spectrum", str(exc))
-                continue
-            out = self._mk(case,
-                           name=dlg.header.name() or "Response Spectrum",
-                           params=params, notes=dlg.header.notes())
-            out.initial_condition = dlg.initial_condition()   # E2d
-            return out
-        return None
+        # E1: Response Spectrum is edited in the unified Load-Case-Data editor.
+        from case_editor import CaseEditorDialog
+        return CaseEditorDialog.edit(parent, project, self.type_id, case)
 
     def build_config(self, project, params, *, initial_condition=("zero",)):
         from response_spectrum_dialog import spectrum_from_params

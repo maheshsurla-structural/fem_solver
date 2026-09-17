@@ -89,3 +89,32 @@ def test_modal_and_buckling_adapters_route_to_editor(qapp, monkeypatch):
     case_types.get("modal").edit(None, _project())
     case_types.get("buckling").edit(None, _project())
     assert seen == ["modal", "buckling"]
+
+
+def test_case_editor_response_spectrum_body(qapp):
+    import case_types
+    from case_editor import CaseEditorDialog
+    from femsolver import ResponseSpectrum
+    dlg = CaseEditorDialog(None, _project(), "responsespectrum")
+    body = dlg._bodies["responsespectrum"]
+    body.modes.setValue(4)
+    body.source.setCurrentIndex(body.source.findData("asce7"))
+    case = dlg._result_case(0)
+    assert case.type == "responsespectrum"
+    assert case.params["source"] == "asce7" and case.params["num_modes"] == 4
+    # build_config rebuilds the derived spectrum from the body's params
+    cfg = case_types.get("responsespectrum").build_config(
+        _project(), case.params, initial_condition=("zero",))
+    assert isinstance(cfg[0], ResponseSpectrum)
+
+
+def test_rs_adapter_routes_to_editor(qapp, monkeypatch):
+    import case_editor
+    import case_types
+    seen = []
+    monkeypatch.setattr(
+        case_editor.CaseEditorDialog, "edit",
+        classmethod(lambda cls, parent, project, type_id, case=None:
+                    seen.append(type_id)))
+    case_types.get("responsespectrum").edit(None, _project())
+    assert seen == ["responsespectrum"]
