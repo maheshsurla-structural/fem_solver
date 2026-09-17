@@ -28,6 +28,7 @@ AREA_TAG_STRIDE = 10_000
 # Node-tag base for auto-created rigid-diaphragm master nodes (slab S8) — far
 # above project + mesh-generated node ids so they never collide.
 DIAPHRAGM_MASTER_NODE_BASE = 3_000_000
+GRAVITY = 9.80665                    # m/s² — for area self-weight (slab S5)
 
 
 def area_element_tag(area_id: int, k: int = 0) -> int:
@@ -352,6 +353,8 @@ class AreaLoad:
       ``(0, 0, -w)`` (the common slab dead/live/superimposed case).
     * ``kind="pressure"`` — ``w`` acting normal to the area (its local +3),
       e.g. wind on a wall or hydrostatic face pressure.
+    * ``kind="selfweight"`` — a downward load auto-computed from the area's
+      material density × shell-section thickness × g (``w`` is ignored / 0).
 
     ``case`` is the owning LoadCase id. Compiled onto the area's shell
     element(s) by :meth:`Project.apply_case` via the element's
@@ -976,19 +979,34 @@ class Project:
             n = 1
         return [area_element_tag(area.id, k) for k in range(n)]
 
+    def _area_selfweight(self, area) -> float:
+        """Self-weight surface load ρ·t·g (Pa) for an area, from its material
+        density and shell-section thickness (slab plan S5 self-weight). 0 if the
+        material carries no density."""
+        ss = self.shell_section(area.shell_section)
+        mat = next((m for m in self.materials if m.id == area.material), None)
+        rho = float(getattr(mat, "rho", 0.0)) if mat else 0.0
+        t = float(getattr(ss, "thickness", 0.0)) if ss else 0.0
+        return rho * t * GRAVITY
+
     def _apply_area_load(self, model, al, factor: float) -> None:
         a = self.area(al.area)
         if a is None:
             return
+        pressure = al.w * factor if al.kind == "pressure" else None
+        if al.kind == "selfweight":
+            w = self._area_selfweight(a)              # ρ·t·g, computed here
+        else:
+            w = al.w
         for tag in self._area_element_tags(a):
             try:
                 el = model.element(tag)
             except KeyError:
                 continue
-            if al.kind == "pressure" and hasattr(el, "add_pressure"):
-                el.add_pressure(al.w * factor)
+            if pressure is not None and hasattr(el, "add_pressure"):
+                el.add_pressure(pressure)
             elif hasattr(el, "add_surface_load"):
-                el.add_surface_load(0.0, 0.0, -al.w * factor)   # global −Z
+                el.add_surface_load(0.0, 0.0, -w * factor)   # global −Z gravity
 
     def apply_case(self, model, case_id: int, factor: float = 1.0) -> None:
         """Add one case's nodal + line loads to a built model, scaled by

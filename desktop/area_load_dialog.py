@@ -55,9 +55,11 @@ class AreaLoadDialog(PickDialog):
         if aload is not None:
             _select(self.case, getattr(aload, "case", project.default_case_id()))
         self.kind = _combo([("Gravity (global −Z)", "gravity"),
-                            ("Pressure (normal to surface)", "pressure")])
+                            ("Pressure (normal to surface)", "pressure"),
+                            ("Self-weight (ρ·t·g, auto)", "selfweight")])
         if aload is not None:
             _select(self.kind, getattr(aload, "kind", "gravity"))
+        self.kind.currentIndexChanged.connect(self._on_kind)
 
         applied = ui.GroupCard("Applied to")
         applied.add_row("Area", self.area)
@@ -79,10 +81,16 @@ class AreaLoadDialog(PickDialog):
         outer.addWidget(loads)
         outer.addWidget(ui.dialog_buttons(self))
         style.apply(self)
+        self._on_kind()
+
+    def _on_kind(self) -> None:
+        # self-weight is computed from ρ·t·g, so the magnitude field is disabled
+        self.w.setEnabled(self.kind.currentData() != "selfweight")
 
     def data(self) -> AreaLoad:
         return AreaLoad(area=self.area.currentData(),
-                        w=float(self.w.si_value()),
+                        w=0.0 if self.kind.currentData() == "selfweight"
+                        else float(self.w.si_value()),
                         kind=self.kind.currentData(),
                         case=self.case.currentData())
 

@@ -255,7 +255,7 @@ DXF/table import-export of areas).
 | S3 | Auto-mesh + coincident-node merge | GUI | ✅ (7 tests, converges to analytical) |
 | S4 | Shell-section (thickness) manager | GUI | ✅ (6 tests) |
 | S5a | Shell `f_eq` pressure/body loads | **Engine** | ✅ (6 tests) |
-| S5b | `AreaLoad` + dialog + apply_loads | GUI | ✅ (7 tests) |
+| S5b | `AreaLoad` + dialog + apply_loads (gravity/pressure/**self-weight** ρ·t·g) | GUI | ✅ (12 tests) |
 | S6 | Filled faces + local-axis triads + **area selection** | GUI | ✅ (`areas_mesh`, `area_local_axes`, click-select/highlight/delete/props via `nearest_item`+`area_faces_mesh`; 6 tests) |
 | S7 | Result contours (U/σ/M/V) + cuts | GUI | ✅ displacement + M/N/V + Wood-Armer + GP→node extrapolation + **section cuts** (`section_cut`, design-strip M/V validated vs wL²/8·B; 5 tests) — COMPLETE |
 | S8 | Diaphragm assignment (rigid) | GUI | ✅ (9 tests; RigidDiaphragm, auto master, rigid-floor solve) |
