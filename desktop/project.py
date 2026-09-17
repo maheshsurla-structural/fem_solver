@@ -25,6 +25,9 @@ SCHEMA = "femsolver-project/1"
 # block for its mesh sub-elements (slab S3).
 AREA_TAG_BASE = 2_000_000
 AREA_TAG_STRIDE = 10_000
+# Node-tag base for auto-created rigid-diaphragm master nodes (slab S8) — far
+# above project + mesh-generated node ids so they never collide.
+DIAPHRAGM_MASTER_NODE_BASE = 3_000_000
 
 
 def area_element_tag(area_id: int, k: int = 0) -> int:
@@ -379,6 +382,31 @@ class Stage:
 
 
 @dataclass
+class Diaphragm:
+    """A rigid floor diaphragm (slab plan S8): the ``nodes`` (typically the
+    beam-column joints at one level) are tied so they share the master node's
+    two in-plane translations and its rotation about the diaphragm normal, while
+    vertical translation and the two in-plane rotations stay independent — the
+    classic rigid-floor idealisation that distributes lateral load by rigidity.
+
+    ``perp_dir`` is the global axis normal to the diaphragm plane
+    (2 = Z / XY-plane floor, the default; 0 = X, 1 = Y). ``master`` is an
+    existing node id to use as the master, or ``None`` to auto-create one at the
+    centroid of ``nodes`` at build time. Compiled to a
+    :class:`femsolver.RigidDiaphragm` MP-constraint in ``build_model``; a 3-D
+    feature (needs ndf=6)."""
+    id: int
+    name: str
+    nodes: list = field(default_factory=list)   # slave node ids
+    perp_dir: int = 2                            # 0=X, 1=Y, 2=Z (XY floor)
+    master: int | None = None                   # None = auto master at centroid
+
+    def __post_init__(self):
+        self.nodes = [int(n) for n in self.nodes]
+        self.perp_dir = int(self.perp_dir)
+
+
+@dataclass
 class Project:
     name: str = "Untitled"
     ndm: int = 2
@@ -398,6 +426,7 @@ class Project:
     member_loads: list = field(default_factory=list)   # MemberLoad (line loads)
     area_loads: list = field(default_factory=list)      # AreaLoad (slab plan S5)
     combinations: list = field(default_factory=list)   # LoadCombination
+    diaphragms: list = field(default_factory=list)      # Diaphragm (slab plan S8)
     stages: list = field(default_factory=list)          # Stage (construction seq)
     nonlinear_cases: list = field(default_factory=list)  # NonlinearCase (GUI-4)
     analysis_cases: list = field(default_factory=list)  # AnalysisCase (ACM plan)
@@ -430,6 +459,12 @@ class Project:
 
     def next_area_id(self) -> int:
         return max((a.id for a in self.areas), default=0) + 1
+
+    def diaphragm(self, dia_id):
+        return next((d for d in self.diaphragms if d.id == dia_id), None)
+
+    def next_diaphragm_id(self) -> int:
+        return max((d.id for d in self.diaphragms), default=0) + 1
 
     def nonlinear_case(self, case_id):
         return next((c for c in self.nonlinear_cases if c.id == case_id), None)
@@ -567,6 +602,11 @@ class Project:
                 id=c["id"], name=c["name"],
                 factors={int(k): v for k, v in c.get("factors", {}).items()})
                 for c in d.get("combinations", [])],
+            diaphragms=[Diaphragm(id=x["id"], name=x.get("name", ""),
+                                  nodes=list(x.get("nodes", [])),
+                                  perp_dir=int(x.get("perp_dir", 2)),
+                                  master=x.get("master"))
+                        for x in d.get("diaphragms", [])],
             stages=[Stage(id=s["id"], name=s.get("name", ""),
                           add_members=list(s.get("add_members", [])))
                     for s in d.get("stages", [])],
@@ -665,9 +705,46 @@ class Project:
         for nd in self.nodes:
             if nd.supports and any(nd.supports):
                 m.fix(nd.id, list(nd.supports))
+        # rigid diaphragms (slab S8) — 3-D only (they need ndf=6)
+        if self.ndm == 3 and self.diaphragms:
+            self._add_diaphragms(m)
         if with_loads:
             self.apply_loads(m, ("all", None))
         return m
+
+    def _add_diaphragms(self, model) -> None:
+        """Compile each :class:`Diaphragm` into a ``femsolver.RigidDiaphragm``
+        MP-constraint (slab S8). When a diaphragm has no explicit master, a
+        master node is auto-created at the centroid of its slaves and its
+        out-of-plane DOFs are pinned (an unconnected master would otherwise be
+        singular). Slaves not present in the model are dropped; <2 → skipped."""
+        from femsolver import RigidDiaphragm
+        for dia in self.diaphragms:
+            slaves = [n for n in dia.nodes if n in model.nodes]
+            master = dia.master
+            if master is not None and master in slaves:
+                slaves = [s for s in slaves if s != master]
+            if len(slaves) < 2:
+                continue
+            perp = int(getattr(dia, "perp_dir", 2))
+            if master is None or master not in model.nodes:
+                import numpy as np
+                c = np.mean([model.node(s).coords for s in slaves], axis=0)
+                master = DIAPHRAGM_MASTER_NODE_BASE + dia.id
+                if master in model.nodes:        # defensive: avoid a clash
+                    master = DIAPHRAGM_MASTER_NODE_BASE + max(
+                        d.id for d in self.diaphragms) + dia.id
+                model.add_node(master, *[float(v) for v in c])
+                # free only the in-plane translations + rotation about perp;
+                # pin the rest so the unconnected master isn't singular.
+                mask = [1, 1, 1, 1, 1, 1]
+                in_plane = [k for k in range(3) if k != perp]
+                for k in in_plane:
+                    mask[k] = 0
+                mask[3 + perp] = 0
+                model.fix(master, mask)
+            model.add_mp_constraint(
+                RigidDiaphragm(master=master, slaves=slaves, perp_dir=perp))
 
     def _mesh_and_add_areas(self, model, mats) -> None:
         """Mesh every ``Area`` into shell elements and add them to ``model``

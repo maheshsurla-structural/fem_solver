@@ -17,8 +17,8 @@ import analysis_ui as ui
 import icons
 import style
 from pick import PickDialog
-from project import (Area, Load, LoadCase, Member, NATURE_ASCE, NATURE_LABELS,
-                     Node, Section)
+from project import (Area, Diaphragm, Load, LoadCase, Member, NATURE_ASCE,
+                     NATURE_LABELS, Node, Section)
 from unit_widgets import UnitSpin, labeled
 from units import Quantity, UnitSystem
 
@@ -267,6 +267,72 @@ class AreaDialog(PickDialog):
     @classmethod
     def edit(cls, parent, project, area=None, seed_nodes=None):
         dlg = cls(parent, project, area, seed_nodes=seed_nodes)
+        return dlg.data() if dlg.exec() else None
+
+
+class DiaphragmDialog(QDialog):
+    """Add / edit a rigid floor diaphragm (slab plan S8): a name, the tied node
+    ids (seeded from the current selection, editable) and the diaphragm plane.
+    A master node is auto-created at the joints' centroid at build time."""
+
+    _PLANES = [("Horizontal floor (normal Z)", 2),
+               ("Vertical, normal Y", 1),
+               ("Vertical, normal X", 0)]
+
+    def __init__(self, parent, project, diaphragm=None, seed_nodes=None):
+        super().__init__(parent)
+        self.setWindowTitle("Edit diaphragm" if diaphragm else "Add diaphragm")
+        form = QFormLayout(self)
+
+        self.id_spin = _id_spin(
+            diaphragm.id if diaphragm
+            else _next_id([d.id for d in project.diaphragms]),
+            editing=diaphragm is not None)
+        form.addRow("Diaphragm id", self.id_spin)
+
+        self.name = QLineEdit(diaphragm.name if diaphragm else "")
+        form.addRow("Name", self.name)
+
+        nodes = (diaphragm.nodes if diaphragm else list(seed_nodes or []))
+        self.nodes = QLineEdit(", ".join(str(n) for n in nodes))
+        form.addRow("Nodes", self.nodes)
+        form.addRow("", _pick_hint("Comma-separated joint ids to tie. Tip: "
+                                   "select the joints first — they seed here."))
+
+        self.plane = _combo(self._PLANES)
+        if diaphragm:
+            _select(self.plane, diaphragm.perp_dir)
+        form.addRow("Plane", self.plane)
+        form.addRow(_buttons(self))
+
+    def _node_list(self):
+        out, seen = [], set()
+        for tok in self.nodes.text().replace(",", " ").split():
+            try:
+                v = int(tok)
+            except ValueError:
+                continue
+            if v not in seen:
+                seen.add(v)
+                out.append(v)
+        return out
+
+    def accept(self) -> None:
+        if len(self._node_list()) < 2:
+            QMessageBox.warning(self, "Invalid diaphragm",
+                                "A diaphragm needs at least two joint nodes.")
+            return
+        super().accept()
+
+    def data(self) -> Diaphragm:
+        name = self.name.text().strip() or f"Diaphragm {self.id_spin.value()}"
+        return Diaphragm(id=self.id_spin.value(), name=name,
+                         nodes=self._node_list(),
+                         perp_dir=self.plane.currentData())
+
+    @classmethod
+    def edit(cls, parent, project, diaphragm=None, seed_nodes=None):
+        dlg = cls(parent, project, diaphragm, seed_nodes=seed_nodes)
         return dlg.data() if dlg.exec() else None
 
 

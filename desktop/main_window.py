@@ -26,8 +26,8 @@ import icons
 import model_geometry as mg
 import style
 from commands import EditCommand
-from editing import (AreaDialog, LoadDialog, MemberDialog, NodeDialog,
-                     SectionDialog, dof_labels)
+from editing import (AreaDialog, DiaphragmDialog, LoadDialog, MemberDialog,
+                     NodeDialog, SectionDialog, dof_labels)
 from hinge_editor import HingeAssignmentDialog, HingeManagerDialog
 from material_editor import MaterialManagerDialog
 from model_view import ModelView
@@ -407,6 +407,8 @@ class MainWindow(QMainWindow):
                                       self.add_member, "member")
         self.act_add_area = _action(self, "Add &area…", None,
                                     self.add_area, "slab")
+        self.act_add_diaphragm = _action(self, "Add &diaphragm…", None,
+                                         self.add_diaphragm, "diaphragm")
         self.act_add_load = _action(self, "Add &load…", None, self.add_load,
                                     "load")
         self.act_add_lineload = _action(self, "Add l&ine load…", None,
@@ -572,6 +574,7 @@ class MainWindow(QMainWindow):
                        (self.act_add_section, "Section"),
                        (self.act_shell_sections, "Thickness"),
                        (self.act_materials, "Materials"))),
+            ("Constraints", ((self.act_add_diaphragm, "Diaphragm"),)),
             ("Edit", ((self.act_undo, "Undo"), (self.act_redo, "Redo"),
                       (self.act_delete, "Delete"))),
             ("Modify", ((self.act_move, "Move"), (self.act_copy, "Copy"),
@@ -2292,6 +2295,28 @@ class MainWindow(QMainWindow):
                          lambda: self._project.areas.append(area),
                          ("area", area.id))
 
+    def add_diaphragm(self) -> None:
+        """Add a rigid floor diaphragm tying the selected joints (slab plan S8).
+        A 3-D feature (needs ndf=6); seeds its node list from the selection."""
+        p = self._project
+        if p.ndm != 3:
+            QMessageBox.information(
+                self, "Add diaphragm",
+                "Rigid diaphragms are a 3-D feature. Start a 3-D model "
+                "(File ▸ New 3-D) to add one.")
+            return
+        seed = [key for kind, key in self._selected_refs() if kind == "node"]
+        dia = DiaphragmDialog.edit(self, p, seed_nodes=seed)
+        if dia is None:
+            return
+        if _find(p.diaphragms, dia.id) is not None:
+            QMessageBox.warning(self, "Duplicate",
+                                f"Diaphragm {dia.id} already exists.")
+            return
+        self._apply_edit("Add diaphragm",
+                         lambda: self._project.diaphragms.append(dia),
+                         ("diaphragm", dia.id))
+
     def add_load(self) -> None:
         if not self._project.nodes:
             QMessageBox.information(self, "Add load", "Add a node first.")
@@ -2753,6 +2778,8 @@ class MainWindow(QMainWindow):
             return any(m.id == key for m in p.members)
         if kind == "area":
             return any(a.id == key for a in getattr(p, "areas", []))
+        if kind == "diaphragm":
+            return any(d.id == key for d in getattr(p, "diaphragms", []))
         if kind == "section":
             return any(s.id == key for s in p.sections)
         if kind == "load":

@@ -213,10 +213,10 @@ compatibility, area copy/replicate, openings, curved-area mesh, model-checks,
 DXF/table import-export of areas).
 
 ### Immediate next items (in order)
-1. **S8 — Rigid diaphragms.** `Diaphragm` data model + `build_model` wiring
-   (auto master node at centroid, pin out-of-plane DOFs, `RigidDiaphragm`
-   MP-constraint — the engine already solves these) + an "Add diaphragm…" GUI
-   (Home ▸ Constraints, seeded from the selected joints).
+1. **S8 — Rigid diaphragms.** ✅ done — `Diaphragm` data model + `build_model`
+   wiring (auto master node at centroid, out-of-plane DOFs pinned,
+   `RigidDiaphragm` MP-constraint) + "Add diaphragm…" GUI (Home ▸ Constraints,
+   seeded from the selected joints).
 2. **S9 — Slab design wiring.** Feed shell design moments (Wood–Armer from
    M11/M22/M12) to `design.two_way_slab` / `punching_reinforcement`; a Design
    tab panel + required-reinforcement contour.
@@ -258,6 +258,6 @@ DXF/table import-export of areas).
 | S5b | `AreaLoad` + dialog + apply_loads | GUI | ✅ (7 tests) |
 | S6 | Filled faces render (`areas_mesh`) | GUI | ✅ lite (local axes / selection later) |
 | S7 | Result contours (U/σ/M/V) + cuts | GUI | ✅ displacement + moment/force (M/N/V, nodal-avg; 10 tests, one-way = wL²/8); GP-extrapolation & section cuts next |
-| S8 | Diaphragm assignment | GUI | ☐ |
+| S8 | Diaphragm assignment (rigid) | GUI | ✅ (9 tests; RigidDiaphragm, auto master, rigid-floor solve) |
 | S9 | Slab/punching/diaphragm design | GUI+wire | ☐ |
 | S10 | Meshing robustness & parity polish | both | ☐ |
