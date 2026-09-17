@@ -693,17 +693,19 @@ class ModelView(QtInteractor):
     def clear_highlight(self) -> None:
         self._highlight = []
         self.remove_actor("selection", render=False)
+        self.remove_actor("selection_areas", render=False)
         self.remove_actor("selection_nodes", render=True)
 
     def _draw_highlight(self) -> None:
         self.remove_actor("selection", render=False)
         self.remove_actor("selection_nodes", render=False)
+        self.remove_actor("selection_areas", render=False)
         if not self._highlight or self._model is None:
             self.render()
             return
         import pyvista as pv
         span = mg.model_span(self._model)
-        pts, lines = [], []
+        pts, lines, area_faces = [], [], []
         for kind, ident in self._highlight:
             if kind == "node" and ident in self._model.nodes:
                 pts.append(mg.to_xyz(self._model.nodes[ident].coords))
@@ -711,10 +713,20 @@ class ModelView(QtInteractor):
                 line = mg.element_line(self._model.element(ident))
                 if line is not None:
                     lines.append(line)
+            elif kind == "area":
+                faces = mg.area_faces_mesh(self._model, ident)
+                if faces is not None:
+                    area_faces.append(faces)
         if lines:
             merged = lines[0] if len(lines) == 1 else pv.merge(lines)
             self.add_mesh(merged.tube(radius=max(span * 0.006, 2e-3)),
                           color=style.V_SELECTION, name="selection")
+        if area_faces:
+            merged = (area_faces[0] if len(area_faces) == 1
+                      else pv.merge(area_faces))
+            self.add_mesh(merged, color=style.V_SELECTION, opacity=0.5,
+                          show_edges=True, edge_color=style.V_SELECTION,
+                          name="selection_areas")
         if pts:
             self.add_points(np.asarray(pts, dtype=float), color=style.V_SELECTION,
                             render_points_as_spheres=True, point_size=20,

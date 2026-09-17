@@ -2791,6 +2791,7 @@ class MainWindow(QMainWindow):
         p = self._project
         node_ids = {k for (t, k) in refs if t == "node"}
         member_ids = {k for (t, k) in refs if t == "member"}
+        area_ids = {k for (t, k) in refs if t == "area"}
         section_ids = {k for (t, k) in refs if t == "section"}
         # Delete loads / line loads by identity (indices shift as we filter).
         loads_del = {id(p.loads[k]) for (t, k) in refs
@@ -2815,6 +2816,13 @@ class MainWindow(QMainWindow):
                              and m.n1 not in node_ids and m.n2 not in node_ids]
             if section_ids:
                 p.sections = [s for s in p.sections if s.id not in section_ids]
+            # areas: delete selected ones, or any that lose a corner node
+            if (area_ids or node_ids) and getattr(p, "areas", None):
+                p.areas = [a for a in p.areas if a.id not in area_ids
+                           and not (node_ids & set(a.nodes))]
+                live = {a.id for a in p.areas}
+                p.area_loads = [al for al in getattr(p, "area_loads", [])
+                                if al.area in live]
             if node_ids or loads_del:
                 p.loads = [ld for ld in p.loads if ld.node not in node_ids
                            and id(ld) not in loads_del]
@@ -2859,7 +2867,7 @@ class MainWindow(QMainWindow):
         self._selection = [r for r in self._selection if self._ref_exists(r)]
         refs = self._selection
         self._update_sel_status(len(refs))
-        geom = [r for r in refs if r[0] in ("node", "member")]
+        geom = [r for r in refs if r[0] in ("node", "member", "area")]
         if geom:
             self.view.highlight(geom)
         else:

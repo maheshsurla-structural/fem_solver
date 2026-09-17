@@ -43,7 +43,11 @@ class PropertiesPanel(QWidget):
             self.clear_selection()
             return
         builder = {"node": self._node_form, "member": self._member_form,
-                   "section": self._section_form, "load": self._load_form}[kind]
+                   "section": self._section_form, "load": self._load_form,
+                   "area": self._area_form}.get(kind)
+        if builder is None:
+            self.clear_selection()
+            return
         self._swap(builder(key, item))
 
     def show_multi(self, project, refs) -> None:
@@ -109,6 +113,9 @@ class PropertiesPanel(QWidget):
             return next((s for s in p.sections if s.id == key), None)
         if kind == "load":
             return p.loads[key] if 0 <= key < len(p.loads) else None
+        if kind == "area":
+            return next((a for a in getattr(p, "areas", []) if a.id == key),
+                        None)
         return None
 
     def _frame(self, title):
@@ -125,6 +132,20 @@ class PropertiesPanel(QWidget):
         btn = QPushButton("Apply")
         btn.clicked.connect(commit)
         form.addRow(btn)
+
+    def _area_form(self, key, area):
+        """Read-only summary of a surface (slab / shell) area (slab plan S10)."""
+        p = self._project
+        w, form = self._frame(f"Area {area.id}")
+        ss = next((s for s in getattr(p, "shell_sections", [])
+                   if s.id == area.shell_section), None)
+        mat = next((m for m in p.materials if m.id == area.material), None)
+        form.addRow("Corners", QLabel(", ".join(str(n) for n in area.nodes)))
+        form.addRow("Thickness", QLabel(ss.name if ss else str(area.shell_section)))
+        form.addRow("Material", QLabel(mat.name if mat else str(area.material)))
+        form.addRow("Mesh", QLabel(f"{area.mesh[0]} × {area.mesh[1]}"))
+        form.addRow("Type", QLabel(ss.kind if ss else "—"))
+        return w
 
     # ------------------------------------------------------------------ forms
     def _node_form(self, key, node):

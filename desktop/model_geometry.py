@@ -514,9 +514,65 @@ def point_segment_distance(p, a, b) -> float:
     return float(np.linalg.norm(p - (a + t * ab)))
 
 
+def _decode_area_id(tag: int):
+    """Project ``Area`` id for a mesh sub-element tag, or ``None`` if the tag is
+    not in the area range (slab S10)."""
+    from project import AREA_TAG_BASE, AREA_TAG_STRIDE
+    if tag is None or tag < AREA_TAG_BASE:
+        return None
+    return (tag - AREA_TAG_BASE) // AREA_TAG_STRIDE
+
+
+def _point_in_polygon_2d(pt, poly) -> bool:
+    """Ray-casting point-in-polygon test in 2-D (``poly`` = list of (x, y))."""
+    x, y = pt
+    inside = False
+    n = len(poly)
+    for i in range(n):
+        x1, y1 = poly[i]
+        x2, y2 = poly[(i + 1) % n]
+        if ((y1 > y) != (y2 > y)) and \
+                (x < (x2 - x1) * (y - y1) / (y2 - y1 + 1e-30) + x1):
+            inside = not inside
+    return inside
+
+
+def _point_in_area(p, pts, tol: float) -> bool:
+    """True if 3-D point ``p`` lies within a 3/4-node area face ``pts`` (project
+    to the face plane; require the out-of-plane distance ≤ ``tol``)."""
+    frame = _area_frame(pts)
+    if frame is None:
+        return False
+    c, e1, e2, e3 = frame
+    rel = np.asarray(p, dtype=float) - c
+    if abs(float(rel @ e3)) > tol:                # too far off the face plane
+        return False
+    poly = [(float((np.asarray(q) - c) @ e1), float((np.asarray(q) - c) @ e2))
+            for q in pts]
+    return _point_in_polygon_2d((float(rel @ e1), float(rel @ e2)), poly)
+
+
+def area_faces_mesh(model, area_id: int):
+    """Filled-face PolyData of just the mesh sub-elements belonging to project
+    ``area_id`` (slab S10 selection highlight), or ``None``."""
+    _tags, pts, index = node_points(model)
+    faces = []
+    for tag, e in model.elements.items():
+        if _decode_area_id(tag) != area_id:
+            continue
+        nt = e.node_tags
+        if len(nt) in (3, 4) and all(t in index for t in nt):
+            faces.append(len(nt))
+            faces.extend(index[t] for t in nt)
+    if not faces:
+        return None
+    return pv.PolyData(pts, faces=np.asarray(faces, dtype=np.int64))
+
+
 def nearest_item(model, point, tol):
-    """Nearest ('node', tag) then ('member', tag) to a 3-D ``point`` within
-    ``tol``, or None. Nodes win ties (they sit on member ends)."""
+    """Nearest ('node', tag) then ('member', tag), then the ('area', id) whose
+    face contains ``point`` — within ``tol`` — or None. Nodes win ties (they sit
+    on member ends); areas are picked by clicking their interior."""
     p = np.asarray(point, dtype=float).ravel()[:3]
     best = (None, float("inf"))
     for tag, n in model.nodes.items():
@@ -536,4 +592,14 @@ def nearest_item(model, point, tol):
             best = (("member", tag), d)
     if best[0] is not None and best[1] <= tol:
         return best[0]
+    # areas last — click inside a face selects the (project) area object
+    for tag, e in model.elements.items():
+        nt = getattr(e, "node_tags", ())
+        if len(nt) not in (3, 4):
+            continue
+        aid = _decode_area_id(tag)
+        if aid is None:
+            continue
+        if _point_in_area(p, [to_xyz(model.nodes[t].coords) for t in nt], tol):
+            return ("area", aid)
     return None
