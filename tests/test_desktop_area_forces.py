@@ -105,3 +105,32 @@ def test_vmax_is_shear_magnitude():
     res = np.array([0, 0, 0, 0, 0, 0, 3.0, 4.0], dtype=float)
     assert mg._resultant_scalar(res, "Vmax") == pytest.approx(5.0)
     assert mg._resultant_scalar(res, "M11") == 0.0
+
+
+# ------------------------------------------------- Wood-Armer (S9)
+
+def test_wood_armer_quantities_available():
+    for q in ("WAx_bot", "WAy_bot", "WAx_top", "WAy_top"):
+        assert q in mg.AREA_RESULT_QUANTITIES
+
+
+def test_wood_armer_scalar_adds_twist():
+    # FE convention: negative M = sagging (bottom tension). A sagging Mx=-10
+    # with twist Mxy=3 → bottom design moment Mx* = |−10| + |3| = 13.
+    res = np.array([0, 0, 0, -10.0, -4.0, 3.0, 0, 0], dtype=float)
+    assert mg._resultant_scalar(res, "WAx_bot") == pytest.approx(13.0)
+    assert mg._resultant_scalar(res, "WAy_bot") == pytest.approx(7.0)
+    assert mg._resultant_scalar(res, "WAx_top") == pytest.approx(0.0)   # no hogging
+
+
+def test_wood_armer_bottom_contour_matches_m11_without_twist():
+    # a one-way slab has ~zero twist at midspan, so WAx_bot ≈ peak M11
+    L, B, t, w = 5.0, 1.0, 0.20, 10_000.0
+    p = _slab(L=L, B=B, t=t, mesh=(12, 2), w=w)
+    m = p.build_model(with_loads=True)
+    _fix_where(m, lambda x, y: abs(x) < 1e-9 or abs(x - L) < 1e-9,
+               [1, 1, 1, 0, 0, 0])
+    LinearStaticAnalysis(m).run()
+    m11 = float(np.max(np.abs(mg.areas_result_mesh(m, "M11").point_data["value"])))
+    wax = float(np.max(mg.areas_result_mesh(m, "WAx_bot").point_data["value"]))
+    assert wax == pytest.approx(m11, rel=0.05)

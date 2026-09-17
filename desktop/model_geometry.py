@@ -123,6 +123,12 @@ AREA_RESULT_QUANTITIES = {
     "N22": ("N22 (membrane)", "N/m", True),
     "N12": ("N12 (shear)", "N/m", True),
     "Vmax": ("V (max transverse shear)", "N/m", False),
+    # Wood-Armer design-moment magnitudes for orthogonal reinforcement (S9);
+    # the moment each bar layer must be designed for (always ≥ 0).
+    "WAx_bot": ("Wood-Armer Mx* (bottom)", "N·m/m", False),
+    "WAy_bot": ("Wood-Armer My* (bottom)", "N·m/m", False),
+    "WAx_top": ("Wood-Armer Mx* (top)", "N·m/m", False),
+    "WAy_top": ("Wood-Armer My* (top)", "N·m/m", False),
 }
 
 
@@ -142,6 +148,14 @@ def _resultant_scalar(res, quantity: str):
         return None
     if quantity == "Vmax":
         return float(np.hypot(res[6], res[7]))
+    if quantity.startswith("WA"):                # Wood-Armer design moment (S9)
+        from femsolver.design.wood_armer import wood_armer_moments
+        # The shell elements use "negative M = sagging (bottom tension)"; the
+        # Wood-Armer utility uses the textbook "positive = sagging", so negate
+        # the moments here (the |Mxy| twist term is sign-independent).
+        wa = wood_armer_moments(-res[3], -res[4], -res[5])   # M11, M22, M12
+        return {"WAx_bot": abs(wa.mx_bot), "WAy_bot": abs(wa.my_bot),
+                "WAx_top": abs(wa.mx_top), "WAy_top": abs(wa.my_top)}.get(quantity)
     i = _RESULTANT_INDEX.get(quantity)
     return None if i is None else float(res[i])
 

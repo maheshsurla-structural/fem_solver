@@ -259,5 +259,5 @@ DXF/table import-export of areas).
 | S6 | Filled faces + local-axis triads | GUI | ✅ (`areas_mesh` + `area_local_axes` toggle); area selection/picking later |
 | S7 | Result contours (U/σ/M/V) + cuts | GUI | ✅ displacement + moment/force (M/N/V, nodal-avg; 10 tests, one-way = wL²/8); GP-extrapolation & section cuts next |
 | S8 | Diaphragm assignment (rigid) | GUI | ✅ (9 tests; RigidDiaphragm, auto master, rigid-floor solve) |
-| S9 | Slab/punching/diaphragm design | GUI+wire | ☐ |
+| S9 | Slab/punching/diaphragm design | GUI+wire | ◑ Wood-Armer design moments (`design/wood_armer.py` + contour, 18 tests); required-As/punching wiring next |
 | S10 | Meshing robustness & parity polish | both | ☐ |
