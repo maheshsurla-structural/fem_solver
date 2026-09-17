@@ -196,16 +196,32 @@ Gate on `ndm==3` (see Decision D1). Apply stiffness modifiers.
 
 ## 4. Recommended sequencing
 
-**Phase A — "a slab you can draw, load, solve, and see" (MVP):**
-S0 → S1 → S4 (isotropic thickness only) → S2 (rectangular area) → S5 (pressure +
-self-weight) → S6 → S7 (displacement + basic stress contour). This alone gives
-a defensible "we model slabs" story and exercises the full pipeline end-to-end.
+**Phase A — "a slab you can draw, load, solve, and see" (MVP) — ✅ DONE.**
+S0 → S1 → S4 (isotropic thickness) → S2 (area dialog) → S5 (pressure +
+gravity) → S6 (filled faces) → S7 (displacement contour). Merged to `main`.
 
-**Phase B — usable for real floors:** S3 (auto-mesh + node merge), S2 (polygon &
-node-pick areas), S7 (moments M11/M22/M12, averaging), S8 (diaphragms).
+**Phase B — usable for real floors — ✅ mostly done.** S3 (auto-mesh + node
+merge) ✅, S7 rich (moments M11/M22/M12, membrane N, shear — nodal-averaged) ✅.
+**Remaining: S8 (rigid diaphragms) ← next**, then the S2/S6 UX refinements
+(polygon & click-to-draw areas, area selection + local-axis triads).
 
-**Phase C — commercial parity:** S9 (slab/punching/diaphragm design),
-layered/RC/CLT sections in S4, S7 section cuts, S10 robustness.
+**Phase C — commercial parity:** S9 (slab/punching/diaphragm design wiring —
+tie shell results to the existing `design.two_way_slab` / `punching` / `diaphragm`
+engine), layered/RC/CLT sections in S4, S7 refinements (GP→node extrapolation
+for sharp support peaks, **section cuts**), S10 robustness (beam-to-meshed-edge
+compatibility, area copy/replicate, openings, curved-area mesh, model-checks,
+DXF/table import-export of areas).
+
+### Immediate next items (in order)
+1. **S8 — Rigid diaphragms.** `Diaphragm` data model + `build_model` wiring
+   (auto master node at centroid, pin out-of-plane DOFs, `RigidDiaphragm`
+   MP-constraint — the engine already solves these) + an "Add diaphragm…" GUI
+   (Home ▸ Constraints, seeded from the selected joints).
+2. **S9 — Slab design wiring.** Feed shell design moments (Wood–Armer from
+   M11/M22/M12) to `design.two_way_slab` / `punching_reinforcement`; a Design
+   tab panel + required-reinforcement contour.
+3. **S7 refinement.** GP→node extrapolation (sharper clamped-edge peaks) +
+   section cuts (integrate resultants along a drawn line).
 
 ---
 
