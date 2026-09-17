@@ -489,6 +489,9 @@ class MainWindow(QMainWindow):
         self.act_area_rebar = _set_icon(
             QAction("Slab &reinforcement…", self), "rebar")
         self.act_area_rebar.triggered.connect(self.show_slab_reinforcement)
+        self.act_punching = _set_icon(
+            QAction("&Punching check…", self), "punching")
+        self.act_punching.triggered.connect(self.show_punching_check)
         self.act_design = _set_icon(QAction("&Design (DCR)", self), "design")
         self.act_design.triggered.connect(self.show_design)
         self.act_loadcases = _action(self, "Load &cases…", None,
@@ -638,6 +641,7 @@ class MainWindow(QMainWindow):
             ("Reports", ((self.act_runhistory, "History"),)),
             ("Design", ((self.act_design, "Design"),
                         (self.act_area_rebar, "Slab rebar"),
+                        (self.act_punching, "Punching"),
                         (self.act_checkmodel, "Check"))),
         ))
         rb.add_tab("View", (
@@ -1948,6 +1952,23 @@ class MainWindow(QMainWindow):
             f"Required reinforcement ({label}) — peak {vmax:.0f} mm²/m")
         self.statusBar().showMessage(
             f"{label} · peak As {vmax:.0f} mm²/m")
+        self._show_results_tab()
+
+    def show_punching_check(self) -> None:
+        """Punching-shear check at a slab column (slab plan S9): build + solve,
+        then read the demand from a chosen column node's reaction and check the
+        ACI 318-19 capacity."""
+        p = self._project
+        if p.ndm != 3 or not getattr(p, "areas", None):
+            QMessageBox.information(
+                self, "Punching check",
+                "Punching needs a 3-D slab model with at least one area.")
+            return
+        self._model = p.build_model()
+        if self._solve() is None:
+            return
+        from slab_punching_dialog import SlabPunchingDialog
+        SlabPunchingDialog.run(self, p, self._model)
         self._show_results_tab()
 
     def show_design(self) -> None:

@@ -49,6 +49,11 @@ _ICONS = {
     # rebar — a reinforcing bar mat (two crossing ribbed bars)
     "rebar": '<path d="M4 9h16M4 15h16M9 4v16M15 4v16"/>'
              '<path d="M4 9l-1.5-1M20 15l1.5 1" stroke-width="1"/>',
+    # punching — a column with its dashed critical shear perimeter
+    "punching": '<rect x="9.5" y="9.5" width="5" height="5" fill="{c}" '
+                'stroke="none"/>'
+                '<rect x="5" y="5" width="14" height="14" rx="1.5" '
+                'stroke-dasharray="3 2.5"/>',
     "function": '<path d="M3 12q3-7 6 0t6 0t6 0"/>',   # time-history waveform
     "load": '<path d="M12 4v13M6 11l6 6 6-6"/>',
     "delete": '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
