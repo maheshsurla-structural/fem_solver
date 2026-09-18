@@ -451,6 +451,17 @@ QFrame#barSep {{ background: {BORDER}; }}
 QFrame#propsDrawer {{ background: {PANEL}; border: 1px solid {BORDER};
                      border-radius: {R_MD}px; }}
 
+/* ---- docked viewport tool strip (its own band above the canvas) ---- */
+QFrame#viewportTools {{ background: {PANEL};
+    border-bottom: 1px solid {BORDER}; }}
+QFrame#viewportTools QToolButton {{ border: 1px solid transparent;
+    border-radius: {R_SM}px; padding: 3px; color: {TEXT}; }}
+QFrame#viewportTools QToolButton:hover {{ background: {ACCENT_SOFT};
+    border-color: {BORDER}; }}
+QFrame#viewportTools QToolButton:checked {{ background: {ACCENT_SOFT};
+    border-color: {ACCENT}; color: {ACCENT}; }}
+QFrame#viewportTools QToolButton:disabled {{ color: {MUTED}; }}
+
 /* ---- transient toast notifications ---- */
 QLabel#toastOk, QLabel#toastErr {{ color: #ffffff; font-weight: 600;
     padding: 9px 18px; border-radius: {R_LG}px; }}

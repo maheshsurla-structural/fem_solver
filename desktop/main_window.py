@@ -103,7 +103,19 @@ class MainWindow(QMainWindow):
         self._undo_stack = QUndoStack(self)
 
         self.view = ModelView(self)
-        self.setCentralWidget(self.view)
+        # Central area = a thin viewport tool strip *above* the 3-D canvas. The
+        # strip is created by the view but re-homed here so it docks in its own
+        # band off the canvas — a click on a tool never bleeds through to the
+        # model (which a floating overlay did).
+        central = QWidget(self)
+        central.setObjectName("viewportCentral")
+        cl = QVBoxLayout(central)
+        cl.setContentsMargins(0, 0, 0, 0)
+        cl.setSpacing(0)
+        self.view._nav_bar.show()
+        cl.addWidget(self.view._nav_bar)
+        cl.addWidget(self.view, 1)
+        self.setCentralWidget(central)
 
         # Model tree — a compact *table of contents* (nav plan N1): category
         # rows with a count in a narrow second column, individual items as
@@ -3363,12 +3375,6 @@ class MainWindow(QMainWindow):
             label = act.text().replace("&", "").replace("…", "").strip()
             cmds.append(ToolCommand(cid, label, icon, group=grp, kind="action",
                                     activate=act.trigger))
-        # the activate/inactivate container flyout — one bar slot holding the
-        # whole activation family (its members are registered just above)
-        cmds.append(ToolCommand(
-            "grp_active", "Active / inactive", "activate_all", group="Active",
-            kind="group", members=["cmd_inactivate", "cmd_activate_only",
-                                    "cmd_activate_all", "cmd_invert_active"]))
         self.view._nav_bar.register_many(cmds)
         self.view._nav_bar.rebuild()
 

@@ -179,11 +179,14 @@ class ModelView(QtInteractor):
         # orientation cube — a CAD-style navigation gizmo pinned top-right; it
         # reads ``camera_basis`` and drives ``set_view`` / ``orbit`` (see nav_cube).
         self._nav_cube = NavCube(self, self)
-        # on-viewport navigation toolbar (orbit / pan / zoom-window / fit …),
-        # pinned top-left; drives this view's tools + camera helpers.
-        self._nav_bar = NavToolbar(self, self)
+        # viewport tool strip (orbit / pan / zoom-window / fit / selection …).
+        # It drives this view's tools + camera helpers, but is *docked* by the
+        # shell into its own toolbar band below the ribbon (re-homed there), so
+        # it never overlaps the canvas. Created here (parentless) so the view is
+        # usable standalone; hidden until the shell shows it.
+        self._nav_bar = NavToolbar(self)
+        self._nav_bar.hide()
         self._position_nav_cube()
-        self._position_nav_bar()
         # empty-state hint — shown (centred) whenever there is no model to draw,
         # instead of a blank canvas (charter §F). Themed via the #canvasHint QSS.
         self._hint = QLabel(
@@ -526,7 +529,6 @@ class ModelView(QtInteractor):
         if self._hint.isVisible():
             self._hint.setGeometry(self.rect())
         self._position_nav_cube()
-        self._position_nav_bar()
 
     def _position_nav_cube(self) -> None:
         """Pin the orientation cube to the top-right corner of the viewport."""
@@ -536,15 +538,6 @@ class ModelView(QtInteractor):
         margin = 12
         cube.move(self.width() - cube.width() - margin, margin)
         cube.raise_()
-
-    def _position_nav_bar(self) -> None:
-        """Pin the navigation toolbar to the top-left corner of the viewport."""
-        bar = getattr(self, "_nav_bar", None)
-        if bar is None:
-            return
-        bar.adjustSize()
-        bar.move(12, 12)
-        bar.raise_()
 
     def camera_basis(self):
         """Screen basis (right, up, forward) as unit world vectors for the
@@ -579,7 +572,6 @@ class ModelView(QtInteractor):
             self._hint.setGeometry(self.rect())
             self._hint.raise_()
         self._position_nav_cube()             # keep the cube above the hint
-        self._position_nav_bar()
 
     _TOOL_CURSORS = {
         "pan": Qt.CursorShape.OpenHandCursor,

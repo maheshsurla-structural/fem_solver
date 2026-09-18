@@ -31,15 +31,11 @@ class ToolCommand:
 
     ``kind`` is ``"tool"`` (an exclusive, checkable interaction tool whose id is
     the view mode), ``"toggle"`` (an independent checkable — e.g. the 2-D lock),
-    ``"action"`` (a momentary command), or ``"group"`` (a *container* flyout
-    that gathers related commands under one button — e.g. all the selection
-    tools, or the activate/inactivate commands — so the bar stays compact and a
-    whole family can be added/removed as one item when customizing). ``activate``
-    runs on click: ``activate()`` for tool/action, ``activate(checked)`` for a
-    toggle; a group ignores it.
+    or ``"action"`` (a momentary command). ``activate`` runs on click:
+    ``activate()`` for tool/action, ``activate(checked)`` for a toggle.
 
-    ``members`` (group only) lists the ids of the commands the flyout holds, in
-    order; each must be registered in its own right so its ``activate`` fires.
+    ``group`` names the command family (Tools / Navigate / Active / …); the bar
+    keeps a family together and the Customize dialog filters by it.
     """
     id: str
     label: str
@@ -47,7 +43,6 @@ class ToolCommand:
     group: str = "Navigate"
     kind: str = "action"
     activate: Optional[Callable] = None
-    members: Optional[list] = None
 
 
 class CustomizeToolbarDialog(QDialog):
