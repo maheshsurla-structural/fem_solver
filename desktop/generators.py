@@ -32,7 +32,7 @@ def frame(bays_x=3, bay_x=6.0, storeys=3, storey_h=3.5,
     name = (f"Frame {bays_x}x{bays_y}x{storeys}" if three_d
             else f"Frame {bays_x}x{storeys}")
     p = Project(name=name, ndm=ndm, ndf=ndf)
-    p.materials.append(Material(id=1, name="A992", E=200e9, nu=0.3))
+    p.materials.append(Material(id=1, name="A992", E=200e9, nu=0.3, rho=7850.0))
     p.sections.append(_section_from_shape(shape))
 
     nx = bays_x + 1

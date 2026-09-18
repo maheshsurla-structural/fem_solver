@@ -2271,7 +2271,8 @@ class MainWindow(QMainWindow):
 
     def new_project(self) -> None:
         p = Project()
-        p.materials.append(Material(id=1, name="A992", E=200e9, nu=0.3))
+        p.materials.append(Material(id=1, name="A992", E=200e9, nu=0.3,
+                                    rho=7850.0))
         p.sections.append(Section(id=1, name="W12x65", A=0.012323, Iz=2.2185e-4,
                                   shape="W12x65"))
         self.load_project(p, None)
