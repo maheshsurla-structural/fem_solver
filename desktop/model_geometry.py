@@ -29,6 +29,22 @@ def node_points(model):
     return tags, pts, index
 
 
+def element_centroids(model):
+    """Return (tags, centroids (M,3)) — the tag and averaged node position of
+    every element, used to place element-number labels in the viewport."""
+    tags, cents = [], []
+    for tag, e in model.elements.items():
+        pts = [to_xyz(model.nodes[t].coords)
+               for t in e.node_tags if t in model.nodes]
+        if not pts:
+            continue
+        tags.append(tag)
+        cents.append(np.mean(np.asarray(pts, dtype=float), axis=0))
+    if cents:
+        return tags, np.asarray(cents, dtype=float)
+    return tags, np.zeros((0, 3), dtype=float)
+
+
 def _member_segments(model):
     """Node-tag pairs to draw as lines: one per 2-node element; the closed
     boundary loop for elements with 3+ nodes (quad / shell)."""
@@ -676,7 +692,10 @@ def nearest_item(model, point, tol):
         if d < best[1]:
             best = (("member", tag), d)
     if best[0] is not None and best[1] <= tol:
-        return best[0]
+        # a beam split at a slab edge (BE2) is many 2-node sub-elements; report
+        # the project member it belongs to, not the sub-element tag (BE3).
+        from project import decode_member_id
+        return ("member", decode_member_id(best[0][1]))
     # areas last — click inside a face selects the (project) area object
     for tag, e in model.elements.items():
         nt = getattr(e, "node_tags", ())

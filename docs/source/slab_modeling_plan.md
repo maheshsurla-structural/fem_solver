@@ -36,6 +36,10 @@ branch → merge each item to `main` (FF) → push. **Gotcha:** patch modal
    meshed slab edge so they share the edge mesh nodes (a real correctness fix).
    *Higher risk:* touches `build_model` member emission + member-load/results
    wiring (member.id is the element tag; splitting needs a member→sub-tags map).
+   **Detailed scope + epic breakdown (BE0–BE7): see §3 "BE — Beam-to-slab-edge
+   compatibility".** Foundation slice **BE0–BE2 prototyped** (geometric splitter
+   + shared-node merge, behind a toggle); BE3 results aggregation is the next
+   real work.
 2. **Non-convex polygon meshing** — the current centroid-fan assumes convex
    polygons; an L-shape needs ear-clipping / constrained triangulation.
 3. **DXF export** of the slab geometry/mesh (reuse `femsolver.results.dxf`).
@@ -225,6 +229,61 @@ Gate on `ndm==3` (see Decision D1). Apply stiffness modifiers.
   auto-mesh (`disk_quad4`/`ring_quad4`), model-check rules for areas
   (`model_checks`), and DXF/table import-export of areas.
 
+### BE — Beam-to-slab-edge compatibility (detailed scope)
+
+**Problem.** `build_model` emits one `BeamColumn` per `Member`
+([project.py] `build_model`), then meshes each `Area` into an `n1×n2` grid,
+merging coincident nodes by `_coord_key`. A beam along a slab edge connects only
+the slab's two *corner* nodes; the slab's *interior edge* nodes (n−1 per meshed
+edge) never appear on the beam, so the slab edge can deflect relative to the
+beam — no compatibility, no load transfer at those points.
+
+**What we can reuse.**
+- The slab mesher's coordinate-keyed node registry auto-merges anything placed
+  at a slab node's coordinate — so a beam node created there is *automatically*
+  stitched to the slab.
+- The engine's constraints package (`femsolver.constraints`): `EqualDOF`,
+  `RigidLink`, `RigidOffset`, `MPConstraint`, and the ready-made
+  `beam_shell_offset_coupling(model, beam_node, shell_node)` for the *eccentric*
+  (offset slab / composite T-beam) case, via `model.add_mp_constraint`.
+- Precedent: `area_element_tag`/`_area_element_tags` (object→sub-tags map) and
+  `build_buckling_model` (already subdivides members).
+
+**Two approaches.**
+- **A — split the edge beam at the slab edge nodes (shared-node).** Insert a
+  beam node at each slab edge-node coordinate on the beam and emit consecutive
+  `BeamColumn` sub-elements; the merge registry makes beam+slab share the nodes.
+  Exact physics, works with the current linear solver, no constraint math. Cost:
+  new sub-element tags ripple into the ~15 files that read forces by member id;
+  needs build re-ordering + load/hinge distribution.
+- **B — tie slab nodes to the beam with MPCs (keep beam whole).** Preserves beam
+  identity, but `RigidOffset`/`RigidLink` tie rigidly to *one* master node —
+  correct only at a beam *joint*, not mid-span (over-stiffens, ignores bending).
+  A mid-span interpolation MPC does not exist yet.
+
+**Decision.** A is the foundation (you need a beam node at each slab-edge-node
+plan position regardless). Centroidal beams → shared nodes via merge, zero
+constraints. Eccentric/composite slabs → split for plan-coincident nodes, then
+`beam_shell_offset_coupling` per node carries the vertical offset (v2 layer).
+
+| Epic | Work | Risk |
+|---|---|---|
+| **BE0** | Two-pass build: pre-compute + register all slab edge-node coordinates *before* the member loop, so members can split against them. | Med |
+| **BE1** | Detection — slab edge nodes collinear with and interior to a member (tolerance point-on-segment, ordered). v1: beam endpoints == two adjacent area corners (beam *is* the edge). | Med |
+| **BE2** | Splitter — emit `k` `BeamColumn` sub-elements through those nodes; deterministic `member_element_tag(id, j)` stride; inherit section/material/kind. | Med |
+| **BE3** | Results/design aggregation — `member_element_tags(mb)` map + shim so the ~15 consumers see one member (concatenate diagrams, envelope for design, i/j end forces from first/last sub-element). **Largest surface.** | **High** |
+| **BE4** | Load distribution — member UDL/line loads to sub-elements by span fraction; nodal loads unaffected. | Med |
+| **BE5** | Hinges — map member-end hinges to correct sub-element ends; v1 may forbid splitting a hinged member (clear message). | Low |
+| **BE6** *(v2)* | Eccentric/composite — tie slab nodes to beam nodes with `beam_shell_offset_coupling`; spike first. | Med |
+| **BE7** | Tests — patch test (SS beam under slab UDL vs. fine reference), slab-on-beam deflection convergence, and a **regression guard that pure-frame results are unchanged** when no slab touches the beam. | Med |
+
+**Biggest risk: BE3.** Splitting changes a beam's element identity; 15 desktop
+files read forces by member id (results/design/diagrams/end-forces). Gate the
+whole feature behind an "auto-connect beams to slab mesh" toggle (default on).
+BE0–BE2 (centroidal, in-plane compatibility) is a self-contained first slice
+that already delivers correct physics; BE3+BE4 are the bulk; BE6 is a clean
+follow-on on the existing constraint primitive.
+
 ---
 
 ## 4. Recommended sequencing
@@ -294,3 +353,8 @@ DXF/table import-export of areas).
 | S8 | Diaphragm assignment (rigid) | GUI | ✅ (9 tests; RigidDiaphragm, auto master, rigid-floor solve) |
 | S9 | Slab/punching/diaphragm design | GUI+wire | ✅ Wood-Armer moments + required-As contour + **punching check** (ACI, demand from node reaction; `slab_punching.py`, 29 tests). Diaphragm classification later |
 | S10 | Meshing robustness & parity polish | both | ◑ area selection ✅; slab-results CSV export ✅; **polygon areas ✅** (centroid-fan tris, click-to-draw close-on-first); beam-edge/DXF later |
+| BE0–BE2 | Beam-to-slab-edge: two-pass build + detection + splitter (shared-node) | GUI | ◑ prototyped (splitter emits sub-elements through slab edge nodes, merged via `_coord_key`; behind `auto_connect_beams` toggle) |
+| BE3 | Member↔element results/design aggregation | GUI | ◑ prototyped — `Project.member_element_tags(mb)` + `decode_member_id(tag)`; design (`design_all`/`design_envelope`) resolves sub-elements to their member; viewport selection (`nearest_item`, window/polygon) reports the member id, and highlight/framing cover all sub-elements. Force diagrams already worked (iterate all elements). Consumers found to be **2-D-only** (temp-gradient, construction-stages) can't see splits. 13 tests |
+| BE4 | Member line-load distribution over a split member | GUI | ◑ prototyped — `_apply_member_load` applies the UDL *intensity* (N/m) to every sub-element via `member_element_tags`; each element integrates over its own length, so the total load is exact (no span-fraction weighting needed — proven by test). Factor-scaled; unsplit path unchanged. 4 tests |
+| BE5 | Hinges (and cables) vs splitting | GUI | ◑ prototyped — single `_splittable(mb)` predicate (used by build, the tag map, and load distribution) refuses to split a **hinged** or **cable** member; a lumped hinge assumes one element end-to-end. **Finding:** lumped fiber hinges are 2-D-only (nonlinear.py) and splitting is 3-D-only, and `build_nonlinear_model` never splits — so the two are orthogonal today; this guard just future-proofs 3-D hinges. 2 tests |
+| BE6–BE7 | Composite/eccentric (`beam_shell_offset_coupling`) · patch/convergence tests | both | ☐ (BE6: split for plan-coincident nodes, then tie each slab node to its beam node with the vertical offset for T-beam action — the one item needing the engine's constraint package) |

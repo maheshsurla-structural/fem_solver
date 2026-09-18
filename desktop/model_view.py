@@ -160,6 +160,8 @@ class ModelView(QtInteractor):
         self._add_member_cb = None
         self._add_area_cb = None
         self._show_area_axes = False           # local-axis triads overlay (S6)
+        self._show_node_labels = False         # node-number labels overlay
+        self._show_elem_labels = False         # element-number labels overlay
         self._mode = "select"
         self._member_start = None
         self._area_pick: list = []            # nodes collected in draw_area mode
@@ -233,6 +235,47 @@ class ModelView(QtInteractor):
                                      ("axis1", "axis2", "axis3")):
             if poly is not None:
                 self.add_mesh(poly, color=color, line_width=3, name=name)
+
+    def set_node_labels(self, on: bool) -> None:
+        """Toggle node-number labels in the viewport and redraw."""
+        self._show_node_labels = bool(on)
+        self._replay_scene()
+
+    def set_element_labels(self, on: bool) -> None:
+        """Toggle element-number labels in the viewport and redraw."""
+        self._show_elem_labels = bool(on)
+        self._replay_scene()
+
+    def _replay_scene(self) -> None:
+        """Redraw whatever the view last rendered (model / deformed / …)."""
+        if self._replay is not None:
+            try:
+                self._replay()
+            except Exception:
+                pass
+
+    def _draw_id_labels(self, model) -> None:
+        """Overlay node- and/or element-number labels per the active toggles."""
+        if self._show_node_labels:
+            tags, pts, _index = mg.node_points(model)
+            if len(pts):
+                try:
+                    self.add_point_labels(
+                        pts, [str(t) for t in tags], font_size=12,
+                        text_color=style.V_NODE, shape_opacity=0.15,
+                        always_visible=True, name="node_labels")
+                except Exception:
+                    pass
+        if self._show_elem_labels:
+            tags, cents = mg.element_centroids(model)
+            if len(cents):
+                try:
+                    self.add_point_labels(
+                        cents, [str(t) for t in tags], font_size=12,
+                        text_color=style.V_MEMBER, shape_opacity=0.15,
+                        always_visible=True, name="elem_labels")
+                except Exception:
+                    pass
 
     def set_snap(self, on: bool, grid: float) -> None:
         self._snap_on = bool(on)
@@ -424,9 +467,10 @@ class ModelView(QtInteractor):
             for kind, ident in self._highlight:
                 if kind == "node" and ident in self._model.nodes:
                     pts.append(mg.to_xyz(self._model.nodes[ident].coords))
-                elif kind == "member" and ident in self._model.elements:
-                    for c in self._model.element(ident).node_coords():
-                        pts.append(mg.to_xyz(c))
+                elif kind == "member":
+                    for tag in self._member_element_tags(ident):
+                        for c in self._model.element(tag).node_coords():
+                            pts.append(mg.to_xyz(c))
         if not pts:
             self.reset_camera()
             self.render()
@@ -497,10 +541,7 @@ class ModelView(QtInteractor):
             x, y = self._project(mg.to_xyz(n.coords))
             inside[tag] = rect.contains(int(x), int(y))
         refs = [("node", t) for t, v in inside.items() if v]
-        for tag, e in self._model.elements.items():
-            nt = e.node_tags
-            if len(nt) == 2 and inside.get(nt[0]) and inside.get(nt[1]):
-                refs.append(("member", tag))
+        refs += self._members_inside(inside)
         self._region_cb(refs, additive)
 
     def _polygon_select(self, pts) -> None:
@@ -516,11 +557,24 @@ class ModelView(QtInteractor):
             inside[tag] = poly.containsPoint(QPoint(int(x), int(y)),
                                              Qt.FillRule.OddEvenFill)
         refs = [("node", t) for t, v in inside.items() if v]
+        refs += self._members_inside(inside)
+        self._region_cb(refs, additive)
+
+    def _members_inside(self, inside: dict) -> list:
+        """('member', id) refs for every member both of whose end nodes are in
+        the ``inside`` map. A beam split at a slab edge (BE2) has several 2-node
+        sub-elements; each is decoded back to its project member id and the
+        member is reported once (BE3)."""
+        from project import decode_member_id
+        refs, seen = [], set()
         for tag, e in self._model.elements.items():
             nt = e.node_tags
             if len(nt) == 2 and inside.get(nt[0]) and inside.get(nt[1]):
-                refs.append(("member", tag))
-        self._region_cb(refs, additive)
+                mid = decode_member_id(tag)
+                if mid is not None and mid not in seen:
+                    seen.add(mid)
+                    refs.append(("member", mid))
+        return refs
 
     def resizeEvent(self, ev):
         super().resizeEvent(ev)
@@ -687,6 +741,19 @@ class ModelView(QtInteractor):
         self.remove_actor("selection_areas", render=False)
         self.remove_actor("selection_nodes", render=True)
 
+    def _member_element_tags(self, member_id) -> list:
+        """Engine element tags in the displayed model that belong to project
+        member ``member_id`` — its own tag when unsplit, or every sub-element of
+        a beam split at a slab edge (BE2/BE3). Lets highlight/framing work off a
+        project member id even though the built model no longer carries it."""
+        if self._model is None:
+            return []
+        if member_id in self._model.elements:
+            return [member_id]                    # fast path: unsplit member
+        from project import decode_member_id
+        return [tag for tag in self._model.elements
+                if decode_member_id(tag) == member_id]
+
     def _draw_highlight(self) -> None:
         self.remove_actor("selection", render=False)
         self.remove_actor("selection_nodes", render=False)
@@ -700,10 +767,11 @@ class ModelView(QtInteractor):
         for kind, ident in self._highlight:
             if kind == "node" and ident in self._model.nodes:
                 pts.append(mg.to_xyz(self._model.nodes[ident].coords))
-            elif kind == "member" and ident in self._model.elements:
-                line = mg.element_line(self._model.element(ident))
-                if line is not None:
-                    lines.append(line)
+            elif kind == "member":
+                for tag in self._member_element_tags(ident):
+                    line = mg.element_line(self._model.element(tag))
+                    if line is not None:
+                        lines.append(line)
             elif kind == "area":
                 faces = mg.area_faces_mesh(self._model, ident)
                 if faces is not None:
@@ -797,6 +865,7 @@ class ModelView(QtInteractor):
                             render_points_as_spheres=True, point_size=22,
                             name="supports")
 
+        self._draw_id_labels(model)
         self._draw_grid()
         self._frame(model)
         self._draw_highlight()
