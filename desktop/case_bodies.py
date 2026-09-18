@@ -17,14 +17,20 @@ headless-constructible.
 """
 from __future__ import annotations
 
-from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDoubleSpinBox,
-                               QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
-                               QPushButton, QSpinBox, QStackedWidget,
-                               QTableWidget, QTableWidgetItem, QVBoxLayout,
-                               QWidget)
+from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox,
+                               QDoubleSpinBox, QHBoxLayout, QLabel, QListWidget,
+                               QListWidgetItem, QPushButton, QSpinBox,
+                               QStackedWidget, QTableWidget, QTableWidgetItem,
+                               QVBoxLayout, QWidget)
 
 import style
 from analysis_ui import GroupCard
+# Reuse the vehicle / response option lists from the standalone dialogs (single
+# source of truth) so a case built here stores identical params.
+from influence_surface_dialog import _RESPONSES as _IS_RESPONSES
+from influence_surface_dialog import _VEHICLES as _IS_VEHICLES
+from moving_load_dialog import _RESPONSES as _ML_RESPONSES
+from moving_load_dialog import _VEHICLES as _ML_VEHICLES
 
 _ROLE = 0x0100                                          # Qt.UserRole
 
@@ -487,6 +493,167 @@ class TemperatureGradientBody(_Body):
                 "members": _selected_ids(self.members)}
 
 
+class MovingLoadBody(_Body):
+    """Moving load / influence line: a lane node path + vehicle + response."""
+
+    TITLE = "Moving load / influence line"
+    SUB = ("A unit load travels the lane; the influence line drives the vehicle "
+           "envelope (max / min effect).")
+    SUPPORTS_IC = False
+
+    def __init__(self, project, *, initial: dict | None = None,
+                 max_modes: int = 20, default_modes: int = 6):
+        super().__init__()
+        self._project = project
+        lay = self._root()
+        lane = GroupCard("Lane", form=False)
+        lane.body_layout().addWidget(
+            QLabel("Nodes the load travels over (ordered by X):"))
+        self.lane_list = _multi_list(120)
+        for nd in sorted(project.nodes, key=lambda n: (n.x, getattr(n, "y", 0))):
+            it = _add_id_row(self.lane_list,
+                             f"{nd.id}:  ({nd.x:g}, {getattr(nd, 'y', 0):g})",
+                             nd.id)
+            it.setSelected(True)
+        lane.body_layout().addWidget(self.lane_list)
+        lay.addWidget(lane)
+        cfg = GroupCard("Vehicle & response")
+        self.vehicle = QComboBox()
+        for label, key in _ML_VEHICLES:
+            self.vehicle.addItem(label, key)
+        cfg.add_row("Vehicle", self.vehicle)
+        self.resp = QComboBox()
+        for label, spec in _ML_RESPONSES:
+            self.resp.addItem(label, spec)
+        self.resp.currentIndexChanged.connect(lambda *_: self._sync_target())
+        cfg.add_row("Response", self.resp)
+        self.member = QComboBox()
+        for mb in project.members:
+            self.member.addItem(f"member {mb.id}  ({mb.n1}→{mb.n2})", mb.id)
+        cfg.add_row("Member", self.member)
+        self.end = QComboBox()
+        self.end.addItem("end i", "i")
+        self.end.addItem("end j", "j")
+        cfg.add_row("At end", self.end)
+        self.node = QComboBox()
+        for nd in project.nodes:
+            self.node.addItem(f"node {nd.id}", nd.id)
+        cfg.add_row("Node", self.node)
+        lay.addWidget(cfg)
+        if initial:
+            self._seed(initial)
+        self._sync_target()
+
+    def _sync_target(self) -> None:
+        _kind, needs_member = self.resp.currentData()
+        self.member.setEnabled(needs_member)
+        self.end.setEnabled(needs_member)
+        self.node.setEnabled(not needs_member)
+
+    def _seed(self, p: dict) -> None:
+        _select_ids(self.lane_list, p.get("lane"))
+        vi = self.vehicle.findData(p.get("vehicle"))
+        if vi >= 0:
+            self.vehicle.setCurrentIndex(vi)
+        resp = p.get("response") or ()
+        if resp:
+            for i in range(self.resp.count()):
+                if self.resp.itemData(i)[0] == resp[0]:
+                    self.resp.setCurrentIndex(i)
+                    break
+            target = resp[1] if len(resp) > 1 else None
+            mi = self.member.findData(target)
+            if mi >= 0:
+                self.member.setCurrentIndex(mi)
+            ni = self.node.findData(target)
+            if ni >= 0:
+                self.node.setCurrentIndex(ni)
+            ei = self.end.findData(resp[2] if len(resp) > 2 else "i")
+            if ei >= 0:
+                self.end.setCurrentIndex(ei)
+
+    def _lane_nodes(self) -> list:
+        by_id = {n.id: n for n in self._project.nodes}
+        ids = _selected_ids(self.lane_list)
+        ids.sort(key=lambda i: (by_id[i].x, getattr(by_id[i], "y", 0)))
+        return ids
+
+    def case_params(self) -> dict:
+        kind, needs_member = self.resp.currentData()
+        target = (self.member.currentData() if needs_member
+                  else self.node.currentData())
+        return {"lane": self._lane_nodes(),
+                "vehicle": self.vehicle.currentData(),
+                "response": (kind, target, self.end.currentData())}
+
+
+class InfluenceSurfaceBody(_Body):
+    """Influence surface / multi-lane (3-D deck): deck nodes + response + vehicle."""
+
+    TITLE = "Influence surface / multi-lane moving load"
+    SUB = ("A unit load traverses the deck; the influence surface drives the "
+           "AASHTO multi-lane vehicle envelope.")
+    SUPPORTS_IC = False
+
+    def __init__(self, project, *, initial: dict | None = None,
+                 max_modes: int = 20, default_modes: int = 6):
+        super().__init__()
+        lay = self._root()
+        deck = GroupCard("Deck surface", form=False)
+        deck.body_layout().addWidget(
+            QLabel("Deck nodes the load can stand on (plan = X, Y):"))
+        self.deck_list = _multi_list(120)
+        for nd in project.nodes:
+            it = _add_id_row(
+                self.deck_list,
+                f"{nd.id}:  ({nd.x:g}, {getattr(nd, 'y', 0):g}, "
+                f"{getattr(nd, 'z', 0):g})", nd.id)
+            it.setSelected(True)
+        deck.body_layout().addWidget(self.deck_list)
+        lay.addWidget(deck)
+        cfg = GroupCard("Vehicle & response")
+        self.resp = QComboBox()
+        for label, key in _IS_RESPONSES:
+            self.resp.addItem(label, key)
+        cfg.add_row("Response", self.resp)
+        self.node = QComboBox()
+        for nd in project.nodes:
+            self.node.addItem(f"node {nd.id}", nd.id)
+        if project.nodes:
+            self.node.setCurrentIndex(len(project.nodes) // 2)
+        cfg.add_row("At node", self.node)
+        self.vehicle = QComboBox()
+        for label, key in _IS_VEHICLES:
+            self.vehicle.addItem(label, key)
+        cfg.add_row("Vehicle", self.vehicle)
+        self.multi = QCheckBox("Apply AASHTO multiple-presence factors")
+        self.multi.setChecked(True)
+        cfg.add_full_row(self.multi)
+        lay.addWidget(cfg)
+        if initial:
+            self._seed(initial)
+
+    def _seed(self, p: dict) -> None:
+        _select_ids(self.deck_list, p.get("deck"))
+        resp = p.get("response") or ("disp", None)
+        ri = self.resp.findData(resp[0])
+        if ri >= 0:
+            self.resp.setCurrentIndex(ri)
+        ni = self.node.findData(resp[1] if len(resp) > 1 else None)
+        if ni >= 0:
+            self.node.setCurrentIndex(ni)
+        vi = self.vehicle.findData(p.get("vehicle"))
+        if vi >= 0:
+            self.vehicle.setCurrentIndex(vi)
+        self.multi.setChecked(bool(p.get("multi_presence", True)))
+
+    def case_params(self) -> dict:
+        return {"deck": _selected_ids(self.deck_list),
+                "response": (self.resp.currentData(), self.node.currentData()),
+                "vehicle": self.vehicle.currentData(),
+                "multi_presence": self.multi.isChecked()}
+
+
 def _multi_list(min_h: int) -> QListWidget:
     lst = QListWidget()
     lst.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
@@ -519,4 +686,6 @@ REGISTRY: list[tuple[str, str, type]] = [
     ("responsespectrum", "Response Spectrum", ResponseSpectrumBody),
     ("tempgradient", "Temperature Gradient", TemperatureGradientBody),
     ("cabletuning", "Cable Tuning", CableTuningBody),
+    ("movingload", "Moving Load", MovingLoadBody),
+    ("influencesurface", "Influence Surface", InfluenceSurfaceBody),
 ]

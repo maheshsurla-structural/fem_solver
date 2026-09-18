@@ -156,15 +156,8 @@ class MovingLoadType(CaseType):
         return f"{veh} · {what} · {len(params.get('lane') or [])}-node lane"
 
     def edit(self, parent, project, case=None):
-        from moving_load_dialog import MovingLoadDialog
-        dlg = MovingLoadDialog(parent, project,
-                               initial=(dict(case.params) if case else None),
-                               name=(case.name if case else "Moving Load"),
-                               notes=(case.notes if case else ""))
-        if not dlg.exec():
-            return None
-        return self._mk(case, name=dlg.header.name() or "Moving Load",
-                        params=dlg.result(), notes=dlg.header.notes())
+        from case_editor import CaseEditorDialog        # E1 unified editor
+        return CaseEditorDialog.edit(parent, project, self.type_id, case)
 
     def dispatch(self, win, config):
         return win.run_moving_load(config=config)
@@ -298,15 +291,8 @@ class InfluenceSurfaceType(CaseType):
                 f"{len(params.get('deck') or [])} deck nodes{mp}")
 
     def edit(self, parent, project, case=None):
-        from influence_surface_dialog import InfluenceSurfaceDialog
-        dlg = InfluenceSurfaceDialog(
-            parent, project, initial=(dict(case.params) if case else None),
-            name=(case.name if case else "Influence Surface"),
-            notes=(case.notes if case else ""))
-        if not dlg.exec():
-            return None
-        return self._mk(case, name=dlg.header.name() or "Influence Surface",
-                        params=dlg.result(), notes=dlg.header.notes())
+        from case_editor import CaseEditorDialog        # E1 unified editor
+        return CaseEditorDialog.edit(parent, project, self.type_id, case)
 
     def dispatch(self, win, config):
         return win.run_influence_surface(config=config)

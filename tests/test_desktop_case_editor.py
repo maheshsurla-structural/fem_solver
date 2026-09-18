@@ -163,3 +163,37 @@ def test_batch2_adapters_route_to_editor(qapp, monkeypatch):
     case_types.get("tempgradient").edit(None, _project())
     case_types.get("cabletuning").edit(None, _project())
     assert seen == ["tempgradient", "cabletuning"]
+
+
+def test_case_editor_moving_load(qapp):
+    from case_editor import CaseEditorDialog
+    dlg = CaseEditorDialog(None, _project(), "movingload")
+    case = dlg._result_case(0)
+    assert case.type == "movingload"
+    assert set(case.params["lane"]) == {1, 2}       # default: whole model
+    assert case.params["vehicle"] == "hl93"
+    assert case.params["response"][0] == "M"        # default bending @ member
+    assert case.initial_condition == ("zero",)      # non-IC type
+
+
+def test_case_editor_influence_surface(qapp):
+    from case_editor import CaseEditorDialog
+    dlg = CaseEditorDialog(None, _project(), "influencesurface")
+    case = dlg._result_case(0)
+    assert case.type == "influencesurface"
+    assert set(case.params["deck"]) == {1, 2}
+    assert case.params["response"][0] == "disp"
+    assert case.params["multi_presence"] is True
+
+
+def test_batch3_adapters_route_to_editor(qapp, monkeypatch):
+    import case_editor
+    import case_types
+    seen = []
+    monkeypatch.setattr(
+        case_editor.CaseEditorDialog, "edit",
+        classmethod(lambda cls, parent, project, type_id, case=None:
+                    seen.append(type_id)))
+    case_types.get("movingload").edit(None, _project())
+    case_types.get("influencesurface").edit(None, _project())
+    assert seen == ["movingload", "influencesurface"]
