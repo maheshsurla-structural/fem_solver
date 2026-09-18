@@ -111,6 +111,27 @@ def test_inactive_node_hides_its_members(qapp):
     assert 2 not in _disp_node_ids(w)
 
 
+def test_visible_model_passthrough_when_all_active(qapp):
+    w = _window(qapp)
+    assert w._visible_model(w._model) is w._model
+    assert w._visible_model(None) is None
+
+
+def test_visible_model_filters_results_view(qapp):
+    w = _window(qapp)
+    w._set_selection([("member", 1)])
+    w.inactivate_selected()
+    vm = w._visible_model(w._model)
+    # the results view sees only the active subset ...
+    assert set(vm.elements) == {2}
+    assert set(vm.nodes) == {2, 3}
+    # ... while the solved analysis model is untouched ...
+    assert set(w._model.elements) == {1, 2}
+    # ... and the shared node objects carry their computed state through
+    assert vm.node(2) is w._model.node(2)
+    assert vm.element(2) is w._model.element(2)
+
+
 def test_prune_drops_stale_inactive_refs(qapp):
     w = _window(qapp)
     w._inactive = {("member", 999), ("member", 1)}    # 999 no longer exists

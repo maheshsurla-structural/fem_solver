@@ -727,7 +727,7 @@ class MainWindow(QMainWindow):
         dmax = mg.max_translation(self._model)
         span = mg.model_span(self._model)
         scale = (0.08 * span / dmax) if dmax > 0 else 1.0
-        self.view.show_deformed(self._model, scale)
+        self.view.show_deformed(self._visible_model(self._model), scale)
         self.log.appendPlainText(
             f"Linear static solved: neq={info.get('neq', '?')}, "
             f"max|u| = {dmax:.4e} m, deformation ×{scale:.0f}")
@@ -796,7 +796,7 @@ class MainWindow(QMainWindow):
             dmax = mg.max_translation(model)
             span = mg.model_span(model)
             scale = (0.08 * span / dmax) if dmax > 0 else 1.0
-            self.view.show_deformed(model, scale)
+            self.view.show_deformed(self._visible_model(model), scale)
             self.statusBar().showMessage(
                 f"Mode {k + 1}: T = {info['periods_s'][k]:.4g} s, "
                 f"f = {info['frequencies_hz'][k]:.4g} Hz")
@@ -957,7 +957,7 @@ class MainWindow(QMainWindow):
         dmax = mg.max_translation(model)
         span = mg.model_span(model)
         scale = (0.08 * span / dmax) if dmax > 0 else 1.0
-        self.view.show_deformed(model, scale)
+        self.view.show_deformed(self._visible_model(model), scale)
 
         from response_spectrum_results_dialog import \
             ResponseSpectrumResultsDialog
@@ -1047,7 +1047,7 @@ class MainWindow(QMainWindow):
             dmax = mg.max_translation(model)
             span = mg.model_span(model)
             scale = (0.08 * span / dmax) if dmax > 0 else 1.0
-            self.view.show_deformed(model, scale)
+            self.view.show_deformed(self._visible_model(model), scale)
             self.statusBar().showMessage(
                 f"Buckling mode {k + 1}: λ = {info['load_factors'][k]:.4g}")
 
@@ -1228,7 +1228,7 @@ class MainWindow(QMainWindow):
         dmax = mg.max_translation(model)
         span = mg.model_span(model)
         scale = (0.08 * span / dmax) if dmax > 0 else 1.0
-        self.view.show_deformed(model, scale)
+        self.view.show_deformed(self._visible_model(model), scale)
 
         max_moment = 0.0
         for tag in member_ids:
@@ -1350,7 +1350,7 @@ class MainWindow(QMainWindow):
         dmax = mg.max_translation(model)
         span = mg.model_span(model)
         scale = (0.08 * span / dmax) if dmax > 0 else 1.0
-        self.view.show_deformed(model, scale)
+        self.view.show_deformed(self._visible_model(model), scale)
 
         from construction_stage_results_dialog import \
             ConstructionStageResultsDialog
@@ -1642,7 +1642,7 @@ class MainWindow(QMainWindow):
         dmax = mg.max_translation(m_after)
         span = mg.model_span(m_after)
         scale = (0.08 * span / dmax) if dmax > 0 else 1.0
-        self.view.show_deformed(m_after, scale)
+        self.view.show_deformed(self._visible_model(m_after), scale)
 
         from cable_tuning_results_dialog import CableTuningResultsDialog
         self._cable_tuning_results_dlg = CableTuningResultsDialog.show_results(
@@ -1891,14 +1891,14 @@ class MainWindow(QMainWindow):
             f"{k + 1}/{self._nl_results.n_steps}  (d={st.disp:.4g}){lvl}")
         mode = ("acceptance" if self._nl_color.currentText() == "acceptance"
                 else "strain")
-        self.view.show_nl_step(self._model, st.node_disp, st.member_damage,
+        self.view.show_nl_step(self._visible_model(self._model), st.node_disp, st.member_damage,
                                self._nl_scale, member_state=st.member_state,
                                color_mode=mode)
 
     def show_diagram(self, kind: str) -> None:
         if self._solve() is None:
             return
-        vmax = self.view.show_diagram(self._model, kind)
+        vmax = self.view.show_diagram(self._visible_model(self._model), kind)
         names = {"N": "Axial N", "V": "Shear V", "M": "Moment M"}
         # vmax is SI (N for axial/shear, N·m for moment); show in chosen units.
         us = self._units()
@@ -1919,7 +1919,7 @@ class MainWindow(QMainWindow):
             return
         if self._solve() is None:
             return
-        vmax = self.view.show_area_contour(self._model, quantity)
+        vmax = self.view.show_area_contour(self._visible_model(self._model), quantity)
         us = self._units()
         vd, unit = us.to_display(vmax, Quantity.DISP), us.label(Quantity.DISP)
         self.log.appendPlainText(
@@ -1948,7 +1948,7 @@ class MainWindow(QMainWindow):
         import model_geometry as mg
         if self._solve() is None:
             return
-        vmax = self.view.show_area_result(self._model, quantity)
+        vmax = self.view.show_area_result(self._visible_model(self._model), quantity)
         label, unit, _signed = mg.AREA_RESULT_QUANTITIES.get(
             quantity, (quantity, "", True))
         self.log.appendPlainText(
@@ -1975,7 +1975,7 @@ class MainWindow(QMainWindow):
             return
         import model_geometry as mg
         vmax = self.view.show_area_reinforcement(
-            self._model, cfg["quantity"], cover=cfg["cover"], fy=cfg["fy"],
+            self._visible_model(self._model), cfg["quantity"], cover=cfg["cover"], fy=cfg["fy"],
             fc=cfg["fc"])
         label = mg.AREA_REBAR_QUANTITIES.get(cfg["quantity"],
                                              (cfg["quantity"], ""))[0]
@@ -2060,7 +2060,7 @@ class MainWindow(QMainWindow):
             if self._solve() is None:
                 return
             dcrs = design.design_all(self._model, self._project)
-        self.view.show_design(self._model, dcrs)
+        self.view.show_design(self._visible_model(self._model), dcrs)
         vals = {t: d for t, d in dcrs.items() if d is not None}
         if not vals:
             self.log.appendPlainText(
@@ -3272,6 +3272,56 @@ class MainWindow(QMainWindow):
                       else disp.build_model(with_loads=False))
         self.view.set_model(view_model)
         self.view.mark_hinges(disp)
+
+    def _visible_model(self, solved):
+        """A render-only view of a *solved* model restricted to the active
+        working set, for the results views (deformed / diagram / contour /
+        design). It shares the very same Node/Element objects — so the computed
+        displacements and forces are intact — and only filters the node/element
+        dicts, so results honour the active set exactly as the modeling view
+        does. Returns ``solved`` unchanged when nothing is inactive.
+
+        Element tags follow the build convention (a member's tag is its id; an
+        area owns the tags from ``_area_element_tags``), so the same inactive
+        refs map straight onto the solved model. A node is dropped when it is
+        individually inactive or left orphaned by hiding all of its elements;
+        standalone active nodes stay."""
+        if not self._inactive or solved is None:
+            return solved
+        proj = self._project
+        inactive = self._inactive
+        hidden_node_ids = {nid for (k, nid) in inactive if k == "node"}
+
+        hidden_tags: set = set()
+        for m in proj.members:
+            if (("member", m.id) in inactive
+                    or m.n1 in hidden_node_ids or m.n2 in hidden_node_ids):
+                hidden_tags.add(m.id)
+        for a in getattr(proj, "areas", []):
+            if (("area", a.id) in inactive
+                    or any(n in hidden_node_ids for n in a.nodes)):
+                hidden_tags.update(proj._area_element_tags(a))
+
+        used, referenced = set(), set()
+        for tag, el in solved.elements.items():
+            nts = tuple(getattr(el, "node_tags", ()) or ())
+            referenced.update(nts)
+            if tag not in hidden_tags:
+                used.update(nts)
+
+        def node_hidden(nid):
+            if nid in hidden_node_ids:
+                return True
+            if nid in used:
+                return False
+            return nid in referenced          # only hidden elements used it
+
+        v = copy.copy(solved)
+        v._nodes = {t: n for t, n in solved.nodes.items()
+                    if not node_hidden(t)}
+        v._elements = {t: e for t, e in solved.elements.items()
+                       if t not in hidden_tags}
+        return v
 
     def _update_snap(self, *_) -> None:
         self.view.set_snap(self.act_snap.isChecked(), self.snap_spin.value())
