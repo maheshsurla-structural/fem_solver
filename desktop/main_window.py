@@ -3178,8 +3178,8 @@ class MainWindow(QMainWindow):
             "draw_node": "Draw node — click the ground plane to place nodes "
                          "(snapped to 0.5 m).",
             "draw_member": "Draw member — click two nodes to connect them.",
-            "draw_area": "Draw area — click 3–4 corner nodes; click the first "
-                         "again to close a triangle."}
+            "draw_area": "Draw area — click corner nodes (3+, in order); click "
+                         "the first corner again to close the panel."}
         self.statusBar().showMessage(hints.get(mode, ""))
         rb = getattr(self, "_ribbon", None)    # R4: surface the Draw tab
         if rb is not None and not rb.is_collapsed():

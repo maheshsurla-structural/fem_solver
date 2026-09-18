@@ -260,4 +260,4 @@ DXF/table import-export of areas).
 | S7 | Result contours (U/σ/M/V) + cuts | GUI | ✅ displacement + M/N/V + Wood-Armer + GP→node extrapolation + **section cuts** (`section_cut`, design-strip M/V validated vs wL²/8·B; 5 tests) — COMPLETE |
 | S8 | Diaphragm assignment (rigid) | GUI | ✅ (9 tests; RigidDiaphragm, auto master, rigid-floor solve) |
 | S9 | Slab/punching/diaphragm design | GUI+wire | ✅ Wood-Armer moments + required-As contour + **punching check** (ACI, demand from node reaction; `slab_punching.py`, 29 tests). Diaphragm classification later |
-| S10 | Meshing robustness & parity polish | both | ◑ area selection ✅; **slab-results CSV export** ✅; polygon/beam-edge/DXF later |
+| S10 | Meshing robustness & parity polish | both | ◑ area selection ✅; slab-results CSV export ✅; **polygon areas ✅** (centroid-fan tris, click-to-draw close-on-first); beam-edge/DXF later |

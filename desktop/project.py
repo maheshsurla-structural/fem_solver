@@ -752,9 +752,11 @@ class Project:
     def _mesh_and_add_areas(self, model, mats) -> None:
         """Mesh every ``Area`` into shell elements and add them to ``model``
         (slab S1 + S3). Quads are subdivided ``mesh`` = (n1, n2) times by a
-        bilinear map; a triangle stays a single element. Generated nodes are
-        merged by coordinate (so shared edges/corners across areas — and the
-        original corner nodes — collapse to one), keeping meshes compatible."""
+        bilinear map; a polygon (≥5 nodes) is centroid-fan-triangulated into one
+        shell triangle per edge; a triangle stays a single element. Generated
+        nodes are merged by coordinate (so shared edges/corners across areas —
+        and the original corner nodes — collapse to one), keeping meshes
+        compatible."""
         shsecs = {s.id: s for s in self.shell_sections}
         ncoord = {nd.id: (nd.x, nd.y, nd.z) for nd in self.nodes}
         # coord -> model node id, seeded with the nodes already in the model
@@ -798,6 +800,19 @@ class Project:
                         if el is not None:
                             model.add_element(el)
                         k += 1
+            elif len(a.nodes) >= 5:               # polygon → centroid fan of tris
+                corners = [ncoord[nid] for nid in a.nodes]
+                cx = sum(c[0] for c in corners) / len(corners)
+                cy = sum(c[1] for c in corners) / len(corners)
+                cz = sum(c[2] for c in corners) / len(corners)
+                cnode = _node_at((cx, cy, cz))
+                N = len(a.nodes)
+                for k in range(N):
+                    tri = [cnode, a.nodes[k], a.nodes[(k + 1) % N]]
+                    el = _build_shell_element(area_element_tag(a.id, k), tri,
+                                              mat, ss)
+                    if el is not None:
+                        model.add_element(el)
             else:                                 # triangle → single element
                 el = _build_shell_element(area_element_tag(a.id, 0),
                                           a.nodes, mat, ss)
@@ -971,10 +986,14 @@ class Project:
 
     def _area_element_tags(self, area) -> list:
         """Engine element tag(s) for an ``Area`` — every mesh sub-element (slab
-        S3). A quad owns ``n1·n2`` sub-elements; a triangle owns one. Matches
-        the deterministic tags emitted by :meth:`_mesh_and_add_areas`."""
-        if len(area.nodes) == 4:
+        S3). A quad owns ``n1·n2`` sub-elements; a polygon (≥5 nodes) owns one
+        centroid-fan triangle per edge; a triangle owns one. Matches the
+        deterministic tags emitted by :meth:`_mesh_and_add_areas`."""
+        n_nodes = len(area.nodes)
+        if n_nodes == 4:
             n = max(1, int(area.mesh[0])) * max(1, int(area.mesh[1]))
+        elif n_nodes >= 5:
+            n = n_nodes                           # centroid-fan: one tri per edge
         else:
             n = 1
         return [area_element_tag(area.id, k) for k in range(n)]

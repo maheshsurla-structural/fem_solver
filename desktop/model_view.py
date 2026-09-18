@@ -663,7 +663,8 @@ class ModelView(QtInteractor):
             if sel[0] != "node":
                 return
             nid = sel[1]
-            # click the first corner again to close a triangle/quad early
+            # click the first corner again to close the loop (tri / quad /
+            # polygon — any ≥3 corners); re-clicking any other corner is ignored
             if self._area_pick and nid == self._area_pick[0] \
                     and len(self._area_pick) >= 3:
                 self._finish_area()
@@ -672,8 +673,6 @@ class ModelView(QtInteractor):
                 return                            # ignore repeats mid-loop
             self._area_pick.append(nid)
             self.highlight([("node", n) for n in self._area_pick])
-            if len(self._area_pick) == 4:         # quad auto-closes at 4 corners
-                self._finish_area()
             return
         if self._pick_cb is not None:
             self._pick_cb(*sel)

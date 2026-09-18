@@ -84,7 +84,9 @@ def test_draw_area_accumulates_quad(qapp):
     v.set_mode("draw_area")
     for tag in (1, 2, 3, 4):                        # click the 4 corners
         v._on_point_picked(np.asarray(mg.to_xyz(v._model.nodes[tag].coords)))
-    assert got == [[1, 2, 3, 4]]                    # auto-closed at the 4th
+    assert got == []                               # not closed yet (no auto-4)
+    v._on_point_picked(np.asarray(mg.to_xyz(v._model.nodes[1].coords)))  # close
+    assert got == [[1, 2, 3, 4]]
     assert v._area_pick == []                       # reset after close
 
 
