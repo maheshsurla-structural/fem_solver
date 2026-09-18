@@ -1,8 +1,7 @@
 # Wall (shear-wall / pier) modeling — commercial-parity roadmap
 
-*Status: **IN PROGRESS — W0 complete** (branch `feat/wall-modeling`, commit
-`da4f925`; not yet merged to `main`). This roadmap takes the desktop app from
-"a wall is just a vertical `Area`"
+*Status: **IN PROGRESS — W0 + W1a complete** (branch `feat/wall-modeling`).
+This roadmap takes the desktop app from "a wall is just a vertical `Area`"
 to an ETABS-style wall workflow: a labeled **wall / pier / spandrel** object, a
 **story** context to draw and stack it in, automatic **pier force integration**,
 and a **wall design** check wired to the reinforcement the engine already knows
@@ -13,11 +12,15 @@ how to size. As with the slab work, the split is almost entirely
 
 ## 0. Resume here (session hand-off)
 
-**W0 shipped** (commit `da4f925` on branch `feat/wall-modeling`, worktree
-`.claude/worktrees/wall-modeling`): `Area.role` (slab|wall|shell) + optional
-`pier`/`spandrel` labels, JSON round-trip + legacy migration, `Project` wall/pier
-accessors, `tests/test_desktop_wall_model.py`. **Next: W1** (elevation draw-plane
-+ Draw ▸ Wall). Note: the GUI venv lives in the **main** repo, so run pytest with
+**W0 + W1a shipped** on branch `feat/wall-modeling` (worktree
+`.claude/worktrees/wall-modeling`). W0 (`da4f925`): `Area.role` (slab|wall|shell)
++ optional `pier`/`spandrel` labels, JSON round-trip + legacy migration,
+`Project` wall/pier accessors, `tests/test_desktop_wall_model.py`. W1a
+(`5e9a721`): Draw ▸ Wall extrudes a selected base line upward into vertical wall
+panels (`desktop/walls.py`, `editing.WallDialog`, `MainWindow.draw_wall`),
+`tests/test_desktop_wall_draw.py`. **Next: W1b** (true elevation draw plane) or
+skip to **W2** (pier force integration — the headline ETABS output). Note: the
+GUI venv lives in the **main** repo, so run pytest with
 `PYTHONPATH=src QT_QPA_PLATFORM=offscreen
 /c/Mahesh/fem_solver/.venv-gui/Scripts/python -m pytest ...`. Tests:
 `PYTHONPATH=src QT_QPA_PLATFORM=offscreen <repo>/.venv-gui/Scripts/python -m
@@ -105,12 +108,18 @@ W5/W6 are v2.
 - No engine change. Small, unlocks everything below.
 
 ### W1 — Draw & edit walls ★★
-- A **draw-plane / work-plane** selector (XY ground, **XZ / YZ elevation**, or
-  a picked 3-point plane) so nodes land on a vertical plane.
-- **Draw ▸ Wall** = pick a base line (two nodes) + a height (or a top line) →
-  auto-creates the 4 corner nodes and a wall `Area` with `role="wall"`.
-- Reuse the existing area click-select / highlight / delete / properties path.
-- Vertical auto-mesh (n-horizontal × m-vertical), reusing the S3 quad mesher.
+- **W1a — DONE** (`5e9a721`): **Draw ▸ Wall** extrudes a selected base line
+  (2+ nodes, or members whose ends form the base) upward by a height into
+  vertical quad wall panels (`role="wall"` + optional pier label). Pure builder
+  `walls.build_wall_line` (one panel per base segment, shared top nodes, mesh =
+  base × height), `editing.WallDialog`, `MainWindow.draw_wall` (selection-driven,
+  undo/redo-aware), `wall` icon. Reuses the S3 quad mesher + area select/delete/
+  properties path. `tests/test_desktop_wall_draw.py`.
+- **W1b — TODO**: a true **draw-plane / work-plane** selector (XY ground,
+  **XZ / YZ elevation**, or a picked 3-point plane) so base nodes can be placed
+  *off* the ground plane by clicking — today the base line comes from selection.
+  Touches `model_view._world_on_ground` (VTK ray→plane; currently hard-wired to
+  z = 0). Higher-risk viewport work; deferred so W2/W3 can proceed.
 
 ### W2 — Pier force integration ★★ (the most-used ETABS wall output)
 - Promote the transient section-cut (`model_geometry.py:634`) to a **persistent,
@@ -200,7 +209,8 @@ gives every later epic something to hang on.
 | Epic | Title | Status |
 |---|---|---|
 | W0 | Wall / pier data model | ☑ done (`da4f925`) |
-| W1 | Draw & edit walls (elevation plane) | ☐ proposed |
+| W1a | Draw Wall by base line + height | ☑ done (`5e9a721`) |
+| W1b | Elevation / XZ-YZ draw plane | ☐ todo |
 | W2 | Pier force integration | ☐ proposed |
 | W3 | Wall design check | ☐ proposed |
 | W4 | Story / Level system + grids | ☐ proposed |
