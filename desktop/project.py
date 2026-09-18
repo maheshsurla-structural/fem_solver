@@ -208,6 +208,11 @@ class Member:
     material: int
     kind: str = "beamcolumn2d"
     hinge: int | None = None      # Hinge property id (None = distributed/elastic)
+    # Vertical insertion offset (m, 3-D): the beam's centroid sits ``z_offset``
+    # below (negative) / above the drawn line. Non-zero on an edge beam makes it
+    # act *compositely* with the slab — the beam is built at the offset elevation
+    # and rigidly tied back to the drawn (slab) nodes (BE6). 0 = centroidal.
+    z_offset: float = 0.0
 
 
 @dataclass
@@ -755,12 +760,18 @@ class Project:
             # one element keyed by the member id (legacy behaviour).
             chain = self._member_split_chain(mb, edge_nodes) if edge_nodes \
                 else None
-            if chain and len(chain) > 2:
-                for j in range(len(chain) - 1):
-                    m.add_element(_bc(member_element_tag(mb.id, j),
-                                      chain[j], chain[j + 1]))
+            nodes = chain if (chain and len(chain) > 2) else [mb.n1, mb.n2]
+            tags = ([member_element_tag(mb.id, j) for j in range(len(nodes) - 1)]
+                    if len(nodes) > 2 else [mb.id])
+            offset = float(getattr(mb, "z_offset", 0.0) or 0.0)
+            if offset and self.ndm == 3:
+                # BE6: build the beam at its offset centroid on phantom nodes,
+                # each rigidly tied back to the drawn (slab) node — composite
+                # T-beam action. Same tags as the centroidal case.
+                self._add_offset_beam(m, node_at, nodes, tags, _bc, offset)
             else:
-                m.add_element(_bc(mb.id, mb.n1, mb.n2))
+                for j in range(len(nodes) - 1):
+                    m.add_element(_bc(tags[j], nodes[j], nodes[j + 1]))
         # ---- surface (shell / plate) area objects (slab plan S1 + S3 mesh) --
         # Areas are a 3-D feature — shells need ndf=6, so a 2-D model has no
         # surface elements. Each quad area is meshed into its ``mesh`` = (n1, n2)
@@ -941,6 +952,28 @@ class Project:
         if not hits:
             return [mb.id]
         return [member_element_tag(mb.id, j) for j in range(len(hits) + 1)]
+
+    def _add_offset_beam(self, model, node_at, nodes, tags, make_el,
+                         offset: float) -> None:
+        """BE6: build a composite (eccentric) beam. The beam runs on *phantom*
+        nodes a vertical distance ``offset`` (m) from each drawn node in
+        ``nodes``; every phantom node is rigidly tied back to its drawn node
+        (which carries the slab shells + supports) by a ``RigidOffset`` with
+        coupled rotations, so the beam's stiffness condenses onto the drawn nodes
+        through the offset arm — full T-beam action (plane sections remain
+        plane), with no support surgery. ``tags`` are the per-span element tags
+        (identical to the centroidal case, so the results/design map is
+        unchanged)."""
+        from femsolver.constraints import RigidOffset
+        phantom = []
+        for c in nodes:
+            x, y, z = (float(v) for v in model.node(c).coords[:3])
+            p = node_at((x, y, z + offset))
+            phantom.append(p)
+            model.add_mp_constraint(
+                RigidOffset(master=c, slave=p, couple_slave_rotations=True))
+        for j in range(len(nodes) - 1):
+            model.add_element(make_el(tags[j], phantom[j], phantom[j + 1]))
 
     def _mesh_and_add_areas(self, model, mats, node_at) -> None:
         """Mesh every ``Area`` into shell elements and add them to ``model``

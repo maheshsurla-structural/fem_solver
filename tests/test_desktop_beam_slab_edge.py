@@ -148,6 +148,48 @@ def test_edge_beam_carries_slab_load():
     assert uz < 0.0 and abs(uz) < 1.0             # downward and finite
 
 
+# =================================================== BE6: composite offset
+
+def _composite_mid_deflection(offset, mesh=(4, 2)):
+    from femsolver import LinearStaticAnalysis
+    p = _slab_with_edge_beam(mesh=mesh)
+    p.members[0].z_offset = offset
+    for nd in p.nodes:
+        if nd.id in (1, 2):
+            nd.supports = [1, 1, 1, 1, 1, 1]
+    m = p.build_model(with_loads=False)
+    mid = next(t for t in m.nodes                    # beam midspan drawn node
+               if abs(m.node(t).coords[0] - 2.0) < 1e-9
+               and abs(m.node(t).coords[1]) < 1e-9
+               and abs(m.node(t).coords[2]) < 1e-9)
+    m.add_nodal_load(mid, [0.0, 0.0, -1.0e4, 0.0, 0.0, 0.0])
+    LinearStaticAnalysis(m).run()
+    return abs(float(m.node(mid).disp[2])), m
+
+
+def test_composite_offset_beam_is_stiffer():
+    """A composite (offset) edge beam deflects less than the same beam at the
+    slab mid-plane: the vertical offset gives the T-section a lever arm."""
+    d_centroid, _ = _composite_mid_deflection(0.0)
+    d_composite, m = _composite_mid_deflection(-0.3)      # beam 0.3 m below slab
+    assert d_composite > 0.0
+    assert d_composite < d_centroid                       # stiffer (T-beam action)
+
+
+def test_composite_offset_builds_phantom_nodes_and_ties():
+    """The offset beam runs on phantom nodes below the slab, each tied back by a
+    RigidOffset; the drawn (slab) nodes stay put and carry the supports."""
+    p = _slab_with_edge_beam(mesh=(4, 2))                 # beam splits into 4
+    p.members[0].z_offset = -0.3
+    m = p.build_model(with_loads=False)
+    # 5 chain nodes -> 5 phantom beam nodes at z = -0.3 and 5 RigidOffset ties
+    zlow = [t for t in m.nodes if abs(m.node(t).coords[2] + 0.3) < 1e-9]
+    assert len(zlow) == 5
+    from femsolver.constraints import RigidOffset
+    ties = [c for c in m.mp_constraints if isinstance(c, RigidOffset)]
+    assert len(ties) == 5
+
+
 # =================================================== BE7: validation
 
 def _solved_disps(p, load_node, fz=-1.0e4):
