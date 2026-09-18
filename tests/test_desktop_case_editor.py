@@ -197,3 +197,59 @@ def test_batch3_adapters_route_to_editor(qapp, monkeypatch):
     case_types.get("movingload").edit(None, _project())
     case_types.get("influencesurface").edit(None, _project())
     assert seen == ["movingload", "influencesurface"]
+
+
+def test_case_editor_vehicle_dynamics_roundtrip(qapp):
+    from case_editor import CaseEditorDialog
+    params = {"lane": [1, 2], "kind": "vbi", "mass": 25000.0, "bounce": 2.5,
+              "susp_damp": 0.15, "speed": 20.0, "zeta": 0.03, "node": 2}
+    c = AnalysisCase(id=1, name="vd", type="vehicledynamics", params=params)
+    dlg = CaseEditorDialog(None, _project(), "vehicledynamics", c)
+    out = dlg._result_case(1)
+    assert out.type == "vehicledynamics" and out.params["kind"] == "vbi"
+    for k in ("mass", "bounce", "susp_damp", "speed", "zeta"):
+        assert out.params[k] == pytest.approx(params[k])   # display↔SI round-trip
+    assert out.params["node"] == 2 and out.initial_condition == ("zero",)
+
+
+def test_case_editor_load_rating_roundtrip(qapp):
+    from case_editor import CaseEditorDialog
+    params = {"lane": [1, 2], "response": ["M", 1, "i"], "Rn": 1000.0, "DC": 200.0,
+              "DW": 50.0, "P": 0.0, "phi": 0.9, "phi_c": 0.95, "phi_s": 1.0,
+              "im": 0.33, "adtt": 5000, "permit_gamma_LL": None}
+    c = AnalysisCase(id=1, name="lr", type="loadrating", params=params)
+    dlg = CaseEditorDialog(None, _project(), "loadrating", c)
+    out = dlg._result_case(1)
+    assert out.params["response"][0] == "M"
+    for k in ("Rn", "DC", "DW", "phi", "im"):
+        assert out.params[k] == pytest.approx(params[k])
+    assert out.params["phi_c"] == 0.95 and out.params["adtt"] == 5000
+    assert out.params["permit_gamma_LL"] is None
+
+
+def test_case_editor_time_history_with_ic_and_hold(qapp):
+    from case_editor import CaseEditorDialog
+    from project import TimeHistoryFunction
+    p = _project()
+    p.th_functions = [TimeHistoryFunction(id=1, name="EC", dt=0.02,
+                                          values=[0.1, -0.2, 0.3])]
+    p.nonlinear_cases = [NonlinearCase(id=5, name="PRELOAD", control_node=2)]
+    c = AnalysisCase(id=1, name="th", type="timehistory",
+                     params={"function_id": 1, "control_node": 2,
+                             "direction": "y", "scale": 1.5, "zeta": 0.03,
+                             "density": 2500.0, "hold_source_loads": True},
+                     initial_condition=("state", 5))
+    dlg = CaseEditorDialog(None, p, "timehistory", c)
+    out = dlg._result_case(1)
+    assert out.type == "timehistory"
+    assert out.params["function_id"] == 1
+    assert out.params["scale"] == pytest.approx(1.5)
+    assert out.params["hold_source_loads"] is True     # injected by the shell
+    assert out.initial_condition == ("state", 5)
+
+
+def test_all_types_migrated_to_editor(qapp):
+    import case_bodies
+    import case_types
+    reg_ids = {tid for tid, _, _ in case_bodies.REGISTRY}
+    assert reg_ids == set(case_types.TYPES)            # all 10 types unified

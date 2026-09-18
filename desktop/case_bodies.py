@@ -25,14 +25,28 @@ from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox,
 
 import style
 from analysis_ui import GroupCard
-# Reuse the vehicle / response option lists from the standalone dialogs (single
-# source of truth) so a case built here stores identical params.
+# Reuse the option lists / constants / helpers from the standalone dialogs
+# (single source of truth) so a case built here stores identical params.
 from influence_surface_dialog import _RESPONSES as _IS_RESPONSES
 from influence_surface_dialog import _VEHICLES as _IS_VEHICLES
+from load_rating_dialog import _CONDITION, _EFFECTS, _SYSTEM
+from load_rating_dialog import _spin as _lr_spin
 from moving_load_dialog import _RESPONSES as _ML_RESPONSES
 from moving_load_dialog import _VEHICLES as _ML_VEHICLES
+from timehistory_dialog import _DIRS as _TH_DIRS
+from units import UnitSystem
+from vehicle_dynamics_dialog import _VEHICLES as _VD_VEHICLES
 
 _ROLE = 0x0100                                          # Qt.UserRole
+
+
+def _dspin(value, lo=0.0, hi=1.0e6, *, decimals=3, step=0.1):
+    s = QDoubleSpinBox()
+    s.setRange(lo, hi)
+    s.setDecimals(decimals)
+    s.setSingleStep(step)
+    s.setValue(value)
+    return s
 
 
 class _Body(QWidget):
@@ -654,6 +668,356 @@ class InfluenceSurfaceBody(_Body):
                 "multi_presence": self.multi.isChecked()}
 
 
+class VehicleDynamicsBody(_Body):
+    """Vehicle dynamics: lane + moving-force / sprung-mass vehicle at speed.
+
+    Fixed-factor display↔SI conversions (t↔kg, %↔fraction, km/h↔m/s) match the
+    standalone dialog so a case round-trips."""
+
+    TITLE = "Vehicle dynamics / moving-load time-history"
+    SUB = ("A vehicle crosses the lane at speed; the transient solve gives the "
+           "dynamic amplification (DAF) and response history.")
+    SUPPORTS_IC = False
+
+    def __init__(self, project, *, initial: dict | None = None,
+                 max_modes: int = 20, default_modes: int = 6):
+        super().__init__()
+        self._project = project
+        lay = self._root()
+        lane = GroupCard("Lane", form=False)
+        lane.body_layout().addWidget(
+            QLabel("Nodes the vehicle travels over (ordered by X):"))
+        self.lane_list = _multi_list(100)
+        for nd in sorted(project.nodes, key=lambda n: (n.x, getattr(n, "y", 0))):
+            it = _add_id_row(self.lane_list,
+                             f"{nd.id}:  ({nd.x:g}, {getattr(nd, 'y', 0):g})",
+                             nd.id)
+            it.setSelected(True)
+        lane.body_layout().addWidget(self.lane_list)
+        lay.addWidget(lane)
+        cfg = GroupCard("Vehicle & speed")
+        self.kind = QComboBox()
+        self.kind.addItem("Moving force (constant axles)", "force")
+        self.kind.addItem("Sprung-mass (interaction)", "vbi")
+        self.kind.currentIndexChanged.connect(
+            lambda i: self.stack.setCurrentIndex(i))
+        cfg.add_row("Analysis", self.kind)
+        self.stack = QStackedWidget()
+        force = GroupCard("Axle train")
+        self.vehicle = QComboBox()
+        for label, key in _VD_VEHICLES:
+            self.vehicle.addItem(label, key)
+        force.add_row("Vehicle", self.vehicle)
+        vbi = GroupCard("Sprung-mass vehicle")
+        self.mass = _dspin(20.0, 0.1, 1000.0)
+        self.bounce = _dspin(2.0, 0.1, 20.0)
+        self.susp = _dspin(10.0, 0.0, 80.0)
+        vbi.add_row("Sprung mass [t]", self.mass)
+        vbi.add_row("Bounce frequency [Hz]", self.bounce)
+        vbi.add_row("Suspension damping [%]", self.susp)
+        self.stack.addWidget(force)
+        self.stack.addWidget(vbi)
+        cfg.add_full_row(self.stack)
+        self.speed = _dspin(60.0, 1.0, 500.0)
+        cfg.add_row("Speed [km/h]", self.speed)
+        self.zeta = _dspin(2.0, 0.0, 20.0)
+        cfg.add_row("Bridge damping ζ [%]", self.zeta)
+        self.node = QComboBox()
+        for nd in project.nodes:
+            self.node.addItem(f"node {nd.id}", nd.id)
+        if project.nodes:
+            self.node.setCurrentIndex(len(project.nodes) // 2)
+        cfg.add_row("Response node", self.node)
+        lay.addWidget(cfg)
+        if initial:
+            self._seed(initial)
+
+    def _seed(self, p: dict) -> None:
+        _select_ids(self.lane_list, p.get("lane"))
+        ki = self.kind.findData(p.get("kind", "force"))
+        if ki >= 0:
+            self.kind.setCurrentIndex(ki)
+        vi = self.vehicle.findData(p.get("vehicle"))
+        if vi >= 0:
+            self.vehicle.setCurrentIndex(vi)
+        self.mass.setValue(float(p.get("mass", 20000.0)) / 1.0e3)
+        self.bounce.setValue(float(p.get("bounce", 2.0)))
+        self.susp.setValue(float(p.get("susp_damp", 0.10)) * 100.0)
+        self.speed.setValue(float(p.get("speed", 16.667)) * 3.6)
+        self.zeta.setValue(float(p.get("zeta", 0.02)) * 100.0)
+        ni = self.node.findData(p.get("node"))
+        if ni >= 0:
+            self.node.setCurrentIndex(ni)
+
+    def _lane(self) -> list:
+        by_id = {n.id: n for n in self._project.nodes}
+        ids = _selected_ids(self.lane_list)
+        ids.sort(key=lambda i: (by_id[i].x, getattr(by_id[i], "y", 0)))
+        return ids
+
+    def case_params(self) -> dict:
+        return {"lane": self._lane(), "kind": self.kind.currentData(),
+                "vehicle": self.vehicle.currentData(),
+                "mass": float(self.mass.value()) * 1.0e3,
+                "bounce": float(self.bounce.value()),
+                "susp_damp": float(self.susp.value()) / 100.0,
+                "speed": float(self.speed.value()) / 3.6,
+                "zeta": float(self.zeta.value()) / 100.0,
+                "node": self.node.currentData()}
+
+
+class LoadRatingBody(_Body):
+    """AASHTO LRFR load rating: rated effect + capacity/dead loads + factors.
+
+    Capacity / dead loads are entered in display units and stored SI via the
+    project's :class:`UnitSystem` (reused, so no duplicated conversion math)."""
+
+    TITLE = "Load rating — AASHTO LRFR"
+    SUB = ("RF = (C − γDC·DC − γDW·DW − γP·P) / (γLL·(LL+IM)); the HL-93 "
+           "live-load effect comes from the influence line of the rated effect.")
+    SUPPORTS_IC = False
+
+    def __init__(self, project, *, initial: dict | None = None,
+                 max_modes: int = 20, default_modes: int = 6):
+        super().__init__()
+        self._project = project
+        self._us = UnitSystem.from_project(project)
+        lay = self._root()
+        lane = GroupCard("Lane", form=False)
+        lane.body_layout().addWidget(
+            QLabel("Nodes the live load travels over (ordered by X):"))
+        self.lane_list = _multi_list(96)
+        for nd in sorted(project.nodes, key=lambda n: (n.x, getattr(n, "y", 0))):
+            it = _add_id_row(self.lane_list,
+                             f"{nd.id}:  ({nd.x:g}, {getattr(nd, 'y', 0):g})",
+                             nd.id)
+            it.setSelected(True)
+        lane.body_layout().addWidget(self.lane_list)
+        lay.addWidget(lane)
+        eff = GroupCard("Rated effect")
+        self.effect = QComboBox()
+        for label, spec in _EFFECTS:
+            self.effect.addItem(label, spec)
+        self.effect.currentIndexChanged.connect(lambda *_: self._sync_units())
+        eff.add_row("Effect", self.effect)
+        self.member = QComboBox()
+        for mb in project.members:
+            self.member.addItem(f"member {mb.id}  ({mb.n1}→{mb.n2})", mb.id)
+        eff.add_row("Member", self.member)
+        self.end = QComboBox()
+        self.end.addItem("end i", "i")
+        self.end.addItem("end j", "j")
+        eff.add_row("At end", self.end)
+        lay.addWidget(eff)
+        cap = GroupCard("Capacity & dead load")
+        self.Rn = _lr_spin(1000.0)
+        self.DC = _lr_spin(200.0)
+        self.DW = _lr_spin(50.0)
+        self.P = _lr_spin(0.0, lo=-1.0e12)
+        cap.add_row("Nominal resistance Rn", self.Rn)
+        cap.add_row("Dead load — components DC", self.DC)
+        cap.add_row("Dead load — wearing surface DW", self.DW)
+        cap.add_row("Other permanent P (signed)", self.P)
+        lay.addWidget(cap)
+        fac = GroupCard("Resistance & evaluation factors")
+        self.phi = _lr_spin(1.00, lo=0.0, hi=1.5, step=0.05, decimals=2)
+        fac.add_row("Resistance factor φ", self.phi)
+        self.phi_c = QComboBox()
+        for label, v in _CONDITION:
+            self.phi_c.addItem(label, v)
+        fac.add_row("Condition factor φc", self.phi_c)
+        self.phi_s = QComboBox()
+        for label, v in _SYSTEM:
+            self.phi_s.addItem(label, v)
+        fac.add_row("System factor φs", self.phi_s)
+        self.im = _lr_spin(0.33, lo=0.0, hi=1.0, step=0.01, decimals=2)
+        fac.add_row("Dynamic allowance IM", self.im)
+        lay.addWidget(fac)
+        lvl = GroupCard("Rating levels")
+        lvl.body_layout().addWidget(
+            QLabel("Design Inventory (γLL 1.75) and Operating (1.35) are always "
+                   "computed."))
+        self.legal = QCheckBox("Legal load — γLL from ADTT")
+        self.legal.setChecked(True)
+        self.legal.toggled.connect(lambda on: self.adtt.setEnabled(on))
+        lvl.body_layout().addWidget(self.legal)
+        self.adtt = QSpinBox()
+        self.adtt.setRange(0, 500000)
+        self.adtt.setValue(5000)
+        self.adtt.setPrefix("ADTT = ")
+        lvl.add_row("  ADTT (one direction)", self.adtt)
+        self.permit = QCheckBox("Permit load — specify γLL")
+        self.permit.toggled.connect(lambda on: self.permit_gamma.setEnabled(on))
+        lvl.body_layout().addWidget(self.permit)
+        self.permit_gamma = _lr_spin(1.15, lo=0.5, hi=2.5, step=0.05, decimals=2)
+        self.permit_gamma.setEnabled(False)
+        lvl.add_row("  Permit γLL", self.permit_gamma)
+        lay.addWidget(lvl)
+        if initial:
+            self._seed(initial)
+        self._sync_units()
+
+    def _quantity(self):
+        return self.effect.currentData()[1]
+
+    def _sync_units(self) -> None:
+        unit = " " + self._us.label(self._quantity())
+        for sb in (self.Rn, self.DC, self.DW, self.P):
+            sb.setSuffix(unit)
+
+    def _seed(self, p: dict) -> None:
+        resp = p.get("response") or ("M", None, "i")
+        for i in range(self.effect.count()):
+            if self.effect.itemData(i)[0] == resp[0]:
+                self.effect.setCurrentIndex(i)
+                break
+        qty = self._quantity()
+        to_disp = self._us.to_display
+        self.Rn.setValue(to_disp(float(p.get("Rn", 0.0)), qty))
+        self.DC.setValue(to_disp(float(p.get("DC", 0.0)), qty))
+        self.DW.setValue(to_disp(float(p.get("DW", 0.0)), qty))
+        self.P.setValue(to_disp(float(p.get("P", 0.0)), qty))
+        _select_ids(self.lane_list, p.get("lane"))
+        mi = self.member.findData(resp[1] if len(resp) > 1 else None)
+        if mi >= 0:
+            self.member.setCurrentIndex(mi)
+        ei = self.end.findData(resp[2] if len(resp) > 2 else "i")
+        if ei >= 0:
+            self.end.setCurrentIndex(ei)
+        self.phi.setValue(float(p.get("phi", 1.0)))
+        ci = self.phi_c.findData(float(p.get("phi_c", 1.0)))
+        if ci >= 0:
+            self.phi_c.setCurrentIndex(ci)
+        psi = self.phi_s.findData(float(p.get("phi_s", 1.0)))
+        if psi >= 0:
+            self.phi_s.setCurrentIndex(psi)
+        self.im.setValue(float(p.get("im", 0.33)))
+        adtt = p.get("adtt")
+        self.legal.setChecked(adtt is not None)
+        if adtt is not None:
+            self.adtt.setValue(int(adtt))
+        pg = p.get("permit_gamma_LL")
+        self.permit.setChecked(pg is not None)
+        if pg is not None:
+            self.permit_gamma.setValue(float(pg))
+
+    def _lane(self) -> list:
+        by_id = {n.id: n for n in self._project.nodes}
+        ids = _selected_ids(self.lane_list)
+        ids.sort(key=lambda i: (by_id[i].x, getattr(by_id[i], "y", 0)))
+        return ids
+
+    def case_params(self) -> dict:
+        comp, qty = self.effect.currentData()
+        to_si = self._us.to_si
+        return {"lane": self._lane(),
+                "response": (comp, self.member.currentData(),
+                             self.end.currentData()),
+                "Rn": to_si(self.Rn.value(), qty), "DC": to_si(self.DC.value(), qty),
+                "DW": to_si(self.DW.value(), qty), "P": to_si(self.P.value(), qty),
+                "phi": self.phi.value(), "phi_c": self.phi_c.currentData(),
+                "phi_s": self.phi_s.currentData(), "im": self.im.value(),
+                "adtt": self.adtt.value() if self.legal.isChecked() else None,
+                "permit_gamma_LL": (self.permit_gamma.value()
+                                    if self.permit.isChecked() else None)}
+
+
+class TimeHistoryBody(_Body):
+    """Nonlinear time history: monitor + saved ground-motion function + damping.
+
+    IC-capable (can continue from a nonlinear case's committed state); the shell
+    shows the *hold source loads* checkbox and injects ``hold_source_loads`` into
+    the params (see :attr:`HOLD_IN_PARAMS`)."""
+
+    TITLE = "Nonlinear time history"
+    SUB = ("Base excitation from a saved ground-motion function (Analysis ▸ "
+           "Functions); nonlinear (fiber) transient solve.")
+    SUPPORTS_IC = True
+    SHOW_HOLD = True
+    HOLD_IN_PARAMS = True
+
+    def __init__(self, project, *, initial: dict | None = None,
+                 max_modes: int = 20, default_modes: int = 6):
+        super().__init__()
+        lay = self._root()
+        node_ids = [n.id for n in project.nodes]
+        free = [n.id for n in project.nodes
+                if not (n.supports and any(n.supports))]
+        default_node = (free[-1] if free else
+                        (node_ids[-1] if node_ids else None))
+        monitor = GroupCard("Monitor")
+        self.node = QComboBox()
+        for i in node_ids:
+            self.node.addItem(str(i), i)
+        if default_node is not None:
+            di = self.node.findData(default_node)
+            if di >= 0:
+                self.node.setCurrentIndex(di)
+        self.direction = QComboBox()
+        for label, data in _TH_DIRS:
+            self.direction.addItem(label, data)
+        di = self.direction.findData(("y", 1))
+        if di >= 0:
+            self.direction.setCurrentIndex(di)
+        monitor.add_row("Monitor node", self.node)
+        monitor.add_row("Direction", self.direction)
+        lay.addWidget(monitor)
+        gm = GroupCard("Ground motion")
+        self.function = QComboBox()
+        for f in project.th_functions:
+            self.function.addItem(
+                f"{f.name}  ({f.npts} pts · {f.duration:.3g}s"
+                f"{' · g' if f.in_g else ''})", f.id)
+        gm.add_row("Function", self.function)
+        self._no_fn = QLabel("No time-history functions yet — define them in "
+                             "Analysis ▸ Functions.")
+        self._no_fn.setObjectName("hintLabel")
+        self._no_fn.setWordWrap(True)
+        self._no_fn.setVisible(self.function.count() == 0)
+        gm.add_full_row(self._no_fn)
+        self.scale = _dspin(1.0, decimals=4, step=0.1)
+        gm.add_row("Scale factor", self.scale)
+        lay.addWidget(gm)
+        model = GroupCard("Damping & mass")
+        self.zeta = _dspin(0.05, decimals=3, step=0.01)
+        self.density = _dspin(2400.0, 0.0, 1.0e15, decimals=1, step=100.0)
+        model.add_row("Damping ζ", self.zeta)
+        model.add_row(f"Density [kg/{project.length_unit}³]", self.density)
+        lay.addWidget(model)
+        if initial:
+            self._seed(initial)
+
+    def validate(self) -> str | None:
+        if self.function.count() == 0 or self.function.currentData() is None:
+            return ("Define a time-history function (Analysis ▸ Functions) and "
+                    "select it first.")
+        return None
+
+    def _seed(self, p: dict) -> None:
+        ni = self.node.findData(p.get("control_node"))
+        if ni >= 0:
+            self.node.setCurrentIndex(ni)
+        want = p.get("direction", "y")
+        for i in range(self.direction.count()):
+            if self.direction.itemData(i)[0] == want:
+                self.direction.setCurrentIndex(i)
+                break
+        fi = self.function.findData(p.get("function_id"))
+        if fi >= 0:
+            self.function.setCurrentIndex(fi)
+        self.scale.setValue(float(p.get("scale", 1.0)))
+        self.zeta.setValue(float(p.get("zeta", 0.05)))
+        self.density.setValue(float(p.get("density", 2400.0)))
+
+    def case_params(self) -> dict:
+        return {"function_id": self.function.currentData(),
+                "control_node": self.node.currentData(),
+                "direction": self.direction.currentData()[0],
+                "scale": float(self.scale.value()),
+                "zeta": float(self.zeta.value()),
+                "density": float(self.density.value())}
+
+
 def _multi_list(min_h: int) -> QListWidget:
     lst = QListWidget()
     lst.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
@@ -688,4 +1052,7 @@ REGISTRY: list[tuple[str, str, type]] = [
     ("cabletuning", "Cable Tuning", CableTuningBody),
     ("movingload", "Moving Load", MovingLoadBody),
     ("influencesurface", "Influence Surface", InfluenceSurfaceBody),
+    ("loadrating", "Load Rating", LoadRatingBody),
+    ("vehicledynamics", "Vehicle Dynamics", VehicleDynamicsBody),
+    ("timehistory", "Time History", TimeHistoryBody),
 ]

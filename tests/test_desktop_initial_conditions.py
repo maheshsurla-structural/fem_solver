@@ -254,27 +254,27 @@ def test_th_case_dialog_carries_ic_and_hold(qapp):
 
 
 def test_th_edit_sets_case_initial_condition(qapp, monkeypatch):
-    """The adapter round-trips the IC onto the saved AnalysisCase."""
+    """The adapter round-trips the IC onto the saved AnalysisCase (E1: Time
+    History is edited through the unified CaseEditorDialog)."""
+    import case_editor
     import case_types
-    from timehistory_dialog import TimeHistoryCaseDialog
     p = _gsd_column_project()
     p.nonlinear_cases = [NonlinearCase(id=3, name="PRELOAD", control_node=2)]
     p.th_functions = [TimeHistoryFunction(id=1, name="rec", dt=0.01,
                                           values=[0.0, 1.0, 0.0])]
-    ct = case_types.get("timehistory")
-    # drive the dialog headlessly: seed a state IC, then accept
-    monkeypatch.setattr(TimeHistoryCaseDialog, "exec", lambda self: True)
-
-    orig_init = TimeHistoryCaseDialog.__init__
+    # drive the editor headlessly: seed a state IC + hold, then accept
+    monkeypatch.setattr(case_editor.CaseEditorDialog, "exec", lambda self: True)
+    orig_init = case_editor.CaseEditorDialog.__init__
 
     def _init(self, *a, **k):
         orig_init(self, *a, **k)
         self.initial.set_value(("state", 3), hold=True)
-    monkeypatch.setattr(TimeHistoryCaseDialog, "__init__", _init)
+    monkeypatch.setattr(case_editor.CaseEditorDialog, "__init__", _init)
 
-    case = ct.edit(None, p)
-    assert case is not None
+    case = case_types.get("timehistory").edit(None, p)
+    assert case is not None and case.type == "timehistory"
     assert case.initial_condition == ("state", 3)
+    assert case.params["hold_source_loads"] is True
     assert case.params["hold_source_loads"] is True
 
 

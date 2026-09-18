@@ -87,7 +87,10 @@ class CaseEditorDialog(QDialog):
         # ---- stiffness to use (shared across the eigen bodies) ----
         sources = [(c.id, c.name) for c in project.nonlinear_cases]
         self.initial = InitialConditionCard(sources, show_hold=False)
-        self.initial.set_value(case.initial_condition if case else ("zero",))
+        hold0 = (bool((case.params or {}).get("hold_source_loads", True))
+                 if case else True)
+        self.initial.set_value(case.initial_condition if case else ("zero",),
+                               hold0)
         root.addWidget(self.initial)
 
         root.addStretch(1)
@@ -104,9 +107,12 @@ class CaseEditorDialog(QDialog):
 
     def _on_type(self) -> None:
         tid = self.type_combo.currentData()
+        body = self._bodies[tid]
         self.stack.setCurrentIndex(self._order.index(tid))
-        # only stiffness-based analyses can continue from a nonlinear state
-        self.initial.setVisible(self._bodies[tid].SUPPORTS_IC)
+        # only stiffness-based analyses can continue from a nonlinear state; the
+        # hold-loads checkbox only applies to load-applying ones (time history)
+        self.initial.setVisible(body.SUPPORTS_IC)
+        self.initial.set_hold_visible(getattr(body, "SHOW_HOLD", False))
 
     def _edit_notes(self) -> None:
         dlg = QDialog(self)
@@ -133,10 +139,12 @@ class CaseEditorDialog(QDialog):
         tid = self.type_combo.currentData()
         body = self._bodies[tid]
         ic = self.initial.value() if body.SUPPORTS_IC else ("zero",)
+        params = body.case_params()
+        if getattr(body, "HOLD_IN_PARAMS", False):     # time history (E2c)
+            params["hold_source_loads"] = self.initial.hold()
         return AnalysisCase(
             id=case_id, name=self.name() or self.type_combo.currentText(),
-            type=tid, params=body.case_params(), notes=self.notes(),
-            initial_condition=ic)
+            type=tid, params=params, notes=self.notes(), initial_condition=ic)
 
     @classmethod
     def edit(cls, parent, project, type_id, case=None):

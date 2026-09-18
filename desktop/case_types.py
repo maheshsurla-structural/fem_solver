@@ -203,15 +203,8 @@ class LoadRatingType(CaseType):
         return f"{kind} @ member {resp[1]} ({resp[2]}) · {'+'.join(levels)}"
 
     def edit(self, parent, project, case=None):
-        from load_rating_dialog import LoadRatingDialog
-        dlg = LoadRatingDialog(parent, project,
-                               initial=(dict(case.params) if case else None),
-                               name=(case.name if case else "Load Rating"),
-                               notes=(case.notes if case else ""))
-        if not dlg.exec():
-            return None
-        return self._mk(case, name=dlg.header.name() or "Load Rating",
-                        params=dlg.result(), notes=dlg.header.notes())
+        from case_editor import CaseEditorDialog        # E1 unified editor
+        return CaseEditorDialog.edit(parent, project, self.type_id, case)
 
     def dispatch(self, win, config):
         return win.run_load_rating(config=config)
@@ -263,15 +256,8 @@ class VehicleDynamicsType(CaseType):
         return f"{kind}{tail} · {spd:.0f} km/h @ node {params.get('node')}"
 
     def edit(self, parent, project, case=None):
-        from vehicle_dynamics_dialog import VehicleDynamicsDialog
-        dlg = VehicleDynamicsDialog(
-            parent, project, initial=(dict(case.params) if case else None),
-            name=(case.name if case else "Vehicle Dynamics"),
-            notes=(case.notes if case else ""))
-        if not dlg.exec():
-            return None
-        return self._mk(case, name=dlg.header.name() or "Vehicle Dynamics",
-                        params=dlg.result(), notes=dlg.header.notes())
+        from case_editor import CaseEditorDialog        # E1 unified editor
+        return CaseEditorDialog.edit(parent, project, self.type_id, case)
 
     def dispatch(self, win, config):
         return win.run_vehicle_dynamics(config=config)
@@ -341,18 +327,10 @@ class TimeHistoryType(CaseType):
                 f"×{params.get('scale', 1.0):g}")
 
     def edit(self, parent, project, case=None):
-        from timehistory_dialog import TimeHistoryCaseDialog
-        dlg = TimeHistoryCaseDialog(
-            parent, project, initial=(dict(case.params) if case else None),
-            initial_ic=(case.initial_condition if case else ("zero",)),
-            name=(case.name if case else "Time History"),
-            notes=(case.notes if case else ""))
-        if not dlg.exec():
-            return None
-        out = self._mk(case, name=dlg.header.name() or "Time History",
-                       params=dlg.params(), notes=dlg.header.notes())
-        out.initial_condition = dlg.initial_condition()   # E2 stiffness-to-use
-        return out
+        # E1: Time History is edited in the unified Load-Case-Data editor; its
+        # body is IC-capable and the shell injects hold_source_loads.
+        from case_editor import CaseEditorDialog
+        return CaseEditorDialog.edit(parent, project, self.type_id, case)
 
     def build_config(self, project, params, *, initial_condition=("zero",)):
         f = project.th_function(params.get("function_id"))

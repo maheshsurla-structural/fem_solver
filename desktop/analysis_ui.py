@@ -197,19 +197,19 @@ class InitialConditionCard(GroupCard):
         # spectrum / buckling) inherits stiffness + state only, so hide it there.
         self._hold = QCheckBox("Hold source loads constant")
         self._hold.setChecked(True)
-        note = QLabel("Only the stiffness and deformed state at the end of the "
-                      "nonlinear case are used; its loads are not carried into "
-                      "this case." if not self._show_hold else
-                      "Loads from the nonlinear case are not otherwise included "
-                      "in this case.")
+        note = QLabel("The nonlinear case's stiffness and deformed state are "
+                      "used; its loads are not carried in (unless held below).")
         note.setObjectName("hintLabel")
         note.setWordWrap(True)
 
         self.add_full_row(self._zero)
         self.add_full_row(self._state)
         self.add_row("From case", self._src)
-        if self._show_hold:
-            self.add_full_row(self._hold)
+        # Always build the checkbox so its visibility can toggle per analysis
+        # type (the unified editor swaps types in place); it only matters for
+        # analyses that apply loads during the run (time history).
+        self.add_full_row(self._hold)
+        self._hold.setVisible(self._show_hold)
         self.add_full_row(note)
         if not sources:                          # nothing to continue from
             self._state.setEnabled(False)
@@ -223,7 +223,13 @@ class InitialConditionCard(GroupCard):
     def _sync(self) -> None:
         on = self._state.isChecked()
         self._src.setEnabled(on and self._src.count() > 0)
-        self._hold.setEnabled(on)
+        self._hold.setEnabled(self._show_hold and on)
+
+    def set_hold_visible(self, visible: bool) -> None:
+        """Show/hide the hold-loads checkbox (the editor toggles it per type)."""
+        self._show_hold = bool(visible)
+        self._hold.setVisible(self._show_hold)
+        self._sync()
 
     def value(self) -> tuple:
         if self._state.isChecked() and self._src.currentData() is not None:
