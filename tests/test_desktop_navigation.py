@@ -45,7 +45,9 @@ def _tool_btn(v, cid):
 
 def test_toolbar_has_navigation_tools(qapp):
     v = _view()
-    for cid in ("select", "orbit", "pan", "zoomwin"):
+    # the selection tools live under one container flyout (grp_select); the
+    # camera tools stay as loose checkable buttons.
+    for cid in ("grp_select", "orbit", "pan", "zoomwin"):
         assert v._nav_bar._buttons_by_id[cid].isCheckable()
 
 
@@ -53,17 +55,20 @@ def test_setting_a_tool_syncs_the_toolbar(qapp):
     v = _view()
     v.set_mode("pan")
     assert _tool_btn(v, "pan").isChecked()
-    assert not _tool_btn(v, "select").isChecked()
-    v.set_mode("select")
-    assert _tool_btn(v, "select").isChecked()
+    assert not _tool_btn(v, "grp_select").isChecked()
+    v.set_mode("select")                       # a member of the selection container
+    assert _tool_btn(v, "grp_select").isChecked()
+    v.set_mode("window")                       # another member keeps it lit
+    assert _tool_btn(v, "grp_select").isChecked()
+    assert v._nav_bar._group_state["grp_select"] == "window"
 
 
 def test_ribbon_only_tool_leaves_no_nav_tool_pressed(qapp):
     v = _view()
     v.set_mode("orbit")
     assert _tool_btn(v, "orbit").isChecked()
-    v.set_mode("window")                       # a ribbon selection tool
-    for cid in ("select", "orbit", "pan", "zoomwin"):
+    v.set_mode("draw_node")                    # a tool with no viewport button
+    for cid in ("grp_select", "orbit", "pan", "zoomwin"):
         assert not _tool_btn(v, cid).isChecked()
 
 
