@@ -109,6 +109,29 @@ def _membrane_traction_on_horizontal_cut(res, pts):
     return N @ zhat                       # traction on the horizontal cut (N/m)
 
 
+def pier_geometry(project, model, pier: str):
+    """``(lw, t, hw)`` for a pier — horizontal length, wall thickness, height —
+    for the wall design check (wall plan W3). ``lw`` is the pier's horizontal
+    extent along its wall axis, ``t`` the thickness of its shell section, ``hw``
+    its vertical extent. Returns ``None`` if the pier has no wall elements."""
+    els = _pier_elements(project, model, pier)
+    if not els:
+        return None
+    all_pts = np.vstack([pts for _t, _e, pts in els])
+    hhat = _horizontal_axis(all_pts)
+    h = all_pts @ hhat
+    lw = float(h.max() - h.min())
+    hw = float(all_pts[:, 2].max() - all_pts[:, 2].min())
+    t = 0.0
+    for a in project.areas:
+        if a.role == "wall" and a.pier == pier:
+            ss = project.shell_section(a.shell_section)
+            if ss is not None:
+                t = float(ss.thickness)
+                break
+    return lw, t, hw
+
+
 def pier_cut_elevations(project, model, pier: str) -> list:
     """Default cut elevations: the mid-height of each distinct mesh row of the
     pier (so each cut cleanly crosses one row of elements)."""

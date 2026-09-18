@@ -535,6 +535,12 @@ class MainWindow(QMainWindow):
             "Pier forces — integrate the shell membrane stress into P/V/M up "
             "each wall pier (needs a wall with a pier label)")
         self.act_pier_forces.triggered.connect(self.show_pier_forces)
+        self.act_wall_design = _set_icon(
+            QAction("&Wall design…", self), "design")
+        self.act_wall_design.setStatusTip(
+            "Wall design — ACI 318-19 §18.10 check of each pier against its "
+            "integrated P/V/M demand")
+        self.act_wall_design.triggered.connect(self.show_wall_design)
         self.act_design = _set_icon(QAction("&Design (DCR)", self), "design")
         self.act_design.triggered.connect(self.show_design)
         self.act_loadcases = _action(self, "Load &patterns…", None,
@@ -708,7 +714,8 @@ class MainWindow(QMainWindow):
                         (self.act_punching, "Punching"),
                         (self.act_section_cut, "Section cut"),
                         (self.act_checkmodel, "Check"))),
-            ("Wall", ((self.act_pier_forces, "Pier forces"),)),
+            ("Wall", ((self.act_pier_forces, "Pier forces"),
+                      (self.act_wall_design, "Wall design"))),
         ))
         rb.add_tab("View", (
             ("Navigate", ((self.act_fit, "Fit"),)),
@@ -2119,6 +2126,29 @@ class MainWindow(QMainWindow):
         from pier_forces_dialog import PierForcesDialog
         self._pier_forces_dlg = PierForcesDialog.show_results(
             self, p, self._model, unitsys=self._units())
+
+    def show_wall_design(self) -> None:
+        """Wall design (wall plan W3): ACI 318-19 §18.10 special-wall check of
+        each pier against its integrated P/V/M demand. Builds + solves, then
+        opens the design dialog."""
+        p = self._project
+        if p.ndm != 3 or not getattr(p, "areas", None):
+            QMessageBox.information(
+                self, "Wall design",
+                "Wall design needs a 3-D wall model with at least one area.")
+            return
+        if not p.pier_names():
+            QMessageBox.information(
+                self, "Wall design",
+                "No piers defined. Draw a wall (Draw ▸ Wall) with a pier label "
+                "— or set the Pier field on a wall area — then try again.")
+            return
+        self._model = p.build_model()
+        if self._solve() is None:
+            return
+        from wall_design_dialog import WallDesignDialog
+        self._wall_design_dlg = WallDesignDialog.show_results(
+            self, p, self._model)
         self._show_results_tab()
 
     def show_design(self) -> None:
