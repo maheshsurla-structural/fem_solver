@@ -284,6 +284,12 @@ def test_dialog_bounded_and_scrolls_tall_types(qapp):
     dlg.type_combo.setCurrentIndex(dlg.type_combo.findData("modal"))
     assert dlg._scroll.widget() is dlg._pages["modal"]
     assert set(dlg._pages) == set(dlg._bodies)         # every page still alive
+    # only the current page is parented (in the scroll); the rest are detached
+    # so they never paint over the header (regression: piled-up pages at 0,0)
+    for tid, pg in dlg._pages.items():
+        if pg is dlg._scroll.widget():
+            continue
+        assert pg.parent() is None and not pg.isVisible()
     # switch back — the load-rating body survived and still round-trips
     dlg.type_combo.setCurrentIndex(dlg.type_combo.findData("loadrating"))
     assert dlg._result_case(0).type == "loadrating"

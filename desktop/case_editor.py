@@ -91,7 +91,9 @@ class CaseEditorDialog(QDialog):
             pl.addWidget(subl)
             pl.addWidget(body)
             pl.addStretch(1)          # keep the body compact at the top
-            page.setParent(self)      # own it while it waits off-screen
+            # Leave the page parentless (kept alive by self._pages) until it is
+            # placed in the scroll area — a parented-but-unlaid-out page would
+            # otherwise paint at (0, 0) on top of the header.
             self._pages[tid] = page
         # Types range from a couple of fields (Modal) to tall forms with node
         # lists (Load Rating). Scroll the body so the dialog stays a sane size
@@ -126,12 +128,10 @@ class CaseEditorDialog(QDialog):
         tid = self.type_combo.currentData()
         body = self._bodies[tid]
         # Swap the current page into the scroll area without deleting the others
-        # (takeWidget releases ownership; the pages are kept in self._pages), so
-        # the scroll — and the dialog — sizes to this type alone.
-        prev = self._scroll.takeWidget()
-        if prev is not None:
-            prev.setParent(self)
-            prev.hide()
+        # (takeWidget detaches the previous page and reparents it to None — kept
+        # alive by self._pages and no longer painted — so the scroll, and the
+        # dialog, sizes to this type alone).
+        self._scroll.takeWidget()
         self._scroll.setWidget(self._pages[tid])
         # only stiffness-based analyses can continue from a nonlinear state; the
         # hold-loads checkbox only applies to load-applying ones (time history)
