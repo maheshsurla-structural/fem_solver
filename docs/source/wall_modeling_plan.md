@@ -1,7 +1,8 @@
 # Wall (shear-wall / pier) modeling — commercial-parity roadmap
 
-*Status: **PROPOSED — awaiting go-ahead.** No wall-specific GUI code written
-yet. This roadmap takes the desktop app from "a wall is just a vertical `Area`"
+*Status: **IN PROGRESS — W0 complete** (branch `feat/wall-modeling`, commit
+`da4f925`; not yet merged to `main`). This roadmap takes the desktop app from
+"a wall is just a vertical `Area`"
 to an ETABS-style wall workflow: a labeled **wall / pier / spandrel** object, a
 **story** context to draw and stack it in, automatic **pier force integration**,
 and a **wall design** check wired to the reinforcement the engine already knows
@@ -12,9 +13,13 @@ how to size. As with the slab work, the split is almost entirely
 
 ## 0. Resume here (session hand-off)
 
-**Nothing shipped yet.** Start at Epic **W0** (wall/pier data model). Suggested
-isolated worktree `.claude/worktrees/wall-modeling` on branch
-`feat/wall-modeling` off `main`. Tests:
+**W0 shipped** (commit `da4f925` on branch `feat/wall-modeling`, worktree
+`.claude/worktrees/wall-modeling`): `Area.role` (slab|wall|shell) + optional
+`pier`/`spandrel` labels, JSON round-trip + legacy migration, `Project` wall/pier
+accessors, `tests/test_desktop_wall_model.py`. **Next: W1** (elevation draw-plane
++ Draw ▸ Wall). Note: the GUI venv lives in the **main** repo, so run pytest with
+`PYTHONPATH=src QT_QPA_PLATFORM=offscreen
+/c/Mahesh/fem_solver/.venv-gui/Scripts/python -m pytest ...`. Tests:
 `PYTHONPATH=src QT_QPA_PLATFORM=offscreen <repo>/.venv-gui/Scripts/python -m
 pytest tests/ -q` (from the worktree root). Cadence (same as slab stream): work
 on the branch → merge each epic to `main` (FF) → push. **Gotcha:** patch modal
@@ -194,7 +199,7 @@ gives every later epic something to hang on.
 
 | Epic | Title | Status |
 |---|---|---|
-| W0 | Wall / pier data model | ☐ proposed |
+| W0 | Wall / pier data model | ☑ done (`da4f925`) |
 | W1 | Draw & edit walls (elevation plane) | ☐ proposed |
 | W2 | Pier force integration | ☐ proposed |
 | W3 | Wall design check | ☐ proposed |
