@@ -59,14 +59,33 @@ def test_default_layout_builds_expected_buttons(qapp):
     v = _view()
     bar = v._nav_bar
     ids = list(bar._buttons_by_id)
-    # a bare view knows the built-in commands but not the shell's ``cmd_*``
-    # activation commands, and ``rebuild`` skips unknown ids — so compare against
-    # the default layout filtered to what this view actually registers.
+    # a bare view knows the built-in commands + the selection container but not
+    # the shell's ``grp_active`` container, and ``rebuild`` skips unknown ids —
+    # so compare against the default layout filtered to what this view registers.
     assert ids == [c for c in nt._DEFAULT_LAYOUT
                    if c != nt.SEPARATOR_ID and c in bar._registry]
-    # the interaction selection tools are all on the default bar
-    for cid in ("select", "window", "polygon"):
-        assert cid in ids
+    # the selection tools live inside the container, not as loose buttons
+    assert "grp_select" in ids
+    grp = bar._registry["grp_select"]
+    assert grp.kind == "group"
+    assert grp.members == ["select", "window", "polygon"]
+
+
+def test_selection_container_flyout_and_state(qapp):
+    v = _view()
+    bar = v._nav_bar
+    btn = bar._buttons_by_id["grp_select"]
+    # the flyout menu offers all three selection tools
+    labels = [a.text() for a in btn.menu().actions()]
+    assert labels == ["Select", "Window select", "Polygon select"]
+    # choosing Window from the flyout switches the view mode and the container
+    # adopts it as its current tool
+    win_action = next(a for a in btn.menu().actions()
+                      if a.data() == "window")
+    win_action.trigger()
+    assert v.current_mode() == "window"
+    assert bar._group_state["grp_select"] == "window"
+    assert btn.isChecked()
 
 
 def test_rebuild_skips_unknown_ids(qapp):
@@ -139,7 +158,8 @@ def test_dialog_available_excludes_current(qapp):
     dlg = _dialog(v._nav_bar)
     avail_ids = {dlg._avail.item(i).data(Qt.ItemDataRole.UserRole)
                  for i in range(dlg._avail.count())}
-    assert "select" not in avail_ids            # already on the bar
+    assert "grp_select" not in avail_ids        # container already on the bar
+    assert "select" in avail_ids                 # its member can still be pinned
     assert "iso" in avail_ids                    # not on the default bar
 
 
@@ -165,7 +185,7 @@ def test_shell_registers_model_edit_commands(qapp):
     assert reg["cmd_delete"].group == "Edit"
 
 
-def test_shell_registers_activation_commands_on_bar(qapp):
+def test_shell_registers_activation_container_on_bar(qapp):
     from main_window import MainWindow
     w = MainWindow()
     bar = w.view._nav_bar
@@ -173,4 +193,12 @@ def test_shell_registers_activation_commands_on_bar(qapp):
                 "cmd_invert_active"):
         assert cid in bar._registry
         assert bar._registry[cid].group == "Active"
-        assert cid in bar._buttons_by_id          # on the default viewport bar
+    # they are gathered under the activation container on the default bar
+    assert "grp_active" in bar._buttons_by_id
+    grp = bar._registry["grp_active"]
+    assert grp.kind == "group"
+    assert grp.members == ["cmd_inactivate", "cmd_activate_only",
+                           "cmd_activate_all", "cmd_invert_active"]
+    # its flyout offers each action (an action group, so no popup-mode tool face)
+    btn = bar._buttons_by_id["grp_active"]
+    assert len(btn.menu().actions()) == 4

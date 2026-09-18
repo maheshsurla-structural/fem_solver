@@ -3363,6 +3363,12 @@ class MainWindow(QMainWindow):
             label = act.text().replace("&", "").replace("…", "").strip()
             cmds.append(ToolCommand(cid, label, icon, group=grp, kind="action",
                                     activate=act.trigger))
+        # the activate/inactivate container flyout — one bar slot holding the
+        # whole activation family (its members are registered just above)
+        cmds.append(ToolCommand(
+            "grp_active", "Active / inactive", "activate_all", group="Active",
+            kind="group", members=["cmd_inactivate", "cmd_activate_only",
+                                    "cmd_activate_all", "cmd_invert_active"]))
         self.view._nav_bar.register_many(cmds)
         self.view._nav_bar.rebuild()
 
