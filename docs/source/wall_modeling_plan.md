@@ -1,7 +1,9 @@
 # Wall (shear-wall / pier) modeling — commercial-parity roadmap
 
-*Status: **IN PROGRESS — W0 + W1a + W2 complete** (branch `feat/wall-modeling`).
-This roadmap takes the desktop app from "a wall is just a vertical `Area`"
+*Status: **IN PROGRESS — W0 + W1a + W2 + W3 complete** (branch
+`feat/wall-modeling`). The core "credible wall tool" (W0–W3) is done: label →
+draw → pier forces → ACI 318 §18.10 design. This roadmap takes the desktop app
+from "a wall is just a vertical `Area`"
 to an ETABS-style wall workflow: a labeled **wall / pier / spandrel** object, a
 **story** context to draw and stack it in, automatic **pier force integration**,
 and a **wall design** check wired to the reinforcement the engine already knows
@@ -20,9 +22,12 @@ how to size. As with the slab work, the split is almost entirely
 panels (`desktop/walls.py`, `editing.WallDialog`, `MainWindow.draw_wall`),
 `tests/test_desktop_wall_draw.py`. W2 (`9d8ada7`): pier force integration —
 `desktop/piers.py` + Results ▸ Wall ▸ Pier forces (`pier_forces_dialog.py`),
-`tests/test_desktop_pier_forces.py`. **Next: W3** (wall design — wire pier P/V/M
-to the concrete-design machinery), or **W1b** (elevation draw plane). Note: the
-GUI venv lives in the **main** repo, so run pytest with
+`tests/test_desktop_pier_forces.py`. W3 (`29a3594` engine + `f69ba85` desktop):
+ACI 318-19 §18.10 wall design — `femsolver/design/walls.py` + Results ▸ Wall ▸
+Wall design (`wall_design_dialog.py`). **Next: W4** (story/level system + grids
+— the big building-modeling investment) or **W1b** (elevation draw plane), or
+polish W3 (IS 13920/EC8 detailing, displacement-based boundary trigger). Note:
+the GUI venv lives in the **main** repo, so run pytest with
 `PYTHONPATH=src QT_QPA_PLATFORM=offscreen
 /c/Mahesh/fem_solver/.venv-gui/Scripts/python -m pytest ...`. Tests:
 `PYTHONPATH=src QT_QPA_PLATFORM=offscreen <repo>/.venv-gui/Scripts/python -m
@@ -138,19 +143,24 @@ W5/W6 are v2.
 - Cut elevations default to mid-height of each mesh row (a profile without a
   Story object — that's W4). Engine unchanged.
 
-### W3 — Wall design ★★
-- Wire pier P-M-V to the existing concrete-design machinery:
-  - **Boundary-element / section P-M check** via `design/concrete/biaxial.py`
-    (+ `column.py`) — does the pier section pass its demand?
-  - **In-plane shear** via `design/concrete/shear.py` + `wall_shear.py` cracked
-    factors.
-  - **Detailing** — boundary-element confinement (`design/seismic/confinement.py`)
-    and IS 13920 / EC8 special-wall provisions.
-- **Engine gap to fill (small):** an ACI 318-19 **§18.10 special structural
-  wall** module (boundary-element trigger `c ≥ ℓ_w/(600·δ_u/h_w)`, distributed
-  web reinforcement ρ_ℓ/ρ_t, min boundary length). Everything it needs
-  (fiber P-M, confinement, shear) already exists — this assembles them.
-- Results ▸ Design ▸ Wall: pass/fail + required boundary reinf + web ρ, per pier.
+### W3 — Wall design ★★ — **DONE** (`29a3594` engine + `f69ba85` desktop)
+- **Engine (the stream's one real add):** `femsolver/design/walls.py` — a
+  self-contained **ACI 318-19 §18.10** module: `wall_shear_strength` (§18.10.4
+  Vn/αc/cap/two-curtains), `boundary_element_check` (§18.10.6.3 stress trigger),
+  `wall_min_web_reinforcement` (§18.10.2), `wall_pm_capacity` (§22.2/§21.2
+  strip-integrated rectangular-wall P-M with distributed web + boundary bars,
+  φ from net tensile strain), assembled by `design_wall_pier` → governing DCR +
+  verdict + notes. Empirical √f'c uses the MPa calibration for SI consistency.
+  `tests/test_wall_design.py` (13, vs hand calcs).
+- **Desktop:** Results ▸ Wall ▸ Wall design (`wall_design_dialog.py`) runs it per
+  pier against the W2 demand (P negated to compression-positive), per cut, with
+  f'c/fy/ρl/ρt/boundary inputs and a governing-DCR PASS/FAIL summary +
+  boundary/detailing flags. `piers.pier_geometry` supplies (ℓw, t, hw).
+  `MainWindow.show_wall_design` + `act_wall_design`. `tests/
+  test_desktop_wall_design.py` (5).
+- *Not yet wired:* IS 13920 / EC8 detailing and the displacement-based boundary
+  trigger (`c ≥ ℓw/(600·δu/hw)`) — future polish; the stress-based trigger and
+  ACI strength checks ship now.
 
 ### W4 — Story / Level system ★ (building-modeling backbone)
 - A `Story` object (elevation, height, master/similar-to) + a story-aware model
@@ -220,7 +230,7 @@ gives every later epic something to hang on.
 | W1a | Draw Wall by base line + height | ☑ done (`5e9a721`) |
 | W1b | Elevation / XZ-YZ draw plane | ☐ todo |
 | W2 | Pier force integration | ☑ done (`9d8ada7`) |
-| W3 | Wall design check | ☐ proposed |
+| W3 | Wall design check (ACI 318 §18.10) | ☑ done (`29a3594`+`f69ba85`) |
 | W4 | Story / Level system + grids | ☐ proposed |
 | W5 | Openings (opening-aware mesh) | ☐ proposed (v2) |
 | W6 | Coupled walls / coupling beams GUI | ☐ proposed (v2) |
