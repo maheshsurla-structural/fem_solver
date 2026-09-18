@@ -57,11 +57,14 @@ class _FakeWin:
     def run_timehistory_dialog(self, seed=None):
         self.calls.append(("run_timehistory_dialog", seed))
 
+    def run_linear_static(self, loads_applied=None):
+        self.calls.append(("run_linear_static", loads_applied))
+
 
 def test_registry_has_migrated_types():
     import case_types
-    assert set(case_types.TYPES) >= {"modal", "buckling", "movingload",
-                                     "tempgradient", "loadrating",
+    assert set(case_types.TYPES) >= {"linstatic", "modal", "buckling",
+                                     "movingload", "tempgradient", "loadrating",
                                      "responsespectrum", "vehicledynamics",
                                      "influencesurface", "cabletuning",
                                      "timehistory"}
@@ -69,6 +72,22 @@ def test_registry_has_migrated_types():
     for ct in case_types._ORDER:
         assert ct.type_id and ct.type_label and ct.icon
     assert case_types.get("does-not-exist") is None
+
+
+def test_linstatic_adapter_contract():
+    import case_types
+    ct = case_types.get("linstatic")
+    p = _project()                                   # auto-seeds a Dead pattern
+    # default: the first pattern ×1
+    assert ct.default_params(p) == {"loads_applied": [[1, 1.0]]}
+    assert "Dead" in ct.detail(p, {"loads_applied": [[1, 1.2]]})
+    assert ct.detail(p, {"loads_applied": []}) == "no loads applied"
+    # build_config normalises the JSON rows (drops a zero) to (int, float) pairs
+    cfg = ct.build_config(p, {"loads_applied": [[1, "1.4"], [1, 0]]})
+    assert cfg == [(1, 1.4)]
+    win = _FakeWin()
+    ct.dispatch(win, cfg)
+    assert win.calls == [("run_linear_static", [(1, 1.4)])]
 
 
 def test_modal_adapter_contract():

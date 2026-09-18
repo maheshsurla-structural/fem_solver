@@ -463,10 +463,10 @@ class MainWindow(QMainWindow):
 
         self.act_analysiscases = _action(self, "Analysis &cases…", None,
                                          self.manage_analysis_cases, "run")
-        self.act_runanalysis = _action(self, "Run &analysis…", None,
-                                       self.run_analysis, "run")
-        self.act_run = _action(self, "&Run (linear static)", "Ctrl+R",
-                               self.run_linear_static, "run")
+        # Ctrl+R opens the Run-analysis chooser (E3b: Linear Static is now a
+        # saved case listed there, not a one-click launcher).
+        self.act_run = _action(self, "&Run analysis…", "Ctrl+R",
+                               self.run_analysis, "run")
         self.act_pushover = _action(self, "Nonlinear &pushover…", None,
                                     self.run_pushover_dialog, "run")
         self.act_timehistory = _action(self, "Nonlinear &time history…", None,
@@ -666,8 +666,7 @@ class MainWindow(QMainWindow):
         ))
         rb.add_tab("Analysis", (
             ("Analyse", ((self.act_analysiscases, "Cases"),
-                         (self.act_runanalysis, "Run"),
-                         (self.act_run, "Linear"))),
+                         (self.act_run, "Run"))),
             ("Hinges", ((self.act_hinges, "Define"),
                         (self.act_assign_hinges, "Assign"))),
             ("Functions", ((self.act_th_functions, "Time History"),)),
@@ -730,12 +729,27 @@ class MainWindow(QMainWindow):
         from femsolver import LinearStaticAnalysis
         return LinearStaticAnalysis(self._model).run()
 
-    def run_linear_static(self):
+    def run_linear_static(self, loads_applied=None):
+        """Solve a linear static case.
+
+        With ``loads_applied`` — a list of ``(pattern_id, scale)`` rows (E3b) —
+        build the model under exactly those scaled load patterns (SAP's *Loads
+        Applied* spec); this is how a saved :class:`LinearStaticType` case runs.
+        Without it, solve the current model as built (every pattern ×1) — the
+        fallback used by internal callers."""
+        if loads_applied is not None:
+            p = self._project
+            if p is None or not p.members:
+                self.statusBar().showMessage(
+                    "Nothing to solve — add members first.")
+                return None
+            from project import normalize_loads_applied
+            m = p.build_model(with_loads=False)
+            p.apply_loads(m, ("applied", normalize_loads_applied(loads_applied)))
+            self._model = m
         info = self._solve()
         if info is None:
-            self._project.set_case_status(("linear",), "No model")
             return None
-        self._project.set_case_status(("linear",), "Finished")
         dmax = mg.max_translation(self._model)
         span = mg.model_span(self._model)
         scale = (0.08 * span / dmax) if dmax > 0 else 1.0
@@ -2580,13 +2594,13 @@ class MainWindow(QMainWindow):
 
     def run_analysis(self) -> None:
         """Open the Run-analysis control (plan A4): choose which cases to run,
-        run the batchable linear-static inline (live status), then open the
-        interactive dialogs for any queued nonlinear / time-history cases."""
+        then dispatch each — saved analysis cases (incl. Linear Static, E3b)
+        run from their stored params, while nonlinear / time-history cases
+        open their interactive dialogs."""
         if self._project is None:
             return
         from run_analysis_dialog import RunAnalysisDialog
-        requests = RunAnalysisDialog.run(self, self._project,
-                                         self.run_linear_static)
+        requests = RunAnalysisDialog.run(self, self._project)
         for req in requests:
             if req[0] == "nonlinear":
                 self.run_pushover_dialog(preselect_case=req[1])
@@ -2614,9 +2628,7 @@ class MainWindow(QMainWindow):
         if run is None:
             return
         kind = run[0]
-        if kind == "linear":
-            self.run_linear_static()
-        elif kind == "nonlinear":
+        if kind == "nonlinear":
             self.run_pushover_dialog(preselect_case=run[1])
         elif kind == "case":
             self._run_saved_case(run[1])

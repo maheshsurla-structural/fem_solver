@@ -152,6 +152,20 @@ def test_case_editor_hides_ic_for_non_ic_types(qapp):
     assert dlg.initial.isHidden()                # temp gradient does not
 
 
+def test_case_editor_linear_static_loads_applied(qapp):
+    from case_editor import CaseEditorDialog
+    dlg = CaseEditorDialog(None, _project(), "linstatic")
+    # default seed: the first pattern ×1 (a runnable "1.0 Dead" out of the box)
+    case = dlg._result_case(0)
+    assert case.type == "linstatic"
+    assert case.params["loads_applied"] == [[1, 1.0]]
+    assert case.initial_condition == ("zero",)      # static: no state chaining
+    assert dlg.initial.isHidden()                   # IC card hidden for static
+    # editing the scale round-trips through case_params
+    dlg._bodies["linstatic"]._spins[0].setValue(1.35)
+    assert dlg._result_case(0).params["loads_applied"] == [[1, 1.35]]
+
+
 def test_batch2_adapters_route_to_editor(qapp, monkeypatch):
     import case_editor
     import case_types
@@ -252,4 +266,5 @@ def test_all_types_migrated_to_editor(qapp):
     import case_bodies
     import case_types
     reg_ids = {tid for tid, _, _ in case_bodies.REGISTRY}
-    assert reg_ids == set(case_types.TYPES)            # all 10 types unified
+    assert reg_ids == set(case_types.TYPES)            # all types unified
+    assert "linstatic" in reg_ids                      # incl. Linear Static (E3b)

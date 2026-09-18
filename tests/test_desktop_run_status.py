@@ -60,7 +60,7 @@ def test_manager_status_column_shows_status(qapp):
     dlg = AnalysisCasesDialog(None, p)
     r = next(i for i, m in enumerate(dlg._row_meta) if m["kind"] == "analysis")
     assert dlg.table.item(r, 3).text() == "Finished"
-    lr = next(i for i, m in enumerate(dlg._row_meta) if m["kind"] == "linear")
+    lr = next(i for i, m in enumerate(dlg._row_meta) if m["kind"] == "stages")
     assert dlg.table.item(lr, 3).text() == "—"               # not run
 
 

@@ -44,16 +44,16 @@ def test_lists_builtin_nonlinear_and_planned(qapp):
     from analysis_cases_dialog import AnalysisCasesDialog, _PLANNED
     dlg = AnalysisCasesDialog(None, _project())
     kinds = [m["kind"] for m in dlg._row_meta]
-    assert kinds[0] == "linear"
+    assert "linear" not in kinds              # E3b: no built-in launcher row
     assert "nonlinear" in kinds
     # Construction Stages stays a launcher row (operates on shared project.stages)
     assert "stages" in kinds
-    # migrated types are no longer fixed launcher rows — they are saved
-    # AnalysisCase types offered in the Add ▾ menu
+    # built-in types are saved AnalysisCase types offered in the Add ▾ menu, not
+    # fixed launcher rows — including Linear Static (linstatic, E3b)
     import case_types
-    for t in ("modal", "buckling", "movingload", "tempgradient", "loadrating",
-              "responsespectrum", "vehicledynamics", "influencesurface",
-              "cabletuning", "timehistory"):
+    for t in ("linstatic", "modal", "buckling", "movingload", "tempgradient",
+              "loadrating", "responsespectrum", "vehicledynamics",
+              "influencesurface", "cabletuning", "timehistory"):
         assert t not in kinds
         assert case_types.get(t)
     assert kinds.count("planned") == len(_PLANNED)
@@ -68,7 +68,7 @@ def test_buttons_gate_on_row_kind(qapp):
     from analysis_cases_dialog import AnalysisCasesDialog
     dlg = AnalysisCasesDialog(None, _project())
     kinds = [m["kind"] for m in dlg._row_meta]
-    dlg.table.setCurrentCell(kinds.index("linear"), 0)      # linear: run only
+    dlg.table.setCurrentCell(kinds.index("stages"), 0)      # stages: run only
     assert dlg._run_btn.isEnabled()
     assert not dlg._mod_btn.isEnabled() and not dlg._del_btn.isEnabled()
     dlg.table.setCurrentCell(kinds.index("nonlinear"), 0)   # nl: all enabled
@@ -76,13 +76,13 @@ def test_buttons_gate_on_row_kind(qapp):
     assert dlg._mod_btn.isEnabled() and dlg._del_btn.isEnabled()
 
 
-def test_run_request_linear(qapp):
+def test_run_request_stages(qapp):
     from analysis_cases_dialog import AnalysisCasesDialog
     dlg = AnalysisCasesDialog(None, _project())
     kinds = [m["kind"] for m in dlg._row_meta]
-    dlg.table.setCurrentCell(kinds.index("linear"), 0)
+    dlg.table.setCurrentCell(kinds.index("stages"), 0)
     dlg._run()                                # sets request + accepts
-    assert dlg._run_request == ("linear",)
+    assert dlg._run_request == ("stages",)
 
 
 def test_run_request_nonlinear_carries_case_id(qapp):
@@ -105,9 +105,9 @@ def test_delete_blocks_when_continued_from(qapp, monkeypatch):
                          NonlinearCase(id=2, name="B", control_node=2,
                                        continue_from=1)]
     dlg = AnalysisCasesDialog(None, p)
-    # select the first nonlinear row (row 1: after the linear row); id 1 is
-    # continued-from by id 2, so delete must refuse
-    dlg.table.setCurrentCell(1, 0)
+    # select the first nonlinear row (row 0, now the launcher row is gone);
+    # id 1 is continued-from by id 2, so delete must refuse
+    dlg.table.setCurrentCell(0, 0)
     dlg._delete()
     assert len(dlg._cases) == 2               # refused, nothing deleted
 
@@ -288,7 +288,7 @@ def test_move_and_dup_buttons_gate(qapp):
     assert dlg._dup_btn.isEnabled()
     dlg.table.setCurrentCell(rows[1], 0)                  # last: up on, down off
     assert dlg._up_btn.isEnabled() and not dlg._down_btn.isEnabled()
-    dlg.table.setCurrentCell(kinds.index("linear"), 0)    # launcher: none apply
+    dlg.table.setCurrentCell(kinds.index("stages"), 0)    # launcher: none apply
     assert not dlg._dup_btn.isEnabled()
     assert not dlg._up_btn.isEnabled() and not dlg._down_btn.isEnabled()
 
@@ -321,9 +321,9 @@ def test_filter_hides_nonmatching_rows(qapp):
     rows = {m["name"]: r for r, m in enumerate(dlg._row_meta)}
     dlg._filter.setText("modal")
     assert not dlg.table.isRowHidden(rows["Modal-6"])       # matches
-    assert dlg.table.isRowHidden(rows["Linear Static"])     # hidden
+    assert dlg.table.isRowHidden(rows["Construction Stages"])   # hidden
     dlg._filter.setText("")                                  # cleared -> all show
-    assert not dlg.table.isRowHidden(rows["Linear Static"])
+    assert not dlg.table.isRowHidden(rows["Construction Stages"])
 
 
 def test_context_menu_offers_actions_per_row(qapp):
@@ -339,8 +339,8 @@ def test_context_menu_offers_actions_per_row(qapp):
               if a.text()}
     assert labels.get("Run") and labels.get("Modify…") and labels.get("Delete")
     assert "Show tree…" in labels
-    # a linear-static row: Run enabled, Modify/Delete disabled (not editable)
-    lr = next(i for i, m in enumerate(dlg._row_meta) if m["kind"] == "linear")
+    # a launcher row (Construction Stages): Run enabled, Modify/Delete disabled
+    lr = next(i for i, m in enumerate(dlg._row_meta) if m["kind"] == "stages")
     dlg.table.setCurrentCell(lr, 0)
     labels = {a.text(): a.isEnabled() for a in dlg._build_context_menu().actions()
               if a.text()}

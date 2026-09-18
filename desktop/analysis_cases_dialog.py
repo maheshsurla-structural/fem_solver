@@ -3,25 +3,24 @@ CSiBridge's *Define ▸ Load Cases* list.
 
 One table lists **every** analysis case with a Type column and icon:
 
-* **Linear Static** — the always-available run of the current model under its
-  loads / combinations (a built-in launcher, not a stored entity).
 * **Nonlinear Static** — each saved :class:`project.NonlinearCase`; add / modify
   / delete these here (delegating to :class:`nonlinear_cases.NonlinearCaseDialog`).
 * **Saved analysis cases** — each saved :class:`project.AnalysisCase`, the
-  multi-instance, named, editable cases for the migrated built-in types (Modal,
-  Buckling, Moving Load, Temperature Gradient, Load Rating, Response Spectrum,
-  Vehicle Dynamics, Influence Surface, Cable Tuning, and Time History — see
-  :mod:`case_types`). **Add ▾** creates one (seeding the type's setup dialog),
-  **Modify** / **Delete** manage it, and **Run** uses its stored params. Time
-  History references a :class:`project.TimeHistoryFunction` and, being an
-  interactive fiber solve, opens its runner *seeded* rather than headlessly.
+  multi-instance, named, editable cases for the built-in types (**Linear Static**
+  — E3b's *Loads Applied* case — Modal, Buckling, Moving Load, Temperature
+  Gradient, Load Rating, Response Spectrum, Vehicle Dynamics, Influence Surface,
+  Cable Tuning, and Time History — see :mod:`case_types`). **Add ▾** creates one
+  (seeding the type's setup dialog), **Modify** / **Delete** manage it, and
+  **Run** uses its stored params. Time History references a
+  :class:`project.TimeHistoryFunction` and, being an interactive fiber solve,
+  opens its runner *seeded* rather than headlessly.
 * **Construction Stages** — a built-in launcher for the incremental erection
   sequence under self-weight, reporting the camber; operates on the shared,
   already-persistent ``project.stages`` (so left a launcher).
 
 The dialog never runs anything itself: **Run** records a request and closes;
-the owning window dispatches it (a linear-static run, a launcher's setup dialog,
-or — for a saved :class:`~project.AnalysisCase` — ``("case", id)`` →
+the owning window dispatches it (a launcher's setup dialog, or — for a saved
+:class:`~project.AnalysisCase` — ``("case", id)`` →
 :mod:`case_types` ``build_config`` + ``dispatch``). :meth:`manage` returns
 ``(nonlinear_cases, analysis_cases, run_request)`` or ``None`` if cancelled.
 Built from the L1 scaffold; headless-constructible.
@@ -155,11 +154,9 @@ class AnalysisCasesDialog(QDialog):
 
     # ------------------------------------------------------------- table model
     def _refresh(self) -> None:
-        rows: list[dict] = [
-            {"kind": "linear", "name": "Linear Static", "type": "Static",
-             "detail": "current loads / combinations", "icon": "undeformed",
-             "runnable": True},
-        ]
+        # E3b: Linear Static is no longer a built-in launcher row — it is a
+        # saved case type (``linstatic``) listed with the other saved cases.
+        rows: list[dict] = []
         for i, c in enumerate(self._cases):
             proto = c.protocol + (" · staged" if c.continue_from else "")
             rows.append({
@@ -221,7 +218,7 @@ class AnalysisCasesDialog(QDialog):
     def _status_key(self, meta) -> tuple | None:
         """The ``project.case_status`` key for a row, or None (planned rows)."""
         kind = meta["kind"]
-        if kind in ("linear", "stages"):
+        if kind == "stages":
             return (kind,)
         if kind in ("nonlinear", "analysis"):
             return (kind, meta["case_id"])
@@ -461,9 +458,7 @@ class AnalysisCasesDialog(QDialog):
         m = self._selected()
         if not (m and m.get("runnable")):
             return
-        if m["kind"] == "linear":
-            self._run_request = ("linear",)
-        elif m["kind"] == "nonlinear":
+        if m["kind"] == "nonlinear":
             self._run_request = ("nonlinear", m["case_id"])
         elif m["kind"] == "analysis":
             self._run_request = ("case", m["case_id"])

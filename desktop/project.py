@@ -491,7 +491,7 @@ class Project:
         return self.load_cases[0].id if self.load_cases else 1
 
     # -------------------------------------------------- run status (E5c)
-    # Per-case session run status, keyed by ``(kind, id)`` (e.g. ("linear",),
+    # Per-case session run status, keyed by ``(kind, id)`` (e.g.
     # ("analysis", 3), ("nonlinear", 7), ("stages",)). Transient: results are
     # recomputed each session, so this is NOT serialized (a plain attribute, not
     # a dataclass field, so ``asdict`` ignores it). Each entry is

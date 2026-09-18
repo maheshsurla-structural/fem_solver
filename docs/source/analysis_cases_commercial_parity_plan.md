@@ -7,10 +7,11 @@ saved, named, multi-instance types). **Shipped: E2** (initial conditions / state
 chaining — see the [sub-plan](analysis_cases_initial_conditions_plan.md)), **E4**
 (load case tree), **E5a** (run dialog lists saved cases), **E5c** (run status),
 **E6** (context menu / filter / status column), **E1** (unified Load-Case-Data
-editor — all 10 types under one Type ▾), and **E3a** (`LoadCase` → *Load
-Pattern* UI rename). **Remaining: E3b/c** (Loads-Applied spec + result
-combinations), **E5b** (Run All in dependency order), **E6a** (Set Def
-Name), **E7** (integrity/versioning), **E8** (new engine types) — see §6 tracker.
+editor — all types under one Type ▾), **E3a** (`LoadCase` → *Load Pattern* UI
+rename), and **E3b** (Loads-Applied spec + a saved **Linear Static** case that
+replaces the old launcher). **Remaining: E3c** (result combinations), **E5b**
+(Run All in dependency order), **E6a** (Set Def Name), **E7**
+(integrity/versioning), **E8** (new engine types) — see §6 tracker.
 **Reference:** SAP2000 / CSiBridge *Define ▸ Load Cases* + *Load Case Data*
 dialogs (the user's benchmark).
 **Scope:** close the gap from "a working saved-case manager" to a
@@ -71,7 +72,8 @@ SAP's vocabulary is *inverted* from ours:
   (we even expose `Project.load_patterns()` for the engine —
   [`desktop/project.py:647`](../../desktop/project.py)).
 * SAP **Load Case** (the *analysis*: type + IC + loads-applied) = our
-  `NonlinearCase` / `AnalysisCase` / the Linear-Static launcher.
+  `NonlinearCase` / `AnalysisCase` (incl. the `linstatic` Linear Static case
+  — E3b retired the standalone launcher).
 * SAP **Load Combination** (combines analysis *results*) = our
   `LoadCombination` (combines *patterns*).
 
@@ -132,14 +134,17 @@ Work items (engine-touching — sequence per type):
 
 ### E3 — Loads Applied, patterns, and result combinations
 
-* **E3a** Rename `LoadCase` → **Load Pattern** in the UI (data class can keep its
-  name or rename with a serialization shim); the loads editors and nature map
-  follow. Removes the core naming confusion.
-* **E3b** **Loads Applied** spec on static/nonlinear cases: an explicit list of
-  `(pattern_id, scale)` rows (SAP's grid), replacing "implicitly all current
-  loads." Lets you save "1.0 Dead + 0.5 Live" as a named case without inventing
-  a combination. Reuse `Project.load_patterns()` — the scaling machinery already
-  exists (`apply_case(model, cid, factor)`).
+* **E3a** ✅ Rename `LoadCase` → **Load Pattern** in the UI (data class kept its
+  name — no serialization shim needed); the loads editors and nature map
+  followed. Removed the core naming confusion.
+* **E3b** ✅ **Loads Applied** spec: `Project.apply_loads(model, ("applied",
+  [(pattern_id, scale), …]))` + `normalize_loads_applied`, reusing the
+  `apply_case(model, cid, factor)` scaling machinery. Surfaced as a saved
+  **Linear Static** case type (`linstatic`) with a `(pattern, scale)` grid in
+  the unified editor — you save "1.0 Dead + 0.5 Live" as a named case without
+  inventing a combination. **The always-on Linear Static launcher is retired**
+  (chosen over coexistence): every static run is now a named, saved case, and
+  Ctrl+R opens the Run-analysis chooser rather than a blind current-model run.
 * **E3c** **Result combinations**: extend `LoadCombination` to combine analysis
   *case results* (envelope a static with a Response-Spectrum or Moving-Load
   result), not just patterns. This is a meaningful modeling gap — today you
@@ -278,6 +283,13 @@ actually needs.
   subsumed — "Finished" is the results signal for ephemeral analyses, nonlinear
   results already persist as RunRecords.)
 * [ ] **E5b** Run All in dependency order (topological)
-* [ ] **E3b** Loads-Applied spec · **E3c** result combinations
+* [x] **E3b** Loads-Applied spec ✅ 2026-09-18 — engine mechanism
+  ``Project.apply_loads(model, ("applied", [(pattern_id, scale), …]))`` +
+  ``normalize_loads_applied`` (slice 1), then a saved **Linear Static** case
+  type (``linstatic``, `LinearStaticType` + `LinearStaticBody` Loads-Applied
+  grid in the unified editor) that carries the spec (slice 2). **The always-on
+  Linear Static launcher is retired** — every static run is now a named,
+  saved case (Add ▾ ▸ Linear Static); Ctrl+R opens the Run-analysis chooser.
+* [ ] **E3c** result combinations (combine analysis *case results*)
 * [ ] **E6c** Design… classification · **E7** integrity/validation/versioning
 * [ ] **E8** new engine types (deferred)

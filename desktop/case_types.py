@@ -78,6 +78,46 @@ class CaseType:
         return max(1, int(project.ndf) * max(1, len(project.nodes)))
 
 
+class LinearStaticType(CaseType):
+    """Linear static analysis with an explicit *Loads Applied* spec (E3b) →
+    :meth:`MainWindow.run_linear_static`.
+
+    ``params["loads_applied"]`` is a list of ``[pattern_id, scale]`` rows; the
+    run applies each pattern scaled and summed via
+    ``Project.apply_loads(model, ("applied", rows))``. This is the SAP2000
+    static load case — a *named* "1.0 Dead + 0.5 Live" — replacing the old
+    always-on Linear Static launcher (every static run is now a saved case)."""
+
+    type_id = "linstatic"
+    type_label = "Linear Static"
+    icon = "undeformed"
+
+    def default_params(self, project):
+        pid = project.load_cases[0].id if project.load_cases else None
+        return {"loads_applied": ([[pid, 1.0]] if pid is not None else [])}
+
+    def detail(self, project, params):
+        from project import normalize_loads_applied
+        rows = normalize_loads_applied(params.get("loads_applied"))
+        if not rows:
+            return "no loads applied"
+        names = {c.id: c.name for c in project.load_cases}
+        return " + ".join(f"{scale:g}·{names.get(pid, f'pattern {pid}')}"
+                          for pid, scale in rows)
+
+    def edit(self, parent, project, case=None):
+        from case_editor import CaseEditorDialog
+        return CaseEditorDialog.edit(parent, project, self.type_id, case)
+
+    def build_config(self, project, params, *, initial_condition=("zero",)):
+        # static runs against the current model; IC (E2) does not apply
+        from project import normalize_loads_applied
+        return normalize_loads_applied(params.get("loads_applied"))
+
+    def dispatch(self, win, config):
+        return win.run_linear_static(loads_applied=config)
+
+
 class ModalType(CaseType):
     """Free-vibration modal analysis → :meth:`MainWindow.run_modal`."""
 
@@ -353,7 +393,8 @@ class TimeHistoryType(CaseType):
 
 
 # Ordered registry — also the order of the Add ▾ menu.
-_ORDER: list[CaseType] = [ModalType(), BucklingType(), MovingLoadType(),
+_ORDER: list[CaseType] = [LinearStaticType(),
+                          ModalType(), BucklingType(), MovingLoadType(),
                           TemperatureGradientType(), LoadRatingType(),
                           ResponseSpectrumType(), VehicleDynamicsType(),
                           InfluenceSurfaceType(), CableTuningType(),

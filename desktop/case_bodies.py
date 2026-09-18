@@ -17,6 +17,7 @@ headless-constructible.
 """
 from __future__ import annotations
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox,
                                QDoubleSpinBox, QHBoxLayout, QLabel, QListWidget,
                                QListWidgetItem, QPushButton, QSpinBox,
@@ -1018,6 +1019,70 @@ class TimeHistoryBody(_Body):
                 "density": float(self.density.value())}
 
 
+class LinearStaticBody(_Body):
+    """Linear static: a *Loads Applied* grid — one scale per load pattern.
+
+    Solves K·u = F where F is the listed patterns summed at their scales
+    (E3b). A pattern left at 0 is not applied, so this is how you save
+    "1.0 Dead + 0.5 Live" as a named case without building a combination."""
+
+    TITLE = "Linear static"
+    SUB = ("Applies each load pattern at the scale below (summed) and solves "
+           "K·u = F. Leave a pattern at 0 to omit it.")
+    SUPPORTS_IC = False
+
+    _READONLY = (Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+
+    def __init__(self, project, *, initial: dict | None = None, **_ignored):
+        super().__init__()
+        from project import NATURE_LABELS, normalize_loads_applied
+        lay = self._root()
+        self._patterns = list(project.load_cases)
+        card = GroupCard("Loads applied", form=False)
+        self.grid = QTableWidget(len(self._patterns), 3)
+        self.grid.setHorizontalHeaderLabels(["Load pattern", "Nature",
+                                             "Scale factor"])
+        self.grid.verticalHeader().setVisible(False)
+        self.grid.horizontalHeader().setStretchLastSection(True)
+        self._spins: list[QDoubleSpinBox] = []
+        for r, c in enumerate(self._patterns):
+            name_it = QTableWidgetItem(c.name)
+            name_it.setFlags(self._READONLY)
+            self.grid.setItem(r, 0, name_it)
+            nat_it = QTableWidgetItem(NATURE_LABELS.get(c.nature, c.nature))
+            nat_it.setFlags(self._READONLY)
+            self.grid.setItem(r, 1, nat_it)
+            spin = _dspin(0.0, lo=-1000.0, hi=1000.0, decimals=3, step=0.25)
+            self.grid.setCellWidget(r, 2, spin)
+            self._spins.append(spin)
+        card.body_layout().addWidget(self.grid)
+        lay.addWidget(card)
+        # Seed the spins: an existing case's saved rows, else a friendly default
+        # of the first pattern ×1 (a runnable "1.0 <first>" out of the box).
+        seed = {pid: s for pid, s in
+                normalize_loads_applied((initial or {}).get("loads_applied"))}
+        if not initial and self._patterns:
+            seed = {self._patterns[0].id: 1.0}
+        for c, spin in zip(self._patterns, self._spins):
+            spin.setValue(seed.get(c.id, 0.0))
+
+    def _rows(self) -> list:
+        """The non-zero (pattern_id, scale) rows the user set."""
+        return [[c.id, float(sp.value())]
+                for c, sp in zip(self._patterns, self._spins)
+                if sp.value()]
+
+    def case_params(self) -> dict:
+        return {"loads_applied": self._rows()}
+
+    def validate(self) -> str | None:
+        if not self._patterns:
+            return "Define a load pattern first (Loads ▸ Patterns)."
+        if not self._rows():
+            return "Set a non-zero scale on at least one load pattern."
+        return None
+
+
 def _multi_list(min_h: int) -> QListWidget:
     lst = QListWidget()
     lst.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
@@ -1045,6 +1110,7 @@ def _select_ids(lst: QListWidget, ids) -> None:
 
 # type_id -> (menu label, body class). The unified editor's Type ▾ order.
 REGISTRY: list[tuple[str, str, type]] = [
+    ("linstatic", "Linear Static", LinearStaticBody),
     ("modal", "Modal", ModalBody),
     ("buckling", "Buckling", BucklingBody),
     ("responsespectrum", "Response Spectrum", ResponseSpectrumBody),

@@ -123,7 +123,7 @@ def test_loads_tab_groups(win):
 
 def test_analysis_tab_groups(win):
     acts = _page_actions(win, "Analysis")
-    for attr in ("act_analysiscases", "act_runanalysis", "act_run",
+    for attr in ("act_analysiscases", "act_run",
                  "act_hinges", "act_assign_hinges"):
         assert getattr(win, attr) in acts, attr
 
