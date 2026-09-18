@@ -1,17 +1,50 @@
 # Slab / surface (shell) modeling — commercial-parity roadmap
 
-*Status: **IN PROGRESS — MVP (Phase A) complete**. Successor context to the
-desktop commercial roadmap. Analysis + engine are largely done; this plan is
-almost entirely a **desktop GUI + data-model** effort. Work happens on branch
-`feat/slab-modeling` (worktree off `main`). Phase A shipped S0→S1→S4→S2→S5→S6→S7:
-you can now draw a slab, give it a thickness, load it (gravity/pressure), solve,
-and see the deflection contour. Phase B underway: **S3 auto-mesh done** (a quad
-area is subdivided n1×n2 with coincident-node merge; validated against the
-analytical clamped-plate deflection), and **S7 moment/force contours done**
-(M11/M22/M12, N11/N22/N12, max shear — nodal-averaged, diverging map; one-way
-midspan moment validated against wL²/8). Next: S8 diaphragms, S9 slab design
-wiring; S7 refinements (GP→node extrapolation for sharper support peaks,
-section cuts).*
+*Status: **CORE ROADMAP COMPLETE (S0–S10) + PUSHED to `origin/main`.** The
+desktop app now models slabs end-to-end, matching the SAP2000/ETABS/MIDAS
+area-object workflow. Last published commit: **`7f28b58`** (2026-09-18);
+`origin/main` == local `main`. ~150 slab-specific tests green; the only failing
+tests in the suite are 4 pre-existing order-8 quadrature failures unrelated to
+slabs.*
+
+---
+
+## 0. Resume here (session hand-off)
+
+**What ships today (all on `origin/main`, GUI is 3-D-only for areas):**
+- **Model:** Draw ▸ Area (click-to-draw: click corners, click the first again to
+  close — tri/quad/**polygon**) + Area… dialog; Home ▸ Thickness (shell-section
+  manager); auto-mesh (quad n×m; polygon = centroid-fan tris) with coincident-
+  node merge; click-select / highlight / delete / inspect areas.
+- **Loads:** Loads ▸ Area — gravity, normal pressure, or **self-weight (ρ·t·g)**.
+- **Constraints:** Home ▸ Constraints ▸ Diaphragm (rigid floor).
+- **Results:** Results ▸ Deflection; Shell F/M (M11/M22/M12, N, Vmax, Wood-Armer
+  design moments — GP→node-extrapolated peaks); Slab rebar (required As);
+  Punching (ACI); Section cut (design strip M/V); Export slab (CSV).
+- **Engine additions:** shell `f_eq` (surface/pressure loads, `elements/shell*.py`)
+  and `femsolver.design.wood_armer`. Everything else is desktop GUI + data model.
+
+**How to work:** isolated git worktree `.claude/worktrees/slab-modeling` on
+branch `feat/slab-modeling` (== `main`). Tests:
+`PYTHONPATH=src QT_QPA_PLATFORM=offscreen <repo>/.venv-gui/Scripts/python -m
+pytest tests/ -q` (run from the worktree/repo root). Cadence: work on the
+branch → merge each item to `main` (FF) → push. **Gotcha:** patch modal
+`QMessageBox` in headless tests or they hang.
+
+**Remaining backlog (optional; pick one to resume):**
+1. **Beam-to-meshed-edge compatibility** — auto-subdivide beams lying along a
+   meshed slab edge so they share the edge mesh nodes (a real correctness fix).
+   *Higher risk:* touches `build_model` member emission + member-load/results
+   wiring (member.id is the element tag; splitting needs a member→sub-tags map).
+2. **Non-convex polygon meshing** — the current centroid-fan assumes convex
+   polygons; an L-shape needs ear-clipping / constrained triangulation.
+3. **DXF export** of the slab geometry/mesh (reuse `femsolver.results.dxf`).
+4. **Diaphragm rigid/flexible classification** per ASCE 7 via
+   `design.diaphragm.classify_diaphragm` (needs a lateral-analysis deflection +
+   drift extraction).
+5. **AreaDialog for polygons** — the add-area *dialog* still has 4 fixed corner
+   slots (polygons are created via the draw tool); a variable node-list input
+   would let polygons be typed/edited too.
 
 ---
 
