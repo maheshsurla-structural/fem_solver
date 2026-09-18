@@ -3,11 +3,13 @@
 **Created:** 2026-09-16
 **Status:** IN PROGRESS — successor to
 [`analysis_cases_manager_plan.md`](analysis_cases_manager_plan.md) (complete: 10
-saved, named, multi-instance types). **✅ E2 (initial conditions / state chaining)
-COMPLETE + shipped to `main` 2026-09-16** — Time History, P-Δ Modal, Response
-Spectrum and Buckling can all start from a nonlinear case's committed state; see
-the [E2 sub-plan](analysis_cases_initial_conditions_plan.md). **The rest of the
-roadmap (E1, E3–E8) is still pending** — see §4 sequencing and the §6 tracker.
+saved, named, multi-instance types). **Shipped: E2** (initial conditions / state
+chaining — see the [sub-plan](analysis_cases_initial_conditions_plan.md)), **E4**
+(load case tree), **E5a** (run dialog lists saved cases), **E5c** (run status),
+**E6** (context menu / filter / status column), and **E1** (unified Load-Case-Data
+editor — all 10 types under one Type ▾). **Remaining: E3** (Loads-Applied +
+result combinations), **E5b** (Run All in dependency order), **E6a** (Set Def
+Name), **E7** (integrity/versioning), **E8** (new engine types) — see §6 tracker.
 **Reference:** SAP2000 / CSiBridge *Define ▸ Load Cases* + *Load Case Data*
 dialogs (the user's benchmark).
 **Scope:** close the gap from "a working saved-case manager" to a
@@ -250,12 +252,13 @@ actually needs.
   `CaseTreeDialog` + "Tree…" button; nests dependents under their source, flags
   dangling refs + cycles, and (with E5c) **stale** cases whose source ran later.
 * [ ] **E3a** `LoadCase` → "Load Pattern" relabel
-* [~] **E1** `CaseEditorDialog` unified Load-Case-Data shell (Type ▾ swaps the
-  body) — **slices 1–4 ✅ 2026-09**: shell + `case_bodies` for **7 of 10** types
-  (Modal, Buckling, Response Spectrum, Temperature Gradient, Cable Tuning, Moving
-  Load, Influence Surface); a `SUPPORTS_IC` flag hides the Stiffness-to-use card
-  for static/influence types. Remaining: migrate load rating, vehicle dynamics,
-  time history, then retire the standalone dialogs.
+* [x] **E1** `CaseEditorDialog` unified Load-Case-Data editor (Type ▾ swaps the
+  body) ✅ 2026-09 — **all 10 types** on `case_bodies` (Modal, Buckling, Response
+  Spectrum, Temperature Gradient, Cable Tuning, Moving Load, Influence Surface,
+  Load Rating, Vehicle Dynamics, Time History). `SUPPORTS_IC`/`SHOW_HOLD`/
+  `HOLD_IN_PARAMS` flags drive the shared Stiffness-to-use card per type. Optional
+  follow-up: retire the now-redundant standalone dialogs (kept for the direct-run
+  path).
 * [x] **E2a–c** Initial-conditions / state chaining — data model, seeding helper,
   **Time History from state** ✅ 2026-09-16 (`ead1d26`/`422b230`/`7889505`) *(sub-plan)*
 * [x] **E2d** P-Δ modal + Response Spectrum from state ✅ 2026-09-16 (sub-plan)
