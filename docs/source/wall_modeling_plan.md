@@ -1,9 +1,10 @@
 # Wall (shear-wall / pier) modeling — commercial-parity roadmap
 
-*Status: **IN PROGRESS — W0 + W1a + W2 + W3 complete** (branch
-`feat/wall-modeling`). The core "credible wall tool" (W0–W3) is done: label →
-draw → pier forces → ACI 318 §18.10 design. This roadmap takes the desktop app
-from "a wall is just a vertical `Area`"
+*Status: **IN PROGRESS — W0–W3 + W4a complete** (W0–W3 on `origin/main`; W4a on
+branch `feat/wall-stories`). The core "credible wall tool" (W0–W3) is done:
+label → draw → pier forces → ACI 318 §18.10 design; W4a adds the Story/Grid data
+model + manager. This roadmap takes the desktop app from "a wall is just a
+vertical `Area`"
 to an ETABS-style wall workflow: a labeled **wall / pier / spandrel** object, a
 **story** context to draw and stack it in, automatic **pier force integration**,
 and a **wall design** check wired to the reinforcement the engine already knows
@@ -163,12 +164,20 @@ W5/W6 are v2.
   ACI strength checks ship now.
 
 ### W4 — Story / Level system ★ (building-modeling backbone)
-- A `Story` object (elevation, height, master/similar-to) + a story-aware model
-  tree and an **elevation view** (2-D per-plane view).
-- Grid system (named X/Y grid lines) to snap drawing.
-- "Similar stories" replicate walls/columns up the building.
-- Larger effort; touches drawing, the viewport, the tree, and load application.
-  Can land after W0–W3 since walls already work story-agnostically.
+- **W4a — DONE** (`939548f`): `project.Story` (named level at an elevation +
+  height + 'similar-to' master) and `project.GridLine` (named X/Y reference
+  line); `Project` accessors (`stories_sorted`, `story_elevations`, `story_at`,
+  `grid_lines_on`); JSON round-trip + migration; `story_grid_dialog.
+  StoryGridDialog` (Home ▸ Levels ▸ Stories & grid) with editable tables + a
+  Generate story-stack helper; tie-in: the pier-forces table now carries a
+  **Story** column (`story_at` each cut). `tests/test_desktop_stories.py`.
+- **W4b — TODO**: an **elevation view** (2-D per-plane) + grid/story-plane
+  **rendering** in the viewport + grid **snapping** while drawing (touches
+  `model_view`). Higher-risk viewport work; pairs with W1b.
+- **W4c — TODO**: "similar stories" replicate walls/columns up the building
+  (a transform over the story stack).
+- Walls already work story-agnostically, so these are ergonomics/scale upgrades,
+  not correctness gates.
 
 ### W5 — Openings ★ *(v2)*
 - Door/window openings in a wall panel with **opening-aware meshing** (extends
@@ -231,7 +240,9 @@ gives every later epic something to hang on.
 | W1b | Elevation / XZ-YZ draw plane | ☐ todo |
 | W2 | Pier force integration | ☑ done (`9d8ada7`) |
 | W3 | Wall design check (ACI 318 §18.10) | ☑ done (`29a3594`+`f69ba85`) |
-| W4 | Story / Level system + grids | ☐ proposed |
+| W4a | Story / Grid data model + manager | ☑ done (`939548f`) |
+| W4b | Elevation view + grid render/snap | ☐ todo |
+| W4c | Similar-story replication | ☐ todo |
 | W5 | Openings (opening-aware mesh) | ☐ proposed (v2) |
 | W6 | Coupled walls / coupling beams GUI | ☐ proposed (v2) |
 
