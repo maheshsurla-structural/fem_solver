@@ -1,10 +1,12 @@
 # Wall (shear-wall / pier) modeling — commercial-parity roadmap
 
-*Status: **IN PROGRESS — W0–W3 + W4a + W4b complete** (W0–W4a on `origin/main`;
-W4b on branch `feat/wall-stories`). The core "credible wall tool" (W0–W3) is
-done: label → draw → pier forces → ACI 318 §18.10 design; W4a/b add the
-Story/Grid model + manager + viewport overlay + snapping. This roadmap takes the
-desktop app from "a wall is just a vertical `Area`"
+*Status: **IN PROGRESS — W0–W4 complete** (W0–W4b on `origin/main`; W4c on
+branch `feat/wall-stories`). The core "credible wall tool" (W0–W3) is done:
+label → draw → pier forces → ACI 318 §18.10 design; **W4 (a/b/c) is done** —
+Story/Grid model + manager, viewport overlay + snapping, and similar-story
+replication. Only optional backlog remains (W1b elevation editing view, W5
+openings, W6 coupled walls, W3 detailing polish). This roadmap takes the desktop
+app from "a wall is just a vertical `Area`"
 to an ETABS-style wall workflow: a labeled **wall / pier / spandrel** object, a
 **story** context to draw and stack it in, automatic **pier force integration**,
 and a **wall design** check wired to the reinforcement the engine already knows
@@ -178,8 +180,11 @@ W5/W6 are v2.
   toggle. `tests/test_desktop_story_grid_view.py`. *Still TODO:* a dedicated 2-D
   **elevation view** (the orientation Front/Side views already give elevations;
   a true single-plane editing view pairs with W1b).
-- **W4c — TODO**: "similar stories" replicate walls/columns up the building
-  (a transform over the story stack).
+- **W4c — DONE** (`8818731`): "similar stories" replicate a source story's
+  walls/columns/beams up to target stories (`story_replicate.replicate_story` —
+  elevation-band selection, translated copy, coincident-node merge, pier labels
+  run up the building) via `StoryReplicateDialog` + Home ▸ Levels ▸ Replicate.
+  `tests/test_desktop_story_replicate.py`.
 - Walls already work story-agnostically, so these are ergonomics/scale upgrades,
   not correctness gates.
 
@@ -246,7 +251,7 @@ gives every later epic something to hang on.
 | W3 | Wall design check (ACI 318 §18.10) | ☑ done (`29a3594`+`f69ba85`) |
 | W4a | Story / Grid data model + manager | ☑ done (`939548f`) |
 | W4b | Grid render + snap-to-grid | ☑ done (`aae1ca7`) |
-| W4c | Similar-story replication | ☐ todo |
+| W4c | Similar-story replication | ☑ done (`8818731`) |
 | W5 | Openings (opening-aware mesh) | ☐ proposed (v2) |
 | W6 | Coupled walls / coupling beams GUI | ☐ proposed (v2) |
 
