@@ -1,12 +1,12 @@
 # Wall (shear-wall / pier) modeling — commercial-parity roadmap
 
-*Status: **IN PROGRESS — W0–W4 complete** (W0–W4b on `origin/main`; W4c on
-branch `feat/wall-stories`). The core "credible wall tool" (W0–W3) is done:
-label → draw → pier forces → ACI 318 §18.10 design; **W4 (a/b/c) is done** —
+*Status: **IN PROGRESS — W0–W4 + W1b complete** (W0–W4 on `origin/main`; W1b on
+branch `feat/wall-workplane`). The core "credible wall tool" (W0–W3) is done:
+label → draw → pier forces → ACI 318 §18.10 design; W4 (a/b/c) adds the
 Story/Grid model + manager, viewport overlay + snapping, and similar-story
-replication. Only optional backlog remains (W1b elevation editing view, W5
-openings, W6 coupled walls, W3 detailing polish). This roadmap takes the desktop
-app from "a wall is just a vertical `Area`"
+replication; W1b adds the XZ/YZ elevation draw plane. Only optional backlog
+remains (W5 openings, W6 coupled walls, W3 detailing polish). This roadmap takes
+the desktop app from "a wall is just a vertical `Area`"
 to an ETABS-style wall workflow: a labeled **wall / pier / spandrel** object, a
 **story** context to draw and stack it in, automatic **pier force integration**,
 and a **wall design** check wired to the reinforcement the engine already knows
@@ -125,11 +125,13 @@ W5/W6 are v2.
   base × height), `editing.WallDialog`, `MainWindow.draw_wall` (selection-driven,
   undo/redo-aware), `wall` icon. Reuses the S3 quad mesher + area select/delete/
   properties path. `tests/test_desktop_wall_draw.py`.
-- **W1b — TODO**: a true **draw-plane / work-plane** selector (XY ground,
-  **XZ / YZ elevation**, or a picked 3-point plane) so base nodes can be placed
-  *off* the ground plane by clicking — today the base line comes from selection.
-  Touches `model_view._world_on_ground` (VTK ray→plane; currently hard-wired to
-  z = 0). Higher-risk viewport work; deferred so W2/W3 can proceed.
+- **W1b — DONE** (`6d0dcd6`): a **work-plane** selector (XY ground, **XZ / YZ
+  elevation**) at a fixed-axis offset — `ModelView.set_work_plane` rebuilds the
+  pickable plane there and the draw-node pick keeps the click's full 3-D
+  position (pinned to the offset) instead of forcing z = 0, snapping the two
+  in-plane axes to the spacing/named grid + story levels. A Plane XY/XZ/YZ +
+  offset selector in the Draw ribbon. `tests/test_desktop_work_plane.py`. *(A
+  picked 3-point arbitrary plane is a possible future refinement.)*
 
 ### W2 — Pier force integration ★★ (the most-used ETABS wall output) — **DONE** (`9d8ada7`)
 - `desktop/piers.py` `pier_forces()` integrates the meshed shell membrane
@@ -246,7 +248,7 @@ gives every later epic something to hang on.
 |---|---|---|
 | W0 | Wall / pier data model | ☑ done (`da4f925`) |
 | W1a | Draw Wall by base line + height | ☑ done (`5e9a721`) |
-| W1b | Elevation / XZ-YZ draw plane | ☐ todo |
+| W1b | Elevation / XZ-YZ draw plane | ☑ done (`6d0dcd6`) |
 | W2 | Pier force integration | ☑ done (`9d8ada7`) |
 | W3 | Wall design check (ACI 318 §18.10) | ☑ done (`29a3594`+`f69ba85`) |
 | W4a | Story / Grid data model + manager | ☑ done (`939548f`) |
