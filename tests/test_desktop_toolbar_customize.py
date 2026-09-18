@@ -57,8 +57,16 @@ def test_view_registers_builtin_commands(qapp):
 def test_default_layout_builds_expected_buttons(qapp):
     import nav_toolbar as nt
     v = _view()
-    ids = list(v._nav_bar._buttons_by_id)
-    assert ids == [c for c in nt._DEFAULT_LAYOUT if c != nt.SEPARATOR_ID]
+    bar = v._nav_bar
+    ids = list(bar._buttons_by_id)
+    # a bare view knows the built-in commands but not the shell's ``cmd_*``
+    # activation commands, and ``rebuild`` skips unknown ids — so compare against
+    # the default layout filtered to what this view actually registers.
+    assert ids == [c for c in nt._DEFAULT_LAYOUT
+                   if c != nt.SEPARATOR_ID and c in bar._registry]
+    # the interaction selection tools are all on the default bar
+    for cid in ("select", "window", "polygon"):
+        assert cid in ids
 
 
 def test_rebuild_skips_unknown_ids(qapp):
@@ -155,3 +163,14 @@ def test_shell_registers_model_edit_commands(qapp):
     for cid in ("cmd_node", "cmd_delete", "cmd_undo", "cmd_run"):
         assert cid in reg
     assert reg["cmd_delete"].group == "Edit"
+
+
+def test_shell_registers_activation_commands_on_bar(qapp):
+    from main_window import MainWindow
+    w = MainWindow()
+    bar = w.view._nav_bar
+    for cid in ("cmd_inactivate", "cmd_activate_only", "cmd_activate_all",
+                "cmd_invert_active"):
+        assert cid in bar._registry
+        assert bar._registry[cid].group == "Active"
+        assert cid in bar._buttons_by_id          # on the default viewport bar

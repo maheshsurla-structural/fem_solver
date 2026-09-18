@@ -131,6 +131,13 @@ class MainWindow(QMainWindow):
         # (in leaf mode); in summary mode the viewport / tables drive it. Every
         # consumer (move/copy/delete/Properties/highlight) reads _selected_refs.
         self._selection: list = []
+        # View/edit *working set* (MIDAS-style activation): refs the user has
+        # made inactive. Inactive entities are hidden from the viewport and
+        # excluded from picking/selection, but the analysis model is always
+        # built from the full project — deactivating never changes results.
+        # A pure view/session concept, so it lives here (not on the project) and
+        # is not part of the undo stack.
+        self._inactive: set = set()
         # Open node/member dialogs register here (as a stack, so a nested one
         # wins) so a viewport click flows into the dialog instead of changing the
         # selection — the modeless "pick from the model" path (see pick.py).
@@ -475,6 +482,19 @@ class MainWindow(QMainWindow):
         self.act_deselect = _action(self, "Deselect &all", "Escape",
                                     self.deselect_all, "deselect")
 
+        # Active / inactive working set (MIDAS-style activation) — a view/edit
+        # aid that hides part of the model so you can work on the rest; the
+        # analysis model is always the full project (see ``_inactive``).
+        self.act_inactivate = _action(self, "&Inactivate selected", None,
+                                      self.inactivate_selected, "inactivate")
+        self.act_activate_only = _action(self, "Activate selected &only", None,
+                                         self.activate_selected_only,
+                                         "activate_only")
+        self.act_activate_all = _action(self, "&Activate all", None,
+                                        self.activate_all, "activate_all")
+        self.act_invert_active = _action(self, "In&vert active", None,
+                                         self.invert_active, "invert_active")
+
         self.act_diag_n = _set_icon(QAction("Axial &N", self), "axial")
         self.act_diag_n.triggered.connect(lambda *_: self.show_diagram("N"))
         self.act_diag_v = _set_icon(QAction("Shear &V", self), "shear")
@@ -618,6 +638,10 @@ class MainWindow(QMainWindow):
                            (self.act_sel_all_members, "Members"),
                            (self.act_sel_all, "All"),
                            (self.act_sel_by_section, "Section"))),
+            ("Active", ((self.act_inactivate, "Inactivate"),
+                        (self.act_activate_only, "Isolate"),
+                        (self.act_activate_all, "Show all"),
+                        (self.act_invert_active, "Invert"))),
         ))
         rb.add_tab("Loads", (
             ("Loads", ((self.act_loadcases, "Cases"),
@@ -2219,12 +2243,13 @@ class MainWindow(QMainWindow):
 
     def _show_undeformed(self) -> None:
         if self._model is not None:
-            self.view.set_model(self._model)
+            self._render_model()
 
     # ------------------------------------------------------------- project I/O
     def load_project(self, project, path=None) -> None:
         self._project = project
         self._path = path
+        self._inactive = set()               # a fresh document starts fully active
         if path:
             self._remember_recent(path)          # R8: feed the backstage MRU
         else:
@@ -3118,6 +3143,136 @@ class MainWindow(QMainWindow):
     def deselect_all(self) -> None:
         self._set_selection([])
 
+    # ----------------------------------------------- active / inactive set
+    # A view/edit working set (MIDAS-style activation): inactive entities are
+    # hidden from the viewport and left out of picking/selection, but the
+    # analysis model is always built from the full project, so deactivating a
+    # part of the model never silently changes results. Operations here are pure
+    # view state (``self._inactive``) — they do not touch the undo stack.
+    def _all_geom_refs(self) -> set:
+        """Every selectable geometry ref in the project (node / member / area)."""
+        refs = {("node", n.id) for n in self._project.nodes}
+        refs |= {("member", m.id) for m in self._project.members}
+        refs |= {("area", a.id) for a in getattr(self._project, "areas", [])}
+        return refs
+
+    def _with_dependency_nodes(self, refs) -> set:
+        """Expand a selection with the end/corner nodes the selected members and
+        areas need — so 'isolate' keeps those members/areas drawable."""
+        keep = {tuple(r) for r in refs}
+        by_member = {m.id: m for m in self._project.members}
+        by_area = {a.id: a for a in getattr(self._project, "areas", [])}
+        for kind, ident in list(keep):
+            if kind == "member" and ident in by_member:
+                m = by_member[ident]
+                keep.add(("node", m.n1))
+                keep.add(("node", m.n2))
+            elif kind == "area" and ident in by_area:
+                for n in by_area[ident].nodes:
+                    keep.add(("node", n))
+        return keep
+
+    def inactivate_selected(self) -> None:
+        sel = {r for r in (tuple(x) for x in self._selection)
+               if r[0] in ("node", "member", "area")}
+        if not sel:
+            self.statusBar().showMessage(
+                "Inactivate — select nodes, members or areas first.")
+            return
+        self._inactive |= sel
+        self._set_selection([])
+        self._refresh_active(f"Inactivated {len(sel)} item(s)")
+
+    def activate_selected_only(self) -> None:
+        sel = {r for r in (tuple(x) for x in self._selection)
+               if r[0] in ("node", "member", "area")}
+        if not sel:
+            self.statusBar().showMessage(
+                "Activate selected only — select the part to isolate first.")
+            return
+        keep = self._with_dependency_nodes(sel)
+        self._inactive = self._all_geom_refs() - keep
+        self._refresh_active(f"Isolated {len(sel)} selected item(s)")
+
+    def activate_all(self) -> None:
+        if not self._inactive:
+            self.statusBar().showMessage("Activate all — nothing is inactive.")
+            return
+        self._inactive = set()
+        self._refresh_active("Activated the whole model")
+
+    def invert_active(self) -> None:
+        self._inactive = self._all_geom_refs() - self._inactive
+        self._set_selection([])
+        self._refresh_active("Inverted the active set")
+
+    def _refresh_active(self, message: str) -> None:
+        """Rebuild the viewport for the current active set and report status."""
+        self._rebuild()
+        self._apply_selection_effects()          # restore any kept highlight
+        n = len(self._inactive)
+        self.statusBar().showMessage(
+            f"{message} — {n} item(s) inactive" if n else message)
+
+    def _prune_inactive(self) -> None:
+        """Drop inactive refs whose entity no longer exists (after a delete or an
+        undo), so the working set never hides a stale id."""
+        if self._inactive:
+            self._inactive = {r for r in self._inactive if self._ref_exists(r)}
+
+    def _display_project(self):
+        """The project restricted to the *active* working set, for rendering.
+        Returns ``self._project`` unchanged when nothing is inactive (the fast,
+        allocation-free path). Otherwise a shallow copy whose node/member/area
+        lists exclude the inactive entities; a node that would be left dangling
+        by hiding all of its elements is dropped too, while a truly standalone
+        active node is kept."""
+        if not self._inactive:
+            return self._project
+        p = copy.copy(self._project)             # shares props/loads/materials
+        inactive = self._inactive
+        hidden_node = lambda nid: ("node", nid) in inactive
+
+        def member_vis(m):
+            return (("member", m.id) not in inactive
+                    and not hidden_node(m.n1) and not hidden_node(m.n2))
+
+        def area_vis(a):
+            return (("area", a.id) not in inactive
+                    and all(not hidden_node(n) for n in a.nodes))
+
+        p.members = [m for m in self._project.members if member_vis(m)]
+        p.areas = [a for a in getattr(self._project, "areas", []) if area_vis(a)]
+        referenced, used = set(), set()
+        for m in self._project.members:
+            referenced.update((m.n1, m.n2))
+        for a in getattr(self._project, "areas", []):
+            referenced.update(a.nodes)
+        for m in p.members:
+            used.update((m.n1, m.n2))
+        for a in p.areas:
+            used.update(a.nodes)
+
+        def node_vis(n):
+            if hidden_node(n.id):
+                return False
+            if n.id in used:
+                return True                      # an endpoint of a visible element
+            return n.id not in referenced        # else keep only standalone nodes
+
+        p.nodes = [n for n in self._project.nodes if node_vis(n)]
+        return p
+
+    def _render_model(self) -> None:
+        """Draw the current active working set (see ``_display_project``). The
+        full analysis model stays in ``self._model``; only the viewport is
+        filtered."""
+        disp = self._display_project()
+        view_model = (self._model if disp is self._project
+                      else disp.build_model(with_loads=False))
+        self.view.set_model(view_model)
+        self.view.mark_hinges(disp)
+
     def _update_snap(self, *_) -> None:
         self.view.set_snap(self.act_snap.isChecked(), self.snap_spin.value())
 
@@ -3140,6 +3295,13 @@ class MainWindow(QMainWindow):
             ("cmd_rotate", self.act_rotate, "rotate", "Edit"),
             ("cmd_extrude", self.act_extrude, "extrude", "Edit"),
             ("cmd_run", self.act_run, "run", "Analysis"),
+            ("cmd_inactivate", self.act_inactivate, "inactivate", "Active"),
+            ("cmd_activate_only", self.act_activate_only, "activate_only",
+             "Active"),
+            ("cmd_activate_all", self.act_activate_all, "activate_all",
+             "Active"),
+            ("cmd_invert_active", self.act_invert_active, "invert_active",
+             "Active"),
             ("cmd_undeformed", self.act_undef, "undeformed", "Results"),
             ("cmd_design", self.act_design, "design", "Results"),
         ]
@@ -3316,8 +3478,8 @@ class MainWindow(QMainWindow):
     def _rebuild(self) -> None:
         try:
             self._model = self._project.build_model()
-            self.view.set_model(self._model)
-            self.view.mark_hinges(self._project)
+            self._prune_inactive()
+            self._render_model()
         except Exception as exc:                       # noqa: BLE001
             QMessageBox.critical(self, "Model error", str(exc))
         self._refresh_tree()

@@ -196,6 +196,20 @@ _ICONS = {
                   '<path d="M8.5 13l2.5 2.5 4.5-5"/>',
     "density": '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6v12"/>'
                '<path d="M4 6l-1.6 2.2M4 6l1.6 2.2M4 18l-1.6-2.2M4 18l1.6-2.2"/>',
+    # --- active / inactive working set (MIDAS-style activation) ---
+    # inactivate — an eye with a slash (hide the selected part of the model)
+    "inactivate": '<path d="M2 12s3.6-6.5 10-6.5c2 0 3.7.6 5.2 1.5"/>'
+                  '<path d="M22 12s-3.6 6.5-10 6.5c-2 0-3.7-.6-5.2-1.5"/>'
+                  '<circle cx="12" cy="12" r="2.6"/><path d="M3 3l18 18"/>',
+    # activate all — an open eye (show the whole model again)
+    "activate_all": '<path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5'
+                    'S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    # activate selected only (isolate) — a crosshair focusing on the selection
+    "activate_only": '<circle cx="12" cy="12" r="7"/>'
+                     '<path d="M12 1.5v3.5M12 19v3.5M1.5 12h3.5M19 12h3.5"/>'
+                     '<circle cx="12" cy="12" r="2.2" fill="{c}" stroke="none"/>',
+    # invert active — two arrows swapping (active <-> inactive)
+    "invert_active": '<path d="M4 8h13l-3.2-3.2"/><path d="M20 16H7l3.2 3.2"/>',
 }
 _LETTERS = {"axial": "N", "shear": "V", "moment": "M"}
 

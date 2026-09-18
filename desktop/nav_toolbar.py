@@ -25,9 +25,24 @@ from toolbar_commands import SEPARATOR_ID, ToolCommand
 
 _SETTINGS_KEY = "viewport_toolbar_layout"
 
-# the out-of-the-box bar
-_DEFAULT_LAYOUT = ["select", "orbit", "pan", "zoomwin", SEPARATOR_ID,
-                   "fit", "fitsel", "zoomin", "zoomout", SEPARATOR_ID, "lock"]
+# the out-of-the-box bar — every interaction *selection* tool (single / window /
+# polygon) up front, then the camera tools, then the MIDAS-style *activation*
+# cluster (inactivate / isolate / show-all / invert), then the 2-D lock. The
+# ``cmd_*`` ids are registered by the shell (MainWindow), so a bare view skips
+# them until the shell adds them (``rebuild`` ignores unknown ids).
+_DEFAULT_LAYOUT = ["select", "window", "polygon", SEPARATOR_ID,
+                   "orbit", "pan", "zoomwin", SEPARATOR_ID,
+                   "fit", "fitsel", "zoomin", "zoomout", SEPARATOR_ID,
+                   "cmd_inactivate", "cmd_activate_only", "cmd_activate_all",
+                   "cmd_invert_active", SEPARATOR_ID, "lock"]
+
+# Earlier default bars — a saved layout that still matches one of these is an
+# *untouched* default, so it is silently upgraded to ``_DEFAULT_LAYOUT`` (the
+# new tools appear) while a genuinely customized bar is left exactly as saved.
+_SUPERSEDED_DEFAULTS = [
+    ["select", "orbit", "pan", "zoomwin", SEPARATOR_ID,
+     "fit", "fitsel", "zoomin", "zoomout", SEPARATOR_ID, "lock"],
+]
 
 
 def _view_commands(view) -> list:
@@ -107,10 +122,14 @@ class NavToolbar(QFrame):
     def _load_layout(self) -> list:
         v = QSettings("MidasStructural", "Desktop").value(_SETTINGS_KEY)
         if isinstance(v, str) and v:
-            return v.split(",")
-        if isinstance(v, (list, tuple)) and v:
-            return [str(x) for x in v]
-        return list(_DEFAULT_LAYOUT)
+            layout = v.split(",")
+        elif isinstance(v, (list, tuple)) and v:
+            layout = [str(x) for x in v]
+        else:
+            return list(_DEFAULT_LAYOUT)
+        if layout in _SUPERSEDED_DEFAULTS:         # auto-upgrade an untouched bar
+            return list(_DEFAULT_LAYOUT)
+        return layout
 
     def _save_layout(self) -> None:
         QSettings("MidasStructural", "Desktop").setValue(

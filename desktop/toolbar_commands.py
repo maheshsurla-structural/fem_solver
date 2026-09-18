@@ -21,8 +21,8 @@ import style
 
 SEPARATOR_ID = "|"                    # a visual gap between icon groups
 # the order groups appear in the dialog's "Choose commands" filter
-GROUP_ORDER = ("Tools", "Navigate", "Orient", "Model", "Edit", "Analysis",
-               "Results", "Appearance")
+GROUP_ORDER = ("Tools", "Navigate", "Orient", "Model", "Edit", "Active",
+               "Analysis", "Results", "Appearance")
 
 
 @dataclass
