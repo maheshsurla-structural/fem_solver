@@ -2462,13 +2462,15 @@ class MainWindow(QMainWindow):
         if not self._project.nodes:
             QMessageBox.information(self, "Add load", "Add a node first.")
             return
-        load = LoadDialog.edit(self, self._project)
-        if load is None:
+        sel = [ident for kind, ident in self._selection if kind == "node"]
+        loads = LoadDialog.create(self, self._project, nodes=sel)
+        if not loads:
             return
-        idx = len(self._project.loads)
-        self._apply_edit("Add load",
-                         lambda: self._project.loads.append(load),
-                         ("load", idx))
+        start = len(self._project.loads)
+        label = f"Add load ({len(loads)} nodes)" if len(loads) > 1 else "Add load"
+        self._apply_edit(label,
+                         lambda: self._project.loads.extend(loads),
+                         ("load", start))
 
     def add_line_load(self) -> None:
         if not self._project.members:

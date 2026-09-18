@@ -72,3 +72,34 @@ def test_load_dialog_3d_has_six_components(qapp):
     from editing import LoadDialog
     dlg = LoadDialog(None, _project(ndm=3, ndf=6))
     assert len(dlg.vals) == 6
+
+
+def test_load_dialog_single_node_bulk_api(qapp):
+    from editing import LoadDialog
+    p = _project()
+    dlg = LoadDialog(None, p)                        # no preselection
+    dlg.node.setCurrentIndex(dlg.node.findData(2))
+    dlg.vals[1].setValue(-1000.0)
+    loads = dlg.loads()
+    assert [ld.node for ld in loads] == [2]
+    assert loads[0].values[1] == pytest.approx(-1000.0)
+
+
+def test_load_dialog_bulk_multi_node(qapp):
+    from editing import LoadDialog
+    p = _project()
+    p.nodes = [Node(1, 0, 0), Node(2, 0, 3), Node(3, 4, 3)]
+    dlg = LoadDialog(None, p, nodes=[1, 2, 3])      # window-selected nodes
+    dlg.vals[1].setValue(-2000.0)
+    dlg.case.setCurrentIndex(dlg.case.findData(2))
+    loads = dlg.loads()
+    assert sorted(ld.node for ld in loads) == [1, 2, 3]
+    assert all(ld.values[1] == pytest.approx(-2000.0) for ld in loads)
+    assert all(ld.case == 2 for ld in loads)         # same load case to each
+
+
+def test_load_dialog_bulk_ignores_unknown_nodes(qapp):
+    from editing import LoadDialog
+    p = _project()                                   # nodes 1, 2 only
+    dlg = LoadDialog(None, p, nodes=[1, 2, 999])
+    assert dlg._targets == [1, 2]                    # 999 dropped

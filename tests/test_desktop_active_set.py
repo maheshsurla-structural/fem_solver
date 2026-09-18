@@ -132,6 +132,16 @@ def test_visible_model_filters_results_view(qapp):
     assert vm.element(2) is w._model.element(2)
 
 
+def test_window_selection_holds_multiple_nodes(qapp):
+    # a window/region select stores every node it covers, and add_load reads
+    # exactly those node ids to bulk-assign a nodal load (SAP select-then-assign)
+    w = _window(qapp)
+    w._on_region_select([("node", 1), ("node", 2), ("node", 3)])
+    assert w._selection == [("node", 1), ("node", 2), ("node", 3)]
+    sel = [ident for kind, ident in w._selection if kind == "node"]
+    assert sel == [1, 2, 3]
+
+
 def test_prune_drops_stale_inactive_refs(qapp):
     w = _window(qapp)
     w._inactive = {("member", 999), ("member", 1)}    # 999 no longer exists

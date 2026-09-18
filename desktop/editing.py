@@ -343,9 +343,18 @@ class LoadDialog(PickDialog):
     L1 scaffold; ``.edit()`` return contract unchanged. The node can be chosen
     by clicking it in the model while the dialog is open (see :mod:`pick`)."""
 
-    def __init__(self, parent, project, load=None):
+    def __init__(self, parent, project, load=None, nodes=None):
         super().__init__(parent)
-        self.setWindowTitle("Edit load" if load else "Add load")
+        # ``nodes`` (a list of already-selected node ids, e.g. from a window
+        # select) turns this into a *bulk* assign: the same components go to
+        # every selected node (the SAP/MIDAS select-then-assign idiom). One
+        # node, or none, keeps the single-node picker.
+        self._targets = [int(n) for n in (nodes or [])
+                         if any(nd.id == int(n) for nd in project.nodes)]
+        multi = len(self._targets) > 1
+        self.setWindowTitle(
+            f"Add load — {len(self._targets)} nodes" if multi
+            else ("Edit load" if load else "Add load"))
         self._us = UnitSystem.from_project(project)
         outer = QVBoxLayout(self)
         outer.setContentsMargins(style.SP_LG, style.SP_LG,
@@ -353,19 +362,31 @@ class LoadDialog(PickDialog):
         outer.setSpacing(style.SP_MD)
 
         self.node = _combo([(str(n.id), n.id) for n in project.nodes])
-        self.register_pick_field("node", self.node)   # click a node in the model
         if load:
             _select(self.node, load.node)
+        elif len(self._targets) == 1:
+            _select(self.node, self._targets[0])
         self.case = _combo([(c.name, c.id) for c in project.load_cases])
         if load is not None:
             _select(self.case, getattr(load, "case", project.default_case_id()))
 
         applied = ui.GroupCard("Applied to")
-        applied.add_row("Node", self.node)
+        if multi:
+            shown = ", ".join(str(n) for n in self._targets[:12])
+            if len(self._targets) > 12:
+                shown += " …"
+            summary = QLabel(f"{len(self._targets)} selected nodes: {shown}")
+            summary.setWordWrap(True)
+            applied.add_row("Nodes", summary)
+        else:
+            self.register_pick_field("node", self.node)  # click a node to set it
+            applied.add_row("Node", self.node)
         applied.add_row("Load case", self.case)
-        applied.add_full_row(_pick_hint("Tip: click a node in the model to "
-                                        "set it here — no need to close this "
-                                        "window."))
+        if not multi:
+            applied.add_full_row(_pick_hint(
+                "Tip: click a node in the model to set it here — no need to "
+                "close this window. Or window-select several nodes first to "
+                "load them all at once."))
 
         # Components mix forces (translational DOFs) and moments (rotational),
         # so units live per-row, not in one card header.
@@ -395,10 +416,28 @@ class LoadDialog(PickDialog):
                     values=tuple(s.si_value() for s in self.vals),
                     case=self.case.currentData())
 
+    def loads(self) -> list:
+        """One :class:`Load` per target node (the whole selection in bulk mode,
+        else the single chosen node)."""
+        values = tuple(s.si_value() for s in self.vals)
+        case = self.case.currentData()
+        targets = self._targets if len(self._targets) > 1 else [
+            self.node.currentData()]
+        return [Load(node=n, values=values, case=case)
+                for n in targets if n is not None]
+
     @classmethod
     def edit(cls, parent, project, load=None):
         dlg = cls(parent, project, load)
         return dlg.data() if dlg.exec() else None
+
+    @classmethod
+    def create(cls, parent, project, nodes=None):
+        """Add nodal load(s): returns a list of :class:`Load` (one per selected
+        node) or ``None`` if cancelled. Pass ``nodes`` (selected node ids) to
+        bulk-assign the same load to all of them."""
+        dlg = cls(parent, project, nodes=nodes)
+        return dlg.loads() if dlg.exec() else None
 
 
 class LoadCaseDialog(QDialog):
