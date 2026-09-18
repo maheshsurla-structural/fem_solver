@@ -170,6 +170,9 @@ class ModelView(QtInteractor):
         self._story_project = None            # project whose grid/stories we draw
         self._snap_xs: list = []              # named-grid snap targets (W4b)
         self._snap_ys: list = []
+        self._snap_zs: list = []              # story-elevation snap targets (W1b)
+        self._work_plane = "xy"               # draw work plane: xy | xz | yz (W1b)
+        self._work_offset = 0.0               # its fixed-axis coordinate (SI)
         self._region_cb = None
         self._coord_cb = None
         self._rubber = None
@@ -641,17 +644,38 @@ class ModelView(QtInteractor):
         self.render()
         self.mode_changed.emit(mode)
 
+    # draw work plane (wall plan W1b): 'xy' horizontal (normal Z), 'xz' elevation
+    # (normal Y), 'yz' elevation (normal X); the fixed axis sits at _work_offset.
+    _PLANE_NORMAL = {"xy": (0.0, 0.0, 1.0), "xz": (0.0, 1.0, 0.0),
+                     "yz": (1.0, 0.0, 0.0)}
+    _PLANE_AXIS = {"xy": 2, "xz": 1, "yz": 0}     # index of the fixed coordinate
+
+    def set_work_plane(self, kind: str, offset: float = 0.0) -> None:
+        """Set the plane new draw-node clicks land on: 'xy' (horizontal), 'xz'
+        or 'yz' (vertical elevations), at fixed-axis coordinate ``offset``.
+        Redraws the plane while the draw-node tool is active (wall plan W1b)."""
+        self._work_plane = kind if kind in self._PLANE_NORMAL else "xy"
+        self._work_offset = float(offset)
+        if self._mode == "draw_node":
+            self.remove_actor("groundplane", render=False)
+            self._add_ground_plane()
+            self.render()
+
     def _add_ground_plane(self) -> None:
         import pyvista as pv
+        kind = self._work_plane
+        off = self._work_offset
+        ax = self._PLANE_AXIS[kind]
         if self._model is not None and len(self._model.nodes):
             _t, pts, _i = mg.node_points(self._model)
             lo, hi = pts.min(axis=0), pts.max(axis=0)
-            cx, cy = (lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2
-            size = float(max(hi[0] - lo[0], hi[1] - lo[1])) * 2.0 + 10.0
+            ctr = [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2]
+            size = float(np.max(hi - lo)) * 2.0 + 10.0
         else:
-            cx = cy = 0.0
+            ctr = [0.0, 0.0, 0.0]
             size = 20.0
-        plane = pv.Plane(center=(cx, cy, 0.0), direction=(0.0, 0.0, 1.0),
+        ctr[ax] = off                             # sit the plane at the offset
+        plane = pv.Plane(center=tuple(ctr), direction=self._PLANE_NORMAL[kind],
                          i_size=size, j_size=size)
         self.add_mesh(plane, color=style.ACCENT, opacity=0.12, name="groundplane",
                       pickable=True)
@@ -668,18 +692,28 @@ class ModelView(QtInteractor):
         p = p[:3]
         if self._mode == "draw_node":
             if self._add_node_cb is not None:
-                if self._snap_on:
-                    x = _snap(p[0], self._snap_grid)
-                    y = _snap(p[1], self._snap_grid)
-                else:
-                    x, y = round(float(p[0]), 3), round(float(p[1]), 3)
-                # a named grid line (wall plan W4b) wins over the spacing grid
-                # when the click lands within half a spacing step of it
-                if self._snap_xs or self._snap_ys:
+                # the click lands on the active work plane (W1b); keep its full
+                # 3-D position, spacing-snapping only the two in-plane axes.
+                fixed = self._PLANE_AXIS[self._work_plane]
+                xyz = [float(p[0]), float(p[1]), float(p[2])]
+                xyz[fixed] = self._work_offset          # exact on the plane
+                for i in range(3):
+                    if i == fixed:
+                        continue
+                    xyz[i] = (_snap(xyz[i], self._snap_grid) if self._snap_on
+                              else round(xyz[i], 3))
+                # a named grid line / story level (W4b) wins over the spacing
+                # grid when the click lands within half a spacing step of it
+                if self._snap_xs or self._snap_ys or self._snap_zs:
                     tol = max(self._snap_grid * 0.5, 1e-3)
-                    x, y, _z = mg.snap_to_grid(x, y, 0.0, self._snap_xs,
-                                               self._snap_ys, [], tol)
-                self._add_node_cb(x, y, 0.0)
+                    sx, sy, sz = mg.snap_to_grid(
+                        xyz[0], xyz[1], xyz[2], self._snap_xs, self._snap_ys,
+                        self._snap_zs, tol)
+                    snapped = [sx, sy, sz]
+                    for i in range(3):              # never move the fixed axis
+                        if i != fixed:
+                            xyz[i] = snapped[i]
+                self._add_node_cb(xyz[0], xyz[1], xyz[2])
             return
         tol = max(mg.model_span(self._model) * 0.05, 0.15)
         sel = mg.nearest_item(self._model, p, tol)
@@ -807,9 +841,9 @@ class ModelView(QtInteractor):
         grid — it simply removes any stale overlay."""
         self._story_project = project
         try:
-            self._snap_xs, self._snap_ys, _zs = mg.snap_targets(project)
+            self._snap_xs, self._snap_ys, self._snap_zs = mg.snap_targets(project)
         except Exception:
-            self._snap_xs, self._snap_ys = [], []
+            self._snap_xs, self._snap_ys, self._snap_zs = [], [], []
         self.remove_actor("storygrid", render=False)
         if not self._show_story_grid or project is None or self._model is None:
             self.render()

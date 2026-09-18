@@ -640,6 +640,21 @@ class MainWindow(QMainWindow):
         self.snap_spin.setPrefix("grid ")
         self.snap_spin.setSuffix(" m")
         self.snap_spin.valueChanged.connect(lambda _v: self._update_snap())
+        # work-plane selector (wall plan W1b): draw nodes on XY / XZ / YZ at an
+        # offset, so walls can be started off the ground plane (e.g. an elevation)
+        self.plane_combo = QComboBox()
+        self.plane_combo.addItem("Plane XY", "xy")
+        self.plane_combo.addItem("Plane XZ", "xz")
+        self.plane_combo.addItem("Plane YZ", "yz")
+        self.plane_combo.currentIndexChanged.connect(self._update_work_plane)
+        self.plane_offset = QDoubleSpinBox()
+        self.plane_offset.setRange(-1e6, 1e6)
+        self.plane_offset.setDecimals(2)
+        self.plane_offset.setSingleStep(0.5)
+        self.plane_offset.setValue(0.0)
+        self.plane_offset.setPrefix("@ ")
+        self.plane_offset.setSuffix(" m")
+        self.plane_offset.valueChanged.connect(lambda _v: self._update_work_plane())
 
         # ---- CSiBridge-style tabbed ribbon (plan ribbon R1) ---------------
         # One compact strip replaces BOTH the classic menu bar and the old
@@ -683,7 +698,8 @@ class MainWindow(QMainWindow):
                       (self.act_draw_area, "Area"),
                       (self.act_add_area, "Area…"),
                       (self.act_draw_wall, "Wall"),
-                      (self.act_snap, "Snap"), self.snap_spin)),
+                      (self.act_snap, "Snap"), self.snap_spin,
+                      self.plane_combo, self.plane_offset)),
             ("Select", ((self.act_select, "Select"),
                         (self.act_sel_window, "Window"),
                         (self.act_sel_poly, "Poly"),
@@ -3539,6 +3555,13 @@ class MainWindow(QMainWindow):
 
     def _update_snap(self, *_) -> None:
         self.view.set_snap(self.act_snap.isChecked(), self.snap_spin.value())
+
+    def _update_work_plane(self, *_) -> None:
+        """Push the draw work-plane (kind + offset) to the viewport (W1b). The
+        offset is entered in the display unit; the view works in SI."""
+        kind = self.plane_combo.currentData()
+        off = self._units().to_si(self.plane_offset.value(), Quantity.LENGTH)
+        self.view.set_work_plane(kind, off)
 
     def _register_toolbar_commands(self) -> None:
         """Expose the common model/edit commands so they can be pinned onto the
