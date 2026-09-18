@@ -226,10 +226,19 @@ NATURE_LABELS = {"dead": "Dead", "live": "Live", "roof_live": "Roof live",
 class LoadCase:
     """A named physical load case (Dead, Live, Wind, …). Loads belong to a
     case; combinations factor cases together. ``nature`` maps the case to an
-    ASCE 7 pattern key so code combinations can be generated automatically."""
+    ASCE 7 pattern key so code combinations can be generated automatically.
+
+    ``self_weight_factor`` is the SAP2000/MIDAS-style self-weight multiplier:
+    when non-zero the case applies the structure's own gravity weight scaled by
+    it (1.0 = full self-weight acting global-down), in addition to any explicit
+    loads assigned to the case. Members contribute ρ·A·L·g (lumped to their end
+    nodes, so it is correct for any orientation, columns included); areas
+    contribute ρ·t·g as a surface load. Usually set to 1.0 on a single 'Self
+    weight' / dead case."""
     id: int
     name: str
     nature: str = "dead"          # key of NATURE_ASCE
+    self_weight_factor: float = 0.0   # gravity self-weight multiplier (1.0 = on)
 
 
 @dataclass
@@ -932,6 +941,38 @@ class Project:
             return dict(combo.factors) if combo else {}
         return {c.id: 1.0 for c in self.load_cases}
 
+    def _self_weight_member_nodal(self, factor: float) -> dict:
+        """Lumped member self-weight as nodal gravity forces (global-down):
+        each member's weight ρ·A·L·g is split equally to its two end nodes.
+        Lumped rather than consistent so it is correct for any member
+        orientation, including columns whose self-weight is purely axial (a
+        local beam UDL cannot represent that). ``factor`` scales the whole
+        contribution. Returns ``{node_id: [components]}``; empty when the factor
+        is zero or no material carries a density."""
+        if not factor:
+            return {}
+        mats = {m.id: m for m in self.materials}
+        secs = {s.id: s for s in self.sections}
+        down = 1 if self.ndm == 2 else 2      # gravity DOF: Y in 2-D, Z in 3-D
+        out: dict = {}
+        for mb in self.members:
+            mat = mats.get(mb.material)
+            sec = secs.get(mb.section)
+            if mat is None or sec is None:
+                continue
+            rho = float(getattr(mat, "rho", 0.0))
+            if rho <= 0.0:
+                continue
+            A = _resolve_section(sec)[0]
+            L = self.member_length(mb)
+            half = 0.5 * rho * A * L * GRAVITY * factor
+            if not half:
+                continue
+            for nid in (mb.n1, mb.n2):
+                acc = out.setdefault(nid, [0.0] * self.ndf)
+                acc[down] -= half
+        return out
+
     def resolved_loads(self, selection=("all", None)):
         """(nodal, member) factored applied-load maps for a selection —
         nodal = {node_id: [components]}, member = {member_id: (wy, wz)}."""
@@ -945,6 +986,16 @@ class Project:
             for k, v in enumerate(ld.values):
                 if k < len(acc):
                     acc[k] += v * f
+        for c in self.load_cases:                 # member self-weight (lumped)
+            sw = getattr(c, "self_weight_factor", 0.0)
+            f = factors.get(c.id, 0.0)
+            if not (sw and f):
+                continue
+            for nid, comps in self._self_weight_member_nodal(sw * f).items():
+                acc = nodal.setdefault(nid, [0.0] * self.ndf)
+                for k, v in enumerate(comps):
+                    if k < len(acc):
+                        acc[k] += v
         member: dict = {}
         for ml in self.member_loads:
             f = factors.get(ml.case, 0.0)
@@ -1030,7 +1081,8 @@ class Project:
     def apply_case(self, model, case_id: int, factor: float = 1.0) -> None:
         """Add one case's nodal + line loads to a built model, scaled by
         ``factor`` (additive — pair with ``model.clear_loads()`` between
-        combos)."""
+        combos). A case with a non-zero ``self_weight_factor`` also contributes
+        the structure's own gravity weight (see :class:`LoadCase`)."""
         for ld in self.loads:
             if ld.case == case_id:
                 model.add_nodal_load(ld.node, [v * factor for v in ld.values])
@@ -1040,6 +1092,34 @@ class Project:
         for al in self.area_loads:
             if al.case == case_id:
                 self._apply_area_load(model, al, factor)
+        case = self.case(case_id)
+        sw = getattr(case, "self_weight_factor", 0.0) if case else 0.0
+        if sw:
+            self._apply_self_weight(model, sw * factor)
+
+    def _apply_self_weight(self, model, factor: float) -> None:
+        """Apply the whole structure's self-weight to a built model, scaled by
+        ``factor`` (global-down): members as lumped nodal gravity, areas (3-D
+        shells) as a global −Z surface load ρ·t·g."""
+        if not factor:
+            return
+        for nid, comps in self._self_weight_member_nodal(factor).items():
+            try:
+                model.add_nodal_load(nid, comps)
+            except (KeyError, IndexError):
+                continue                          # node absent from this build
+        if self.ndm == 3:
+            for a in self.areas:
+                w = self._area_selfweight(a) * factor
+                if not w:
+                    continue
+                for tag in self._area_element_tags(a):
+                    try:
+                        el = model.element(tag)
+                    except KeyError:
+                        continue
+                    if hasattr(el, "add_surface_load"):
+                        el.add_surface_load(0.0, 0.0, -w)
 
     def load_patterns(self) -> dict:
         """{str(case_id): LoadPattern} for the engine's combination/envelope

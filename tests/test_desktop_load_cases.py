@@ -72,3 +72,29 @@ def test_remove_keeps_at_least_one(qapp):
     dlg.tbl.setCurrentCell(0, 0)
     dlg._remove()                                       # refuse: never empty
     assert dlg.tbl.rowCount() == 1
+
+
+def test_self_weight_column_round_trips(qapp):
+    from editing import LoadCaseDialog
+    p = _project()
+    p.load_cases = [LoadCase(1, "Dead", "dead", self_weight_factor=1.0),
+                    LoadCase(2, "Live", "live")]
+    dlg = LoadCaseDialog(None, p)
+    assert dlg.tbl.columnCount() == 3
+    assert dlg.tbl.cellWidget(0, 2).value() == 1.0     # loaded from the case
+    dlg.tbl.cellWidget(1, 2).setValue(0.5)             # edit the Live row
+    dlg.accept()
+    factors = {c.name: c.self_weight_factor for c in dlg.result_cases}
+    assert factors == {"Dead": 1.0, "Live": 0.5}
+
+
+def test_add_self_weight_case_button(qapp):
+    from editing import LoadCaseDialog
+    p = _project()                                     # Dead, Live (both sw=0)
+    dlg = LoadCaseDialog(None, p)
+    dlg.add_self_weight_case()
+    dlg.accept()
+    sw = [c for c in dlg.result_cases if c.self_weight_factor]
+    assert len(sw) == 1
+    assert sw[0].name == "Self weight" and sw[0].nature == "dead"
+    assert sw[0].self_weight_factor == 1.0

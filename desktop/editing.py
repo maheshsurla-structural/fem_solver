@@ -8,10 +8,10 @@ cancelled. No solver / OpenGL here — pure Qt, so it is headless-constructible.
 from __future__ import annotations
 
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox,
-                               QDoubleSpinBox, QFormLayout, QHBoxLayout, QLabel,
-                               QLineEdit, QMessageBox, QPushButton, QSpinBox,
-                               QTableWidget, QTableWidgetItem, QVBoxLayout,
-                               QWidget)
+                               QDoubleSpinBox, QFormLayout, QHBoxLayout,
+                               QHeaderView, QLabel, QLineEdit, QMessageBox,
+                               QPushButton, QSpinBox, QTableWidget,
+                               QTableWidgetItem, QVBoxLayout, QWidget)
 
 import analysis_ui as ui
 import icons
@@ -412,32 +412,42 @@ class LoadCaseDialog(QDialog):
         self.resize(440, 360)
         self._project = project
         self.result_cases = None
-        # working rows: [id, name, nature]; id 0 => new (assigned on accept)
-        self._rows = [[c.id, c.name, c.nature] for c in project.load_cases]
+        # working rows: [id, name, nature, self_weight_factor]; id 0 => new
+        self._rows = [[c.id, c.name, c.nature,
+                       float(getattr(c, "self_weight_factor", 0.0))]
+                      for c in project.load_cases]
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(style.SP_LG, style.SP_LG,
                                  style.SP_LG, style.SP_LG)
         outer.setSpacing(style.SP_MD)
         card = ui.GroupCard("Load cases", form=False)
-        self.tbl = QTableWidget(0, 2)
-        self.tbl.setHorizontalHeaderLabels(["Name", "Nature"])
-        self.tbl.horizontalHeader().setStretchLastSection(True)
+        self.tbl = QTableWidget(0, 3)
+        self.tbl.setHorizontalHeaderLabels(["Name", "Nature", "Self-weight ×"])
+        self.tbl.horizontalHeader().setStretchLastSection(False)
+        self.tbl.horizontalHeader().setSectionResizeMode(
+            0, QHeaderView.ResizeMode.Stretch)
         self.tbl.verticalHeader().setVisible(False)
         card.body_layout().addWidget(self.tbl)
         row = QHBoxLayout()
         add = QPushButton("＋ Case")
         add.clicked.connect(self._add)
+        sw = QPushButton("＋ Self weight")
+        sw.setToolTip("Add a 'Self weight' dead case with the multiplier at 1.0")
+        sw.clicked.connect(self.add_self_weight_case)
         rem = QPushButton("Remove")
         rem.clicked.connect(self._remove)
         row.addWidget(add)
+        row.addWidget(sw)
         row.addWidget(rem)
         row.addStretch(1)
         card.body_layout().addLayout(row)
         outer.addWidget(card)
 
         hint = QLabel("Each case's nature (Dead / Live / Wind …) drives the "
-                      "ASCE 7-22 generator in Analysis ▸ Load combinations.")
+                      "ASCE 7-22 generator in Analysis ▸ Load combinations. "
+                      "Set Self-weight × to 1.0 to include the model's own "
+                      "gravity weight (needs a material density).")
         hint.setObjectName("hintLabel")
         hint.setWordWrap(True)
         outer.addWidget(hint)
@@ -457,7 +467,7 @@ class LoadCaseDialog(QDialog):
 
     def _reload(self) -> None:
         self.tbl.setRowCount(len(self._rows))
-        for r, (_id, name, nature) in enumerate(self._rows):
+        for r, (_id, name, nature, sw) in enumerate(self._rows):
             item = QTableWidgetItem(name)
             item.setIcon(self._nature_icon(nature))
             self.tbl.setItem(r, 0, item)
@@ -469,10 +479,32 @@ class LoadCaseDialog(QDialog):
             combo.currentIndexChanged.connect(
                 lambda _i, rr=r, cc=combo: self._on_nature(rr, cc))
             self.tbl.setCellWidget(r, 1, combo)
+            spin = QDoubleSpinBox()
+            spin.setRange(0.0, 100.0)
+            spin.setSingleStep(1.0)
+            spin.setDecimals(3)
+            spin.setValue(float(sw))
+            spin.setToolTip("Self-weight multiplier — 1.0 applies the model's "
+                            "full gravity weight to this case (0 = off).")
+            self.tbl.setCellWidget(r, 2, spin)
 
     def _add(self) -> None:
         self._sync_names()
-        self._rows.append([0, f"Case {len(self._rows) + 1}", "live"])
+        self._rows.append([0, f"Case {len(self._rows) + 1}", "live", 0.0])
+        self._reload()
+
+    def add_self_weight_case(self) -> None:
+        """Append a ready-made 'Self weight' dead case with the multiplier at
+        1.0 — the one-click way to add self-weight to the model."""
+        self._sync_names()
+        existing = {row[1].strip().lower() for row in self._rows}
+        name = "Self weight"
+        if name.lower() in existing:
+            n = 2
+            while f"{name} {n}".lower() in existing:
+                n += 1
+            name = f"{name} {n}"
+        self._rows.append([0, name, "dead", 1.0])
         self._reload()
 
     def _remove(self) -> None:
@@ -490,16 +522,20 @@ class LoadCaseDialog(QDialog):
             w = self.tbl.cellWidget(r, 1)
             if w and r < len(self._rows):
                 self._rows[r][2] = w.currentData()
+            sp = self.tbl.cellWidget(r, 2)
+            if sp and r < len(self._rows):
+                self._rows[r][3] = float(sp.value())
 
     def accept(self) -> None:
         self._sync_names()
         used = {row[0] for row in self._rows if row[0]}
         nxt = (max(used) if used else 0) + 1
         out = []
-        for _id, name, nature in self._rows:
+        for _id, name, nature, sw in self._rows:
             if not _id:
                 _id, nxt = nxt, nxt + 1
-            out.append(LoadCase(id=_id, name=name, nature=nature))
+            out.append(LoadCase(id=_id, name=name, nature=nature,
+                                self_weight_factor=float(sw)))
         self.result_cases = out
         super().accept()
 
