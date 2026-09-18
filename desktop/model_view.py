@@ -166,6 +166,10 @@ class ModelView(QtInteractor):
         self._area_pick: list = []            # nodes collected in draw_area mode
         self._snap_on = True
         self._snap_grid = 0.5
+        self._show_story_grid = True          # named grid + story-level overlay
+        self._story_project = None            # project whose grid/stories we draw
+        self._snap_xs: list = []              # named-grid snap targets (W4b)
+        self._snap_ys: list = []
         self._region_cb = None
         self._coord_cb = None
         self._rubber = None
@@ -669,6 +673,12 @@ class ModelView(QtInteractor):
                     y = _snap(p[1], self._snap_grid)
                 else:
                     x, y = round(float(p[0]), 3), round(float(p[1]), 3)
+                # a named grid line (wall plan W4b) wins over the spacing grid
+                # when the click lands within half a spacing step of it
+                if self._snap_xs or self._snap_ys:
+                    tol = max(self._snap_grid * 0.5, 1e-3)
+                    x, y, _z = mg.snap_to_grid(x, y, 0.0, self._snap_xs,
+                                               self._snap_ys, [], tol)
                 self._add_node_cb(x, y, 0.0)
             return
         tol = max(mg.model_span(self._model) * 0.05, 0.15)
@@ -789,6 +799,35 @@ class ModelView(QtInteractor):
             self.add_axes(color=style.TEXT, line_width=2)
         except Exception:
             pass
+
+    def set_story_grid(self, project) -> None:
+        """Draw the named grid lines + story levels overlay and register the
+        grid coordinates as snap targets (wall plan W4b). Call after
+        ``set_model`` (which clears the scene). Safe to call with no stories or
+        grid — it simply removes any stale overlay."""
+        self._story_project = project
+        try:
+            self._snap_xs, self._snap_ys, _zs = mg.snap_targets(project)
+        except Exception:
+            self._snap_xs, self._snap_ys = [], []
+        self.remove_actor("storygrid", render=False)
+        if not self._show_story_grid or project is None or self._model is None:
+            self.render()
+            return
+        try:
+            poly = mg.grid_story_mesh(project, self._model)
+        except Exception:
+            poly = None
+        if poly is not None:
+            self.add_mesh(poly, color=style.ACCENT, line_width=1,
+                          opacity=0.6, name="storygrid", pickable=False)
+        self.render()
+
+    def show_story_grid(self, on: bool) -> None:
+        """Toggle the grid/story overlay; redraws from the stored project."""
+        self._show_story_grid = bool(on)
+        if self._story_project is not None:
+            self.set_story_grid(self._story_project)
 
     def apply_theme(self) -> None:
         """Re-read the palette (background + entity inks) and repaint the current

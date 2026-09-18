@@ -557,6 +557,13 @@ class MainWindow(QMainWindow):
         self.act_area_axes.setCheckable(True)
         self.act_area_axes.toggled.connect(
             lambda on: self.view.set_area_axes(on))
+        self.act_story_grid = _set_icon(QAction("Stories && &grid", self), "grid")
+        self.act_story_grid.setCheckable(True)
+        self.act_story_grid.setChecked(True)
+        self.act_story_grid.setStatusTip(
+            "Show the named grid lines and story levels overlay")
+        self.act_story_grid.toggled.connect(
+            lambda on: self.view.show_story_grid(on))
         self.act_node_labels = _set_icon(QAction("&Node numbers", self), "node")
         self.act_node_labels.setCheckable(True)
         self.act_node_labels.toggled.connect(
@@ -728,7 +735,8 @@ class MainWindow(QMainWindow):
                         (self.act_v_back, "Back"),
                         (self.act_v_bottom, "Bottom"))),
             ("Display", ((self.act_drawings, "Drawings"),
-                         (self.act_area_axes, "Local axes"))),
+                         (self.act_area_axes, "Local axes"),
+                         (self.act_story_grid, "Grid"))),
             ("Labels", ((self.act_node_labels, "Nodes"),
                         (self.act_elem_labels, "Elements"))),
             ("Appearance", ((self.act_theme, "Theme"),
@@ -3446,6 +3454,7 @@ class MainWindow(QMainWindow):
                       else disp.build_model(with_loads=False))
         self.view.set_model(view_model)
         self.view.mark_hinges(disp)
+        self.view.set_story_grid(disp)
 
     def _visible_model(self, solved):
         """A render-only view of a *solved* model restricted to the active

@@ -402,6 +402,83 @@ def model_span(model) -> float:
     return float(np.linalg.norm(pts.max(axis=0) - pts.min(axis=0))) or 1.0
 
 
+# --------------------------------------------------------------- stories / grid
+def _model_bbox(model):
+    """(lo, hi) 3-vectors of the model's node bounding box, or ``None``."""
+    _t, pts, _i = node_points(model)
+    pts = np.asarray(pts, dtype=float)
+    if not len(pts):
+        return None
+    return pts.min(axis=0), pts.max(axis=0)
+
+
+def grid_story_mesh(project, model, *, pad=None):
+    """Lines PolyData for the named grid lines (drawn on the base plane) and the
+    story levels (a horizontal rectangle at each elevation), spanning the model
+    plan bounds (wall plan W4b). ``None`` if there is nothing to draw.
+
+    Grid ``axis="x"`` is a line of constant X (runs in Y); ``axis="y"`` constant
+    Y (runs in X). Story rectangles let the levels read in a 3-D view."""
+    stories = list(getattr(project, "stories", []))
+    grids = list(getattr(project, "grid_lines", []))
+    if not stories and not grids:
+        return None
+    bb = _model_bbox(model)
+    if bb is None:
+        return None
+    lo, hi = bb
+    span = float(max(hi[0] - lo[0], hi[1] - lo[1], 1.0))
+    if pad is None:
+        pad = 0.1 * span
+    x0, x1 = float(lo[0] - pad), float(hi[0] + pad)
+    y0, y1 = float(lo[1] - pad), float(hi[1] + pad)
+    zbase = float(lo[2])
+    verts: list = []
+    lines: list = []
+
+    def _seg(a, b):
+        i = len(verts)
+        verts.append(a)
+        verts.append(b)
+        lines.extend((2, i, i + 1))
+
+    for g in grids:
+        if g.axis == "x":
+            _seg((g.coord, y0, zbase), (g.coord, y1, zbase))
+        else:
+            _seg((x0, g.coord, zbase), (x1, g.coord, zbase))
+    for s in stories:
+        z = float(s.elev)
+        c = [(x0, y0, z), (x1, y0, z), (x1, y1, z), (x0, y1, z)]
+        for i in range(4):
+            _seg(c[i], c[(i + 1) % 4])
+    if not verts:
+        return None
+    poly = pv.PolyData(np.asarray(verts, dtype=float))
+    poly.lines = np.asarray(lines, dtype=np.int64)
+    return poly
+
+
+def snap_targets(project):
+    """``(xs, ys, zs)`` the named-grid X coordinates, Y coordinates and story
+    elevations to snap drawing to (wall plan W4b)."""
+    xs = [g.coord for g in getattr(project, "grid_lines", []) if g.axis == "x"]
+    ys = [g.coord for g in getattr(project, "grid_lines", []) if g.axis == "y"]
+    zs = [s.elev for s in getattr(project, "stories", [])]
+    return xs, ys, zs
+
+
+def snap_to_grid(x, y, z, xs, ys, zs, tol):
+    """Snap each of ``x, y, z`` independently to the nearest value in ``xs, ys,
+    zs`` within ``tol`` (else leave it). Grid/story snapping for the draw tools."""
+    def _near(v, cands):
+        if not cands:
+            return v
+        best = min(cands, key=lambda c: abs(c - v))
+        return best if abs(best - v) <= tol else v
+    return _near(x, xs), _near(y, ys), _near(z, zs)
+
+
 # --------------------------------------------------------------- deformed shape
 # After an analysis, ``node.disp`` holds the DOF displacements; the first ``ndm``
 # are the translations. ``scale`` exaggerates them for display.
