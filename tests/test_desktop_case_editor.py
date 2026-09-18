@@ -268,3 +268,22 @@ def test_all_types_migrated_to_editor(qapp):
     reg_ids = {tid for tid, _, _ in case_bodies.REGISTRY}
     assert reg_ids == set(case_types.TYPES)            # all types unified
     assert "linstatic" in reg_ids                      # incl. Linear Static (E3b)
+
+
+def test_dialog_bounded_and_scrolls_tall_types(qapp):
+    """The body scrolls, so the dialog's minimum height no longer balloons to
+    the tallest type (Load Rating) and clips the OK/Cancel buttons — and only
+    the *current* page occupies the scroll, so switching type doesn't destroy
+    the others."""
+    from case_editor import CaseEditorDialog
+    dlg = CaseEditorDialog(None, _project(), "loadrating")
+    # was ~1400px (off-screen) before scrolling — now screen-friendly
+    assert dlg.minimumSizeHint().height() < 700
+    assert dlg._scroll.widget() is dlg._pages["loadrating"]
+    # switching to a short type swaps the page in without deleting the others
+    dlg.type_combo.setCurrentIndex(dlg.type_combo.findData("modal"))
+    assert dlg._scroll.widget() is dlg._pages["modal"]
+    assert set(dlg._pages) == set(dlg._bodies)         # every page still alive
+    # switch back — the load-rating body survived and still round-trips
+    dlg.type_combo.setCurrentIndex(dlg.type_combo.findData("loadrating"))
+    assert dlg._result_case(0).type == "loadrating"

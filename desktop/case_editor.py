@@ -2,21 +2,24 @@
 the body, the desktop counterpart of SAP2000 / CSiBridge's *Load Case Data*.
 
 The shared chrome — Name, Notes, the **Type** dropdown, and the E2 *Stiffness to
-use* card — stays put while the type-specific body (:mod:`case_bodies`) swaps in
-a ``QStackedWidget``. Switching the type on an existing case changes its type
-(its body's defaults take over), which is how one edits a case from, say, Modal
-to Buckling.
+use* card — stays put while the type-specific body (:mod:`case_bodies`) is
+swapped into a scroll area. Switching the type on an existing case changes its
+type (its body's defaults take over), which is how one edits a case from, say,
+Modal to Buckling.
 
-Slice 1 covers the eigen family currently on bodies (Modal, Buckling); the other
-types keep their standalone dialogs until migrated. :meth:`edit` returns the
-edited :class:`project.AnalysisCase` (id 0 for a new one — the caller assigns a
-fresh id), or ``None`` if cancelled. Pure Qt, headless-constructible.
+Only the current type's page occupies the scroll area (the others wait
+off-screen in ``self._pages``), so the dialog sizes to the current type and
+tall bodies (Load Rating) scroll rather than pushing the buttons off-screen.
+:meth:`edit` returns the edited :class:`project.AnalysisCase` (id 0 for a new
+one — the caller assigns a fresh id), or ``None`` if cancelled. Pure Qt,
+headless-constructible.
 """
 from __future__ import annotations
 
-from PySide6.QtWidgets import (QComboBox, QDialog, QHBoxLayout, QLabel,
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (QComboBox, QDialog, QFrame, QHBoxLayout, QLabel,
                                QLineEdit, QMessageBox, QPlainTextEdit,
-                               QPushButton, QStackedWidget, QVBoxLayout, QWidget)
+                               QPushButton, QScrollArea, QVBoxLayout, QWidget)
 
 import case_bodies
 import style
@@ -32,7 +35,8 @@ class CaseEditorDialog(QDialog):
         self.setWindowTitle("Load case data")
         self._project = project
         self._notes = case.notes if case else ""
-        self.resize(540, 540)
+        self.resize(600, 660)
+        self.setMinimumSize(480, 420)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(style.SP_LG, style.SP_LG,
@@ -61,10 +65,15 @@ class CaseEditorDialog(QDialog):
         self._refresh_notes_btn()
 
         # ---- type-specific body ----
+        # Each type's body lives in its own page; only the *current* page sits
+        # in the scroll area (swapped in _on_type). Keeping the pages in a dict
+        # rather than a QStackedWidget means the scroll — and so the dialog —
+        # sizes to the current type, not the tallest one (a QStackedWidget
+        # reserves the tallest page's minimum height, which pushed the OK/Cancel
+        # buttons off-screen for short types like Modal).
         cap = max(1, int(project.ndf) * max(1, len(project.nodes)))
-        self.stack = QStackedWidget()
         self._bodies: dict = {}
-        self._order = [t for t, _, _ in case_bodies.REGISTRY]
+        self._pages: dict = {}
         for tid, _label, bcls in case_bodies.REGISTRY:
             init = dict(case.params) if (case and case.type == tid) else None
             body = bcls(project, initial=init, max_modes=cap)
@@ -81,8 +90,18 @@ class CaseEditorDialog(QDialog):
             pl.addWidget(title)
             pl.addWidget(subl)
             pl.addWidget(body)
-            self.stack.addWidget(page)
-        root.addWidget(self.stack)
+            pl.addStretch(1)          # keep the body compact at the top
+            page.setParent(self)      # own it while it waits off-screen
+            self._pages[tid] = page
+        # Types range from a couple of fields (Modal) to tall forms with node
+        # lists (Load Rating). Scroll the body so the dialog stays a sane size
+        # instead of growing past the screen and clipping the buttons.
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._scroll = scroll
+        root.addWidget(scroll, 1)
 
         # ---- stiffness to use (shared across the eigen bodies) ----
         sources = [(c.id, c.name) for c in project.nonlinear_cases]
@@ -92,8 +111,6 @@ class CaseEditorDialog(QDialog):
         self.initial.set_value(case.initial_condition if case else ("zero",),
                                hold0)
         root.addWidget(self.initial)
-
-        root.addStretch(1)
         root.addWidget(dialog_buttons(self))
 
         i = self.type_combo.findData(type_id)
@@ -108,7 +125,14 @@ class CaseEditorDialog(QDialog):
     def _on_type(self) -> None:
         tid = self.type_combo.currentData()
         body = self._bodies[tid]
-        self.stack.setCurrentIndex(self._order.index(tid))
+        # Swap the current page into the scroll area without deleting the others
+        # (takeWidget releases ownership; the pages are kept in self._pages), so
+        # the scroll — and the dialog — sizes to this type alone.
+        prev = self._scroll.takeWidget()
+        if prev is not None:
+            prev.setParent(self)
+            prev.hide()
+        self._scroll.setWidget(self._pages[tid])
         # only stiffness-based analyses can continue from a nonlinear state; the
         # hold-loads checkbox only applies to load-applying ones (time history)
         self.initial.setVisible(body.SUPPORTS_IC)
