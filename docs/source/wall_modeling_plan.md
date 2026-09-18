@@ -1,6 +1,6 @@
 # Wall (shear-wall / pier) modeling — commercial-parity roadmap
 
-*Status: **IN PROGRESS — W0 + W1a complete** (branch `feat/wall-modeling`).
+*Status: **IN PROGRESS — W0 + W1a + W2 complete** (branch `feat/wall-modeling`).
 This roadmap takes the desktop app from "a wall is just a vertical `Area`"
 to an ETABS-style wall workflow: a labeled **wall / pier / spandrel** object, a
 **story** context to draw and stack it in, automatic **pier force integration**,
@@ -18,8 +18,10 @@ how to size. As with the slab work, the split is almost entirely
 `Project` wall/pier accessors, `tests/test_desktop_wall_model.py`. W1a
 (`5e9a721`): Draw ▸ Wall extrudes a selected base line upward into vertical wall
 panels (`desktop/walls.py`, `editing.WallDialog`, `MainWindow.draw_wall`),
-`tests/test_desktop_wall_draw.py`. **Next: W1b** (true elevation draw plane) or
-skip to **W2** (pier force integration — the headline ETABS output). Note: the
+`tests/test_desktop_wall_draw.py`. W2 (`9d8ada7`): pier force integration —
+`desktop/piers.py` + Results ▸ Wall ▸ Pier forces (`pier_forces_dialog.py`),
+`tests/test_desktop_pier_forces.py`. **Next: W3** (wall design — wire pier P/V/M
+to the concrete-design machinery), or **W1b** (elevation draw plane). Note: the
 GUI venv lives in the **main** repo, so run pytest with
 `PYTHONPATH=src QT_QPA_PLATFORM=offscreen
 /c/Mahesh/fem_solver/.venv-gui/Scripts/python -m pytest ...`. Tests:
@@ -121,14 +123,20 @@ W5/W6 are v2.
   Touches `model_view._world_on_ground` (VTK ray→plane; currently hard-wired to
   z = 0). Higher-risk viewport work; deferred so W2/W3 can proceed.
 
-### W2 — Pier force integration ★★ (the most-used ETABS wall output)
-- Promote the transient section-cut (`model_geometry.py:634`) to a **persistent,
-  named pier cut**: integrate the meshed shell membrane forces across a pier's
-  horizontal section at each story level → **P, M (about pier centroid), V**.
-- Results ▸ Wall ▸ Pier forces: table (pier × story) + a stacked elevation plot.
-- CSV export (reuse the slab-results CSV path).
-- Engine: only a small integrator over element membrane resultants at a cut;
-  the resultants already exist.
+### W2 — Pier force integration ★★ (the most-used ETABS wall output) — **DONE** (`9d8ada7`)
+- `desktop/piers.py` `pier_forces()` integrates the meshed shell membrane
+  stresses into **P (axial, +tension), V (in-plane shear), M (about the pier
+  centroid)** at each mesh-row elevation. Each wall element's local membrane
+  resultant is rebuilt as a global tensor (`model_geometry._area_frame`) and the
+  traction on a horizontal cut (normal +Z) is summed element-wise across the
+  cut width. Validated by free-body equilibrium (base cut = total applied load
+  above).
+- `pier_forces_dialog.PierForcesDialog` — Results ▸ Wall ▸ Pier forces: per-pier
+  P/V/M table + shear/moment elevation diagram (display units) + CSV export.
+- `MainWindow.show_pier_forces` + `act_pier_forces` in a new Results "Wall"
+  ribbon group. `tests/test_desktop_pier_forces.py`.
+- Cut elevations default to mid-height of each mesh row (a profile without a
+  Story object — that's W4). Engine unchanged.
 
 ### W3 — Wall design ★★
 - Wire pier P-M-V to the existing concrete-design machinery:
@@ -211,7 +219,7 @@ gives every later epic something to hang on.
 | W0 | Wall / pier data model | ☑ done (`da4f925`) |
 | W1a | Draw Wall by base line + height | ☑ done (`5e9a721`) |
 | W1b | Elevation / XZ-YZ draw plane | ☐ todo |
-| W2 | Pier force integration | ☐ proposed |
+| W2 | Pier force integration | ☑ done (`9d8ada7`) |
 | W3 | Wall design check | ☐ proposed |
 | W4 | Story / Level system + grids | ☐ proposed |
 | W5 | Openings (opening-aware mesh) | ☐ proposed (v2) |
