@@ -284,6 +284,83 @@ class AreaDialog(PickDialog):
         return dlg.data() if dlg.exec() else None
 
 
+class WallDialog(QDialog):
+    """Draw a wall by extruding a base line upward (wall plan W1).
+
+    The base line is the current selection (an ordered run of base nodes, shown
+    read-only); the dialog captures the extrusion ``height``, the thickness
+    (shell section), material, mesh divisions ``(n1, n2)`` = (along base × up
+    height), and an optional ETABS-style ``pier`` label. ``get`` returns a
+    params dict for :func:`walls.build_wall_line`, or ``None`` if cancelled.
+
+    ``units`` makes the height read/store in the project's length unit."""
+
+    def __init__(self, parent, project, base_nodes, units: UnitSystem | None = None):
+        super().__init__(parent)
+        self.setWindowTitle("Draw wall")
+        self._us = units or UnitSystem()
+        self._base = [int(n) for n in base_nodes]
+        form = QFormLayout(self)
+
+        base_lbl = QLabel(" → ".join(str(n) for n in self._base) or "(none)")
+        form.addRow("Base line", base_lbl)
+
+        self.height = _grid_len_spin(self._us, 3.0)
+        form.addRow(labeled("Height", self.height), self.height)
+
+        self.sec = _combo([(f"{s.id}: {s.name}", s.id)
+                           for s in project.shell_sections])
+        self.mat = _combo([(f"{m.id}: {m.name}", m.id)
+                           for m in project.materials])
+        form.addRow("Thickness", self.sec)
+        form.addRow("Material", self.mat)
+
+        self.n1 = _int_spin(2, 1, 200)
+        self.n2 = _int_spin(2, 1, 200)
+        mesh_row = QWidget()
+        mh = QHBoxLayout(mesh_row)
+        mh.setContentsMargins(0, 0, 0, 0)
+        mh.addWidget(self.n1)
+        mh.addWidget(QLabel("×"))
+        mh.addWidget(self.n2)
+        mh.addStretch(1)
+        form.addRow("Mesh (base × height)", mesh_row)
+
+        self.pier = QLineEdit()
+        self.pier.setPlaceholderText("optional, e.g. P1")
+        form.addRow("Pier label", self.pier)
+
+        form.addRow(_buttons(self))
+
+    def accept(self) -> None:
+        if len(self._base) < 2 or len(set(self._base)) != len(self._base):
+            QMessageBox.warning(self, "Draw wall",
+                                "Select at least two distinct base nodes "
+                                "(the wall's bottom edge) first.")
+            return
+        if self.height.si_value() == 0:
+            QMessageBox.warning(self, "Draw wall", "Height must be non-zero.")
+            return
+        if self.sec.currentData() is None:
+            QMessageBox.warning(self, "No thickness",
+                                "Define a thickness (shell section) first.")
+            return
+        super().accept()
+
+    def params(self) -> dict:
+        return dict(base_nodes=self._base,
+                    height=self.height.si_value(),
+                    shell_section=self.sec.currentData(),
+                    material=self.mat.currentData(),
+                    mesh=(self.n1.value(), self.n2.value()),
+                    pier=(self.pier.text().strip() or None))
+
+    @classmethod
+    def get(cls, parent, project, base_nodes, units: UnitSystem | None = None):
+        dlg = cls(parent, project, base_nodes, units)
+        return dlg.params() if dlg.exec() else None
+
+
 class DiaphragmDialog(QDialog):
     """Add / edit a rigid floor diaphragm (slab plan S8): a name, the tied node
     ids (seeded from the current selection, editable) and the diaphragm plane.

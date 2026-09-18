@@ -31,6 +31,10 @@ _ICONS = {
     # slab / shell area — a plate panel drawn in perspective with a mesh line
     "slab": '<path d="M2 9l8-4 12 4-8 4z"/>'
             '<path d="M2 9v4l8 4 12-4V9"/><path d="M6 7l12 4"/>',
+    # wall — an upright panel with a brick course pattern (draw wall by line)
+    "wall": '<rect x="5" y="4" width="14" height="16" rx="1"/>'
+            '<path d="M5 9.3h14M5 14.6h14M12 4v5.3M8.5 9.3v5.3'
+            'M15.5 9.3v5.3M10.2 14.6V20M13.8 14.6V20"/>',
     # contour — nested iso-bands (a filled-contour / result map glyph)
     "contour": '<path d="M4 18h16"/><path d="M6 18a6 6 0 0 1 12 0"/>'
                '<path d="M9 18a3 3 0 0 1 6 0"/>',

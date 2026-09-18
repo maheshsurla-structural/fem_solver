@@ -586,6 +586,13 @@ class MainWindow(QMainWindow):
         self.act_draw_area.setCheckable(True)
         self.act_draw_area.triggered.connect(
             lambda: self._set_mode("draw_area"))
+        # Draw wall is a selection-driven command (extrude the selected base
+        # line), not a viewport mode — so it is not part of the mode group.
+        self.act_draw_wall = _set_icon(QAction("Draw &wall", self), "wall")
+        self.act_draw_wall.setStatusTip(
+            "Draw wall — select the base line (2+ nodes), then extrude it "
+            "upward by a height into vertical wall panels")
+        self.act_draw_wall.triggered.connect(self.draw_wall)
         self._mode_group = QActionGroup(self)
         for a in (self.act_select, self.act_sel_window, self.act_sel_poly,
                   self.act_draw_node, self.act_draw_member, self.act_draw_area):
@@ -650,6 +657,7 @@ class MainWindow(QMainWindow):
                       (self.act_draw_member, "Member"),
                       (self.act_draw_area, "Area"),
                       (self.act_add_area, "Area…"),
+                      (self.act_draw_wall, "Wall"),
                       (self.act_snap, "Snap"), self.snap_spin)),
             ("Select", ((self.act_select, "Select"),
                         (self.act_sel_window, "Window"),
@@ -2472,6 +2480,53 @@ class MainWindow(QMainWindow):
         self._apply_edit("Add area",
                          lambda: self._project.areas.append(area),
                          ("area", area.id))
+
+    def draw_wall(self) -> None:
+        """Draw a wall by extruding the selected base line upward (wall plan W1).
+
+        Select 2+ base nodes (the wall's bottom edge) — nodes, or members whose
+        end nodes form the base — then this extrudes them by a height into
+        vertical wall ``Area``(s) with ``role="wall"`` and an optional pier
+        label. A 3-D feature, like all areas."""
+        import walls
+        from editing import WallDialog
+        p = self._project
+        if p.ndm != 3:
+            QMessageBox.information(
+                self, "Draw wall",
+                "Walls are a 3-D feature. Start a 3-D model (File ▸ New 3-D).")
+            return
+        if not p.shell_sections or not p.materials:
+            QMessageBox.information(
+                self, "Draw wall",
+                "Add a thickness (Home ▸ Thickness) and a material first.")
+            return
+        # base nodes = selected nodes + the end nodes of selected members
+        node_ids, member_ids = self._sel_nodes_members()
+        if len(node_ids) < 2:
+            QMessageBox.information(
+                self, "Draw wall",
+                "Select the wall's base line first: 2+ nodes (or members whose "
+                "ends form the base), then Draw ▸ Wall.")
+            return
+        try:
+            base = walls.wall_baseline_from_nodes(p, node_ids)
+        except ValueError as e:
+            QMessageBox.warning(self, "Draw wall", str(e))
+            return
+        params = WallDialog.get(self, p, base, self._units())
+        if params is None:
+            return
+        # the areas build_wall_line will create get consecutive ids from the
+        # next free one — precompute them so undo/redo restores the selection
+        first = p.next_area_id()
+        segments = max(len(params["base_nodes"]) - 1, 0)
+        refs = [("area", first + k) for k in range(segments)]
+        self._apply_edit("Draw wall",
+                         lambda: walls.build_wall_line(p, **params),
+                         refs[0] if len(refs) == 1 else None)
+        if refs:
+            self._set_selection(refs)
 
     def add_diaphragm(self) -> None:
         """Add a rigid floor diaphragm tying the selected joints (slab plan S8).
