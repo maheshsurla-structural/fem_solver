@@ -134,6 +134,15 @@ SHELL_KIND_LABELS = {
     "membrane": "Membrane (in-plane only)",
 }
 
+# Structural *role* an area object plays (wall plan W0). Following ETABS, a wall
+# is not a separate object type — it is an area whose role is ``"wall"`` and
+# which may carry a ``pier``/``spandrel`` label so its integrated forces can be
+# reported and designed as one wall across several area objects / stories. A
+# plain shell that is neither a floor nor a wall is ``"shell"``. Absent role on
+# an older file migrates to ``"slab"`` (see ``Project.from_dict``).
+AREA_ROLES = ("slab", "wall", "shell")
+AREA_ROLE_LABELS = {"slab": "Slab / floor", "wall": "Wall", "shell": "Shell"}
+
 
 @dataclass
 class ShellSection:
@@ -239,6 +248,13 @@ class Area:
     material: int
     mesh: tuple = (1, 1)          # (n1, n2) auto-mesh divisions (S3)
     local_axis: float = 0.0       # local-axis rotation about the normal (deg)
+    # Structural role + wall labels (wall plan W0). ``role`` is one of
+    # ``AREA_ROLES``; ``pier``/``spandrel`` are optional labels (ETABS-style)
+    # grouping wall areas whose forces are integrated and designed together.
+    # Both labels are ``None`` unless ``role == "wall"``.
+    role: str = "slab"
+    pier: "str | None" = None
+    spandrel: "str | None" = None
 
     def __post_init__(self):
         # JSON round-trips ``nodes``/``mesh`` as lists; normalize types so
@@ -246,6 +262,12 @@ class Area:
         self.nodes = [int(n) for n in self.nodes]
         m = tuple(int(x) for x in self.mesh)
         self.mesh = (m + (1, 1))[:2] if m else (1, 1)
+        self.role = self.role if self.role in AREA_ROLES else "slab"
+        # A pier/spandrel label only means something on a wall; blank strings
+        # normalize to ``None`` so "unset" has one representation.
+        self.pier = _norm_label(self.pier) if self.role == "wall" else None
+        self.spandrel = (_norm_label(self.spandrel)
+                         if self.role == "wall" else None)
 
 
 # Load "nature" -> ASCE 7 pattern key used by the code combinations. ``None``
@@ -511,6 +533,30 @@ class Project:
     def next_area_id(self) -> int:
         return max((a.id for a in self.areas), default=0) + 1
 
+    # --------------------------------------------------------- walls / piers (W0)
+    def walls(self) -> list:
+        """All area objects whose structural role is ``"wall"``."""
+        return [a for a in self.areas if a.role == "wall"]
+
+    def pier_names(self) -> list:
+        """Sorted, de-duplicated pier labels currently in use (wall plan W0)."""
+        return sorted({a.pier for a in self.areas
+                       if a.role == "wall" and a.pier})
+
+    def spandrel_names(self) -> list:
+        """Sorted, de-duplicated spandrel labels currently in use."""
+        return sorted({a.spandrel for a in self.areas
+                       if a.role == "wall" and a.spandrel})
+
+    def areas_in_pier(self, pier: str) -> list:
+        """The wall areas grouped under a given pier label."""
+        return [a for a in self.areas if a.role == "wall" and a.pier == pier]
+
+    def areas_in_spandrel(self, spandrel: str) -> list:
+        """The wall areas grouped under a given spandrel label."""
+        return [a for a in self.areas
+                if a.role == "wall" and a.spandrel == spandrel]
+
     def diaphragm(self, dia_id):
         return next((d for d in self.diaphragms if d.id == dia_id), None)
 
@@ -635,7 +681,10 @@ class Project:
                         shell_section=a["shell_section"],
                         material=a.get("material", 0),
                         mesh=tuple(a.get("mesh", (1, 1))),
-                        local_axis=float(a.get("local_axis", 0.0)))
+                        local_axis=float(a.get("local_axis", 0.0)),
+                        role=a.get("role", "slab"),   # migrate: absent -> slab
+                        pier=a.get("pier"),
+                        spandrel=a.get("spandrel"))
                    for a in d.get("areas", [])],
             load_cases=cases,
             loads=[Load(node=x["node"], values=tuple(x["values"]),
@@ -1406,6 +1455,15 @@ def _coerce_node(n: dict) -> dict:
     if n.get("supports") is not None:
         n["supports"] = tuple(n["supports"])
     return n
+
+
+def _norm_label(v) -> "str | None":
+    """Normalize a pier/spandrel label: strip whitespace, and treat empty /
+    ``None`` as unset (``None``). Keeps "no label" single-valued (wall plan W0)."""
+    if v is None:
+        return None
+    s = str(v).strip()
+    return s or None
 
 
 def _resolve_section(section):
