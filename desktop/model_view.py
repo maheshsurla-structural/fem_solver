@@ -144,10 +144,9 @@ class _PolygonOverlay(QWidget):
 
 
 class ModelView(QtInteractor):
-    # emitted when the interaction tool changes / the 2-D rotation lock flips,
-    # so the shell can keep the ribbon + the on-viewport toolbar in sync.
+    # emitted when the interaction tool changes, so the shell can keep the
+    # ribbon + the on-viewport toolbar in sync.
     mode_changed = Signal(str)
-    rotation_lock_changed = Signal(bool)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -175,7 +174,6 @@ class ModelView(QtInteractor):
         self._highlight = []
         self._nav = None                     # active drag: (kind, last QPointF)
         self._zoom_anchor = None             # fixed anchor for a right-drag zoom
-        self._rot_locked = False             # 2-D lock: no interactive tumbling
         self._poly_overlay = _PolygonOverlay(self, self._polygon_select)
         self._poly_overlay.hide()
         # orientation cube — a CAD-style navigation gizmo pinned top-right; it
@@ -317,8 +315,7 @@ class ModelView(QtInteractor):
             self._zoom_anchor = pos
             return
         if b == Qt.MouseButton.LeftButton and self._mode == "orbit":
-            if not self._rot_locked:
-                self._nav = ("orbit", pos)
+            self._nav = ("orbit", pos)
             return
         if b == Qt.MouseButton.LeftButton and self._mode in ("window", "zoomwin"):
             self._start_band(pos, ev)
@@ -423,8 +420,6 @@ class ModelView(QtInteractor):
         self._render_nav()
 
     def _orbit_pixels(self, dx, dy) -> None:
-        if self._rot_locked:
-            return
         cam = self.camera
         cam.Azimuth(-dx * 0.35)
         cam.Elevation(dy * 0.35)
@@ -484,20 +479,6 @@ class ModelView(QtInteractor):
 
     def current_mode(self) -> str:
         return self._mode
-
-    def set_rotation_locked(self, locked: bool) -> None:
-        """Lock/unlock interactive tumbling (default on for planar models).
-        Locking mid-orbit falls back to the select tool."""
-        locked = bool(locked)
-        if locked == self._rot_locked:
-            return
-        self._rot_locked = locked
-        if locked and self._mode == "orbit":
-            self.set_mode("select")
-        self.rotation_lock_changed.emit(locked)
-
-    def rotation_locked(self) -> bool:
-        return self._rot_locked
 
     def _project(self, world):
         """World coords -> widget (logical) pixels, y down."""
@@ -871,9 +852,6 @@ class ModelView(QtInteractor):
         self._draw_highlight()
         if self._mode == "draw_node":
             self._add_ground_plane()
-        # planar models lock rotation by default (no accidental tumbling); the
-        # toolbar / nav-cube can still switch to a named view or unlock.
-        self.set_rotation_locked(getattr(model, "ndm", 3) == 2)
         self._sync_hint()
 
     def mark_hinges(self, project) -> None:
