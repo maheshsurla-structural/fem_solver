@@ -4,7 +4,7 @@ on-viewport toolbar (``desktop/nav_toolbar.py``) and ``ModelView`` wiring.
 Camera *translation* math (pan / zoom-to-cursor) needs a real render-window
 size and can't be exercised headlessly (the offscreen window is 0×0, same as
 the existing selection projection), so those are covered by no-raise + state
-checks; the orbit / zoom-scale / lock / tool-sync logic is fully asserted.
+checks; the orbit / zoom-scale / tool-sync logic is fully asserted.
 """
 from __future__ import annotations
 
@@ -70,31 +70,16 @@ def test_ribbon_only_tool_leaves_no_nav_tool_pressed(qapp):
         assert not _tool_btn(v, cid).isChecked()
 
 
-# --- 2-D rotation lock ------------------------------------------------------
-def test_planar_model_locks_rotation_by_default(qapp):
-    v = _view()                                # demo frame is ndm == 2
-    assert v.rotation_locked() is True
-    assert _tool_btn(v, "orbit").isEnabled() is False
-
-
-def test_orbit_is_blocked_while_locked_then_works_unlocked(qapp):
+# --- orbit (rotation lock retired) ------------------------------------------
+def test_orbit_always_available_no_lock(qapp):
+    # the 2-D rotation lock was removed — orbit is always enabled and rotates,
+    # even for a planar model (the demo frame is ndm == 2).
     v = _view()
-    b0 = v.camera_basis()
-    v._orbit_pixels(40, 10)                    # locked → no change
-    assert np.allclose(np.vstack(b0), np.vstack(v.camera_basis()))
-    v.set_rotation_locked(False)
     assert _tool_btn(v, "orbit").isEnabled() is True
-    v._orbit_pixels(40, 10)                    # now it rotates
+    b0 = v.camera_basis()
+    v._orbit_pixels(40, 10)
     assert not np.allclose(np.vstack(b0), np.vstack(v.camera_basis()))
-
-
-def test_lock_button_reflects_and_drives_state(qapp):
-    v = _view()
-    v.set_rotation_locked(False)
-    lock = v._nav_bar._buttons_by_id["lock"]
-    assert lock.isChecked() is False
-    lock.setChecked(True)                      # user clicks the lock
-    assert v.rotation_locked() is True
+    assert not hasattr(v, "rotation_locked")   # API fully gone
 
 
 # --- zoom -------------------------------------------------------------------
@@ -126,7 +111,6 @@ def test_orbit_keeps_model_within_clipping_planes(qapp):
     (a flat 2-D model starts with a razor-thin range that would slice it once
     rotated). Assert every scene-bounds corner lies between the planes."""
     v = _view()
-    v.set_rotation_locked(False)
     for _ in range(15):
         v._orbit_pixels(15, 8)
     cam = v.camera

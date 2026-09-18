@@ -3400,6 +3400,38 @@ class MainWindow(QMainWindow):
                                     activate=act.trigger))
         self.view._nav_bar.register_many(cmds)
         self.view._nav_bar.rebuild()
+        self._install_mode_switch()
+
+    def _install_mode_switch(self) -> None:
+        """Pin the pre/post-processing **Model | Results** switch to the viewport
+        tool strip (where the retired rotation lock lived). Picking a segment
+        drives the ribbon workspace; the ribbon drives it back so the two never
+        disagree."""
+        from mode_switch import ModeSwitch
+        self._mode_switch = ModeSwitch(self)
+        self._mode_switch.modeChanged.connect(self._on_mode_switch)
+        self.view._nav_bar.set_trailing_widget(self._mode_switch)
+        # reflect a workspace the ribbon reaches by any route (a run's auto-raise,
+        # a keyboard tab-cycle, a direct tab click) back onto the switch.
+        self._ribbon.tabs.currentChanged.connect(self._reflect_mode_switch)
+        self._reflect_mode_switch(self._ribbon.tabs.currentIndex())
+
+    def _on_mode_switch(self, mode: str) -> None:
+        import mode_switch as ms
+        rb = self._ribbon
+        if mode == ms.RESULTS:
+            rb.set_current("Results")
+        else:
+            if rb.tabs.tabText(rb.tabs.currentIndex()) == "Results":
+                rb.set_current("Home")
+            self._show_undeformed()          # drop any deformed / contour overlay
+
+    def _reflect_mode_switch(self, index: int) -> None:
+        import mode_switch as ms
+        title = self._ribbon.tabs.tabText(index)
+        sw = getattr(self, "_mode_switch", None)
+        if sw is not None:
+            sw.set_mode(ms.RESULTS if title == "Results" else ms.MODEL)
 
     def _sync_ribbon_mode(self, mode: str) -> None:
         """Reflect the viewport's active tool in the ribbon's selection group.

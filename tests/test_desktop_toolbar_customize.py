@@ -50,8 +50,9 @@ def test_view_registers_builtin_commands(qapp):
     v = _view()
     reg = v._nav_bar._registry
     for cid in ("select", "orbit", "pan", "zoomwin", "fit", "fitsel",
-                "zoomin", "zoomout", "iso", "top", "front", "lock"):
+                "zoomin", "zoomout", "iso", "top", "front"):
         assert cid in reg
+    assert "lock" not in reg                    # rotation lock retired
 
 
 def test_default_layout_builds_expected_buttons(qapp):
@@ -73,7 +74,7 @@ def test_default_layout_builds_expected_buttons(qapp):
 
 def test_default_layout_divides_groups_with_separators(qapp):
     import nav_toolbar as nt
-    # the default keeps a divider between the selection, camera and lock groups
+    # the default keeps a divider between the selection, camera and active groups
     assert nt._DEFAULT_LAYOUT.count(nt.SEPARATOR_ID) >= 2
     # a run of buttons then a separator then more buttons (not all one blob)
     order = nt._DEFAULT_LAYOUT
@@ -159,12 +160,12 @@ def test_dialog_available_excludes_current(qapp):
 def test_layout_persists_and_reloads(qapp):
     from PySide6.QtCore import QSettings
     v = _view()
-    v._nav_bar._layout = ["select", "pan", "|", "fit", "lock"]
+    v._nav_bar._layout = ["select", "pan", "|", "fit", "orbit"]
     v._nav_bar._save_layout()
     assert QSettings("MidasStructural", "Desktop").value(_KEY)
     v2 = _view()                                 # a fresh view reads the setting
-    assert v2._nav_bar._layout == ["select", "pan", "|", "fit", "lock"]
-    assert list(v2._nav_bar._buttons_by_id) == ["select", "pan", "fit", "lock"]
+    assert v2._nav_bar._layout == ["select", "pan", "|", "fit", "orbit"]
+    assert list(v2._nav_bar._buttons_by_id) == ["select", "pan", "fit", "orbit"]
 
 
 # --- shell registration -----------------------------------------------------

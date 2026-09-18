@@ -11,8 +11,10 @@ order; the chosen layout persists in ``QSettings``.
 Built-in view commands (tools, orient, zoom) are registered here; the shell adds
 model/edit + activation commands via :meth:`register_many`. The bar drives the
 host :class:`ModelView` and stays in step with it through the view's
-``mode_changed`` / ``rotation_lock_changed`` signals, so the ribbon and this bar
-never disagree.
+``mode_changed`` signal, so the ribbon and this bar never disagree. The shell may
+also pin a fixed **trailing widget** (the pre/post-processing mode switch) via
+:meth:`set_trailing_widget`; like the Customize button it sits outside the
+customizable layout and can never be removed.
 """
 from __future__ import annotations
 
@@ -29,18 +31,19 @@ _SETTINGS_KEY = "viewport_toolbar_layout"
 # the out-of-the-box bar — individual buttons in Midas-style groups divided by a
 # rule: selection (single / window / polygon) ┃ camera (orbit / pan / zoom-win /
 # fit / fit-sel / zoom ±) ┃ activate/inactive (inactivate / isolate / show-all /
-# invert) ┃ the 2-D lock. The ``cmd_*`` ids are registered by the shell
-# (MainWindow), so a bare view skips them until the shell adds them (``rebuild``
-# ignores unknown ids).
+# invert). The ``cmd_*`` ids are registered by the shell (MainWindow), so a bare
+# view skips them until the shell adds them (``rebuild`` ignores unknown ids).
+# The pre/post mode switch rides the fixed trailing slot, not the layout.
 _DEFAULT_LAYOUT = ["select", "window", "polygon", SEPARATOR_ID,
                    "orbit", "pan", "zoomwin", "fit", "fitsel",
                    "zoomin", "zoomout", SEPARATOR_ID,
                    "cmd_inactivate", "cmd_activate_only", "cmd_activate_all",
-                   "cmd_invert_active", SEPARATOR_ID, "lock"]
+                   "cmd_invert_active"]
 
 # Earlier default bars — a saved layout that still matches one of these is an
 # *untouched* default, so it is silently upgraded to ``_DEFAULT_LAYOUT`` while a
-# genuinely customized bar is left exactly as saved.
+# genuinely customized bar is left exactly as saved. (The trailing ``lock`` in
+# the historic bars is gone — its button was retired for the mode switch.)
 _SUPERSEDED_DEFAULTS = [
     ["select", "orbit", "pan", "zoomwin", SEPARATOR_ID,
      "fit", "fitsel", "zoomin", "zoomout", SEPARATOR_ID, "lock"],
@@ -52,12 +55,18 @@ _SUPERSEDED_DEFAULTS = [
     ["grp_select", SEPARATOR_ID, "orbit", "pan", "zoomwin", SEPARATOR_ID,
      "fit", "fitsel", "zoomin", "zoomout", SEPARATOR_ID,
      "grp_active", SEPARATOR_ID, "lock"],
+    # the immediately-prior bar (mode-switch era but still carrying the lock)
+    ["select", "window", "polygon", SEPARATOR_ID,
+     "orbit", "pan", "zoomwin", "fit", "fitsel",
+     "zoomin", "zoomout", SEPARATOR_ID,
+     "cmd_inactivate", "cmd_activate_only", "cmd_activate_all",
+     "cmd_invert_active", SEPARATOR_ID, "lock"],
 ]
 
 
 def _view_commands(view) -> list:
-    """The commands every viewport carries — interaction tools, orient views,
-    zoom + the 2-D lock. (Model/edit commands are added by the shell.)"""
+    """The commands every viewport carries — interaction tools, orient views and
+    zoom. (Model/edit commands are added by the shell.)"""
     def tool(cid, label, icon):
         return ToolCommand(cid, label, icon, group="Tools", kind="tool",
                            activate=lambda c=cid: view.set_mode(c))
@@ -90,8 +99,6 @@ def _view_commands(view) -> list:
         orient("back", "Back", "front"),
         orient("left", "Left", "front"),
         orient("right", "Right", "front"),
-        ToolCommand("lock", "Rotation lock", "lock2d", group="Appearance",
-                    kind="toggle", activate=view.set_rotation_locked),
     ]
 
 
@@ -115,12 +122,12 @@ class NavToolbar(QFrame):
         self._buttons_by_id: dict[str, QToolButton] = {}
         self._separators: list[QFrame] = []      # inner divider lines (re-inked)
         self._group: QButtonGroup | None = None
+        self._trailing: QWidget | None = None    # shell-pinned mode switch
         self.register_many(_view_commands(view))
         self._layout = self._load_layout()
         self.rebuild()
 
         view.mode_changed.connect(self.set_active_tool)
-        view.rotation_lock_changed.connect(self._reflect_lock)
 
     # -- command registry ----------------------------------------------------
     def register_many(self, cmds) -> None:
@@ -146,6 +153,11 @@ class NavToolbar(QFrame):
 
     # -- (re)build the visible bar ------------------------------------------
     def rebuild(self) -> None:
+        # detach the shell's trailing widget first so the clear-out below never
+        # deletes it (it is owned by the shell, not the layout).
+        if self._trailing is not None:
+            self._lay.removeWidget(self._trailing)
+            self._trailing.setParent(None)
         while self._lay.count():
             it = self._lay.takeAt(0)
             w = it.widget()
@@ -170,10 +182,21 @@ class NavToolbar(QFrame):
             self._buttons_by_id[cid] = b
             if cmd.kind == "tool":
                 self._group.addButton(b)
+        if self._trailing is not None:              # pre/post mode switch
+            self._lay.addWidget(self._separator())
+            self._trailing.setParent(self)
+            self._lay.addWidget(self._trailing)
+            self._trailing.show()
         self._lay.addWidget(self._separator())
         self._lay.addWidget(self._make_customize_button())
         self.adjustSize()
         self._sync_all()
+
+    def set_trailing_widget(self, widget) -> None:
+        """Pin a fixed widget (the shell's pre/post mode switch) to the right of
+        the customizable buttons; it is never part of the editable layout."""
+        self._trailing = widget
+        self.rebuild()
 
     def _make_button(self, cmd: ToolCommand) -> QToolButton:
         b = QToolButton(self)
@@ -227,7 +250,6 @@ class NavToolbar(QFrame):
         mode = self._view.current_mode() if hasattr(self._view,
                                                     "current_mode") else "select"
         self.set_active_tool(mode)
-        self._reflect_lock(self._view.rotation_locked())
 
     def set_active_tool(self, mode: str) -> None:
         """Reflect the view's active tool; a non-tool mode (draw / a ribbon-only
@@ -240,24 +262,6 @@ class NavToolbar(QFrame):
             if cmd and cmd.kind == "tool":
                 b.setChecked(cid == mode)
         self._group.setExclusive(True)
-
-    def _reflect_lock(self, locked: bool) -> None:
-        b = self._buttons_by_id.get("lock")
-        if b is not None:
-            b.blockSignals(True)
-            b.setChecked(locked)
-            b.blockSignals(False)
-            b.setIcon(icons.icon("lock2d" if locked else "unlock2d", style.ICON))
-            b.setToolTip(
-                "Rotation locked (planar model) — click to allow 3-D orbit"
-                if locked else "Rotation free — click to lock to the plane")
-        orb = self._buttons_by_id.get("orbit")
-        if orb is not None:
-            orb.setEnabled(not locked)
-            if locked and orb.isChecked():
-                sel = self._buttons_by_id.get("select")
-                if sel is not None:
-                    sel.setChecked(True)
 
     # -- customize -----------------------------------------------------------
     def _toolbar_menu(self, parent=None) -> QMenu:
@@ -289,8 +293,6 @@ class NavToolbar(QFrame):
         """Re-ink every button + divider for the current palette (called on a
         theme switch, mirroring the shell's ``_retheme_icons``)."""
         for cid, b in self._buttons_by_id.items():
-            if cid == "lock":                  # icon depends on lock state
-                continue
             cmd = self._registry.get(cid)
             if cmd:
                 b.setIcon(icons.icon(cmd.icon, style.ICON))
@@ -298,5 +300,6 @@ class NavToolbar(QFrame):
             self._customize_btn.setIcon(icons.icon("customize", style.ICON))
         for line in self._separators:
             line.setStyleSheet(f"#navSep{{background:{style.BORDER_STRONG};}}")
-        self._reflect_lock(self._view.rotation_locked())
+        if self._trailing is not None and hasattr(self._trailing, "apply_theme"):
+            self._trailing.apply_theme()
         self.update()
