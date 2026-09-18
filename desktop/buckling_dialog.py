@@ -58,9 +58,9 @@ class BucklingDialog(QDialog):
 
         card = GroupCard("Parameters")
         self.reference = QComboBox()
-        self.reference.addItem("All load cases", ("all", None))
+        self.reference.addItem("All load patterns", ("all", None))
         for c in project.load_cases:
-            self.reference.addItem(f"Case: {c.name}", ("case", c.id))
+            self.reference.addItem(f"Pattern: {c.name}", ("case", c.id))
         for combo in getattr(project, "combinations", []):
             self.reference.addItem(f"Combination: {combo.name}",
                                    ("combination", combo.id))

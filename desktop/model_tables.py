@@ -158,7 +158,7 @@ def _load_cases(p):
 
 def _loads(p):
     labels = _dof_labels(p)
-    headers = ["Node", "Case"] + labels
+    headers = ["Node", "Pattern"] + labels
     rows = []
     for i, ld in enumerate(p.loads):
         case = p.case(getattr(ld, "case", 1))
@@ -169,8 +169,8 @@ def _loads(p):
 
 
 def _member_loads(p):
-    headers = ["Member", "Case", "wy", "wz"] if p.ndm == 3 \
-        else ["Member", "Case", "wy"]
+    headers = ["Member", "Pattern", "wy", "wz"] if p.ndm == 3 \
+        else ["Member", "Pattern", "wy"]
     rows = []
     for i, ml in enumerate(p.member_loads):
         case = p.case(getattr(ml, "case", 1))
@@ -227,7 +227,7 @@ _BUILDERS = {
     "nodes": (_nodes, "Nodes"),
     "elements": (_elements, "Elements"),
     "supports": (_supports, "Supports"),
-    "load_cases": (_load_cases, "Load cases"),
+    "load_cases": (_load_cases, "Load patterns"),
     "loads": (_loads, "Nodal loads"),
     "member_loads": (_member_loads, "Line loads"),
     "combinations": (_combinations, "Load combinations"),

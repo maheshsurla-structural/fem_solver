@@ -338,7 +338,7 @@ class DiaphragmDialog(QDialog):
 
 class LoadDialog(PickDialog):
     """Add / edit a nodal load, laid out as grouped cards (plan L4): an
-    *Applied to* card (node + load case) over a *Components* card whose rows
+    *Applied to* card (node + load pattern) over a *Components* card whose rows
     each pair a force/moment spin with a sign-convention hint. Built from the
     L1 scaffold; ``.edit()`` return contract unchanged. The node can be chosen
     by clicking it in the model while the dialog is open (see :mod:`pick`)."""
@@ -381,7 +381,7 @@ class LoadDialog(PickDialog):
         else:
             self.register_pick_field("node", self.node)  # click a node to set it
             applied.add_row("Node", self.node)
-        applied.add_row("Load case", self.case)
+        applied.add_row("Load pattern", self.case)
         if not multi:
             applied.add_full_row(_pick_hint(
                 "Tip: click a node in the model to set it here — no need to "
@@ -441,13 +441,18 @@ class LoadDialog(PickDialog):
 
 
 class LoadCaseDialog(QDialog):
-    """Manage the project's load cases (name + nature). Returns the edited list
-    of ``LoadCase`` via ``result_cases``; ids are preserved for existing cases
-    and assigned fresh for new rows so load ownership stays intact."""
+    """Manage the project's load patterns (name + nature). Returns the edited
+    list of ``LoadCase`` via ``result_cases``; ids are preserved for existing
+    patterns and assigned fresh for new rows so load ownership stays intact.
+
+    "Load pattern" is the commercial term (SAP2000 / CSiBridge) for a named
+    physical load group — Dead, Live, Wind — as distinct from a *load case*,
+    which is an analysis (see :class:`project.AnalysisCase`). The data class
+    keeps the historical name ``LoadCase`` for serialization compatibility."""
 
     def __init__(self, parent, project):
         super().__init__(parent)
-        self.setWindowTitle("Load cases")
+        self.setWindowTitle("Load patterns")
         self.resize(440, 360)
         self._project = project
         self.result_cases = None
@@ -460,7 +465,7 @@ class LoadCaseDialog(QDialog):
         outer.setContentsMargins(style.SP_LG, style.SP_LG,
                                  style.SP_LG, style.SP_LG)
         outer.setSpacing(style.SP_MD)
-        card = ui.GroupCard("Load cases", form=False)
+        card = ui.GroupCard("Load patterns", form=False)
         self.tbl = QTableWidget(0, 3)
         self.tbl.setHorizontalHeaderLabels(["Name", "Nature", "Self-weight ×"])
         self.tbl.horizontalHeader().setStretchLastSection(False)
@@ -469,10 +474,10 @@ class LoadCaseDialog(QDialog):
         self.tbl.verticalHeader().setVisible(False)
         card.body_layout().addWidget(self.tbl)
         row = QHBoxLayout()
-        add = QPushButton("＋ Case")
+        add = QPushButton("＋ Pattern")
         add.clicked.connect(self._add)
         sw = QPushButton("＋ Self weight")
-        sw.setToolTip("Add a 'Self weight' dead case with the multiplier at 1.0")
+        sw.setToolTip("Add a 'Self weight' dead pattern with the multiplier at 1.0")
         sw.clicked.connect(self.add_self_weight_case)
         rem = QPushButton("Remove")
         rem.clicked.connect(self._remove)
@@ -483,7 +488,7 @@ class LoadCaseDialog(QDialog):
         card.body_layout().addLayout(row)
         outer.addWidget(card)
 
-        hint = QLabel("Each case's nature (Dead / Live / Wind …) drives the "
+        hint = QLabel("Each pattern's nature (Dead / Live / Wind …) drives the "
                       "ASCE 7-22 generator in Analysis ▸ Load combinations. "
                       "Set Self-weight × to 1.0 to include the model's own "
                       "gravity weight (needs a material density).")
@@ -524,16 +529,16 @@ class LoadCaseDialog(QDialog):
             spin.setDecimals(3)
             spin.setValue(float(sw))
             spin.setToolTip("Self-weight multiplier — 1.0 applies the model's "
-                            "full gravity weight to this case (0 = off).")
+                            "full gravity weight to this pattern (0 = off).")
             self.tbl.setCellWidget(r, 2, spin)
 
     def _add(self) -> None:
         self._sync_names()
-        self._rows.append([0, f"Case {len(self._rows) + 1}", "live", 0.0])
+        self._rows.append([0, f"Pattern {len(self._rows) + 1}", "live", 0.0])
         self._reload()
 
     def add_self_weight_case(self) -> None:
-        """Append a ready-made 'Self weight' dead case with the multiplier at
+        """Append a ready-made 'Self weight' dead pattern with the multiplier at
         1.0 — the one-click way to add self-weight to the model."""
         self._sync_names()
         existing = {row[1].strip().lower() for row in self._rows}

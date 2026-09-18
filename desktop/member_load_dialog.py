@@ -80,7 +80,7 @@ class MemberLoadDialog(PickDialog):
 
         applied = ui.GroupCard("Applied to")
         applied.add_row("Member", self.member)
-        applied.add_row("Load case", self.case)
+        applied.add_row("Load pattern", self.case)
         _hint = QLabel("Tip: click a member in the model to set it here — no "
                        "need to close this window.")
         _hint.setObjectName("hintLabel")

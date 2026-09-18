@@ -6,9 +6,10 @@
 saved, named, multi-instance types). **Shipped: E2** (initial conditions / state
 chaining — see the [sub-plan](analysis_cases_initial_conditions_plan.md)), **E4**
 (load case tree), **E5a** (run dialog lists saved cases), **E5c** (run status),
-**E6** (context menu / filter / status column), and **E1** (unified Load-Case-Data
-editor — all 10 types under one Type ▾). **Remaining: E3** (Loads-Applied +
-result combinations), **E5b** (Run All in dependency order), **E6a** (Set Def
+**E6** (context menu / filter / status column), **E1** (unified Load-Case-Data
+editor — all 10 types under one Type ▾), and **E3a** (`LoadCase` → *Load
+Pattern* UI rename). **Remaining: E3b/c** (Loads-Applied spec + result
+combinations), **E5b** (Run All in dependency order), **E6a** (Set Def
 Name), **E7** (integrity/versioning), **E8** (new engine types) — see §6 tracker.
 **Reference:** SAP2000 / CSiBridge *Define ▸ Load Cases* + *Load Case Data*
 dialogs (the user's benchmark).
@@ -251,7 +252,12 @@ actually needs.
 * [x] **E4** Load Case Tree ✅ 2026-09-16 — `case_graph` dependency forest +
   `CaseTreeDialog` + "Tree…" button; nests dependents under their source, flags
   dangling refs + cycles, and (with E5c) **stale** cases whose source ran later.
-* [ ] **E3a** `LoadCase` → "Load Pattern" relabel
+* [x] **E3a** `LoadCase` → "Load Pattern" relabel ✅ 2026-09-18 — UI-only rename
+  (manager dialog, ribbon/menu **Loads ▸ Patterns**, model-tree category, model
+  tables, load editors' "Load pattern" field, combination-editor column, buckling
+  "reference load" picker). Data class `LoadCase` + `load_cases` serialization key
+  unchanged (no migration). "Load case" is now reserved for the *analysis* case
+  (`AnalysisCase` / the E1 *Load case data* editor).
 * [x] **E1** `CaseEditorDialog` unified Load-Case-Data editor (Type ▾ swaps the
   body) ✅ 2026-09 — **all 10 types** on `case_bodies` (Modal, Buckling, Response
   Spectrum, Temperature Gradient, Cable Tuning, Moving Load, Influence Surface,

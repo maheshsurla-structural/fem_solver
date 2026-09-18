@@ -41,6 +41,16 @@ def test_uses_scaffold_card_and_badges(qapp):
     assert not dlg.tbl.item(0, 0).icon().isNull()      # nature badge present
 
 
+def test_manager_uses_load_pattern_terminology(qapp):
+    """E3a: the manager is now titled by the commercial term *Load pattern*
+    (a named physical load group), keeping *Load case* for the analysis."""
+    from editing import LoadCaseDialog
+    dlg = LoadCaseDialog(None, _project())
+    assert dlg.windowTitle() == "Load patterns"
+    dlg._add()
+    assert dlg._rows[-1][1].startswith("Pattern ")     # default name, not "Case"
+
+
 def test_add_and_accept_preserves_ids(qapp):
     from editing import LoadCaseDialog
     p = _project()

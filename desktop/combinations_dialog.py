@@ -1,12 +1,12 @@
 """Load-combination editor (plan L2) — the surface commercial tools always have
 and ours was missing.
 
-A :class:`project.LoadCombination` is a weighted sum of load cases
-(``factors`` maps case id → factor). Before this dialog, combinations could only
-be produced wholesale by ``Project.generate_asce7_combinations`` and edited by
-deletion. Here the user gets the familiar CSiBridge / ETABS *Define
+A :class:`project.LoadCombination` is a weighted sum of load patterns
+(``factors`` maps pattern id → factor). Before this dialog, combinations could
+only be produced wholesale by ``Project.generate_asce7_combinations`` and edited
+by deletion. Here the user gets the familiar CSiBridge / ETABS *Define
 Combinations* layout: a list of combinations on the left, and for the selected
-one a **factor grid over every load case** on the right — plus a one-click
+one a **factor grid over every load pattern** on the right — plus a one-click
 "Generate ASCE 7-22 LRFD" that folds in the existing generator.
 
 Built from the L1 scaffold (:mod:`analysis_ui`). Pure Qt, headless-constructible
@@ -30,7 +30,7 @@ from project import NATURE_LABELS, LoadCombination
 
 
 class CombinationsDialog(QDialog):
-    """Add / rename / delete load combinations and set each case's factor."""
+    """Add / rename / delete load combinations and set each pattern's factor."""
 
     def __init__(self, parent, project):
         super().__init__(parent)
@@ -80,7 +80,7 @@ class CombinationsDialog(QDialog):
         right.body_layout().addWidget(name_host)
 
         self.grid = QTableWidget(0, 3)
-        self.grid.setHorizontalHeaderLabels(["Load case", "Nature",
+        self.grid.setHorizontalHeaderLabels(["Load pattern", "Nature",
                                              "Scale factor"])
         self.grid.verticalHeader().setVisible(False)
         hdr = self.grid.horizontalHeader()
@@ -90,7 +90,7 @@ class CombinationsDialog(QDialog):
         self._spins: list[QDoubleSpinBox] = []
         self._build_grid()
         right.body_layout().addWidget(self.grid, 1)
-        hint = QLabel("A case with factor 0 is not part of the combination. "
+        hint = QLabel("A pattern with factor 0 is not part of the combination. "
                       "Run Design to envelope all combinations.")
         hint.setObjectName("hintLabel")
         hint.setWordWrap(True)
@@ -107,7 +107,7 @@ class CombinationsDialog(QDialog):
         else:
             self._set_editor_enabled(False)
 
-    # ---- grid (one row per load case, a factor spin in the last column) ----
+    # ---- grid (one row per load pattern, a factor spin in the last column) ----
     def _build_grid(self) -> None:
         self.grid.setRowCount(len(self._cases))
         readonly = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
@@ -220,8 +220,8 @@ class CombinationsDialog(QDialog):
         if n_gen == 0:
             QMessageBox.information(
                 self, "Generate combinations",
-                "No combinations generated — give your load cases natures "
-                "(Dead / Live / Wind …) in Analysis ▸ Load cases first.")
+                "No combinations generated — give your load patterns natures "
+                "(Dead / Live / Wind …) in Analysis ▸ Load patterns first.")
         else:
             QMessageBox.information(
                 self, "Generate combinations",

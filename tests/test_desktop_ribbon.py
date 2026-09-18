@@ -161,8 +161,8 @@ def test_ribbon_buttons_text_under_icon_but_action_text_kept(win):
         assert b.toolButtonStyle() == \
             Qt.ToolButtonStyle.ToolButtonTextUnderIcon
     # short label under the icon; the action keeps its full text
-    assert win.act_loadcases.iconText() == "Cases"
-    assert win.act_loadcases.text() == "Load &cases…"
+    assert win.act_loadcases.iconText() == "Patterns"
+    assert win.act_loadcases.text() == "Load &patterns…"
 
 
 def test_ctrl_r_rides_a_ribbon_button(win):

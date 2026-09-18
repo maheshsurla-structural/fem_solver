@@ -116,9 +116,10 @@ class BucklingType(CaseType):
 
     def detail(self, project, params):
         sel = params.get("selection") or ["all", None]
-        ref = {"all": "all load cases",
-               "case": f"case {sel[1]}",
-               "combination": f"combo {sel[1]}"}.get(sel[0], "all load cases")
+        ref = {"all": "all load patterns",
+               "pattern": f"pattern {sel[1]}",
+               "case": f"pattern {sel[1]}",
+               "combination": f"combo {sel[1]}"}.get(sel[0], "all load patterns")
         return (f"{int(params.get('num_modes', 4))} modes · {ref} · "
                 f"{int(params.get('subdivisions', 6))} subdiv/member")
 

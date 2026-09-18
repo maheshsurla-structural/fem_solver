@@ -531,7 +531,7 @@ class MainWindow(QMainWindow):
         self.act_section_cut.triggered.connect(self.show_section_cut)
         self.act_design = _set_icon(QAction("&Design (DCR)", self), "design")
         self.act_design.triggered.connect(self.show_design)
-        self.act_loadcases = _action(self, "Load &cases…", None,
+        self.act_loadcases = _action(self, "Load &patterns…", None,
                                      self.manage_load_cases, "load")
         self.act_editcombos = _action(self, "Load com&binations…", None,
                                       self.manage_combinations, "loadsgen")
@@ -656,7 +656,7 @@ class MainWindow(QMainWindow):
                         (self.act_invert_active, "Invert"))),
         ))
         rb.add_tab("Loads", (
-            ("Loads", ((self.act_loadcases, "Cases"),
+            ("Loads", ((self.act_loadcases, "Patterns"),
                        (self.act_add_load, "Nodal"),
                        (self.act_add_lineload, "Line"),
                        (self.act_add_areaload, "Area"),
@@ -989,13 +989,13 @@ class MainWindow(QMainWindow):
 
     def _reference_load_label(self, selection) -> str:
         kind = selection[0] if selection else "all"
-        if kind == "case":
+        if kind in ("case", "pattern"):
             c = self._project.load_case(selection[1])
-            return f"case {c.name}" if c else f"case {selection[1]}"
+            return f"pattern {c.name}" if c else f"pattern {selection[1]}"
         if kind == "combination":
             c = self._project.combination(selection[1])
             return f"combo {c.name}" if c else f"combo {selection[1]}"
-        return "all load cases"
+        return "all load patterns"
 
     def run_buckling(self, config=None):
         """Linear (eigenvalue) buckling analysis (Analysis-cases ▸ Buckling).
@@ -2095,9 +2095,9 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(f"Design · max DCR {mx:.2f} · {verdict}")
 
     def manage_load_cases(self) -> None:
-        """Add / rename / remove load cases. Loads whose case is deleted fall
-        back to the first case, and combinations drop factors for removed
-        cases."""
+        """Add / rename / remove load patterns. Loads whose pattern is deleted
+        fall back to the first pattern, and combinations drop factors for
+        removed patterns."""
         if self._project is None:
             return
         from editing import LoadCaseDialog
@@ -2118,13 +2118,13 @@ class MainWindow(QMainWindow):
             for combo in self._project.combinations:
                 combo.factors = {cid: f for cid, f in combo.factors.items()
                                  if cid in valid}
-        self._apply_edit("Edit load cases", _mut)
+        self._apply_edit("Edit load patterns", _mut)
         self.log.appendPlainText(
-            f"Load cases: {', '.join(c.name for c in cases)}")
+            f"Load patterns: {', '.join(c.name for c in cases)}")
 
     def manage_combinations(self) -> None:
         """Open the load-combination editor (plan L2): add / rename / delete
-        combinations and set each case's factor, with a one-click ASCE 7-22
+        combinations and set each pattern's factor, with a one-click ASCE 7-22
         generator folded in. Replaces the project's combinations on OK."""
         if self._project is None:
             return
@@ -2144,15 +2144,15 @@ class MainWindow(QMainWindow):
 
     def generate_combinations(self) -> None:
         """Replace the project's combinations with the ASCE 7-22 LRFD strength
-        set generated from the load cases' natures."""
+        set generated from the load patterns' natures."""
         if self._project is None:
             return
         combos = self._project.generate_asce7_combinations()
         if not combos:
             QMessageBox.information(
                 self, "Combinations",
-                "No combinations generated — add load cases with natures "
-                "(Dead / Live / Wind …) in Analysis ▸ Load cases first.")
+                "No combinations generated — add load patterns with natures "
+                "(Dead / Live / Wind …) in Analysis ▸ Load patterns first.")
             return
 
         def _mut():
@@ -2705,7 +2705,7 @@ class MainWindow(QMainWindow):
             "nodes": ("New node…", self.add_node),
             "loads": ("New load…", self.add_load),
             "member_loads": ("New line load…", self.add_line_load),
-            "load_cases": ("Manage load cases…", self.manage_load_cases),
+            "load_cases": ("Manage load patterns…", self.manage_load_cases),
             "combinations": ("Manage combinations…", self.manage_combinations),
             "analysis_cases": ("Manage analysis cases…",
                                self.manage_analysis_cases),
@@ -3682,7 +3682,7 @@ class MainWindow(QMainWindow):
 
         # ---- Loads ------------------------------------------------------
         loadgrp = self._super("Loads")
-        self._category(loadgrp, "Load cases", len(p.load_cases),
+        self._category(loadgrp, "Load patterns", len(p.load_cases),
                        "load_cases", "load")
         loads = self._category(loadgrp, "Nodal loads", len(p.loads),
                                "loads", "load")

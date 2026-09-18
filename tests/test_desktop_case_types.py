@@ -91,9 +91,9 @@ def test_buckling_adapter_contract():
     p = _project()
     dp = ct.default_params(p)
     assert dp["selection"] == ["all", None] and dp["num_modes"] == 4
-    assert "all load cases" in ct.detail(p, dp)
-    assert "case 2" in ct.detail(p, {"selection": ["case", 2], "num_modes": 3,
-                                     "subdivisions": 5})
+    assert "all load patterns" in ct.detail(p, dp)
+    assert "pattern 2" in ct.detail(p, {"selection": ["case", 2], "num_modes": 3,
+                                        "subdivisions": 5})
     # JSON stores the selection as a list; build_config restores the tuple the
     # runner expects
     cfg = ct.build_config(p, {"selection": ["case", 2], "num_modes": 3,

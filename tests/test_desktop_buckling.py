@@ -75,7 +75,7 @@ def test_buckling_dialog_result(qapp):
     d = BucklingDialog(None, _column(), max_modes=10, default_modes=4)
     sel, modes, subdiv = d.result()
     assert sel == ("all", None) and modes == 4 and subdiv == 6
-    # the reference combo offers the project's load cases too
+    # the reference combo offers the project's load patterns too
     labels = [d.reference.itemText(i) for i in range(d.reference.count())]
     assert any("Grav" in t for t in labels)
 
@@ -85,7 +85,7 @@ def test_buckling_results_dialog_preview(qapp):
     info = {"load_factors": [1973.9, 17768.0, 49408.0],
             "critical_load_factor": 1973.9, "num_modes": 3}
     seen = []
-    dlg = BucklingResultsDialog(None, info, "all load cases", seen.append)
+    dlg = BucklingResultsDialog(None, info, "all load patterns", seen.append)
     assert dlg.table.rowCount() == 3
     assert seen == [0]
     dlg.table.setCurrentCell(2, 0)

@@ -63,7 +63,7 @@ class AreaLoadDialog(PickDialog):
 
         applied = ui.GroupCard("Applied to")
         applied.add_row("Area", self.area)
-        applied.add_row("Load case", self.case)
+        applied.add_row("Load pattern", self.case)
         applied.add_row("Type", self.kind)
 
         loads = ui.GroupCard(f"Uniform area load  [{unit}]")
