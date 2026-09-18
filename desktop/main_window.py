@@ -443,6 +443,8 @@ class MainWindow(QMainWindow):
                                      self.manage_materials, "materials")
         self.act_stories = _action(self, "Stories && grid…", None,
                                    self.manage_stories, "grid")
+        self.act_replicate_story = _action(self, "&Replicate story…", None,
+                                           self.replicate_story, "copy")
         self.act_hinges = _action(self, "&Hinges…", None, self.manage_hinges,
                                   "hinge")
         self.act_th_functions = _action(self, "Time-history &functions…", None,
@@ -664,7 +666,8 @@ class MainWindow(QMainWindow):
                        (self.act_shell_sections, "Thickness"),
                        (self.act_materials, "Materials"))),
             ("Constraints", ((self.act_add_diaphragm, "Diaphragm"),)),
-            ("Levels", ((self.act_stories, "Stories & grid"),)),
+            ("Levels", ((self.act_stories, "Stories & grid"),
+                        (self.act_replicate_story, "Replicate"))),
             ("Edit", ((self.act_undo, "Undo"), (self.act_redo, "Redo"),
                       (self.act_delete, "Delete"))),
             ("Modify", ((self.act_move, "Move"), (self.act_copy, "Copy"),
@@ -2721,6 +2724,34 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(
             f"{len(stories)} stor{'y' if len(stories) == 1 else 'ies'}, "
             f"{len(grids)} grid line(s)")
+
+    def replicate_story(self) -> None:
+        """Copy a source story's walls/columns/beams up to similar stories
+        (wall plan W4c)."""
+        p = self._project
+        if p is None:
+            return
+        if len(p.stories) < 2:
+            QMessageBox.information(
+                self, "Replicate story",
+                "Define at least two stories (Home ▸ Stories & grid) first.")
+            return
+        from story_replicate_dialog import StoryReplicateDialog
+        import story_replicate
+        picked = StoryReplicateDialog.get(self, p)
+        if picked is None:
+            return
+        source_id, target_ids = picked
+        if not target_ids:
+            return
+        made = {}
+
+        def _mut():
+            made.update(story_replicate.replicate_story(p, source_id, target_ids))
+        self._apply_edit("Replicate story", _mut)
+        self.statusBar().showMessage(
+            f"Replicated: +{made.get('areas', 0)} areas, "
+            f"+{made.get('members', 0)} members, +{made.get('nodes', 0)} nodes")
 
     def manage_th_functions(self) -> None:
         """Open the time-history function library (analysis-cases-manager TH-1):
