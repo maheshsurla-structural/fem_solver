@@ -130,6 +130,17 @@ class MemberDialog(PickDialog):
         self.hinge = _combo([("— none —", None)]
                             + [(f"{h.id}: {h.name}", h.id)
                                for h in getattr(project, "hinges", [])])
+        # BE6: vertical insertion offset. Non-zero on an edge beam makes it act
+        # compositely with the slab (beam built below the slab, tied back).
+        self.offset = QDoubleSpinBox()
+        self.offset.setRange(-100.0, 100.0)
+        self.offset.setDecimals(3)
+        self.offset.setSingleStep(0.05)
+        self.offset.setSuffix(" m")
+        self.offset.setToolTip(
+            "Vertical offset of the beam centroid from the drawn line "
+            "(negative = below). Non-zero makes an edge beam act compositely "
+            "with the slab it borders (T-beam). 3-D only.")
 
         if member:
             _select(self.n1, member.n1)
@@ -138,6 +149,7 @@ class MemberDialog(PickDialog):
             _select(self.mat, member.material)
             _select(self.kind, getattr(member, "kind", "beamcolumn2d"))
             _select(self.hinge, getattr(member, "hinge", None))
+            self.offset.setValue(float(getattr(member, "z_offset", 0.0) or 0.0))
         elif self.n2.count() > 1:
             self.n2.setCurrentIndex(1)
 
@@ -150,6 +162,7 @@ class MemberDialog(PickDialog):
         form.addRow("Type", self.kind)
         if getattr(project, "hinges", []):
             form.addRow("Hinge", self.hinge)
+        form.addRow("Vertical offset", self.offset)
         form.addRow(_buttons(self))
 
     def accept(self) -> None:
@@ -164,7 +177,8 @@ class MemberDialog(PickDialog):
                       n2=self.n2.currentData(), section=self.sec.currentData(),
                       material=self.mat.currentData(),
                       kind=self.kind.currentData(),
-                      hinge=self.hinge.currentData())
+                      hinge=self.hinge.currentData(),
+                      z_offset=self.offset.value())
 
     @classmethod
     def edit(cls, parent, project, member=None):

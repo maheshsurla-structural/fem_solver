@@ -138,11 +138,18 @@ def member_dcr(element, member, project):
 
 def design_all(model, project) -> dict:
     """{element_tag: DCR or None} for every element in the model (under the
-    loads currently applied to ``model``)."""
+    loads currently applied to ``model``). A beam split at a slab edge (BE2)
+    resolves each sub-element back to its parent member via ``decode_member_id``
+    (BE3), so the whole beam is checked — each sub-element against its own end
+    forces."""
+    from project import decode_member_id
     members = {m.id: m for m in project.members}
-    return {tag: (member_dcr(e, members[tag], project) if tag in members
-                  else None)
-            for tag, e in model.elements.items()}
+
+    def _dcr(tag, e):
+        mb = members.get(decode_member_id(tag))
+        return member_dcr(e, mb, project) if mb is not None else None
+
+    return {tag: _dcr(tag, e) for tag, e in model.elements.items()}
 
 
 def design_envelope(project):
@@ -155,6 +162,7 @@ def design_envelope(project):
     if not getattr(project, "combinations", None):
         return None, None
     from femsolver import LinearStaticAnalysis
+    from project import decode_member_id
     members = {m.id: m for m in project.members}
     dcrs: dict = {}
     governing: dict = {}
@@ -166,7 +174,7 @@ def design_envelope(project):
         except Exception:
             continue
         for tag, el in model.elements.items():
-            mb = members.get(tag)
+            mb = members.get(decode_member_id(tag))
             d = member_dcr(el, mb, project) if mb is not None else None
             dcrs.setdefault(tag, None)
             if d is None:

@@ -107,3 +107,34 @@ def test_set_area_axes_toggle(qapp):
     assert v._show_area_axes is False
     v.set_area_axes(True)
     assert v._show_area_axes is True
+
+
+# --------------------------------------------- id labels (View ▸ Labels)
+
+def test_element_centroids():
+    m = _model_with_quad()                         # 1 quad element (1×1 mesh)
+    tags, cents = mg.element_centroids(m)
+    # labels use the compiled model's element key (line members keep their
+    # user id; meshed shells get the engine's element tag)
+    assert tags == list(m.elements.keys())
+    # centroid of the 4x3 quad at (0,0)-(4,3)
+    assert np.allclose(cents[0], (2.0, 1.5, 0.0))
+
+
+def test_element_centroids_empty():
+    p = Project(ndm=3, ndf=6)
+    p.nodes.append(Node(id=1, x=0.0, y=0.0, z=0.0))
+    tags, cents = mg.element_centroids(p.build_model(with_loads=False))
+    assert tags == [] and cents.shape == (0, 3)
+
+
+def test_node_and_element_label_toggles(qapp):
+    v = _view(qapp)
+    assert v._show_node_labels is False
+    assert v._show_elem_labels is False
+    v.set_node_labels(True)
+    v.set_element_labels(True)
+    assert v._show_node_labels is True
+    assert v._show_elem_labels is True
+    # redraw with both overlays on must not raise
+    v.set_model(_model_with_quad())

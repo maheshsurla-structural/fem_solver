@@ -38,6 +38,36 @@ def area_element_tag(area_id: int, k: int = 0) -> int:
     return AREA_TAG_BASE + area_id * AREA_TAG_STRIDE + k
 
 
+# Element-tag block for beam sub-elements produced when a member lying along a
+# meshed slab edge is auto-split at the slab's edge nodes (beam-to-slab-edge
+# compatibility, epics BE0-BE2). An *unsplit* member keeps its own id as the
+# element tag; a split member's sub-elements take contiguous tags from this
+# block so results/design can still be mapped back (BE3, not yet wired).
+MEMBER_SPLIT_BASE = 4_000_000
+MEMBER_SPLIT_STRIDE = 1_000
+
+
+def member_element_tag(member_id: int, j: int = 0) -> int:
+    """Deterministic engine element tag for sub-element ``j`` of a split member
+    (BE2). Mirrors :func:`area_element_tag` so :meth:`Project.member_element_tags`
+    can recover a member's mesh tags without build state."""
+    return MEMBER_SPLIT_BASE + member_id * MEMBER_SPLIT_STRIDE + j
+
+
+def decode_member_id(tag: int):
+    """The project ``Member`` id an engine element tag belongs to (BE3): the tag
+    itself for an unsplit member, or the parent member for a split sub-element
+    tag. ``None`` for tags in the area/shell range. (Tag layout: member ids <
+    ``AREA_TAG_BASE`` 2M ≤ area/shell < ``MEMBER_SPLIT_BASE`` 4M ≤ split members.)"""
+    if tag is None:
+        return None
+    if tag >= MEMBER_SPLIT_BASE:                  # split sub-element
+        return (tag - MEMBER_SPLIT_BASE) // MEMBER_SPLIT_STRIDE
+    if tag >= AREA_TAG_BASE:                       # area / shell sub-element
+        return None
+    return tag                                     # unsplit member id == tag
+
+
 def _coord_key(p, tol: float = 1.0e-6):
     """Rounded-coordinate key for merging coincident mesh nodes (µm tolerance)."""
     q = round(1.0 / tol)
@@ -178,6 +208,11 @@ class Member:
     material: int
     kind: str = "beamcolumn2d"
     hinge: int | None = None      # Hinge property id (None = distributed/elastic)
+    # Vertical insertion offset (m, 3-D): the beam's centroid sits ``z_offset``
+    # below (negative) / above the drawn line. Non-zero on an edge beam makes it
+    # act *compositely* with the slab — the beam is built at the offset elevation
+    # and rigidly tied back to the drawn (slab) nodes (BE6). 0 = centroidal.
+    z_offset: float = 0.0
 
 
 @dataclass
@@ -433,6 +468,10 @@ class Project:
     nodes: list = field(default_factory=list)
     members: list = field(default_factory=list)
     areas: list = field(default_factory=list)          # Area (shell/plate; slab S0)
+    # Auto-connect beams to a meshed slab edge (BE0-BE2): split a member lying
+    # along a slab edge at the slab's edge nodes so the two share nodes (true
+    # compatibility). Off = legacy one-element-per-member behaviour.
+    auto_connect_beams: bool = True
     load_cases: list = field(default_factory=list)    # LoadCase
     loads: list = field(default_factory=list)          # nodal Load
     member_loads: list = field(default_factory=list)   # MemberLoad (line loads)
@@ -670,6 +709,17 @@ class Project:
         for nd in self.nodes:
             coords = (nd.x, nd.y) if self.ndm == 2 else (nd.x, nd.y, nd.z)
             m.add_node(nd.id, *coords)
+        # One coordinate-keyed node registry shared by beam-splitting (BE0-BE2)
+        # and slab meshing (S3), so a beam node created at a slab edge node and
+        # the slab node itself collapse to one id (true compatibility). Seeded
+        # with the project nodes already added above.
+        registry, node_at = self._node_registry(m)
+        # BE0: pre-create the slab edge nodes so the member loop can split
+        # against them; the mesher below reuses them via the same registry.
+        edge_nodes = {}
+        if self.ndm == 3 and self.areas and getattr(
+                self, "auto_connect_beams", True):
+            edge_nodes = self._register_area_edge_nodes(node_at)
         gsd_mats: dict = {}          # section id -> concrete ElasticIsotropic
         for mb in self.members:
             sec = secs[mb.section]
@@ -700,12 +750,28 @@ class Project:
                         gsd_mats[sec.id] = cm
                 if cm is not None:
                     material = cm
-            if self.ndm == 3:
-                m.add_element(BeamColumn3D(mb.id, (mb.n1, mb.n2),
-                                           material, A, Iy, Iz, J))
+            def _bc(tag, na, nb):
+                if self.ndm == 3:
+                    return BeamColumn3D(tag, (na, nb), material, A, Iy, Iz, J)
+                return BeamColumn2D(tag, (na, nb), material, A, Iz)
+
+            # BE1/BE2: if this beam lies along a meshed slab edge, split it at
+            # the slab edge nodes so beam and slab share nodes. Otherwise emit
+            # one element keyed by the member id (legacy behaviour).
+            chain = self._member_split_chain(mb, edge_nodes) if edge_nodes \
+                else None
+            nodes = chain if (chain and len(chain) > 2) else [mb.n1, mb.n2]
+            tags = ([member_element_tag(mb.id, j) for j in range(len(nodes) - 1)]
+                    if len(nodes) > 2 else [mb.id])
+            offset = float(getattr(mb, "z_offset", 0.0) or 0.0)
+            if offset and self.ndm == 3:
+                # BE6: build the beam at its offset centroid on phantom nodes,
+                # each rigidly tied back to the drawn (slab) node — composite
+                # T-beam action. Same tags as the centroidal case.
+                self._add_offset_beam(m, node_at, nodes, tags, _bc, offset)
             else:
-                m.add_element(BeamColumn2D(mb.id, (mb.n1, mb.n2),
-                                           material, A, Iz))
+                for j in range(len(nodes) - 1):
+                    m.add_element(_bc(tags[j], nodes[j], nodes[j + 1]))
         # ---- surface (shell / plate) area objects (slab plan S1 + S3 mesh) --
         # Areas are a 3-D feature — shells need ndf=6, so a 2-D model has no
         # surface elements. Each quad area is meshed into its ``mesh`` = (n1, n2)
@@ -713,7 +779,7 @@ class Project:
         # compatible. Sub-element tags come from ``area_element_tag`` so the load
         # path can find them without build state.
         if self.ndm == 3 and self.areas:
-            self._mesh_and_add_areas(m, mats)
+            self._mesh_and_add_areas(m, mats, node_at)
         for nd in self.nodes:
             if nd.supports and any(nd.supports):
                 m.fix(nd.id, list(nd.supports))
@@ -758,30 +824,168 @@ class Project:
             model.add_mp_constraint(
                 RigidDiaphragm(master=master, slaves=slaves, perp_dir=perp))
 
-    def _mesh_and_add_areas(self, model, mats) -> None:
-        """Mesh every ``Area`` into shell elements and add them to ``model``
-        (slab S1 + S3). Quads are subdivided ``mesh`` = (n1, n2) times by a
-        bilinear map; a polygon (≥5 nodes) is centroid-fan-triangulated into one
-        shell triangle per edge; a triangle stays a single element. Generated
-        nodes are merged by coordinate (so shared edges/corners across areas —
-        and the original corner nodes — collapse to one), keeping meshes
-        compatible."""
-        shsecs = {s.id: s for s in self.shell_sections}
+    def _node_registry(self, model):
+        """A coordinate-keyed node factory over ``model``: ``node_at(p)`` returns
+        the id of the node at ``p``, creating (and adding) it on first sight and
+        reusing it (merging coincident nodes) thereafter. Seeded with the project
+        nodes already added to the model. Shared by beam-splitting (BE0-BE2) and
+        slab meshing (S3) so their nodes collapse together."""
         ncoord = {nd.id: (nd.x, nd.y, nd.z) for nd in self.nodes}
-        # coord -> model node id, seeded with the nodes already in the model
         registry = {_coord_key(c): nid for nid, c in ncoord.items()}
-        next_nid = max(ncoord, default=0) + 1
+        counter = [max(ncoord, default=0) + 1]
 
-        def _node_at(p):
-            nonlocal next_nid
+        def node_at(p):
             key = _coord_key(p)
             nid = registry.get(key)
             if nid is None:
-                nid = next_nid
-                next_nid += 1
+                nid = counter[0]
+                counter[0] += 1
                 registry[key] = nid
-                model.add_node(nid, *p)
+                model.add_node(nid, *[float(v) for v in p])
             return nid
+
+        return registry, node_at
+
+    def _area_edge_coords(self) -> list:
+        """The coordinates of every quad slab's *edge* subdivision points (the
+        interior nodes along its four sides, per ``mesh`` = (n1, n2)) — the only
+        nodes a beam lying on a slab edge could share. Polygon/triangle areas
+        have no subdivided edges, so they contribute none; corners are project
+        nodes already, so excluded. Shared by :meth:`_register_area_edge_nodes`
+        (build) and :meth:`member_element_tags` (results/design, BE3), so the two
+        can never disagree on where a member splits."""
+        ncoord = {nd.id: (nd.x, nd.y, nd.z) for nd in self.nodes}
+        coords = []
+        for a in self.areas:
+            if len(a.nodes) != 4 or any(nid not in ncoord for nid in a.nodes):
+                continue
+            corners = [ncoord[nid] for nid in a.nodes]
+            n1 = max(1, int(a.mesh[0]))
+            n2 = max(1, int(a.mesh[1]))
+            # (s, t) params of the interior points on each of the four edges
+            params = ([(i / n1, 0.0) for i in range(1, n1)]      # P0->P1
+                      + [(1.0, j / n2) for j in range(1, n2)]    # P1->P2
+                      + [(i / n1, 1.0) for i in range(1, n1)]    # P3->P2
+                      + [(0.0, j / n2) for j in range(1, n2)])   # P0->P3
+            for s, t in params:
+                coords.append(tuple(float(v) for v in _bilinear(corners, s, t)))
+        return coords
+
+    def _register_area_edge_nodes(self, node_at) -> dict:
+        """BE0: create every quad slab edge subdivision node via ``node_at`` and
+        return ``{node_id: (x, y, z)}`` for the member splitter to match against."""
+        return {node_at(p): p for p in self._area_edge_coords()}
+
+    @staticmethod
+    def _interior_params(a, b, points):
+        """Sorted, de-duplicated parameters ``t`` in (0, 1) of the ``points`` that
+        lie *on the segment* a->b (collinear, strictly interior) within a
+        scale-aware tolerance. Returns ``[(t, index)]`` so callers can recover
+        which point matched. The single source of truth for "does this member
+        pass through this slab node", shared by build and results/design."""
+        import numpy as np
+        a = np.asarray(a, float)
+        b = np.asarray(b, float)
+        ab = b - a
+        L2 = float(ab @ ab)
+        if L2 <= 1e-18:
+            return []
+        tol = 1e-6 * L2 ** 0.5 + 1e-9
+        hits = []
+        for idx, p in enumerate(points):
+            pv = np.asarray(p, float)
+            t = float((pv - a) @ ab) / L2
+            if not (1e-6 < t < 1.0 - 1e-6):
+                continue                        # not strictly interior
+            if float(np.linalg.norm(a + t * ab - pv)) > tol:
+                continue                        # off the line
+            hits.append((t, idx))
+        hits.sort()
+        out = []
+        for t, idx in hits:                     # drop coincident duplicates
+            if not out or abs(t - out[-1][0]) > 1e-9:
+                out.append((t, idx))
+        return out
+
+    @staticmethod
+    def _splittable(mb) -> bool:
+        """Whether a member may be auto-split at slab edges (BE5). Excluded:
+        *cables* (pin-ended axial members — a mid-span node would add a spurious
+        joint) and *hinged* members (a lumped end hinge assumes one element
+        end-to-end; splitting would misplace it). Lumped hinges are 2-D today and
+        splitting is 3-D, so these never actually co-occur — this keeps the two
+        correct if 3-D lumped hinges are ever added."""
+        return (getattr(mb, "kind", "") != "cable"
+                and getattr(mb, "hinge", None) is None)
+
+    def _member_split_chain(self, mb, edge_nodes: dict):
+        """BE1: ordered node chain ``[n1, ...interior slab edge nodes..., n2]``
+        for a member whose line passes through slab edge nodes, or ``None`` when
+        none lie on it. Cables and hinged members are never split (:meth:`_splittable`)."""
+        if not self._splittable(mb) or not edge_nodes:
+            return None
+        coord = {nd.id: (nd.x, nd.y, nd.z) for nd in self.nodes}
+        if mb.n1 not in coord or mb.n2 not in coord:
+            return None
+        ids = list(edge_nodes.keys())
+        pts = [edge_nodes[i] for i in ids]
+        hits = self._interior_params(coord[mb.n1], coord[mb.n2], pts)
+        if not hits:
+            return None
+        return [mb.n1] + [ids[idx] for _t, idx in hits] + [mb.n2]
+
+    def member_element_tags(self, mb) -> list:
+        """BE3: the engine element tag(s) a member owns — ``[mb.id]`` when it is a
+        single element, or its split sub-element tags when it lies along a meshed
+        slab edge (BE2). Recomputed from geometry (mirrors :meth:`_area_element_tags`)
+        so results/design can map a member to its elements without build state.
+        Kept in lock-step with build via the shared :meth:`_interior_params`."""
+        if (self.ndm != 3 or not self.areas
+                or not getattr(self, "auto_connect_beams", True)
+                or not self._splittable(mb)):
+            return [mb.id]
+        coord = {nd.id: (nd.x, nd.y, nd.z) for nd in self.nodes}
+        if mb.n1 not in coord or mb.n2 not in coord:
+            return [mb.id]
+        hits = self._interior_params(coord[mb.n1], coord[mb.n2],
+                                     self._area_edge_coords())
+        if not hits:
+            return [mb.id]
+        return [member_element_tag(mb.id, j) for j in range(len(hits) + 1)]
+
+    def _add_offset_beam(self, model, node_at, nodes, tags, make_el,
+                         offset: float) -> None:
+        """BE6: build a composite (eccentric) beam. The beam runs on *phantom*
+        nodes a vertical distance ``offset`` (m) from each drawn node in
+        ``nodes``; every phantom node is rigidly tied back to its drawn node
+        (which carries the slab shells + supports) by a ``RigidOffset`` with
+        coupled rotations, so the beam's stiffness condenses onto the drawn nodes
+        through the offset arm — full T-beam action (plane sections remain
+        plane), with no support surgery. ``tags`` are the per-span element tags
+        (identical to the centroidal case, so the results/design map is
+        unchanged)."""
+        from femsolver.constraints import RigidOffset
+        phantom = []
+        for c in nodes:
+            x, y, z = (float(v) for v in model.node(c).coords[:3])
+            p = node_at((x, y, z + offset))
+            phantom.append(p)
+            model.add_mp_constraint(
+                RigidOffset(master=c, slave=p, couple_slave_rotations=True))
+        for j in range(len(nodes) - 1):
+            model.add_element(make_el(tags[j], phantom[j], phantom[j + 1]))
+
+    def _mesh_and_add_areas(self, model, mats, node_at) -> None:
+        """Mesh every ``Area`` into shell elements and add them to ``model``
+        (slab S1 + S3). Quads are subdivided ``mesh`` = (n1, n2) times by a
+        bilinear map; a polygon (≥5 nodes) is centroid-fan-triangulated into one
+        shell triangle per edge; a triangle stays a single element. ``node_at``
+        (shared with beam-splitting) merges coincident nodes by coordinate, so
+        shared edges/corners across areas — and beam-split nodes — collapse to
+        one, keeping meshes compatible."""
+        shsecs = {s.id: s for s in self.shell_sections}
+        ncoord = {nd.id: (nd.x, nd.y, nd.z) for nd in self.nodes}
+        _node_at = node_at
 
         for a in self.areas:
             ss = shsecs.get(a.shell_section)
@@ -1037,16 +1241,24 @@ class Project:
                 self.apply_case(model, c.id, 1.0)
 
     def _apply_member_load(self, model, ml, factor: float) -> None:
-        try:
-            el = model.element(ml.member)
-        except KeyError:
-            return
-        if not hasattr(el, "add_uniform_load"):
-            return
-        if self.ndm == 3:
-            el.add_uniform_load(ml.wy * factor, ml.wz * factor)
-        else:
-            el.add_uniform_load(ml.wy * factor)
+        # BE4: a member split at a slab edge (BE2) is several collinear
+        # sub-elements. ``add_uniform_load`` is an *intensity* (N/m) and each
+        # element integrates it over its own length, so the same intensity on
+        # every sub-element reproduces the whole member's UDL exactly — no
+        # span-fraction weighting needed. Unsplit members resolve to [ml.member].
+        mb = next((m for m in self.members if m.id == ml.member), None)
+        tags = self.member_element_tags(mb) if mb is not None else [ml.member]
+        for tag in tags:
+            try:
+                el = model.element(tag)
+            except KeyError:
+                continue
+            if not hasattr(el, "add_uniform_load"):
+                continue
+            if self.ndm == 3:
+                el.add_uniform_load(ml.wy * factor, ml.wz * factor)
+            else:
+                el.add_uniform_load(ml.wy * factor)
 
     def _area_element_tags(self, area) -> list:
         """Engine element tag(s) for an ``Area`` — every mesh sub-element (slab
