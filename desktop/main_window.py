@@ -441,6 +441,8 @@ class MainWindow(QMainWindow):
                                           self.manage_shell_sections, "slab")
         self.act_materials = _action(self, "&Materials…", None,
                                      self.manage_materials, "materials")
+        self.act_stories = _action(self, "Stories && grid…", None,
+                                   self.manage_stories, "grid")
         self.act_hinges = _action(self, "&Hinges…", None, self.manage_hinges,
                                   "hinge")
         self.act_th_functions = _action(self, "Time-history &functions…", None,
@@ -655,6 +657,7 @@ class MainWindow(QMainWindow):
                        (self.act_shell_sections, "Thickness"),
                        (self.act_materials, "Materials"))),
             ("Constraints", ((self.act_add_diaphragm, "Diaphragm"),)),
+            ("Levels", ((self.act_stories, "Stories & grid"),)),
             ("Edit", ((self.act_undo, "Undo"), (self.act_redo, "Redo"),
                       (self.act_delete, "Delete"))),
             ("Modify", ((self.act_move, "Move"), (self.act_copy, "Copy"),
@@ -2692,6 +2695,24 @@ class MainWindow(QMainWindow):
         self._apply_edit(
             "Edit hinges",
             lambda: setattr(self._project, "hinges", result))
+
+    def manage_stories(self) -> None:
+        """Define the building stories and grid lines (wall plan W4)."""
+        if self._project is None:
+            return
+        from story_grid_dialog import StoryGridDialog
+        result = StoryGridDialog.manage(self, self._project, self._units())
+        if result is None:
+            return
+        stories, grids = result
+
+        def _mut():
+            self._project.stories = stories
+            self._project.grid_lines = grids
+        self._apply_edit("Edit stories & grid", _mut)
+        self.statusBar().showMessage(
+            f"{len(stories)} stor{'y' if len(stories) == 1 else 'ies'}, "
+            f"{len(grids)} grid line(s)")
 
     def manage_th_functions(self) -> None:
         """Open the time-history function library (analysis-cases-manager TH-1):

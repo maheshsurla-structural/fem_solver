@@ -67,12 +67,12 @@ class PierForcesDialog(QDialog):
         self._canvas.setMinimumHeight(230)
         root.addWidget(self._canvas, 1)
 
-        self.tbl = QTableWidget(0, 5)
+        self.tbl = QTableWidget(0, 6)
         fu, mu, lu = (self._us.label(Quantity.FORCE),
                       self._us.label(Quantity.MOMENT),
                       self._us.label(Quantity.LENGTH))
         self.tbl.setHorizontalHeaderLabels(
-            [f"Elev ({lu})", f"P ({fu})", f"V ({fu})", f"M ({mu})",
+            ["Story", f"Elev ({lu})", f"P ({fu})", f"V ({fu})", f"M ({mu})",
              f"Width ({lu})"])
         self.tbl.verticalHeader().setVisible(False)
         self.tbl.setEditTriggers(self.tbl.EditTrigger.NoEditTriggers)
@@ -112,12 +112,14 @@ class PierForcesDialog(QDialog):
         rows = sorted(forces, key=lambda f: f.z, reverse=True)
         self.tbl.setRowCount(len(rows))
         for r, f in enumerate(rows):
+            story = self._project.story_at(f.z)
+            self.tbl.setItem(r, 0, QTableWidgetItem(story.name if story else "—"))
             cells = [us.to_display(f.z, Quantity.LENGTH),
                      us.to_display(f.axial, Quantity.FORCE),
                      us.to_display(f.shear, Quantity.FORCE),
                      us.to_display(f.moment, Quantity.MOMENT),
                      us.to_display(f.width, Quantity.LENGTH)]
-            for c, v in enumerate(cells):
+            for c, v in enumerate(cells, start=1):
                 self.tbl.setItem(r, c, QTableWidgetItem(f"{v:.4g}"))
         self._draw(forces)
 

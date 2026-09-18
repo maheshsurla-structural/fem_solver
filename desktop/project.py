@@ -476,6 +476,40 @@ class Diaphragm:
 
 
 @dataclass
+class Story:
+    """A building story / level (wall plan W4). A named horizontal level whose
+    top is at elevation ``elev`` (global Z) and which is ``height`` tall (down
+    to the level below; ``0`` for the base). Following ETABS, stories are a
+    *modeling context* — nodes/areas belong to a story by their elevation, not
+    by a stored link — used to slice pier forces, label the tree and (W4c)
+    replicate 'similar' stories. ``master`` names a story this one copies."""
+    id: int
+    name: str
+    elev: float                    # elevation of the level (global Z), SI
+    height: float = 0.0            # story height to the level below (SI)
+    master: "str | None" = None    # 'similar to' story name (W4c)
+
+    def __post_init__(self):
+        self.elev = float(self.elev)
+        self.height = float(self.height)
+
+
+@dataclass
+class GridLine:
+    """A named grid line (wall plan W4). ``axis="x"`` is a line of constant X
+    (running in the Y direction); ``axis="y"`` is constant Y (running in X).
+    ``coord`` is its position (SI). Snapping/rendering use it (W4b)."""
+    id: int
+    name: str
+    axis: str = "x"                # "x" (const-X line) | "y" (const-Y line)
+    coord: float = 0.0
+
+    def __post_init__(self):
+        self.axis = self.axis if self.axis in ("x", "y") else "x"
+        self.coord = float(self.coord)
+
+
+@dataclass
 class Project:
     name: str = "Untitled"
     ndm: int = 2
@@ -501,6 +535,8 @@ class Project:
     combinations: list = field(default_factory=list)   # LoadCombination
     diaphragms: list = field(default_factory=list)      # Diaphragm (slab plan S8)
     stages: list = field(default_factory=list)          # Stage (construction seq)
+    stories: list = field(default_factory=list)         # Story (building levels, W4)
+    grid_lines: list = field(default_factory=list)      # GridLine (W4)
     nonlinear_cases: list = field(default_factory=list)  # NonlinearCase (GUI-4)
     analysis_cases: list = field(default_factory=list)  # AnalysisCase (ACM plan)
     th_functions: list = field(default_factory=list)   # TimeHistoryFunction (ACM)
@@ -556,6 +592,36 @@ class Project:
         """The wall areas grouped under a given spandrel label."""
         return [a for a in self.areas
                 if a.role == "wall" and a.spandrel == spandrel]
+
+    # ------------------------------------------------------- stories / grid (W4)
+    def stories_sorted(self) -> list:
+        """Stories from the base up (ascending elevation)."""
+        return sorted(self.stories, key=lambda s: s.elev)
+
+    def story_elevations(self) -> list:
+        """Sorted story level elevations (global Z)."""
+        return [s.elev for s in self.stories_sorted()]
+
+    def next_story_id(self) -> int:
+        return max((s.id for s in self.stories), default=0) + 1
+
+    def next_grid_id(self) -> int:
+        return max((g.id for g in self.grid_lines), default=0) + 1
+
+    def story_at(self, z: float, tol: float = 1e-6):
+        """The story whose band contains elevation ``z`` — the lowest story
+        whose level is at or above ``z`` (its floor-to-floor band ``(elev −
+        height, elev]``). Returns ``None`` if ``z`` is above every level or no
+        stories are defined."""
+        for s in self.stories_sorted():
+            if z <= s.elev + tol:
+                return s
+        return None
+
+    def grid_lines_on(self, axis: str) -> list:
+        """Grid lines of a given ``axis`` ('x' or 'y'), sorted by coordinate."""
+        return sorted((g for g in self.grid_lines if g.axis == axis),
+                      key=lambda g: g.coord)
 
     def diaphragm(self, dia_id):
         return next((d for d in self.diaphragms if d.id == dia_id), None)
@@ -710,6 +776,14 @@ class Project:
             stages=[Stage(id=s["id"], name=s.get("name", ""),
                           add_members=list(s.get("add_members", [])))
                     for s in d.get("stages", [])],
+            stories=[Story(id=s["id"], name=s.get("name", ""),
+                           elev=s.get("elev", 0.0), height=s.get("height", 0.0),
+                           master=s.get("master"))
+                     for s in d.get("stories", [])],
+            grid_lines=[GridLine(id=g["id"], name=g.get("name", ""),
+                                 axis=g.get("axis", "x"),
+                                 coord=g.get("coord", 0.0))
+                        for g in d.get("grid_lines", [])],
             nonlinear_cases=[NonlinearCase(**c)
                              for c in d.get("nonlinear_cases", [])],
             analysis_cases=[AnalysisCase(

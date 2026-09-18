@@ -35,6 +35,8 @@ _ICONS = {
     "wall": '<rect x="5" y="4" width="14" height="16" rx="1"/>'
             '<path d="M5 9.3h14M5 14.6h14M12 4v5.3M8.5 9.3v5.3'
             'M15.5 9.3v5.3M10.2 14.6V20M13.8 14.6V20"/>',
+    # grid — stories/levels: horizontal level lines crossed by grid axes
+    "grid": '<path d="M3 7h18M3 12h18M3 17h18M8 4v16M14 4v16"/>',
     # contour — nested iso-bands (a filled-contour / result map glyph)
     "contour": '<path d="M4 18h16"/><path d="M6 18a6 6 0 0 1 12 0"/>'
                '<path d="M9 18a3 3 0 0 1 6 0"/>',
