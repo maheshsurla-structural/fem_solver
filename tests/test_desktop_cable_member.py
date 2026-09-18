@@ -109,6 +109,17 @@ def test_member_dialog_roundtrips_kind(qapp):
     assert MemberDialog(None, p, beam).data().kind == "beamcolumn2d"
 
 
+def test_member_dialog_roundtrips_offset(qapp):
+    from editing import MemberDialog
+    p = _stayed()
+    beam = next(mb for mb in p.members if mb.id == 1)
+    beam.z_offset = -0.3                              # composite (BE6)
+    assert MemberDialog(None, p, beam).data().z_offset == -0.3
+    # a plain beam defaults to no offset
+    beam.z_offset = 0.0
+    assert MemberDialog(None, p, beam).data().z_offset == 0.0
+
+
 # ------------------------------------------------- tuning with real cables
 def test_cable_tuning_with_truss_cables(qapp):
     from main_window import MainWindow
