@@ -529,6 +529,12 @@ class MainWindow(QMainWindow):
         self.act_section_cut = _set_icon(
             QAction("Section &cut…", self), "sectioncut")
         self.act_section_cut.triggered.connect(self.show_section_cut)
+        self.act_pier_forces = _set_icon(
+            QAction("&Pier forces…", self), "wall")
+        self.act_pier_forces.setStatusTip(
+            "Pier forces — integrate the shell membrane stress into P/V/M up "
+            "each wall pier (needs a wall with a pier label)")
+        self.act_pier_forces.triggered.connect(self.show_pier_forces)
         self.act_design = _set_icon(QAction("&Design (DCR)", self), "design")
         self.act_design.triggered.connect(self.show_design)
         self.act_loadcases = _action(self, "Load &patterns…", None,
@@ -702,6 +708,7 @@ class MainWindow(QMainWindow):
                         (self.act_punching, "Punching"),
                         (self.act_section_cut, "Section cut"),
                         (self.act_checkmodel, "Check"))),
+            ("Wall", ((self.act_pier_forces, "Pier forces"),)),
         ))
         rb.add_tab("View", (
             ("Navigate", ((self.act_fit, "Fit"),)),
@@ -2089,6 +2096,29 @@ class MainWindow(QMainWindow):
             return
         from section_cut_dialog import SectionCutDialog
         SectionCutDialog.run(self, p, self._model)
+
+    def show_pier_forces(self) -> None:
+        """Wall pier forces (wall plan W2): integrate the shell membrane stress
+        into P/V/M up each pier. Builds + solves, then opens the results dialog.
+        Needs at least one wall area carrying a pier label (wall plan W0)."""
+        p = self._project
+        if p.ndm != 3 or not getattr(p, "areas", None):
+            QMessageBox.information(
+                self, "Pier forces",
+                "Pier forces need a 3-D wall model with at least one area.")
+            return
+        if not p.pier_names():
+            QMessageBox.information(
+                self, "Pier forces",
+                "No piers defined. Draw a wall (Draw ▸ Wall) with a pier label "
+                "— or set the Pier field on a wall area — then try again.")
+            return
+        self._model = p.build_model()
+        if self._solve() is None:
+            return
+        from pier_forces_dialog import PierForcesDialog
+        self._pier_forces_dlg = PierForcesDialog.show_results(
+            self, p, self._model, unitsys=self._units())
         self._show_results_tab()
 
     def show_design(self) -> None:
