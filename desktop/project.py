@@ -1007,8 +1007,18 @@ class Project:
         return nodal, member
 
     def apply_loads(self, model, selection=("all", None)) -> None:
-        """Clear the model's loads and apply one selection: ``("all", None)``
-        (every case ×1), ``("case", id)``, or ``("combination", id)``."""
+        """Clear the model's loads and apply one selection:
+
+        * ``("all", None)`` — every load pattern ×1 (the default build);
+        * ``("case", id)`` — a single load pattern ×1;
+        * ``("combination", id)`` — a saved :class:`LoadCombination`;
+        * ``("applied", [(pattern_id, scale), …])`` — an explicit **Loads
+          Applied** spec (SAP2000-style), each pattern scaled and summed
+          (E3b). Zero-scale rows are skipped; a repeated pattern accumulates.
+
+        The ``"applied"`` form lets an analysis case pin *which* patterns it
+        loads (e.g. ``1.0 Dead + 0.5 Live``) without inventing a combination,
+        reusing the same :meth:`apply_case` scaling machinery as the others."""
         model.clear_loads()
         kind = selection[0] if selection else "all"
         if kind == "case":
@@ -1019,6 +1029,9 @@ class Project:
                 for cid, f in combo.factors.items():
                     if f:
                         self.apply_case(model, cid, f)
+        elif kind == "applied":
+            for pid, scale in normalize_loads_applied(selection[1]):
+                self.apply_case(model, pid, scale)
         else:                                    # "all" (or unknown → all)
             for c in self.load_cases:
                 self.apply_case(model, c.id, 1.0)
@@ -1153,6 +1166,27 @@ def _coerce_ic(raw) -> tuple:
     except (TypeError, IndexError, ValueError):
         pass
     return ("zero",)
+
+
+def normalize_loads_applied(rows) -> list:
+    """Normalize a *Loads Applied* spec (E3b) — a list of ``(pattern_id,
+    scale)`` rows — into clean ``(int, float)`` pairs.
+
+    JSON round-trips each tuple to a list and hand-built / migrated specs may
+    carry ``None`` ids or blank rows, so coerce defensively and drop anything
+    with a missing id or a zero scale (a zero contributes nothing). Order is
+    preserved and a repeated pattern is kept — :meth:`Project.apply_case` is
+    additive, so duplicate rows accumulate, matching SAP's grid."""
+    out = []
+    for row in (rows or []):
+        try:
+            pid = int(row[0])
+            scale = float(row[1])
+        except (TypeError, ValueError, IndexError):
+            continue
+        if scale:
+            out.append((pid, scale))
+    return out
 
 
 def _coerce_node(n: dict) -> dict:
