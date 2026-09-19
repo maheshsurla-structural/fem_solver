@@ -6,10 +6,11 @@ W3-polish on branch `feat/wall-detailing`). The core "credible wall tool"
 Story/Grid model + manager, viewport overlay + snapping, and similar-story
 replication; W1b adds the XZ/YZ elevation draw plane; W5 adds wall openings; W6
 adds coupling beams; **W3-polish** adds the ACI §18.10.6.2 drift-based boundary
-trigger and IS 13920 / EC8 detailing (multi-code selector). Only minor
-refinements remain (non-rectangular openings, a macro fiber-wall option, a
-3-point work plane). This roadmap takes the desktop app from "a wall is just a
-vertical `Area`"
+trigger and IS 13920 / EC8 detailing (multi-code selector). **The optional
+refinements are also done**: non-rectangular (polygon) openings (`8d4d31e`), a
+3-point / inclined work plane (`add2f14`), and a macro fibre-wall option
+(`b91b963`). This roadmap takes the desktop app from "a wall is just a vertical
+`Area`"
 to an ETABS-style wall workflow: a labeled **wall / pier / spandrel** object, a
 **story** context to draw and stack it in, automatic **pier force integration**,
 and a **wall design** check wired to the reinforcement the engine already knows
