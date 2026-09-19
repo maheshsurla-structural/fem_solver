@@ -276,9 +276,12 @@ data, group-aware typical floors, CAD import).
   Bubble columns + a General-grids table; `manage` returns `(stories, grids,
   generals)`. `tests/test_desktop_grid_parity.py`. *Still TODO for full parity:*
   named multi grid-**systems** with origin + rotation (deferred to W8b-2).
-- **W8c — TODO**: an ETABS-style **quick template** (uniform grid + simple
-  stories) new-model dialog — with a **live plan+elevation preview** as the
-  differentiator.
+- **W8c — DONE** (`996d29b`): an ETABS-style **quick template** (uniform grid +
+  simple stories) with a **live plan+elevation preview** (matplotlib, redraws on
+  every edit — ETABS has only a static thumbnail). `building_template.
+  build_grid_stories` (pure: X-dir A,B,C… + Y-dir 1,2,3… + Base+N stories,
+  bottom story may differ) + `GridStoryTemplateDialog` + Home ▸ Levels ▸
+  Template. `tests/test_desktop_building_template.py`.
 - **W8d — TODO**: unified 2-way editor (table ⇄ viewport update together) + DXF
   grid import. *(Optional later: cylindrical/radial grids, reference
   points/planes.)*
@@ -345,7 +348,8 @@ gives every later epic something to hang on.
 | W7 | Story-based plan wall drawing + scope | ☑ done |
 | W8a | Story parity (Similar-To + H↔E linking + color) | ☑ done (`1def90b`) |
 | W8b | Grid parity (visibility + bubbles + general grids) | ☑ done (`431f792`) |
-| W8b-2/c/d | Grid systems (origin/rot) + quick template + live editor | ☐ todo |
+| W8c | Quick template + live plan/elevation preview | ☑ done (`996d29b`) |
+| W8b-2/d | Grid systems (origin/rot) + 2-way editor + DXF import | ☐ todo |
 
 *Engine additions required across the whole stream: only (a) the W2 pier-cut
 integrator and (b) the W3 ACI 318 §18.10 assembler. Everything else is desktop
