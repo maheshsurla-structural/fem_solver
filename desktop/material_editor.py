@@ -18,7 +18,7 @@ import copy
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as Canvas
 from matplotlib.figure import Figure
-from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDialog,
+from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox, QDialog,
                                QDoubleSpinBox, QHBoxLayout, QLabel, QLineEdit,
                                QMessageBox, QPushButton, QSpinBox, QTableWidget,
                                QTableWidgetItem, QVBoxLayout, QWidget)
@@ -111,6 +111,10 @@ class MaterialDialog(QDialog):
         self._build_param_rows()
         lv.addWidget(self._param_card)
 
+        # ---- time-dependent (creep / shrinkage) card — plan C5 ----
+        self._build_creep_card(material)
+        lv.addWidget(self._creep_card)
+
         hint = QLabel("The σ-ε curve is the actual fiber law the engine will use.")
         hint.setObjectName("hintLabel")
         hint.setWordWrap(True)
@@ -165,6 +169,94 @@ class MaterialDialog(QDialog):
         self._build_param_rows()
         self._redraw()
 
+    # ------------------------------------------------ creep card (plan C5)
+    def _build_creep_card(self, material) -> None:
+        """Time-dependent (creep / shrinkage) inputs used by staged
+        construction (fed to ``bridges.StagedCreep`` when a stage opts in)."""
+        c = dict(getattr(material, "creep", None) or {})
+        # seed f_cm from the material's f'c (+8 MPa, EN mean) when available
+        seed_fcm = c.get("f_cm")
+        if seed_fcm is None:
+            fc = (material.params or {}).get("fc") if material else None
+            seed_fcm = (float(fc) + 8.0e6) if fc else 38.0e6
+
+        self._creep_card = GroupCard("Time-dependent (creep / shrinkage)")
+        form = self._creep_card.body_layout()
+
+        self.creep_on = QCheckBox("Concrete creeps in staged construction")
+        self.creep_on.setChecked(bool(c.get("enabled", False)))
+        self.creep_on.toggled.connect(self._redraw_creep)
+        form.addRow("", self.creep_on)
+
+        self.cr_fcm = QDoubleSpinBox()
+        self.cr_fcm.setRange(1.0, 200.0)
+        self.cr_fcm.setDecimals(1)
+        self.cr_fcm.setValue(float(seed_fcm) / 1.0e6)
+        self.cr_fcm.setToolTip("Mean compressive strength f_cm (CEB-FIP creep).")
+        self.cr_fcm.valueChanged.connect(self._redraw_creep)
+        form.addRow("f_cm [MPa]", self.cr_fcm)
+
+        self.cr_rh = QDoubleSpinBox()
+        self.cr_rh.setRange(20.0, 100.0)
+        self.cr_rh.setDecimals(0)
+        self.cr_rh.setValue(float(c.get("RH", 70.0)))
+        self.cr_rh.setToolTip("Ambient relative humidity.")
+        self.cr_rh.valueChanged.connect(self._redraw_creep)
+        form.addRow("RH [%]", self.cr_rh)
+
+        self.cr_h0 = QDoubleSpinBox()
+        self.cr_h0.setRange(0.01, 10.0)
+        self.cr_h0.setDecimals(3)
+        self.cr_h0.setSingleStep(0.05)
+        self.cr_h0.setValue(float(c.get("h_0", 0.20)))
+        self.cr_h0.setToolTip("Notional member size h_0 = 2·Ac/u.")
+        self.cr_h0.valueChanged.connect(self._redraw_creep)
+        form.addRow("h₀ [m]", self.cr_h0)
+
+        self.cr_chi = QDoubleSpinBox()
+        self.cr_chi.setRange(0.05, 1.0)
+        self.cr_chi.setDecimals(2)
+        self.cr_chi.setSingleStep(0.05)
+        self.cr_chi.setValue(float(c.get("chi", 1.0)))
+        self.cr_chi.setToolTip(
+            "Ageing coefficient χ: 1.0 = Effective Modulus Method, "
+            "~0.8 = age-adjusted (Trost/Bažant).")
+        form.addRow("χ (ageing)", self.cr_chi)
+
+        self.creep_phi = QLabel("")
+        self.creep_phi.setObjectName("hintLabel")
+        self.creep_phi.setWordWrap(True)
+        form.addRow("", self.creep_phi)
+        self._redraw_creep()
+
+    def _redraw_creep(self) -> None:
+        on = self.creep_on.isChecked()
+        for w in (self.cr_fcm, self.cr_rh, self.cr_h0, self.cr_chi):
+            w.setEnabled(on)
+        if not on:
+            self.creep_phi.setText("Elastic — no creep in staged construction.")
+            return
+        try:
+            from femsolver.bridges import cebfip_creep_coefficient
+            phi = cebfip_creep_coefficient(
+                t_days=28.0 + 18250.0, t0_days=28.0,
+                f_cm=self.cr_fcm.value() * 1.0e6,
+                RH=self.cr_rh.value(), h_0=self.cr_h0.value()).phi
+            self.creep_phi.setText(
+                f"φ(50 yr, t₀=28 d) ≈ {phi:.2f}  →  long-term deflection "
+                f"×{1.0 + self.cr_chi.value() * phi:.2f}")
+        except Exception as exc:                       # noqa: BLE001
+            self.creep_phi.setText(f"({exc})")
+
+    def _read_creep(self) -> dict:
+        return {
+            "enabled": bool(self.creep_on.isChecked()),
+            "f_cm": float(self.cr_fcm.value()) * 1.0e6,
+            "RH": float(self.cr_rh.value()),
+            "h_0": float(self.cr_h0.value()),
+            "chi": float(self.cr_chi.value()),
+        }
+
     # ------------------------------------------------ read + preview
     def _read_params(self) -> dict:
         out = {}
@@ -177,11 +269,12 @@ class MaterialDialog(QDialog):
         kind = self._current_kind()
         p = self._read_params()
         rho = float(self.rho.value())
+        creep = self._read_creep()
         if kind == "elastic_isotropic":
             return Material(id=self.id_spin.value(), name=self.name.text(),
                             E=float(p.get("E", 200e9)),
                             nu=float(p.get("nu", 0.3)), kind=kind, rho=rho,
-                            params={})
+                            params={}, creep=creep)
         # representative modulus for the linear frame stiffness fallback
         if kind == "concrete_kentpark":
             E_rep = 2.0 * p["fc"] / p["eps_c0"]
@@ -192,7 +285,7 @@ class MaterialDialog(QDialog):
         params = {k: v for k, v in p.items() if k not in ("E", "nu")}
         mat = Material(id=self.id_spin.value(), name=self.name.text(),
                        E=float(E_rep), nu=0.2, kind=kind, rho=rho,
-                       params=params)
+                       params=params, creep=creep)
         if kind in ("reinforcing_steel", "cyclic_steel"):
             mat.fy, mat.fu = float(p["fy"]), float(p["fu"])
             mat.params["E"] = float(p.get("E", 200e9))

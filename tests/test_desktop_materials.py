@@ -133,6 +133,47 @@ def test_dialog_edit_roundtrips_steel(qapp):
     assert mat.fy == pytest.approx(460e6, rel=1e-6)   # design field kept in sync
 
 
+def test_creep_card_present_and_writes_props(qapp):
+    """C5: the material editor has a creep card that writes structured creep
+    props (f_cm / RH / h_0 / chi / enabled) onto the material."""
+    from PySide6.QtWidgets import QGroupBox
+
+    from material_editor import MaterialDialog
+    dlg = MaterialDialog(None, _project())
+    titles = {b.title() for b in dlg.findChildren(QGroupBox)}
+    assert "Time-dependent (creep / shrinkage)" in titles
+
+    dlg.creep_on.setChecked(True)
+    dlg.cr_fcm.setValue(48.0)
+    dlg.cr_rh.setValue(60.0)
+    dlg.cr_h0.setValue(0.30)
+    dlg.cr_chi.setValue(0.8)
+    c = dlg.data().creep
+    assert c["enabled"] is True
+    assert c["f_cm"] == pytest.approx(48.0e6, rel=1e-9)
+    assert c["RH"] == 60.0 and c["h_0"] == 0.30 and c["chi"] == 0.8
+
+
+def test_creep_props_round_trip_and_edit(qapp):
+    """A material's creep props survive save/load and repopulate the editor."""
+    from material_editor import MaterialDialog
+
+    m = Material(id=2, name="C40", E=34e9, nu=0.2, kind="elastic_isotropic",
+                 creep={"enabled": True, "f_cm": 48e6, "RH": 65.0,
+                        "h_0": 0.25, "chi": 0.85})
+    # JSON round-trip through the project
+    p = _project()
+    p.materials = [m]
+    m2 = Project.from_dict(p.to_dict()).materials[0]
+    assert m2.creep == m.creep
+
+    # editor repopulates from the seeded material
+    dlg = MaterialDialog(None, _project(), m)
+    assert dlg.creep_on.isChecked()
+    assert dlg.cr_fcm.value() == pytest.approx(48.0, rel=1e-9)
+    assert dlg.cr_chi.value() == 0.85
+
+
 def test_manager_delete_guard_when_in_use(qapp, monkeypatch):
     import material_editor
     monkeypatch.setattr(material_editor.QMessageBox, "warning",

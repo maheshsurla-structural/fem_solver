@@ -1445,21 +1445,32 @@ class MainWindow(QMainWindow):
                     age_at_activation_days=float(
                         getattr(s, "age_at_activation_days", 28.0))))
 
-        # Time-dependent (creep) config — active only if a stage opted in and a
-        # concrete mean strength f_cm is derivable (proper material creep inputs
-        # arrive with plan C5). Falls back to an elastic run otherwise.
+        # Time-dependent (creep) config — active only if a stage opted in.
+        # Prefer a material's structured creep inputs (plan C5: f_cm / RH /
+        # h_0 / chi from the material editor); fall back to f'c+8 MPa from a
+        # concrete material's params, else run elastic.
         creep_cfg = None
         if stages and any(getattr(s, "creep", False) for s in stages):
-            f_cm = next((float(m.params["fc"]) for m in p.materials
-                         if isinstance(getattr(m, "params", None), dict)
-                         and m.params.get("fc", 0.0) > 0.0), 0.0)
-            if f_cm > 0.0:
-                from femsolver.bridges import StagedCreep
-                creep_cfg = StagedCreep(f_cm=f_cm)
+            from femsolver.bridges import StagedCreep
+            cm = next((m for m in p.materials
+                       if (getattr(m, "creep", None) or {}).get("enabled")
+                       and m.creep.get("f_cm", 0.0) > 0.0), None)
+            if cm is not None:
+                c = cm.creep
+                creep_cfg = StagedCreep(
+                    f_cm=float(c["f_cm"]), chi=float(c.get("chi", 1.0)),
+                    RH=float(c.get("RH", 70.0)), h_0=float(c.get("h_0", 0.20)))
             else:
-                self.log.appendPlainText(
-                    "Construction stages: creep requested but no concrete "
-                    "f_cm found — running elastic.")
+                f_cm = next((float(m.params["fc"]) + 8.0e6 for m in p.materials
+                             if isinstance(getattr(m, "params", None), dict)
+                             and m.params.get("fc", 0.0) > 0.0), 0.0)
+                if f_cm > 0.0:
+                    creep_cfg = StagedCreep(f_cm=f_cm)
+                else:
+                    self.log.appendPlainText(
+                        "Construction stages: creep requested but no concrete "
+                        "f_cm found (set it in the material editor) — running "
+                        "elastic.")
 
         total_w = sum(abs(v[vdof]) for st in erection
                       for v in st.loads.values())

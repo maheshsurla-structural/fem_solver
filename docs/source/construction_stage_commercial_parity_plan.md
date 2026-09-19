@@ -1,7 +1,7 @@
 # Construction-stage / staged-construction — commercial-parity roadmap
 
-*Status: **IN PROGRESS — C0 + C1a + C4 DONE** (branch `feat/construction-stage-parity`;
-C0/C1a committed `e96f7ee`, C4 committed next). This plan takes the staged-construction stack from
+*Status: **IN PROGRESS — C0 + C1a + C4 + C5 DONE** (branch `feat/construction-stage-parity`;
+C0/C1a `e96f7ee`, C4 `95f989e`, C5 committed next). This plan takes the staged-construction stack from
 "most of the physics exists, fragmented across three drivers and barely exposed
 in the GUI" to SAP2000 / CSiBridge / MIDAS Civil grade: one unified nonlinear +
 time-dependent staged case that composes birth/death + per-element
@@ -34,10 +34,16 @@ frame/shell models, driven from a real GUI stage manager. Sibling to the
   mutual exclusivity and a richer stage-list summary (`built / removed / d / φ`).
   Tests in `tests/test_desktop_construction_stages.py` (dialog edit + reselect +
   exclusivity + a full-path creep-amplifies-deflection integration test).
-- **Next:** C5 (per-material creep inputs feeding `f_cm` + code selection), or
-  C1b (step-by-step creep on frames — needed for "restraint added after loading
-  relaxes an earlier load", which C1a's incremental EMM deliberately does not
-  capture).
+- **C5** — `Material` gained a structured `creep` dict (`enabled`, `f_cm`, `RH`,
+  `h_0`, `chi`); the material editor grew a "Time-dependent (creep / shrinkage)"
+  card with those inputs + a live `φ(50 yr, 28 d)` / deflection-multiplier
+  readout (`f_cm` auto-seeded from `f'c`+8 MPa). `run_construction_stages` now
+  builds `StagedCreep` from a creep-enabled material's props (χ threaded
+  through), falling back to `f'c`+8 MPa then elastic. Tests in
+  `test_desktop_materials.py` + a χ-affects-droop end-to-end test.
+- **Next:** C1b (step-by-step creep on frames — needed for "restraint added
+  after loading relaxes an earlier load", which C1a's incremental EMM
+  deliberately does not capture), or C7 (staged results beyond camber).
 
 ---
 
@@ -215,11 +221,16 @@ built/removed exclusivity. **Remaining for a later pass:** element **groups**
 + tendons, and richer registration in the Analysis-cases manager
 (`case_types.py`). Those depend on C1c/C1d/C6 and a project group concept.
 
-### C5 — GUI: time-dependent material inputs ★ **[G]**
-Per-material creep/shrinkage/aging inputs (code = CEB-FIP MC2010 / EN1992 /
-ACI209, RH, notional size h₀, cement class, f_cm) feeding C1a–C1c. A
-"strength-gain / creep curve" preview (the `strength_gain_curve` +
-`cebfip_creep_coefficient` data) in the material editor.
+### C5 — GUI: time-dependent material inputs ★ **[G]** ✅ DONE (first pass)
+`Material` carries a structured `creep` dict (`enabled`, `f_cm`, `RH`, `h_0`,
+`chi`); the material editor has a "Time-dependent (creep / shrinkage)" card
+feeding it, with a live `φ(50 yr, t₀=28 d)` + long-term-deflection-multiplier
+readout via `cebfip_creep_coefficient`. `run_construction_stages` sources
+`StagedCreep` from a creep-enabled material (χ included). **Remaining for a later
+pass:** shrinkage `ε_cs` inputs + a full strength-gain/creep-vs-time chart
+(`strength_gain_curve`), EN1992/ACI209 code selection + cement class, and
+per-material (not per-analysis) creep so a mixed-material model uses each
+element's own `f_cm`/`h_0` (needs `StagedCreep` to accept per-tag params).
 
 ### C6 — GUI: tendon modeling + stressing sequence ★ **[G]**
 A tendon object in the project (profile via `parabolic_drape_profile` /

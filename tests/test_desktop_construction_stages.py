@@ -207,6 +207,28 @@ def test_run_stages_creep_amplifies_deflection(qapp):
     assert d_creep > 1.2 * d_elastic                 # creep amplifies droop
 
 
+def test_run_stages_uses_material_creep_props(qapp):
+    """C5: structured per-material creep props (incl. ageing χ) drive the run.
+    A lower χ (age-adjusted) gives less long-term droop than χ=1 (plain EMM)."""
+    from main_window import MainWindow
+
+    def _run(chi):
+        p = _cantilever()
+        p.materials[0].creep = {"enabled": True, "f_cm": 38.0e6, "RH": 70.0,
+                                "h_0": 0.20, "chi": chi}
+        w = MainWindow()
+        w.load_project(p)
+        r = w.run_construction_stages(config=[
+            Stage(id=1, name="S1", add_members=[m.id for m in p.members],
+                  duration_days=18250.0, age_at_activation_days=28.0,
+                  creep=True)])
+        return abs(r["camber"].final_deflection[-1])
+
+    d_emm = _run(1.0)          # plain EMM
+    d_aaem = _run(0.8)         # age-adjusted (stiffer -> less droop)
+    assert d_emm > d_aaem > 0.0
+
+
 def test_run_stages_guards(qapp, monkeypatch):
     import main_window as MW
     monkeypatch.setattr(MW.QMessageBox, "information",

@@ -166,6 +166,13 @@ class Material:
     # Elastic materials leave this empty. Consumed by desktop.materials
     # (`uniaxial_law` / `stress_strain_curve`) to build the engine law.
     params: dict = field(default_factory=dict)
+    # Time-dependent (creep / shrinkage) properties for staged construction
+    # (construction-stage parity plan C5). Keys: ``enabled`` (bool),
+    # ``f_cm`` (mean compressive strength, Pa), ``RH`` (relative humidity, %),
+    # ``h_0`` (notional member size, m), ``chi`` (ageing coefficient),
+    # ``cement_class`` ("R"/"N"/"S"). Fed to ``bridges.StagedCreep`` when a
+    # construction stage opts into creep. Empty = no time-dependent data.
+    creep: dict = field(default_factory=dict)
 
 
 @dataclass
