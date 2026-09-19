@@ -19,7 +19,7 @@ sys.path.insert(0, str(_ROOT / "src"))
 sys.path.insert(0, str(_ROOT / "desktop"))
 
 from project import (Material, Member, Node, Project,  # noqa: E402
-                     Section, Stage)
+                     Section, Stage, Tendon)
 
 
 @pytest.fixture(scope="module")
@@ -273,6 +273,79 @@ def test_stage_forces_tab_populates(qapp):
     # the reducer returns a finite (N, |M|) for a born 2-D beam element
     nm = _local_axial_moment(model.element(1), res.element_force_history[1][0])
     assert nm is not None and len(nm) == 2
+
+
+# --------------------------------------------------------------- tendons (C6)
+def test_tendon_model_round_trips():
+    """C6: a project Tendon + a stage's tendons_stressed survive save/load."""
+    p = _cantilever()
+    p.tendons = [Tendon(id=1, name="T1", nodes=[1, 2, 3], ecc=[0.0, -0.2, 0.0],
+                        area=2.0e-3, jacking_force=1.5e6, mu=0.19)]
+    p.stages = [Stage(id=1, name="S1", add_members=[1, 2],
+                      tendons_stressed=[1])]
+    p2 = Project.from_dict(p.to_dict())
+    t = p2.tendons[0]
+    assert t.nodes == [1, 2, 3] and t.ecc == [0.0, -0.2, 0.0]
+    assert t.jacking_force == 1.5e6 and t.mu == 0.19
+    assert p2.stages[0].tendons_stressed == [1]
+
+
+def test_tendon_editor_round_trip(qapp):
+    from tendon_dialog import TendonDialog
+    p = _cantilever()
+    t = Tendon(id=3, name="drape", nodes=[1, 2, 3], ecc=[0.0, -0.3, 0.0],
+               area=1.8e-3, jacking_force=2.0e6)
+    dlg = TendonDialog(None, p, t)
+    out = dlg.data()
+    assert out.id == 3 and out.nodes == [1, 2, 3]
+    assert out.ecc == [0.0, -0.3, 0.0] and out.jacking_force == 2.0e6
+
+
+def test_stage_dialog_selects_tendons(qapp):
+    from stage_dialog import StageManagerDialog
+    p = _cantilever()
+    p.tendons = [Tendon(id=1, name="T1", nodes=[1, 2], ecc=[0.0, -0.2])]
+    p.stages = [Stage(id=1, name="S1", add_members=[1, 2])]
+    d = StageManagerDialog(None, p)
+    d.stage_list.setCurrentRow(0)
+    d.tendons.item(0).setSelected(True)
+    assert d.result()[0].tendons_stressed == [1]
+
+
+def test_run_stages_tendon_cambers_up(qapp):
+    """C1c/C6 end to end: a draped (sagging) tendon stressed on the cantilever
+    lifts the tip relative to the self-weight-only build."""
+    from main_window import MainWindow
+
+    # simply-supported span so a draped tendon clearly cambers up at midspan
+    def _span():
+        p = Project(ndm=2, ndf=3)
+        p.nodes = [Node(i + 1, i * 2.0, 0.0) for i in range(5)]
+        p.nodes[0].supports = (1, 1, 0)
+        p.nodes[4].supports = (0, 1, 0)
+        p.sections = [Section(id=1, name="g", A=0.6, Iz=0.08)]
+        p.materials = [Material(1, "c", E=3e10, nu=0.2, rho=2500.0)]
+        p.members = [Member(i + 1, i + 1, i + 2, 1, 1) for i in range(4)]
+        return p
+
+    p0 = _span()
+    w0 = MainWindow()
+    w0.load_project(p0)
+    r0 = w0.run_construction_stages(config=[
+        Stage(id=1, name="S1", add_members=[1, 2, 3, 4])])
+    mid0 = r0["camber"].final_deflection[2]        # midspan (node 3)
+
+    p1 = _span()
+    p1.tendons = [Tendon(id=1, name="PT", nodes=[1, 2, 3, 4, 5],
+                         ecc=[0.0, -0.25, -0.35, -0.25, 0.0],
+                         area=3.0e-3, jacking_force=3.0e6)]
+    w1 = MainWindow()
+    w1.load_project(p1)
+    r1 = w1.run_construction_stages(config=[
+        Stage(id=1, name="S1", add_members=[1, 2, 3, 4], tendons_stressed=[1])])
+    mid1 = r1["camber"].final_deflection[2]
+    # prestress lifts the midspan (less sag / net hog) than self-weight alone
+    assert mid1 > mid0
 
 
 def test_run_stages_guards(qapp, monkeypatch):

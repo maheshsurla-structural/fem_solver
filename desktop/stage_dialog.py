@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import copy
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QDialog,
                                QDoubleSpinBox, QHBoxLayout, QLabel, QLineEdit,
                                QListWidget, QListWidgetItem, QPushButton,
@@ -131,6 +132,24 @@ class StageManagerDialog(QDialog):
         self.removed = self._member_list()
         self.removed.itemSelectionChanged.connect(self._on_removed_changed)
         editor.body_layout().addWidget(self.removed, 1)
+
+        # tendons stressed at this stage (construction-stage parity C6)
+        editor.body_layout().addWidget(QLabel("Tendons stressed this stage:"))
+        self.tendons = QListWidget()
+        self.tendons.setSelectionMode(
+            QAbstractItemView.SelectionMode.MultiSelection)
+        for td in getattr(project, "tendons", []):
+            it = QListWidgetItem(f"{td.id}: {td.name or 'tendon'}  "
+                                 f"({len(td.nodes)} nodes)")
+            it.setData(_ROLE, td.id)
+            self.tendons.addItem(it)
+        if not getattr(project, "tendons", []):
+            ph = QListWidgetItem("(no tendons — define them in Analysis ▸ "
+                                 "Tendons)")
+            ph.setFlags(Qt.ItemFlag.ItemIsEnabled)     # shown, not selectable
+            self.tendons.addItem(ph)
+        self.tendons.itemSelectionChanged.connect(self._on_tendons_changed)
+        editor.body_layout().addWidget(self.tendons, 1)
         body.addWidget(editor, 1)
         root.addLayout(body, 1)
 
@@ -175,6 +194,7 @@ class StageManagerDialog(QDialog):
         self.duration.setEnabled(on)
         self.age.setEnabled(on)
         self.creep.setEnabled(on)
+        self.tendons.setEnabled(on)
 
     def _refresh_stage_list(self) -> None:
         self.stage_list.blockSignals(True)
@@ -211,6 +231,13 @@ class StageManagerDialog(QDialog):
                 self.members.item(i).data(_ROLE) in built)
             self.removed.item(i).setSelected(
                 self.removed.item(i).data(_ROLE) in gone)
+        self.tendons.blockSignals(True)
+        stressed = set(getattr(s, "tendons_stressed", [])) if s else set()
+        for i in range(self.tendons.count()):
+            it = self.tendons.item(i)
+            if it.data(_ROLE) is not None:
+                it.setSelected(it.data(_ROLE) in stressed)
+        self.tendons.blockSignals(False)
         for w in (self.name, self.members, self.removed, self.duration,
                   self.age, self.creep):
             w.blockSignals(False)
@@ -270,6 +297,16 @@ class StageManagerDialog(QDialog):
             s.add_members = [m for m in s.add_members if m not in chosen]
             self._sync_built_selection()
         self._refresh_keep_row()
+
+    def _on_tendons_changed(self) -> None:
+        s = self._current()
+        if s is None:
+            return
+        s.tendons_stressed = [
+            self.tendons.item(i).data(_ROLE)
+            for i in range(self.tendons.count())
+            if self.tendons.item(i).isSelected()
+            and self.tendons.item(i).data(_ROLE) is not None]
 
     def _sync_removed_selection(self) -> None:
         s = self._current()

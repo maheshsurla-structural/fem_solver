@@ -73,6 +73,8 @@ _ICONS = {
     "export": '<path d="M6 3h9l3 3v6"/><path d="M6 3v18h12v-4"/>'
               '<path d="M10 14h8m0 0l-3-3m3 3l-3 3"/>',
     "function": '<path d="M3 12q3-7 6 0t6 0t6 0"/>',   # time-history waveform
+    # tendon — draped cable between two anchors (post-tensioning)
+    "tendon": '<path d="M3 6v12M21 6v12"/><path d="M3 8q9 12 18 0"/>',
     "load": '<path d="M12 4v13M6 11l6 6 6-6"/>',
     "delete": '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
     "move": '<path d="M12 3v18M3 12h18M12 3l-2.5 2.5M12 3l2.5 2.5'

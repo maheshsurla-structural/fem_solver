@@ -1,7 +1,7 @@
 # Construction-stage / staged-construction — commercial-parity roadmap
 
-*Status: **IN PROGRESS — C0 + C1a + C4 + C5 + C1b + C7 DONE** (branch `feat/construction-stage-parity`;
-C0/C1a `e96f7ee`, C4 `95f989e`, C5 `1bf7d4b`, C1b `4c7e811`, C7 committed next). This plan takes the staged-construction stack from
+*Status: **IN PROGRESS — C0, C1a, C4, C5, C1b, C7, C1c+C6 DONE** (branch `feat/construction-stage-parity`;
+C0/C1a `e96f7ee`, C4 `95f989e`, C5 `1bf7d4b`, C1b `4c7e811`, C7 `f764ffd`, C1c+C6 committed next). This plan takes the staged-construction stack from
 "most of the physics exists, fragmented across three drivers and barely exposed
 in the GUI" to SAP2000 / CSiBridge / MIDAS Civil grade: one unified nonlinear +
 time-dependent staged case that composes birth/death + per-element
@@ -49,10 +49,13 @@ frame/shell models, driven from a real GUI stage manager. Sibling to the
 - **C7** — staged results beyond camber: the results dialog gained a **Stage
   forces** tab (stage selector → per-element axial/moment/E-factor table + peak
   summary). See the C7 epic below.
+- **C1c + C6** — tendon stressing per stage: `project.Tendon` + stage selector +
+  a tendon manager (Analysis ▸ Functions ▸ Tendons); the runner lowers each
+  stressed tendon to equivalent loads. See the C1c / C6 epics.
 - **Next:** wire `StepByStepCreepFrame` into the staged birth/death driver (creep
-  across stages) + Gauss-point curvature for exact varying-moment redistribution;
-  C6 (tendon modelling + stressing sequence); or C2 (deck bending + 3-D in the
-  nonlinear cable erection driver).
+  across stages) + Gauss-point curvature; C2 (deck bending + 3-D in the nonlinear
+  cable erection driver); C3 (backward/geometry-control loop); or C1d (per-stage
+  support activation).
 
 ---
 
@@ -205,10 +208,12 @@ A single driver (new `analysis/staged_case.py`, or a superset of
   Gauss-point curvature integration for exact varying-moment bending
   redistribution (the two-span-continuity closed form), 3-D beams, and wiring
   the march into the staged birth/death driver (creep across stages).
-- **C1c — Tendon stressing integrated per stage.** Fold `tendon_stage_loads`
-  into the driver so a tendon can be stressed at the stage it physically is,
-  with time-dependent PT losses (`prestress_long_term_loss`) accruing over
-  later stages; expose primary + secondary force history.
+- **C1c — Tendon stressing integrated per stage. ✅ DONE (first pass).**
+  `run_construction_stages` builds a `bridges.Tendon` for each tendon a stage
+  stresses, lowers it to equivalent nodal loads (`tendon_stage_loads`, with
+  friction/wobble/anchorage losses), and merges them into that stage's load
+  (`merge_stage_loads`) — held into later stages. **Remaining:** time-dependent
+  PT losses accruing across stages, and primary/secondary force history.
 - **C1d — Support / restraint activation & release ★.** Let a stage add/remove
   boundary conditions (temporary towers, bearings installed late), releasing the
   reaction the removed restraint carried onto the remaining structure (mirror
@@ -251,11 +256,14 @@ pass:** shrinkage `ε_cs` inputs + a full strength-gain/creep-vs-time chart
 per-material (not per-analysis) creep so a mixed-material model uses each
 element's own `f_cm`/`h_0` (needs `StagedCreep` to accept per-tag params).
 
-### C6 — GUI: tendon modeling + stressing sequence ★ **[G]**
-A tendon object in the project (profile via `parabolic_drape_profile` /
-`TendonProfile`, jacking force, friction/anchorage/long-term loss inputs) and a
-per-stage "stress tendon" action, wired to C1c. Render tendon profiles; report
-primary + secondary + effective force after losses.
+### C6 — GUI: tendon modeling + stressing sequence ★ **[G]** ✅ DONE (first pass)
+`project.Tendon` (id, name, node path + per-node eccentricity, area, jacking
+force, type, μ/wobble/slip) + `Stage.tendons_stressed`; both persisted. A
+`tendon_dialog.TendonManagerDialog` + `TendonDialog` editor (node/eccentricity
+table + force/loss inputs), reachable at Analysis ▸ Functions ▸ **Tendons**; the
+stage manager gained a "Tendons stressed this stage" selector. **Remaining:**
+tendon-profile rendering in the 3-D view, primary/secondary force reporting, and
+long-term loss display.
 
 ### C7 — GUI: staged results ★★ **[G]** ✅ DONE (first pass)
 `ConstructionStageResultsDialog` is now tabbed: **Camber** (as before) + **Stage

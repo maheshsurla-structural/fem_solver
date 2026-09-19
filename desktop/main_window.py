@@ -449,6 +449,8 @@ class MainWindow(QMainWindow):
                                   "hinge")
         self.act_th_functions = _action(self, "Time-history &functions…", None,
                                         self.manage_th_functions, "function")
+        self.act_tendons = _action(self, "&Tendons…", None,
+                                   self.manage_tendons, "tendon")
         self.act_assign_hinges = _action(self, "Assign &hinges…", None,
                                          self.assign_hinges, "assignhinge")
         self.act_genloads = _action(self, "Generate &loads…", None,
@@ -751,7 +753,8 @@ class MainWindow(QMainWindow):
                          (self.act_run, "Run"))),
             ("Hinges", ((self.act_hinges, "Define"),
                         (self.act_assign_hinges, "Assign"))),
-            ("Functions", ((self.act_th_functions, "Time History"),)),
+            ("Functions", ((self.act_th_functions, "Time History"),
+                           (self.act_tendons, "Tendons"))),
         ))
         rb.add_tab("Results", (
             ("Diagrams", ((self.act_undef, "Undeformed"),
@@ -1428,6 +1431,31 @@ class MainWindow(QMainWindow):
                     loads.setdefault(nd, [0.0] * ndf)[vdof] += -w / 2.0
             return loads
 
+        # Equivalent nodal loads of a tendon stressed at a stage (C1c/C6): the
+        # post-loss prestress lowered onto the host beams. Merged into that
+        # stage's load and held (accumulates) into later stages.
+        from femsolver.bridges import (Tendon as EngineTendon,
+                                       merge_stage_loads, tendon_stage_loads)
+        by_id = {t.id: t for t in getattr(p, "tendons", [])}
+
+        def _tendon_loads(tendon_ids):
+            out: dict = {}
+            for tid in tendon_ids:
+                pt = by_id.get(tid)
+                if pt is None or len(pt.nodes) < 2:
+                    continue
+                try:
+                    eng = EngineTendon(
+                        nodes=list(pt.nodes), eccentricity=list(pt.ecc),
+                        area=pt.area, jacking_force=pt.jacking_force,
+                        tendon_type=pt.tendon_type, mu=pt.mu,
+                        wobble_k=pt.wobble_k, anchor_slip=pt.anchor_slip)
+                    out = merge_stage_loads(out, tendon_stage_loads(eng, model))
+                except Exception as exc:                   # noqa: BLE001
+                    self.log.appendPlainText(
+                        f"Tendon {tid} skipped: {exc}")
+            return out
+
         erection = []
         if not stages:
             erection = [ErectionStage("All", add_elements=all_ids,
@@ -1437,10 +1465,13 @@ class MainWindow(QMainWindow):
                 ids = list(s.add_members)
                 if i == 0 and unassigned:
                     ids = unassigned + ids
+                loads = merge_stage_loads(
+                    _self_weight(ids),
+                    _tendon_loads(getattr(s, "tendons_stressed", [])))
                 erection.append(ErectionStage(
                     s.name or f"Stage {i + 1}", add_elements=ids,
                     remove_elements=list(getattr(s, "remove_members", [])),
-                    loads=_self_weight(ids),
+                    loads=loads,
                     duration_days=float(getattr(s, "duration_days", 0.0)),
                     age_at_activation_days=float(
                         getattr(s, "age_at_activation_days", 28.0))))
@@ -2934,6 +2965,18 @@ class MainWindow(QMainWindow):
         self._apply_edit(
             "Edit time-history functions",
             lambda: setattr(self._project, "th_functions", result))
+
+    def manage_tendons(self) -> None:
+        """Open the post-tensioning tendon manager (construction-stage parity
+        C6): tendons stressed at a construction stage."""
+        if self._project is None:
+            return
+        from tendon_dialog import TendonManagerDialog
+        result = TendonManagerDialog.manage(self, self._project)
+        if result is None:
+            return
+        self._apply_edit("Edit tendons",
+                         lambda: setattr(self._project, "tendons", result))
 
     def assign_hinges(self) -> None:
         result = HingeAssignmentDialog.assign(self, self._project)

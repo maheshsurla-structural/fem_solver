@@ -582,6 +582,7 @@ class Stage:
     duration_days: float = 0.0        # stage duration (creep clock)
     age_at_activation_days: float = 28.0  # concrete age when born (days)
     creep: bool = False               # compute time-dependent (creep) effects
+    tendons_stressed: list = field(default_factory=list)  # Tendon ids stressed here
 
 
 @dataclass
@@ -629,6 +630,40 @@ class Story:
 
 
 @dataclass
+class Tendon:
+    """A post-tensioning / pre-tensioning tendon on a run of member nodes
+    (construction-stage parity C6). Mirrors :class:`femsolver.bridges.Tendon`;
+    the desktop stores the definition and builds the engine tendon at solve
+    time. Stressed at the construction stage(s) that list its id
+    (:attr:`Stage.tendons_stressed`).
+
+    ``nodes`` are ordered node ids the tendon passes through (consecutive nodes
+    must be joined by a member). ``ecc`` is the eccentricity at each node (m,
+    local +y up; negative = below the centroid = the usual sagging drape).
+    ``area`` is the strand area (m²), ``jacking_force`` the anchor force (N).
+    Losses use ``mu`` / ``wobble_k`` / ``anchor_slip`` for post-tension.
+    """
+    id: int
+    name: str
+    nodes: list = field(default_factory=list)
+    ecc: list = field(default_factory=list)
+    area: float = 1.4e-3
+    jacking_force: float = 1.0e6
+    tendon_type: str = "post-tension"
+    mu: float = 0.20
+    wobble_k: float = 0.0066
+    anchor_slip: float = 0.0
+
+    def __post_init__(self):
+        self.nodes = list(self.nodes)
+        self.ecc = [float(e) for e in self.ecc]
+        self.area = float(self.area)
+        self.jacking_force = float(self.jacking_force)
+        if self.tendon_type not in ("post-tension", "pre-tension"):
+            self.tendon_type = "post-tension"
+
+
+@dataclass
 class GridLine:
     """A named grid line (wall plan W4). ``axis="x"`` is a line of constant X
     (running in the Y direction); ``axis="y"`` is constant Y (running in X).
@@ -669,6 +704,7 @@ class Project:
     combinations: list = field(default_factory=list)   # LoadCombination
     diaphragms: list = field(default_factory=list)      # Diaphragm (slab plan S8)
     stages: list = field(default_factory=list)          # Stage (construction seq)
+    tendons: list = field(default_factory=list)         # Tendon (PT, parity C6)
     stories: list = field(default_factory=list)         # Story (building levels, W4)
     grid_lines: list = field(default_factory=list)      # GridLine (W4)
     nonlinear_cases: list = field(default_factory=list)  # NonlinearCase (GUI-4)
@@ -914,8 +950,19 @@ class Project:
                           duration_days=float(s.get("duration_days", 0.0)),
                           age_at_activation_days=float(
                               s.get("age_at_activation_days", 28.0)),
-                          creep=bool(s.get("creep", False)))
+                          creep=bool(s.get("creep", False)),
+                          tendons_stressed=list(s.get("tendons_stressed", [])))
                     for s in d.get("stages", [])],
+            tendons=[Tendon(id=t["id"], name=t.get("name", ""),
+                            nodes=list(t.get("nodes", [])),
+                            ecc=list(t.get("ecc", [])),
+                            area=float(t.get("area", 1.4e-3)),
+                            jacking_force=float(t.get("jacking_force", 1.0e6)),
+                            tendon_type=t.get("tendon_type", "post-tension"),
+                            mu=float(t.get("mu", 0.20)),
+                            wobble_k=float(t.get("wobble_k", 0.0066)),
+                            anchor_slip=float(t.get("anchor_slip", 0.0)))
+                     for t in d.get("tendons", [])],
             stories=[Story(id=s["id"], name=s.get("name", ""),
                            elev=s.get("elev", 0.0), height=s.get("height", 0.0),
                            master=s.get("master"))
