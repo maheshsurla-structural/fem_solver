@@ -166,3 +166,75 @@ def test_pier_forces_dialog_shows_story_column(qapp):
     assert dlg.tbl.horizontalHeaderItem(0).text() == "Story"
     labels = {dlg.tbl.item(r, 0).text() for r in range(dlg.tbl.rowCount())}
     assert labels & {"Base", "L1", "Roof"}      # cuts labelled by story
+
+
+# ------------------------------------------------- W8a: story parity + linking
+
+def test_story_color_master_round_trip():
+    p = Project(ndm=3, ndf=6)
+    p.stories.extend([
+        Story(id=1, name="Base", elev=0.0),
+        Story(id=2, name="L1", elev=3.0, height=3.0, color="#ff8800"),
+        Story(id=3, name="L2", elev=6.0, height=3.0, master="L1"),
+    ])
+    q = Project.from_json(p.to_json())
+    assert q.story(2).color == "#ff8800"
+    assert q.story(3).master == "L1"
+    assert {s.name for s in q.similar_stories(q.story(2))} == {"L1", "L2"}
+
+
+def _dlg(qapp):
+    from story_grid_dialog import StoryGridDialog
+    p = Project(ndm=3, ndf=6)
+    p.stories.extend([Story(id=1, name="Base", elev=0.0, height=0.0),
+                      Story(id=2, name="L1", elev=3.0, height=3.0),
+                      Story(id=3, name="L2", elev=6.0, height=3.0)])
+    return StoryGridDialog(None, p)
+
+
+def test_height_edit_keeps_heights(qapp):
+    d = _dlg(qapp)
+    d.st_tbl.item(2, 2).setText("4")            # L2 height 3 → 4
+    elevs = [d.st_tbl.item(r, 1).text() for r in range(3)]
+    assert elevs == ["0", "3", "7"]             # L2 elevation recomputed 6 → 7
+
+
+def test_elevation_edit_keeps_elevations(qapp):
+    d = _dlg(qapp)
+    d.st_tbl.item(1, 1).setText("4")            # L1 elevation 3 → 4
+    # L1 height becomes 4 (from base), L2 height becomes 2 (6-4); elevations kept
+    assert d.st_tbl.item(1, 2).text() == "4"
+    assert d.st_tbl.item(2, 2).text() == "2"
+    assert [d.st_tbl.item(r, 1).text() for r in range(3)] == ["0", "4", "6"]
+
+
+def test_base_move_shifts_stack(qapp):
+    d = _dlg(qapp)
+    d.st_tbl.item(0, 1).setText("1.5")          # move datum up
+    assert [d.st_tbl.item(r, 1).text() for r in range(3)] == ["1.5", "4.5", "7.5"]
+
+
+def test_similar_to_combo_sets_master(qapp):
+    from PySide6.QtWidgets import QComboBox
+    d = _dlg(qapp)
+    combo = d.st_tbl.cellWidget(2, 3)           # L2 'similar to'
+    assert isinstance(combo, QComboBox)
+    combo.setCurrentIndex(combo.findData("L1"))
+    d._accept()
+    stories, _ = d.result
+    by = {s.name: s for s in stories}
+    assert by["L2"].master == "L1"
+    # a lone story stays independent
+    assert by["L1"].master is None
+
+
+def test_story_color_pick(qapp, monkeypatch):
+    import story_grid_dialog as sgd
+    from PySide6.QtGui import QColor
+    d = _dlg(qapp)
+    monkeypatch.setattr(sgd.QColorDialog, "getColor",
+                        staticmethod(lambda *a, **k: QColor("#123456")))
+    d._on_story_double_click(1, 4)              # pick a colour for L1
+    d._accept()
+    stories, _ = d.result
+    assert {s.name: s.color for s in stories}["L1"] == "#123456"

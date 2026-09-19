@@ -627,11 +627,14 @@ class Story:
     name: str
     elev: float                    # elevation of the level (global Z), SI
     height: float = 0.0            # story height to the level below (SI)
-    master: "str | None" = None    # 'similar to' story name (W4c)
+    master: "str | None" = None    # 'similar to' story name (W4c / W8a)
+    color: "str | None" = None     # optional #RRGGBB tag (W8a)
 
     def __post_init__(self):
         self.elev = float(self.elev)
         self.height = float(self.height)
+        self.master = (str(self.master).strip() or None) if self.master else None
+        self.color = (str(self.color).strip() or None) if self.color else None
 
 
 @dataclass
@@ -993,7 +996,7 @@ class Project:
                      for t in d.get("tendons", [])],
             stories=[Story(id=s["id"], name=s.get("name", ""),
                            elev=s.get("elev", 0.0), height=s.get("height", 0.0),
-                           master=s.get("master"))
+                           master=s.get("master"), color=s.get("color"))
                      for s in d.get("stories", [])],
             grid_lines=[GridLine(id=g["id"], name=g.get("name", ""),
                                  axis=g.get("axis", "x"),
