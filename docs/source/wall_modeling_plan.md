@@ -220,6 +220,43 @@ W5/W6 are v2.
 - *Deferred:* a macro fiber-wall option (`wall_section_2d`) for nonlinear/
   pushover users — a separate modeling idiom from the shell-wall GUI.
 
+### W7 — Story-based wall drawing (the ETABS primary workflow) ★★
+The W1a "select a base line, type a height, extrude" flow is a builder's-eye
+operation. The commercial idiom (ETABS / CSI / MIDAS) is: pick an **active
+story**, work in its **plan**, choose a **story scope**, and draw a wall as a
+2-point line — the wall spans the story automatically (height from the story
+definition), replicated across every story in scope. This epic adds that on top
+of W4 (stories) + W1b (work plane); **no engine change**.
+
+**Active story + plan draw**
+- An **active-story** selector on the Draw ribbon (from `Project.stories_sorted`).
+  Selecting it sets the work plane to XY at the story's elevation.
+- **Draw ▸ Wall (plan)** — a viewport mode: click two plan points → a wall.
+- **Auto-height convention:** the two plan points are the wall's **top edge** at
+  the active story's elevation; the wall drops to the **story below**
+  (`Project.story_below`), so height = that story's height. The base level (the
+  lowest story) is a datum, not drawable — drawing there warns.
+- Builder `walls.build_wall_between(project, p1, p2, top_elev, bottom_elev, …)`
+  makes the quad `[A,B,B',A']` (A,B at bottom; A',B' at top) — same convention
+  as `build_wall_line`, so pier/mesh/opening infra is reused.
+
+**Story scope (One / Similar / All)**
+- A **scope** selector next to the active story: *One story*, *Similar stories*,
+  *All stories*. The plan-draw places the wall on every story in scope in one
+  gesture, sharing coincident nodes so the stack reads as one continuous wall
+  and a pier label runs the height of the building.
+- **Similar is keyed off `Story.master`** (the W4a 'similar-to' field): the
+  similar group of story A = every story whose master is A's master (or A
+  itself when A is the group master). `Project.similar_stories(story)`.
+- Each in-scope story spans **its own** height, so a taller ground story still
+  gets a full-height wall — falls out of building per-story.
+- Reuses the W4c translate-copy path (`walls.build_wall_stack`).
+
+**v1 scope:** draw-time placement across the story scope. Applying the scope to
+*editing/erasing* an existing wall (ETABS also does this) is deferred; draw-time
+is ~90% of the value. The W1a select-and-extrude tool stays as the quick/advanced
+fallback.
+
 ---
 
 ## 4. Recommended sequencing
@@ -275,6 +312,7 @@ gives every later epic something to hang on.
 | W4c | Similar-story replication | ☑ done (`8818731`) |
 | W5 | Openings (opening-aware mesh) | ☑ done (`4e59f54`) |
 | W6 | Coupled walls / coupling beams GUI | ☑ done (`2bb1ea1`) |
+| W7 | Story-based plan wall drawing + scope | ☑ done |
 
 *Engine additions required across the whole stream: only (a) the W2 pier-cut
 integrator and (b) the W3 ACI 318 §18.10 assembler. Everything else is desktop

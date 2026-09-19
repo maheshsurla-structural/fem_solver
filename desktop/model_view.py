@@ -164,6 +164,8 @@ class ModelView(QtInteractor):
         self._mode = "select"
         self._member_start = None
         self._area_pick: list = []            # nodes collected in draw_area mode
+        self._wall_plan_pts: list = []        # plan points in draw_wall_plan (W7)
+        self._wall_plan_cb = None
         self._snap_on = True
         self._snap_grid = 0.5
         self._show_story_grid = True          # named grid + story-level overlay
@@ -220,6 +222,11 @@ class ModelView(QtInteractor):
 
     def set_add_member_callback(self, fn) -> None:
         self._add_member_cb = fn
+
+    def set_wall_plan_callback(self, fn) -> None:
+        """``fn((x1,y1),(x2,y2))`` is called with the two plan points of a wall
+        drawn in ``draw_wall_plan`` mode (wall plan W7)."""
+        self._wall_plan_cb = fn
 
     def set_add_area_callback(self, fn) -> None:
         self._add_area_cb = fn
@@ -625,15 +632,17 @@ class ModelView(QtInteractor):
         "draw_node": Qt.CursorShape.CrossCursor,
         "draw_member": Qt.CursorShape.CrossCursor,
         "draw_area": Qt.CursorShape.CrossCursor,
+        "draw_wall_plan": Qt.CursorShape.CrossCursor,
     }
 
     def set_mode(self, mode: str) -> None:
         self._mode = mode
         self._member_start = None
         self._area_pick = []
+        self._wall_plan_pts = []
         self._nav = None
         self.remove_actor("groundplane", render=False)
-        if mode == "draw_node":
+        if mode in ("draw_node", "draw_wall_plan"):
             self._add_ground_plane()
         if mode == "polygon":
             self._poly_overlay.setGeometry(self.rect())
@@ -673,6 +682,17 @@ class ModelView(QtInteractor):
         self._work_plane = "3pt"
         self._redraw_work_plane()
         return True
+
+    def _snap_plane_xy(self, p):
+        """Snap a raw click to the XY work plane's (x, y): spacing grid, then a
+        named grid line when close (wall plan W7 plan draw)."""
+        x = _snap(p[0], self._snap_grid) if self._snap_on else round(float(p[0]), 3)
+        y = _snap(p[1], self._snap_grid) if self._snap_on else round(float(p[1]), 3)
+        if self._snap_xs or self._snap_ys:
+            tol = max(self._snap_grid * 0.5, 1e-3)
+            x, y, _z = mg.snap_to_grid(x, y, 0.0, self._snap_xs, self._snap_ys,
+                                       [], tol)
+        return x, y
 
     def _redraw_work_plane(self) -> None:
         if self._mode == "draw_node":
@@ -752,6 +772,17 @@ class ModelView(QtInteractor):
                         if i != fixed:
                             xyz[i] = snapped[i]
                 self._add_node_cb(xyz[0], xyz[1], xyz[2])
+            return
+        if self._mode == "draw_wall_plan":
+            # collect two plan points on the (XY) work plane; on the second,
+            # hand both to the callback to build the wall / stack (W7)
+            if self._wall_plan_cb is not None:
+                x, y = self._snap_plane_xy(p)
+                self._wall_plan_pts.append((x, y))
+                if len(self._wall_plan_pts) >= 2:
+                    p1, p2 = self._wall_plan_pts[:2]
+                    self._wall_plan_pts = []
+                    self._wall_plan_cb(p1, p2)
             return
         tol = max(mg.model_span(self._model) * 0.05, 0.15)
         sel = mg.nearest_item(self._model, p, tol)

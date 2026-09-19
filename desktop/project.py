@@ -793,6 +793,25 @@ class Project:
                 return s
         return None
 
+    def story(self, story_id):
+        return next((s for s in self.stories if s.id == story_id), None)
+
+    def story_below(self, story):
+        """The story immediately below ``story`` in elevation (the datum a wall
+        drawn on ``story`` drops to), or ``None`` if it is the lowest — the base
+        level, which is a datum rather than a drawable story (wall plan W7)."""
+        below = [s for s in self.stories if s.elev < story.elev - 1e-9]
+        return max(below, key=lambda s: s.elev) if below else None
+
+    def similar_stories(self, story) -> list:
+        """The 'similar stories' group of ``story``, keyed off ``Story.master``
+        (wall plan W7): every story sharing its master — where a story's master
+        is ``master`` if set else its own name. So a master and all stories
+        pointing to it form one group; a lone story is its own group."""
+        key = story.master or story.name
+        return [s for s in self.stories_sorted()
+                if (s.master or s.name) == key]
+
     def grid_lines_on(self, axis: str) -> list:
         """Grid lines of a given ``axis`` ('x' or 'y'), sorted by coordinate."""
         return sorted((g for g in self.grid_lines if g.axis == axis),

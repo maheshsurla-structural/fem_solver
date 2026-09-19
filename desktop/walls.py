@@ -121,3 +121,73 @@ def build_wall_line(project, base_nodes, height, shell_section, material,
         new_ids.append(aid)
         aid += 1
     return new_ids
+
+
+# --------------------------------------------------------- plan-based drawing (W7)
+def _coord_index(project, tol=1e-6):
+    """A coordinate → node-id map + a factory that reuses a coincident node or
+    creates one, so stacked/adjacent walls share their joints."""
+    q = max(tol, 1e-9)
+
+    def key(x, y, z):
+        return (round(x / q), round(y / q), round(z / q))
+
+    index = {key(n.x, n.y, n.z): n.id for n in project.nodes}
+    counter = [max((n.id for n in project.nodes), default=0) + 1]
+
+    def node_at(x, y, z):
+        k = key(x, y, z)
+        nid = index.get(k)
+        if nid is None:
+            nid = counter[0]
+            counter[0] += 1
+            index[k] = nid
+            project.nodes.append(Node(id=nid, x=float(x), y=float(y),
+                                      z=float(z)))
+        return nid
+
+    return node_at
+
+
+def build_wall_between(project, p1, p2, top_elev, bottom_elev, shell_section,
+                       material, mesh=(2, 2), pier=None, spandrel=None,
+                       node_at=None):
+    """Build one wall panel spanning ``bottom_elev``→``top_elev`` between plan
+    points ``p1``/``p2`` (each an ``(x, y)``) — the ETABS plan-draw idiom (wall
+    plan W7). The panel is the quad ``[A, B, B', A']`` (A,B at the bottom, A',B'
+    at the top), same convention as :func:`build_wall_line`. Nodes are reused
+    via ``node_at`` (a coincident-node factory) so a stack shares its floor
+    joints. Returns the new area id, or ``None`` if the points coincide or the
+    span is zero."""
+    if abs(float(top_elev) - float(bottom_elev)) < 1e-9:
+        return None
+    if (abs(p1[0] - p2[0]) < 1e-9) and (abs(p1[1] - p2[1]) < 1e-9):
+        return None
+    na = node_at or _coord_index(project)
+    a = na(p1[0], p1[1], bottom_elev)
+    b = na(p2[0], p2[1], bottom_elev)
+    bt = na(p2[0], p2[1], top_elev)
+    at = na(p1[0], p1[1], top_elev)
+    aid = project.next_area_id()
+    project.areas.append(Area(id=aid, nodes=[a, b, bt, at],
+                              shell_section=int(shell_section),
+                              material=int(material), mesh=tuple(mesh),
+                              role="wall", pier=pier, spandrel=spandrel))
+    return aid
+
+
+def build_wall_stack(project, p1, p2, levels, shell_section, material,
+                     mesh=(2, 2), pier=None, spandrel=None):
+    """Build a wall on every level in ``levels`` (each a ``(top_elev,
+    bottom_elev)``) between the same plan points ``p1``/``p2`` — the story-scope
+    draw (One / Similar / All, wall plan W7). All panels share one coincident-
+    node factory so the stack is continuous. Returns the list of new area ids."""
+    na = _coord_index(project)
+    ids = []
+    for top, bottom in levels:
+        aid = build_wall_between(project, p1, p2, top, bottom, shell_section,
+                                 material, mesh=mesh, pier=pier,
+                                 spandrel=spandrel, node_at=na)
+        if aid is not None:
+            ids.append(aid)
+    return ids

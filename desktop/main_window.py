@@ -195,6 +195,7 @@ class MainWindow(QMainWindow):
         self.view.set_add_node_callback(self._draw_add_node)
         self.view.set_add_member_callback(self._draw_add_member)
         self.view.set_add_area_callback(self._draw_add_area)
+        self.view.set_wall_plan_callback(self._draw_wall_plan_points)
         self.view.set_region_callback(self._on_region_select)
         # keep the ribbon's selection group in step with the viewport's own
         # navigation toolbar (orbit / pan / zoom-window have no ribbon entry).
@@ -618,6 +619,15 @@ class MainWindow(QMainWindow):
             "Draw wall — select the base line (2+ nodes), then extrude it "
             "upward by a height into vertical wall panels")
         self.act_draw_wall.triggered.connect(self.draw_wall)
+        # Wall (plan): the ETABS story-based flow (W7) — a viewport mode that
+        # draws a wall from two plan clicks on the active story, across scope.
+        self.act_draw_wall_plan = _set_icon(QAction("Wall (&plan)", self), "wall")
+        self.act_draw_wall_plan.setCheckable(True)
+        self.act_draw_wall_plan.setStatusTip(
+            "Draw wall in plan — pick an active story, then click two plan "
+            "points; the wall spans the story (across the story scope)")
+        self.act_draw_wall_plan.triggered.connect(
+            self._enter_wall_plan_mode)
         self.act_wall_openings = _set_icon(
             QAction("Wall &openings…", self), "opening")
         self.act_wall_openings.setStatusTip(
@@ -635,7 +645,8 @@ class MainWindow(QMainWindow):
         self.act_macro_wall.triggered.connect(self.show_macro_wall)
         self._mode_group = QActionGroup(self)
         for a in (self.act_select, self.act_sel_window, self.act_sel_poly,
-                  self.act_draw_node, self.act_draw_member, self.act_draw_area):
+                  self.act_draw_node, self.act_draw_member, self.act_draw_area,
+                  self.act_draw_wall_plan):
             self._mode_group.addAction(a)
         self.act_snap = _set_icon(QAction("&Snap to grid", self), "snap")
         self.act_snap.setCheckable(True)
@@ -677,6 +688,17 @@ class MainWindow(QMainWindow):
         self.act_plane_3pt.setStatusTip(
             "Set an arbitrary draw work plane through three selected nodes")
         self.act_plane_3pt.triggered.connect(self.set_work_plane_from_nodes)
+        # active-story + story-scope selectors for plan-based wall drawing (W7)
+        self.story_combo = QComboBox()
+        self.story_combo.setToolTip("Active story — plan-draw plane & wall level")
+        self.story_combo.currentIndexChanged.connect(self._on_active_story)
+        self.scope_combo = QComboBox()
+        self.scope_combo.addItem("One story", "one")
+        self.scope_combo.addItem("Similar stories", "similar")
+        self.scope_combo.addItem("All stories", "all")
+        self.scope_combo.setToolTip(
+            "Story scope for plan drawing — draw once, place on One / Similar "
+            "(same master) / All stories")
 
         # ---- CSiBridge-style tabbed ribbon (plan ribbon R1) ---------------
         # One compact strip replaces BOTH the classic menu bar and the old
@@ -726,6 +748,8 @@ class MainWindow(QMainWindow):
                       (self.act_snap, "Snap"), self.snap_spin,
                       self.plane_combo, self.plane_offset,
                       (self.act_plane_3pt, "3-pt plane"))),
+            ("Story draw", ((self.act_draw_wall_plan, "Wall (plan)"),
+                            self.story_combo, self.scope_combo)),
             ("Select", ((self.act_select, "Select"),
                         (self.act_sel_window, "Window"),
                         (self.act_sel_poly, "Poly"),
@@ -2494,6 +2518,7 @@ class MainWindow(QMainWindow):
         self._last_tree_sig = None       # a new document → always a full rebuild
         self._rebuild()
         self._update_title()
+        self._refresh_story_combo()
         self.log.appendPlainText(
             f"Loaded project '{project.name}' — {self._model!r}")
 
@@ -2925,9 +2950,112 @@ class MainWindow(QMainWindow):
             self._project.stories = stories
             self._project.grid_lines = grids
         self._apply_edit("Edit stories & grid", _mut)
+        self._refresh_story_combo()
         self.statusBar().showMessage(
             f"{len(stories)} stor{'y' if len(stories) == 1 else 'ies'}, "
             f"{len(grids)} grid line(s)")
+
+    # ------------------------------------------------- story-based wall drawing (W7)
+    def _refresh_story_combo(self) -> None:
+        """Repopulate the active-story selector from the project (wall plan W7).
+        Lists the drawable stories (any story that has a story below it — the
+        base level is a datum, not drawable)."""
+        combo = getattr(self, "story_combo", None)
+        if combo is None:
+            return
+        prev = combo.currentData()
+        combo.blockSignals(True)
+        combo.clear()
+        p = self._project
+        if p is not None:
+            for s in reversed(p.stories_sorted()):          # top → base
+                if p.story_below(s) is not None:            # drawable only
+                    combo.addItem(f"{s.name}  (elev {s.elev:g})", s.id)
+        combo.blockSignals(False)
+        if prev is not None:
+            i = combo.findData(prev)
+            if i >= 0:
+                combo.setCurrentIndex(i)
+        self._on_active_story()
+
+    def _active_story(self):
+        sid = self.story_combo.currentData() if getattr(
+            self, "story_combo", None) else None
+        return self._project.story(sid) if sid is not None else None
+
+    def _on_active_story(self, *_) -> None:
+        """Set the draw work plane to the active story's elevation (W7)."""
+        s = self._active_story()
+        if s is not None:
+            self.view.set_work_plane("xy", float(s.elev))
+
+    def _enter_wall_plan_mode(self) -> None:
+        p = self._project
+        if p is None or p.ndm != 3:
+            QMessageBox.information(self, "Wall (plan)",
+                                   "Plan wall drawing needs a 3-D model.")
+            self.act_draw_wall_plan.setChecked(False)
+            return
+        if self._active_story() is None:
+            QMessageBox.information(
+                self, "Wall (plan)",
+                "Define stories (Home ▸ Stories & grid) first, then pick an "
+                "active story — the wall spans from it down to the story below.")
+            self.act_draw_wall_plan.setChecked(False)
+            return
+        if not p.shell_sections or not p.materials:
+            QMessageBox.information(
+                self, "Wall (plan)",
+                "Add a thickness (Home ▸ Thickness) and a material first.")
+            self.act_draw_wall_plan.setChecked(False)
+            return
+        self._set_mode("draw_wall_plan")
+
+    def _wall_plan_levels(self):
+        """(top, bottom) elevation pairs for the active story across the current
+        story scope (One / Similar / All), drawable ones only (W7)."""
+        p = self._project
+        active = self._active_story()
+        if active is None:
+            return []
+        scope = self.scope_combo.currentData()
+        if scope == "all":
+            stories = p.stories_sorted()
+        elif scope == "similar":
+            stories = p.similar_stories(active)
+        else:
+            stories = [active]
+        levels = []
+        for s in stories:
+            below = p.story_below(s)
+            if below is not None:
+                levels.append((float(s.elev), float(below.elev)))
+        return levels
+
+    def _draw_wall_plan_points(self, p1, p2) -> None:
+        """Build a wall (or a stacked set across the story scope) from two plan
+        points clicked on the active story (wall plan W7)."""
+        import walls
+        p = self._project
+        levels = self._wall_plan_levels()
+        if not levels:
+            QMessageBox.information(self, "Wall (plan)",
+                                   "No drawable story for the current scope.")
+            return
+        ss = p.shell_sections[0].id
+        mat = p.materials[0].id
+        first = p.next_area_id()
+
+        def _do():
+            walls.build_wall_stack(p, p1, p2, levels, ss, mat, mesh=(2, 2))
+        # precompute the created area ids for undo/redo selection
+        n = len(levels)
+        refs = [("area", first + k) for k in range(n)]
+        self._apply_edit("Draw wall (plan)", _do,
+                         refs[0] if n == 1 else None)
+        self.statusBar().showMessage(
+            f"Drew wall on {n} stor{'y' if n == 1 else 'ies'} "
+            f"({self.scope_combo.currentText().lower()})")
 
     def replicate_story(self) -> None:
         """Copy a source story's walls/columns/beams up to similar stories
@@ -3858,7 +3986,8 @@ class MainWindow(QMainWindow):
         ribbon = {"select": self.act_select, "window": self.act_sel_window,
                   "polygon": self.act_sel_poly, "draw_node": self.act_draw_node,
                   "draw_member": self.act_draw_member,
-                  "draw_area": self.act_draw_area}
+                  "draw_area": self.act_draw_area,
+                  "draw_wall_plan": self.act_draw_wall_plan}
         act = ribbon.get(mode)
         if act is not None:
             act.setChecked(True)
@@ -3880,7 +4009,10 @@ class MainWindow(QMainWindow):
                          "(snapped to 0.5 m).",
             "draw_member": "Draw member — click two nodes to connect them.",
             "draw_area": "Draw area — click corner nodes (3+, in order); click "
-                         "the first corner again to close the panel."}
+                         "the first corner again to close the panel.",
+            "draw_wall_plan": "Draw wall (plan) — click two plan points on the "
+                              "active story; the wall spans to the story below "
+                              "(across the story scope)."}
         self.statusBar().showMessage(hints.get(mode, ""))
         rb = getattr(self, "_ribbon", None)    # R4: surface the Draw tab
         if rb is not None and not rb.is_collapsed():
