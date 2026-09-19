@@ -583,6 +583,11 @@ class Stage:
     age_at_activation_days: float = 28.0  # concrete age when born (days)
     creep: bool = False               # compute time-dependent (creep) effects
     tendons_stressed: list = field(default_factory=list)  # Tendon ids stressed here
+    # temporary supports toggled this stage (parity C1d): each is [node_id, dof]
+    # (dof 1 = vertical). add = install a temporary bearing/tower on the current
+    # shape; remove = strike it, releasing its reaction onto the structure.
+    add_supports: list = field(default_factory=list)
+    remove_supports: list = field(default_factory=list)
 
 
 @dataclass
@@ -951,7 +956,11 @@ class Project:
                           age_at_activation_days=float(
                               s.get("age_at_activation_days", 28.0)),
                           creep=bool(s.get("creep", False)),
-                          tendons_stressed=list(s.get("tendons_stressed", [])))
+                          tendons_stressed=list(s.get("tendons_stressed", [])),
+                          add_supports=[list(x) for x in
+                                        s.get("add_supports", [])],
+                          remove_supports=[list(x) for x in
+                                           s.get("remove_supports", [])])
                     for s in d.get("stages", [])],
             tendons=[Tendon(id=t["id"], name=t.get("name", ""),
                             nodes=list(t.get("nodes", [])),

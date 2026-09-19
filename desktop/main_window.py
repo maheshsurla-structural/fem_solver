@@ -1474,7 +1474,11 @@ class MainWindow(QMainWindow):
                     loads=loads,
                     duration_days=float(getattr(s, "duration_days", 0.0)),
                     age_at_activation_days=float(
-                        getattr(s, "age_at_activation_days", 28.0))))
+                        getattr(s, "age_at_activation_days", 28.0)),
+                    add_supports=[tuple(x) for x in
+                                  getattr(s, "add_supports", [])],
+                    remove_supports=[tuple(x) for x in
+                                     getattr(s, "remove_supports", [])]))
 
         # Time-dependent (creep) config — active only if a stage opted in.
         # Prefer a material's structured creep inputs (plan C5: f_cm / RH /

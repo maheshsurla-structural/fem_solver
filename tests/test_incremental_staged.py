@@ -234,6 +234,62 @@ class TestElementBirth:
 
 # ============================================================ creep factor + errors
 
+class TestTemporarySupports:
+    """C1d — per-stage temporary support (held DOF) activation + release."""
+
+    def test_temp_support_removal_equals_unpropped(self):
+        """A midspan vertical support held while the load is applied, then
+        removed, leaves the beam at exactly the un-propped one-shot deflection
+        (the released reaction transfers onto the beam)."""
+        nel, L, P = 8, 8.0, -100e3
+        mid = nel // 2 + 1
+        m, _ = _ss_beam(nel, L)
+        stages = [
+            ErectionStage(name="cast+hold+load",
+                          add_elements=list(range(1, nel + 1)),
+                          add_supports=[(mid, 1)],
+                          loads={mid: [0, P, 0]}),
+            ErectionStage(name="remove temp support",
+                          remove_supports=[(mid, 1)]),
+        ]
+        IncrementalStagedAnalysis(m, stages).run()
+        mid_staged = m.node(mid).disp[1]
+        # while held, the support took the load; after release the beam spans
+        # alone -> the plain simply-supported midspan deflection
+        m2, _ = _ss_beam(nel, L)
+        m2.add_nodal_load(mid, [0, P, 0])
+        LinearStaticAnalysis(m2).run()
+        assert mid_staged == pytest.approx(m2.node(mid).disp[1],
+                                           rel=1e-9, abs=1e-12)
+
+    def test_held_support_carries_load_stays_put(self):
+        """A DOF held by a temporary support does not move while held."""
+        nel, L, P = 8, 8.0, -100e3
+        mid = nel // 2 + 1
+        m, _ = _ss_beam(nel, L)
+        res = IncrementalStagedAnalysis(m, [
+            ErectionStage(name="hold", add_elements=list(range(1, nel + 1)),
+                          add_supports=[(mid, 1)], loads={mid: [0, P, 0]})]).run()
+        # the held midspan DOF took the load -> zero displacement there
+        assert abs(res.u_cumulative[m.node(mid).eqn[1]]) < 1e-12
+
+    def test_remove_unheld_support_raises(self):
+        nel = 8
+        m, _ = _ss_beam(nel)
+        with pytest.raises(ValueError):
+            IncrementalStagedAnalysis(m, [
+                ErectionStage(name="s", add_elements=list(range(1, nel + 1)),
+                              remove_supports=[(nel // 2 + 1, 1)])]).run()
+
+    def test_toggle_permanent_support_raises(self):
+        nel = 8
+        m, _ = _ss_beam(nel)
+        with pytest.raises(ValueError):
+            IncrementalStagedAnalysis(m, [
+                ErectionStage(name="s", add_elements=list(range(1, nel + 1)),
+                              add_supports=[(1, 1)])]).run()   # node 1 is fixed
+
+
 class TestStiffnessFactorAndErrors:
     def test_stiffness_factor_softens(self):
         nel, L, P = 8, 8.0, -100e3

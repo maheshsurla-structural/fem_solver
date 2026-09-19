@@ -297,6 +297,14 @@ class ErectionStage:
     stiffness_factor: float = 1.0
     duration_days: float = 0.0
     age_at_activation_days: float = 28.0
+    # temporary supports toggled this stage (construction-stage parity C1d):
+    # each entry is ``(node_tag, dof_index)``. ``add_supports`` starts holding
+    # that DOF fixed (a bearing / erection tower installed on the current
+    # deformed shape, carrying only later load); ``remove_supports`` releases
+    # it, transferring the reaction it carried onto the remaining structure.
+    # The DOF must be free in the model (not a permanent support).
+    add_supports: list = field(default_factory=list)
+    remove_supports: list = field(default_factory=list)
 
 
 @dataclass
@@ -508,6 +516,29 @@ class IncrementalStagedAnalysis:
         birth_time: dict[int, float] = {tag: 0.0 for tag in active}
         birth_age: dict[int, float] = {tag: default_age for tag in active}
 
+        held: set[int] = set()          # eqns held by a temporary support (C1d)
+        f_ext_cum = np.zeros(neq)        # cumulative external nodal load
+
+        def _eqn_of(node_tag, dof):
+            eq = int(m.node(node_tag).eqn[dof])
+            if eq < 0:
+                raise ValueError(
+                    f"support DOF ({node_tag}, {dof}) is a permanent support "
+                    "(not free in the model) — it cannot be toggled per stage.")
+            return eq
+
+        def _internal_force():
+            """Assembled global internal-force vector from the active elements'
+            locked-in end forces (used to release a removed support)."""
+            fint = np.zeros(neq)
+            for tag in active:
+                dm = dofmaps[tag]
+                fe = f_elem[tag]
+                for i, eq in enumerate(dm):
+                    if eq >= 0:
+                        fint[eq] += fe[i]
+            return fint
+
         for stage_idx, stage in enumerate(self.stages):
             # ---- birth / death --------------------------------------
             release = np.zeros(neq)
@@ -536,6 +567,24 @@ class IncrementalStagedAnalysis:
                 birth_age[tag] = float(
                     getattr(stage, "age_at_activation_days", 28.0))
 
+            # ---- temporary-support release / install (C1d) -----------
+            # Release removed supports first: transfer the reaction the held
+            # DOF carried onto the remaining structure. That reaction is the
+            # residual there, R = f_int − f_ext (zero at a free DOF, non-zero
+            # at a held one), applied as a load so the freed DOF re-equilibrates.
+            if getattr(stage, "remove_supports", None):
+                fint = _internal_force()
+                for node_tag, dof in stage.remove_supports:
+                    eq = _eqn_of(node_tag, dof)
+                    if eq not in held:
+                        raise ValueError(
+                            f"stage '{stage.name}': support ({node_tag}, {dof})"
+                            " is not currently held — cannot remove it.")
+                    release[eq] += f_ext_cum[eq] - fint[eq]
+                    held.discard(eq)
+            for node_tag, dof in getattr(stage, "add_supports", []):
+                held.add(_eqn_of(node_tag, dof))   # hold this DOF from now on
+
             if not active:
                 raise RuntimeError(
                     f"stage '{stage.name}': no active elements to solve"
@@ -549,6 +598,7 @@ class IncrementalStagedAnalysis:
                 for eq in dofmaps[tag]:
                     if eq >= 0:
                         free_eqs.add(int(eq))
+            free_eqs -= held                     # temporary supports hold DOFs
             ix = np.array(sorted(free_eqs), dtype=int)
             if ix.size == 0:
                 raise RuntimeError(
@@ -572,29 +622,31 @@ class IncrementalStagedAnalysis:
                 Ke = Ke_cache[tag] * eff[tag]
                 ndof = dm.size
                 for a in range(ndof):
-                    ga = dm[a]
-                    if ga < 0:
+                    ga = int(dm[a])
+                    if ga < 0 or ga in held:       # fixed or held -> excluded
                         continue
-                    la = g2l[int(ga)]
+                    la = g2l[ga]
                     for b in range(ndof):
-                        gb = dm[b]
-                        if gb < 0:
+                        gb = int(dm[b])
+                        if gb < 0 or gb in held:
                             continue
                         rows.append(la)
-                        cols.append(g2l[int(gb)])
+                        cols.append(g2l[gb])
                         vals.append(Ke[a, b])
             n = ix.size
             K_aa = sp.coo_matrix((vals, (rows, cols)), shape=(n, n)).tocsc()
 
             # ---- stage load vector (external + release) --------------
-            f_full = release.copy()
+            f_ext_stage = np.zeros(neq)
             for node_tag, load in stage.loads.items():
                 node = m.node(node_tag)
                 ld = np.asarray(load, dtype=float)
                 for d in range(min(node.ndf, ld.size)):
                     eq = int(node.eqn[d])
                     if eq >= 0:
-                        f_full[eq] += ld[d]
+                        f_ext_stage[eq] += ld[d]
+            f_ext_cum = f_ext_cum + f_ext_stage        # for support reactions
+            f_full = release + f_ext_stage
             f_a = f_full[ix]
 
             # ---- solve increment -------------------------------------

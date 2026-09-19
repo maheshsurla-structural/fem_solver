@@ -70,6 +70,18 @@ def test_old_stage_migrates_new_fields():
     s = Project.from_dict(d).stages[0]
     assert s.remove_members == [] and s.duration_days == 0.0
     assert s.age_at_activation_days == 28.0 and s.creep is False
+    assert s.add_supports == [] and s.remove_supports == []
+
+
+def test_temp_support_fields_round_trip():
+    """C1d: temporary-support stage fields survive save/load."""
+    p = _cantilever()
+    p.stages = [Stage(id=1, name="hold", add_members=[1, 2],
+                      add_supports=[[3, 1]]),
+                Stage(id=2, name="strike", remove_supports=[[3, 1]])]
+    ss = Project.from_dict(p.to_dict()).stages
+    assert ss[0].add_supports == [[3, 1]]
+    assert ss[1].remove_supports == [[3, 1]]
 
 
 def test_old_project_without_stages_loads():
@@ -346,6 +358,32 @@ def test_run_stages_tendon_cambers_up(qapp):
     mid1 = r1["camber"].final_deflection[2]
     # prestress lifts the midspan (less sag / net hog) than self-weight alone
     assert mid1 > mid0
+
+
+def test_run_stages_temp_support(qapp):
+    """C1d end to end: a midspan tower held during stage 1 keeps the midspan
+    from deflecting then; struck in stage 2 it releases and the span sags."""
+    from main_window import MainWindow
+
+    p = Project(ndm=2, ndf=3)
+    p.nodes = [Node(i + 1, i * 2.0, 0.0) for i in range(5)]
+    p.nodes[0].supports = (1, 1, 0)
+    p.nodes[4].supports = (0, 1, 0)
+    p.sections = [Section(id=1, name="g", A=0.6, Iz=0.08)]
+    p.materials = [Material(1, "c", E=3e10, nu=0.2, rho=2500.0)]
+    p.members = [Member(i + 1, i + 1, i + 2, 1, 1) for i in range(4)]
+    w = MainWindow()
+    w.load_project(p)
+    res = w.run_construction_stages(config=[
+        Stage(id=1, name="hold", add_members=[1, 2, 3, 4],
+              add_supports=[[3, 1]]),
+        Stage(id=2, name="strike", remove_supports=[[3, 1]])])
+    assert res is not None
+    cam = res["camber"]
+    mid = list(cam.nodes).index(3)              # midspan node 3
+    # held during stage 1 -> ~0 there; released by the end -> sags
+    assert abs(cam.stage_deflection[0][mid]) < 1e-9
+    assert cam.final_deflection[mid] < -1e-6
 
 
 def test_run_stages_guards(qapp, monkeypatch):

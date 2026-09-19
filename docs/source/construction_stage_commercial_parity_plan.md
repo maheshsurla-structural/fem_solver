@@ -1,7 +1,7 @@
 # Construction-stage / staged-construction — commercial-parity roadmap
 
-*Status: **IN PROGRESS — C0, C1a, C4, C5, C1b, C7, C1c+C6 DONE** (branch `feat/construction-stage-parity`;
-C0/C1a `e96f7ee`, C4 `95f989e`, C5 `1bf7d4b`, C1b `4c7e811`, C7 `f764ffd`, C1c+C6 committed next). This plan takes the staged-construction stack from
+*Status: **IN PROGRESS — C0, C1a, C4, C5, C1b, C7, C1c+C6, C1d DONE** (branch `feat/construction-stage-parity`;
+C0/C1a `e96f7ee`, C4 `95f989e`, C5 `1bf7d4b`, C1b `4c7e811`, C7 `f764ffd`, C1c+C6 `d3ac1c8`, C1d committed next). This plan takes the staged-construction stack from
 "most of the physics exists, fragmented across three drivers and barely exposed
 in the GUI" to SAP2000 / CSiBridge / MIDAS Civil grade: one unified nonlinear +
 time-dependent staged case that composes birth/death + per-element
@@ -52,10 +52,13 @@ frame/shell models, driven from a real GUI stage manager. Sibling to the
 - **C1c + C6** — tendon stressing per stage: `project.Tendon` + stage selector +
   a tendon manager (Analysis ▸ Functions ▸ Tendons); the runner lowers each
   stressed tendon to equivalent loads. See the C1c / C6 epics.
+- **C1d** — per-stage temporary support activation & release (held DOFs +
+  reaction transfer); see the C1d sub-epic.
 - **Next:** wire `StepByStepCreepFrame` into the staged birth/death driver (creep
   across stages) + Gauss-point curvature; C2 (deck bending + 3-D in the nonlinear
-  cable erection driver); C3 (backward/geometry-control loop); or C1d (per-stage
-  support activation).
+  cable erection driver); C3 (backward/geometry-control loop); C1e (geometric
+  nonlinearity + MP constraints in the general driver); or the deferred GUI
+  pickers (C1d support picker, tendon-profile render).
 
 ---
 
@@ -214,10 +217,19 @@ A single driver (new `analysis/staged_case.py`, or a superset of
   friction/wobble/anchorage losses), and merges them into that stage's load
   (`merge_stage_loads`) — held into later stages. **Remaining:** time-dependent
   PT losses accruing across stages, and primary/secondary force history.
-- **C1d — Support / restraint activation & release ★.** Let a stage add/remove
-  boundary conditions (temporary towers, bearings installed late), releasing the
-  reaction the removed restraint carried onto the remaining structure (mirror
-  the element-death release logic at the DOF level).
+- **C1d — Support / restraint activation & release ★. ✅ DONE (first pass).**
+  `ErectionStage.add_supports` / `remove_supports` (lists of `(node, dof)`):
+  `add` holds a free DOF fixed from that stage (a bearing/tower installed on the
+  current deformed shape, carrying only later load); `remove` releases it,
+  transferring the reaction `R = f_ext − f_int` at that DOF onto the remaining
+  structure (mirrors element death at the DOF level). Held DOFs are excluded
+  from the stage's free set. `project.Stage` carries the fields and the runner
+  passes them through. Tests (`test_incremental_staged.py`
+  `TestTemporarySupports`, + a desktop end-to-end): a midspan tower held then
+  struck reproduces the un-propped span; held DOF stays put; error on
+  removing-unheld / toggling-a-permanent-support. **Remaining:** a GUI
+  `(node, dof)` picker in the stage manager (fields persist but aren't yet
+  editable in the dialog).
 - **C1e — Geometric nonlinearity + MP constraints in the general driver.**
   Optional P-Δ / large-displacement (bridge to `beam_corot` / geometric
   stiffness) inside a stage's Newton solve, and lift the MP-constraint
