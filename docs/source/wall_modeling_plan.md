@@ -257,6 +257,32 @@ of W4 (stories) + W1b (work plane); **no engine change**.
 is ~90% of the value. The W1a select-and-extrude tool stays as the quick/advanced
 fallback.
 
+### W8 — Grid & Story definition (ETABS parity + live UX) ★★
+Benchmarked against ETABS's four scattered grid/story dialogs. Goal: match the
+model *and* beat the UX (one workspace, live plan+elevation preview, auto-linked
+data, group-aware typical floors, CAD import).
+
+- **W8a — Story parity + linking — DONE** (`1def90b`): a **Similar-To** dropdown
+  (finishes the W7 "Similar" scope, which was dead without a way to set
+  `Story.master`), **Height↔Elevation** auto-linking (base-anchored: edit a
+  height → elevations above recompute; edit an elevation → adjacent heights
+  recompute; move the base → the stack shifts), add-story keep-heights, and a
+  `Story.color` swatch. `tests/test_desktop_stories.py`.
+- **W8b — TODO**: named **grid systems** (origin + rotation) holding X/Y
+  **labeled** lines with **bubbles** (location, visibility) + **general/diagonal**
+  grids; render bubbles in the viewport. (`project.GridSystem` + extend
+  `GridLine`.)
+- **W8c — TODO**: an ETABS-style **quick template** (uniform grid + simple
+  stories) new-model dialog — with a **live plan+elevation preview** as the
+  differentiator.
+- **W8d — TODO**: unified 2-way editor (table ⇄ viewport update together) + DXF
+  grid import. *(Optional later: cylindrical/radial grids, reference
+  points/planes.)*
+
+**Where we beat ETABS:** live in-editor preview (ETABS has a static thumbnail);
+no "keep heights vs elevations" modal (auto-linked); one workspace not four;
+stories auto-color by similarity group; CAD-native grid import.
+
 ---
 
 ## 4. Recommended sequencing
@@ -313,6 +339,8 @@ gives every later epic something to hang on.
 | W5 | Openings (opening-aware mesh) | ☑ done (`4e59f54`) |
 | W6 | Coupled walls / coupling beams GUI | ☑ done (`2bb1ea1`) |
 | W7 | Story-based plan wall drawing + scope | ☑ done |
+| W8a | Story parity (Similar-To + H↔E linking + color) | ☑ done (`1def90b`) |
+| W8b/c/d | Grid systems + quick template + live editor | ☐ todo |
 
 *Engine additions required across the whole stream: only (a) the W2 pier-cut
 integrator and (b) the W3 ACI 318 §18.10 assembler. Everything else is desktop
