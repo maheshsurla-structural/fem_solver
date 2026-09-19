@@ -151,3 +151,66 @@ def test_design_wall_pier_flags_boundary_and_min_reinf():
     assert any("boundary" in n.lower() for n in res.notes)
     assert not res.min_reinf.rho_t_ok
     assert not res.ok
+
+
+# ------------------------------------------ W3 polish: drift trigger + codes
+
+from femsolver.design.walls import (WALL_CODES, boundary_element_check,  # noqa: E402
+                                    wall_detailing)
+
+
+def test_displacement_boundary_trigger():
+    g, m = _geom(lw=4.0, t=0.30, hw=24.0), _mat()
+    d = WallDemand(Pu=1e6, Mu=0.2e6)             # low stress → stress trigger off
+    # large neutral axis + high drift → drift trigger fires
+    be = boundary_element_check(g, m, d, c=1.5, drift=0.02)
+    # c_limit = lw/(600*0.02) = 4/12 = 0.333 m; c=1.5 ≥ that → required
+    assert be.disp_required and be.required
+    assert not be.stress_required
+    # ℓbe = max(c − 0.1ℓw, c/2) = max(1.5−0.4, 0.75) = 1.1 m
+    assert be.lbe_min == pytest.approx(1.1)
+
+
+def test_displacement_trigger_off_for_small_c():
+    g, m = _geom(lw=4.0, t=0.30, hw=24.0), _mat()
+    be = boundary_element_check(g, m, WallDemand(Pu=1e6, Mu=0.2e6),
+                                c=0.2, drift=0.01)
+    # c_limit = 4/(600*0.01)=0.667; c=0.2 < that → no drift trigger
+    assert not be.disp_required and not be.required
+
+
+def test_drift_floor_half_percent():
+    g, m = _geom(lw=4.0, t=0.30, hw=24.0), _mat()
+    # tiny drift is floored at 0.005 → c_limit = 4/(600*0.005)=1.333 m
+    be = boundary_element_check(g, m, WallDemand(Pu=1e6, Mu=0.2e6),
+                               c=1.4, drift=1e-6)
+    assert be.disp_required            # 1.4 ≥ 1.333 using the 0.005 floor
+
+
+def test_detailing_codes_boundary_minimums():
+    g, m, r = _geom(), _mat(), _reinf(As_boundary=0.0)   # no boundary bars
+    be = boundary_element_check(g, m, WallDemand(Pu=4e6, Mu=3e6))  # BE required
+    assert be.required
+    aci = wall_detailing("ACI 318-19", g, m, r, be)
+    is13920 = wall_detailing("IS 13920", g, m, r, be)
+    ec8 = wall_detailing("EC8", g, m, r, be)
+    # ACI keys boundary detailing off ties (no ρ floor) → ok even with no bars
+    assert aci.boundary_rho_min == 0.0 and aci.boundary_rho_ok
+    # IS 13920 needs 0.8% boundary vertical → fails with no boundary bars
+    assert is13920.boundary_rho_min == pytest.approx(0.008)
+    assert not is13920.boundary_rho_ok
+    # EC8 needs 0.5%
+    assert ec8.boundary_rho_min == pytest.approx(0.005)
+    assert not ec8.boundary_rho_ok
+    assert set(WALL_CODES) == {"ACI 318-19", "IS 13920", "EC8"}
+
+
+def test_design_wall_pier_code_and_drift_wired():
+    g, m, r = _geom(lw=4.0, t=0.30, hw=24.0), _mat(), _reinf()
+    d = WallDemand(Pu=1e6, Mu=0.2e6, Vu=200e3)
+    res = design_wall_pier(g, m, r, d, code="IS 13920", drift=0.02)
+    assert res.detailing.code == "IS 13920"
+    assert res.boundary.drift == 0.02
+    # a drift-triggered boundary element shows up in the notes
+    if res.boundary.disp_required:
+        assert any("drift" in n.lower() for n in res.notes)

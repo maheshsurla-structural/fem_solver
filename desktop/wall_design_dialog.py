@@ -1,8 +1,10 @@
-"""Wall design dialog (wall plan W3).
+"""Wall design dialog (wall plan W3 + detailing polish).
 
-Runs the ACI 318-19 §18.10 special-wall check (``femsolver.design.walls``) for
-each pier, using the integrated pier demand P/V/M from the shell membrane
-stresses (wall plan W2) and a small reinforcement/material input form. Reports
+Runs the special-wall check (``femsolver.design.walls``) for each pier, using
+the integrated pier demand P/V/M from the shell membrane stresses (wall plan W2)
+and a small reinforcement/material input form. A design-code selector
+(ACI 318-19 / IS 13920 / EC8) drives the detailing minimums, and a design-drift
+input enables the ACI §18.10.6.2 displacement-based boundary trigger. Reports
 the governing demand/capacity ratio, the boundary-element trigger and minimum-
 reinforcement status per cut, per pier.
 
@@ -66,18 +68,27 @@ class WallDesignDialog(QDialog):
         root.addLayout(top)
 
         form = QFormLayout()
+        self.code = QComboBox()
+        from femsolver.design.walls import WALL_CODES
+        for c in WALL_CODES:
+            self.code.addItem(c, c)
+        self.code.currentIndexChanged.connect(lambda _i: self._compute())
         self.fc = _spin(30.0, 10.0, 150.0, 1, 5.0, " MPa")
         self.fy = _spin(420.0, 200.0, 700.0, 0, 10.0, " MPa")
         self.rho_l = _spin(0.0025, 0.0, 0.05, 4, 0.0005)
         self.rho_t = _spin(0.0025, 0.0, 0.05, 4, 0.0005)
         self.as_be = _spin(2000.0, 0.0, 100000.0, 0, 500.0, " mm²")
         self.d_be = _spin(200.0, 0.0, 2000.0, 0, 50.0, " mm")
+        # design roof-drift ratio δu/hw → ACI §18.10.6.2 displacement trigger
+        self.drift = _spin(0.010, 0.0, 0.05, 4, 0.001)
+        form.addRow("Design code", self.code)
         form.addRow("f'c", self.fc)
         form.addRow("fy (rebar)", self.fy)
         form.addRow("ρℓ (vertical web)", self.rho_l)
         form.addRow("ρt (horizontal web)", self.rho_t)
         form.addRow("Boundary bars As (each end)", self.as_be)
         form.addRow("Boundary bar depth from end", self.d_be)
+        form.addRow("Design drift δu/hw", self.drift)
         fw = QWidget()
         fw.setLayout(form)
         root.addWidget(fw)
@@ -158,6 +169,8 @@ class WallDesignDialog(QDialog):
             return
         lw, t, hw = geom_t
         mat, reinf = self._inputs()
+        code = self.code.currentData()
+        drift = self.drift.value()
 
         rows = sorted(forces, key=lambda f: f.z, reverse=True)  # top → base
         self.tbl.setRowCount(len(rows))
@@ -165,7 +178,8 @@ class WallDesignDialog(QDialog):
         for r, f in enumerate(rows):
             geom = WallGeometry(lw=lw, t=t, hw=hw)
             demand = WallDemand(Pu=-f.axial, Mu=f.moment, Vu=f.shear)  # +C
-            res = design_wall_pier(geom, mat, reinf, demand)
+            res = design_wall_pier(geom, mat, reinf, demand, code=code,
+                                   drift=drift)
             if worst is None or res.dcr > worst[1].dcr:
                 worst = (f, res)
             cells = [f"{f.z:.3g}", f"{-f.axial / 1e3:.1f}",
@@ -182,8 +196,8 @@ class WallDesignDialog(QDialog):
         verdict = "PASS" if res.ok else "FAIL"
         color = style.C_PRIMARY if res.ok else "#c0392b"
         self.summary.setText(
-            f"<b>Pier {name}</b> — ℓw = {lw:.2f} m, t = {t*1e3:.0f} mm, "
-            f"hw = {hw:.2f} m · governing DCR = <b>{res.dcr:.2f}</b> at "
+            f"<b>Pier {name}</b> ({code}) — ℓw = {lw:.2f} m, t = {t*1e3:.0f} mm,"
+            f" hw = {hw:.2f} m · governing DCR = <b>{res.dcr:.2f}</b> at "
             f"elev {f.z:.2f} m · <b style='color:{color}'>{verdict}</b>")
         notes = list(res.notes)
         if res.shear.two_curtains_required and \

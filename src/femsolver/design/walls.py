@@ -184,28 +184,51 @@ def wall_min_web_reinforcement(geom: WallGeometry, mat: WallMaterial,
 class BoundaryElementCheck:
     sigma_max: float          # extreme-fiber compressive stress (Pa)
     ratio: float              # σ_max / f'c
-    required: bool            # σ_max > 0.2 f'c
+    required: bool            # special boundary element required (either trigger)
+    stress_required: bool     # stress trigger: σ_max > 0.2 f'c (§18.10.6.3)
+    disp_required: bool       # drift trigger: c ≥ ℓw/(600·δu/hw) (§18.10.6.2)
     can_discontinue: bool     # σ_max < 0.15 f'c
-    lbe_min: float            # recommended boundary length (m)
+    lbe_min: float            # required boundary length (m)
+    c: float                  # neutral-axis depth used (m), 0 if unknown
+    drift: float              # δu/hw used for the drift trigger, 0 if unused
 
 
 def boundary_element_check(geom: WallGeometry, mat: WallMaterial,
-                           demand: WallDemand) -> BoundaryElementCheck:
-    """Stress-based special boundary-element trigger (ACI 318-19 §18.10.6.3):
-    a special boundary element is required where the extreme-fiber compressive
-    stress from the factored ``Pu, Mu`` on the gross section exceeds
-    ``0.2 f'c``, and may be discontinued where it drops below ``0.15 f'c``."""
+                           demand: WallDemand, *, c: float = 0.0,
+                           drift: float = 0.0) -> BoundaryElementCheck:
+    """Special boundary-element check (ACI 318-19 §18.10.6).
+
+    * **Stress trigger** (§18.10.6.3): required where the extreme-fibre
+      compressive stress from factored ``Pu, Mu`` on the gross section exceeds
+      ``0.2 f'c`` (may be discontinued below ``0.15 f'c``).
+    * **Displacement trigger** (§18.10.6.2, when a neutral-axis depth ``c`` and
+      design drift ``drift = δu/hw`` are given): required where
+      ``c ≥ ℓw / (600·(δu/hw))`` with ``δu/hw`` not taken less than 0.005.
+    * **Boundary length** (§18.10.6.4a): ``ℓbe ≥ max(c − 0.1 ℓw, c/2)`` when
+      ``c`` is known, else a ``0.15 ℓw`` placeholder."""
     sigma = 0.0
     if geom.Ag > 0:
         sigma = demand.Pu / geom.Ag + abs(demand.Mu) * (geom.lw / 2.0) / geom.Ig
     ratio = sigma / mat.fc if mat.fc > 0 else math.inf
-    required = sigma > 0.2 * mat.fc
-    # §18.10.6.4(a): ℓbe ≥ max(c − 0.1ℓw, c/2); c not known here without the
-    # P-M neutral axis, so recommend the code floor of ~0.15ℓw as a placeholder.
-    lbe = 0.15 * geom.lw if required else 0.0
-    return BoundaryElementCheck(sigma_max=sigma, ratio=ratio, required=required,
-                                can_discontinue=sigma < 0.15 * mat.fc,
-                                lbe_min=lbe)
+    stress_req = sigma > 0.2 * mat.fc
+
+    disp_req = False
+    if c > 0 and drift > 0:
+        d = max(drift, 0.005)                       # §18.10.6.2 lower bound
+        c_limit = geom.lw / (600.0 * d)
+        disp_req = c >= c_limit
+
+    required = stress_req or disp_req
+    if not required:
+        lbe = 0.0
+    elif c > 0:
+        lbe = max(c - 0.1 * geom.lw, c / 2.0)       # §18.10.6.4(a)
+    else:
+        lbe = 0.15 * geom.lw                         # placeholder without c
+    return BoundaryElementCheck(
+        sigma_max=sigma, ratio=ratio, required=required,
+        stress_required=stress_req, disp_required=disp_req,
+        can_discontinue=sigma < 0.15 * mat.fc, lbe_min=lbe, c=c, drift=drift)
 
 
 # ============================================ axial-flexure P-M (§22.2)
@@ -340,12 +363,75 @@ def wall_pm_capacity(geom: WallGeometry, mat: WallMaterial,
 
 # ============================================================ assembled check
 
+# ============================================ code-specific detailing (§18.10 / IS 13920 / EC8)
+
+WALL_CODES = ("ACI 318-19", "IS 13920", "EC8")
+
+# Minimum reinforcement ratios by code: web (each direction) and the boundary-
+# element vertical reinforcement floor where a boundary element is required.
+_CODE_MIN = {
+    #            web ρ    boundary ρ (vertical)
+    "ACI 318-19": (0.0025, 0.0),     # ACI sets boundary detailing by ties, not ρ
+    "IS 13920":   (0.0025, 0.008),   # IS 13920:2016 §10.1.4 / §10.4.4 (0.8%)
+    "EC8":        (0.0020, 0.005),   # EN 1998-1 §5.4.3.4.2 confined BE (0.5%)
+}
+
+
+@dataclass
+class WallDetailing:
+    code: str
+    web_rho_min: float
+    boundary_rho_min: float
+    boundary_rho: float            # provided boundary vertical ρ (As_be/(ℓbe·t))
+    boundary_rho_ok: bool
+    notes: list = field(default_factory=list)
+
+
+def wall_detailing(code: str, geom: WallGeometry, mat: WallMaterial,
+                   reinf: WallReinforcement,
+                   be: BoundaryElementCheck) -> WallDetailing:
+    """Code-specific special-wall detailing (ACI 318-19 §18.10, IS 13920:2016
+    §10, or EC8 EN 1998-1 §5.4.3.4). Returns the governing web / boundary
+    minimum reinforcement ratios, whether the supplied boundary bars meet the
+    boundary floor, and code-referenced advisory notes."""
+    code = code if code in WALL_CODES else "ACI 318-19"
+    web_min, be_rho_min = _CODE_MIN[code]
+    notes: list = []
+
+    # boundary vertical reinforcement ratio actually provided
+    be_rho = 0.0
+    if be.required and be.lbe_min > 0 and geom.t > 0:
+        be_rho = reinf.As_boundary / (be.lbe_min * geom.t)
+    be_ok = (not be.required) or be_rho_min <= 0.0 or be_rho >= be_rho_min - 1e-9
+
+    if code == "IS 13920":
+        if geom.t > 0.20:
+            notes.append("IS 13920 §10.1.4: two curtains required (tw > 200 mm).")
+        if be.required:
+            notes.append("IS 13920 §10.4: boundary element required; vertical "
+                         "reinforcement 0.8%–6% of the boundary area.")
+    elif code == "EC8":
+        notes.append("EC8 §5.4.3.4.2: confine the boundary element over the "
+                     "critical height; boundary vertical reinforcement ≥ 0.5%.")
+    else:  # ACI 318-19
+        if be.required:
+            notes.append("ACI 318-19 §18.10.6.4: detail the boundary element "
+                         "with transverse ties (hoops/crossties) over ℓbe.")
+    if be.required and not be_ok:
+        notes.append(f"Boundary vertical ρ {be_rho:.4f} below the {code} "
+                     f"minimum {be_rho_min:.4f}.")
+    return WallDetailing(code=code, web_rho_min=web_min,
+                         boundary_rho_min=be_rho_min, boundary_rho=be_rho,
+                         boundary_rho_ok=be_ok, notes=notes)
+
+
 @dataclass
 class WallDesignResult:
     pm: WallPMResult
     shear: WallShearResult
     boundary: BoundaryElementCheck
     min_reinf: WallMinReinf
+    detailing: WallDetailing
     dcr: float                     # governing (max of P-M, shear)
     ok: bool
     notes: list = field(default_factory=list)
@@ -353,23 +439,34 @@ class WallDesignResult:
 
 def design_wall_pier(geom: WallGeometry, mat: WallMaterial,
                      reinf: WallReinforcement, demand: WallDemand, *,
-                     phi_shear: float = 0.75) -> WallDesignResult:
-    """Full ACI 318-19 §18.10 special-wall check for one pier demand: P-M,
-    shear, boundary elements and minimum reinforcement, with a governing DCR."""
+                     phi_shear: float = 0.75, code: str = "ACI 318-19",
+                     drift: float = 0.0) -> WallDesignResult:
+    """Full special-wall check for one pier demand: P-M, shear, boundary
+    elements (stress + drift triggers), minimum reinforcement and code-specific
+    detailing, with a governing DCR.
+
+    ``code`` selects the detailing standard (``WALL_CODES``); ``drift`` = δu/hw
+    the design roof-drift ratio, enabling the ACI §18.10.6.2 displacement-based
+    boundary trigger (0 disables it, leaving only the stress trigger)."""
     pm = wall_pm_capacity(geom, mat, reinf, demand)
     sh = wall_shear_strength(geom, mat, reinf, Vu=demand.Vu, phi=phi_shear)
-    be = boundary_element_check(geom, mat, demand)
+    be = boundary_element_check(geom, mat, demand, c=pm.c, drift=drift)
     mr = wall_min_web_reinforcement(geom, mat, reinf, demand.Vu)
+    det = wall_detailing(code, geom, mat, reinf, be)
     dcr = max(pm.dcr, sh.dcr)
     notes: list = []
-    if be.required:
+    if be.stress_required:
         notes.append("Special boundary elements required (σ > 0.2 f'c).")
+    if be.disp_required:
+        notes.append(f"Special boundary elements required (drift: c ≥ "
+                     f"ℓw/(600·δu/hw), ℓbe ≥ {be.lbe_min:.2f} m).")
     if sh.two_curtains_required:
         notes.append("Two curtains of reinforcement required.")
     if not mr.rho_t_ok:
         notes.append(f"Horizontal web ρt below minimum {mr.rho_t_min:.4f}.")
     if not mr.rho_l_ok:
         notes.append(f"Vertical web ρl below minimum {mr.rho_l_min:.4f}.")
-    ok = dcr <= 1.0 and mr.rho_t_ok and mr.rho_l_ok
+    notes.extend(det.notes)
+    ok = (dcr <= 1.0 and mr.rho_t_ok and mr.rho_l_ok and det.boundary_rho_ok)
     return WallDesignResult(pm=pm, shear=sh, boundary=be, min_reinf=mr,
-                            dcr=dcr, ok=ok, notes=notes)
+                            detailing=det, dcr=dcr, ok=ok, notes=notes)

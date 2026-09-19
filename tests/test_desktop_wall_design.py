@@ -107,6 +107,27 @@ def test_wall_design_dialog_no_piers(qapp):
     assert "No piers" in dlg.summary.text()
 
 
+def test_wall_design_dialog_code_selector(qapp):
+    from wall_design_dialog import WallDesignDialog
+    p, m = _solved()
+    dlg = WallDesignDialog(None, p, m)
+    # switch to IS 13920 with no boundary bars → boundary-ρ note + code in summary
+    i = dlg.code.findData("IS 13920")
+    dlg.as_be.setValue(0.0)
+    dlg.code.setCurrentIndex(i)                 # triggers _compute
+    assert "IS 13920" in dlg.summary.text()
+
+
+def test_wall_design_dialog_drift_trigger(qapp):
+    from wall_design_dialog import WallDesignDialog
+    p, m = _solved()
+    dlg = WallDesignDialog(None, p, m)
+    dlg.drift.setValue(0.03)                    # large drift → drift trigger likely
+    dlg._compute()
+    # the check runs and reports a verdict either way (smoke of the wiring)
+    assert "governing DCR" in dlg.summary.text()
+
+
 # ------------------------------------------------- MainWindow action guard
 
 @pytest.fixture(scope="module")
