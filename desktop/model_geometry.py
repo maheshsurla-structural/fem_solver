@@ -421,7 +421,8 @@ def grid_story_mesh(project, model, *, pad=None):
     Y (runs in X). Story rectangles let the levels read in a 3-D view."""
     stories = list(getattr(project, "stories", []))
     grids = list(getattr(project, "grid_lines", []))
-    if not stories and not grids:
+    generals = list(getattr(project, "general_grids", []))
+    if not stories and not grids and not generals:
         return None
     bb = _model_bbox(model)
     if bb is None:
@@ -443,10 +444,16 @@ def grid_story_mesh(project, model, *, pad=None):
         lines.extend((2, i, i + 1))
 
     for g in grids:
+        if not getattr(g, "visible", True):
+            continue
         if g.axis == "x":
             _seg((g.coord, y0, zbase), (g.coord, y1, zbase))
         else:
             _seg((x0, g.coord, zbase), (x1, g.coord, zbase))
+    for g in getattr(project, "general_grids", []):     # diagonal / arbitrary
+        if not getattr(g, "visible", True):
+            continue
+        _seg((g.x1, g.y1, zbase), (g.x2, g.y2, zbase))
     for s in stories:
         z = float(s.elev)
         c = [(x0, y0, z), (x1, y0, z), (x1, y1, z), (x0, y1, z)]
@@ -466,6 +473,45 @@ def snap_targets(project):
     ys = [g.coord for g in getattr(project, "grid_lines", []) if g.axis == "y"]
     zs = [s.elev for s in getattr(project, "stories", [])]
     return xs, ys, zs
+
+
+def grid_bubble_labels(project, model, *, pad=None):
+    """``(points (N,3), labels [str])`` for each visible grid line's name bubble
+    at its chosen end (wall plan W8b) — for the viewport to draw as a callout.
+    Points sit just outside the model plan bounds so the bubbles clear the model.
+    Returns ``([], [])`` when there is nothing to label."""
+    grids = [g for g in getattr(project, "grid_lines", [])
+             if getattr(g, "visible", True) and g.bubble != "none"]
+    generals = [g for g in getattr(project, "general_grids", [])
+                if getattr(g, "visible", True) and g.bubble != "none"]
+    bb = _model_bbox(model)
+    if bb is None or (not grids and not generals):
+        return [], []
+    lo, hi = bb
+    span = float(max(hi[0] - lo[0], hi[1] - lo[1], 1.0))
+    if pad is None:
+        pad = 0.1 * span
+    off = 0.5 * pad
+    x0, x1 = float(lo[0] - pad), float(hi[0] + pad)
+    y0, y1 = float(lo[1] - pad), float(hi[1] + pad)
+    z = float(lo[2])
+    pts, labels = [], []
+    for g in grids:
+        if g.axis == "x":                       # const-X line runs in Y
+            y = (y0 - off) if g.bubble == "start" else (y1 + off)
+            pts.append((g.coord, y, z))
+        else:                                   # const-Y line runs in X
+            x = (x0 - off) if g.bubble == "start" else (x1 + off)
+            pts.append((x, g.coord, z))
+        labels.append(g.name)
+    for g in generals:
+        if g.bubble == "start":
+            px, py = g.x1, g.y1
+        else:
+            px, py = g.x2, g.y2
+        pts.append((float(px), float(py), z))
+        labels.append(g.name)
+    return pts, labels
 
 
 def snap_to_grid(x, y, z, xs, ys, zs, tol):

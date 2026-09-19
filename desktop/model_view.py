@@ -924,6 +924,20 @@ class ModelView(QtInteractor):
         if poly is not None:
             self.add_mesh(poly, color=style.ACCENT, line_width=1,
                           opacity=0.6, name="storygrid", pickable=False)
+        self.remove_actor("gridbubbles", render=False)
+        try:
+            bpts, blab = mg.grid_bubble_labels(project, self._model)
+        except Exception:
+            bpts, blab = [], []
+        if bpts:
+            try:
+                self.add_point_labels(
+                    np.asarray(bpts, dtype=float), blab, font_size=12,
+                    text_color=style.ACCENT, shape="rounded_rect",
+                    shape_opacity=0.25, always_visible=True, pickable=False,
+                    name="gridbubbles")
+            except Exception:
+                pass
         self.render()
 
     def show_story_grid(self, on: bool) -> None:

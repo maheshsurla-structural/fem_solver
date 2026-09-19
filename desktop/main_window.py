@@ -2944,16 +2944,17 @@ class MainWindow(QMainWindow):
         result = StoryGridDialog.manage(self, self._project, self._units())
         if result is None:
             return
-        stories, grids = result
+        stories, grids, generals = result
 
         def _mut():
             self._project.stories = stories
             self._project.grid_lines = grids
+            self._project.general_grids = generals
         self._apply_edit("Edit stories & grid", _mut)
         self._refresh_story_combo()
         self.statusBar().showMessage(
             f"{len(stories)} stor{'y' if len(stories) == 1 else 'ies'}, "
-            f"{len(grids)} grid line(s)")
+            f"{len(grids) + len(generals)} grid line(s)")
 
     # ------------------------------------------------- story-based wall drawing (W7)
     def _refresh_story_combo(self) -> None:

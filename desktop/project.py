@@ -675,15 +675,44 @@ class Tendon:
 class GridLine:
     """A named grid line (wall plan W4). ``axis="x"`` is a line of constant X
     (running in the Y direction); ``axis="y"`` is constant Y (running in X).
-    ``coord`` is its position (SI). Snapping/rendering use it (W4b)."""
+    ``coord`` is its position (SI). ``visible`` toggles it; ``bubble`` is where
+    the name bubble sits — ``"start"``/``"end"``/``"none"`` (ETABS parity, W8b).
+    Snapping/rendering use it (W4b)."""
     id: int
     name: str
     axis: str = "x"                # "x" (const-X line) | "y" (const-Y line)
     coord: float = 0.0
+    visible: bool = True
+    bubble: str = "end"            # "start" | "end" | "none"
 
     def __post_init__(self):
         self.axis = self.axis if self.axis in ("x", "y") else "x"
         self.coord = float(self.coord)
+        self.visible = bool(self.visible)
+        self.bubble = self.bubble if self.bubble in ("start", "end", "none") \
+            else "end"
+
+
+@dataclass
+class GeneralGrid:
+    """A general (arbitrary / diagonal) grid line between two plan points
+    ``(x1,y1)``→``(x2,y2)`` — the ETABS 'General Grids' idiom (wall plan W8b).
+    ``name`` is its bubble label; ``bubble`` its end; ``visible`` toggles it."""
+    id: int
+    name: str
+    x1: float = 0.0
+    y1: float = 0.0
+    x2: float = 0.0
+    y2: float = 0.0
+    visible: bool = True
+    bubble: str = "end"
+
+    def __post_init__(self):
+        self.x1, self.y1 = float(self.x1), float(self.y1)
+        self.x2, self.y2 = float(self.x2), float(self.y2)
+        self.visible = bool(self.visible)
+        self.bubble = self.bubble if self.bubble in ("start", "end", "none") \
+            else "end"
 
 
 @dataclass
@@ -715,6 +744,7 @@ class Project:
     tendons: list = field(default_factory=list)         # Tendon (PT, parity C6)
     stories: list = field(default_factory=list)         # Story (building levels, W4)
     grid_lines: list = field(default_factory=list)      # GridLine (W4)
+    general_grids: list = field(default_factory=list)   # GeneralGrid (W8b)
     nonlinear_cases: list = field(default_factory=list)  # NonlinearCase (GUI-4)
     analysis_cases: list = field(default_factory=list)  # AnalysisCase (ACM plan)
     th_functions: list = field(default_factory=list)   # TimeHistoryFunction (ACM)
@@ -1000,8 +1030,16 @@ class Project:
                      for s in d.get("stories", [])],
             grid_lines=[GridLine(id=g["id"], name=g.get("name", ""),
                                  axis=g.get("axis", "x"),
-                                 coord=g.get("coord", 0.0))
+                                 coord=g.get("coord", 0.0),
+                                 visible=g.get("visible", True),
+                                 bubble=g.get("bubble", "end"))
                         for g in d.get("grid_lines", [])],
+            general_grids=[GeneralGrid(id=g["id"], name=g.get("name", ""),
+                                       x1=g.get("x1", 0.0), y1=g.get("y1", 0.0),
+                                       x2=g.get("x2", 0.0), y2=g.get("y2", 0.0),
+                                       visible=g.get("visible", True),
+                                       bubble=g.get("bubble", "end"))
+                           for g in d.get("general_grids", [])],
             nonlinear_cases=[NonlinearCase(**c)
                              for c in d.get("nonlinear_cases", [])],
             analysis_cases=[AnalysisCase(

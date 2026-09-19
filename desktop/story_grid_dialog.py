@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (QColorDialog, QComboBox, QDialog,
                                QVBoxLayout, QWidget)
 
 import style
-from project import GridLine, Story
+from project import GeneralGrid, GridLine, Story
 from units import Quantity, UnitSystem
 
 
@@ -66,9 +66,9 @@ class StoryGridDialog(QDialog):
 
         # ---- grid ----
         root.addWidget(self._h2("Grid lines"))
-        self.gr_tbl = QTableWidget(0, 3)
+        self.gr_tbl = QTableWidget(0, 5)
         self.gr_tbl.setHorizontalHeaderLabels(
-            ["Name", "Axis", f"Coordinate ({self._lu})"])
+            ["Name", "Axis", f"Coordinate ({self._lu})", "Visible", "Bubble"])
         self.gr_tbl.verticalHeader().setVisible(False)
         self.gr_tbl.horizontalHeader().setSectionResizeMode(
             0, QHeaderView.ResizeMode.Stretch)
@@ -82,9 +82,29 @@ class StoryGridDialog(QDialog):
         grow.addStretch(1)
         root.addLayout(grow)
 
+        # ---- general (diagonal) grids ----
+        root.addWidget(self._h2("General grids"))
+        self.gg_tbl = QTableWidget(0, 6)
+        self.gg_tbl.setHorizontalHeaderLabels(
+            ["Name", f"X1 ({self._lu})", f"Y1 ({self._lu})",
+             f"X2 ({self._lu})", f"Y2 ({self._lu})", "Visible"])
+        self.gg_tbl.verticalHeader().setVisible(False)
+        self.gg_tbl.horizontalHeader().setSectionResizeMode(
+            0, QHeaderView.ResizeMode.Stretch)
+        root.addWidget(self.gg_tbl)
+        ggrow = QHBoxLayout()
+        for label, slot in (("＋ General grid", self._add_general),
+                            ("Remove", self._remove_general)):
+            b = QPushButton(label)
+            b.clicked.connect(slot)
+            ggrow.addWidget(b)
+        ggrow.addStretch(1)
+        root.addLayout(ggrow)
+
         hint = QLabel("Stories are levels at an elevation; a node/area belongs "
                       "to a story by its height. Grid line axis 'x' is a line "
-                      "of constant X (runs in Y); 'y' is constant Y.")
+                      "of constant X (runs in Y); 'y' is constant Y. General "
+                      "grids are arbitrary/diagonal lines (X1,Y1)→(X2,Y2).")
         hint.setObjectName("hintLabel")
         hint.setWordWrap(True)
         root.addWidget(hint)
@@ -125,6 +145,16 @@ class StoryGridDialog(QDialog):
             self.gr_tbl.setCellWidget(r, 1, self._axis_combo(g.axis))
             self.gr_tbl.setItem(r, 2, QTableWidgetItem(
                 f"{us.to_display(g.coord, Quantity.LENGTH):.4g}"))
+            self.gr_tbl.setCellWidget(r, 3, self._check(g.visible))
+            self.gr_tbl.setCellWidget(r, 4, self._bubble_combo(g.bubble))
+        generals = list(getattr(self._project, "general_grids", []))
+        self.gg_tbl.setRowCount(len(generals))
+        for r, g in enumerate(generals):
+            self.gg_tbl.setItem(r, 0, QTableWidgetItem(g.name))
+            for c, v in ((1, g.x1), (2, g.y1), (3, g.x2), (4, g.y2)):
+                self.gg_tbl.setItem(r, c, QTableWidgetItem(
+                    f"{us.to_display(v, Quantity.LENGTH):.4g}"))
+            self.gg_tbl.setCellWidget(r, 5, self._check(g.visible))
 
     def _axis_combo(self, axis="x"):
         c = QComboBox()
@@ -132,6 +162,20 @@ class StoryGridDialog(QDialog):
         c.addItem("y (const Y)", "y")
         c.setCurrentIndex(0 if axis == "x" else 1)
         return c
+
+    def _bubble_combo(self, bubble="end"):
+        c = QComboBox()
+        for b in ("start", "end", "none"):
+            c.addItem(b, b)
+        i = c.findData(bubble)
+        c.setCurrentIndex(i if i >= 0 else 1)
+        return c
+
+    def _check(self, on=True):
+        from PySide6.QtWidgets import QCheckBox
+        cb = QCheckBox()
+        cb.setChecked(bool(on))
+        return cb
 
     def _add_story(self) -> None:
         """Add a story on top of the current stack, keeping existing heights —
@@ -261,6 +305,21 @@ class StoryGridDialog(QDialog):
         self.gr_tbl.setItem(r, 0, QTableWidgetItem(chr(ord("A") + r)))
         self.gr_tbl.setCellWidget(r, 1, self._axis_combo("x"))
         self.gr_tbl.setItem(r, 2, QTableWidgetItem("0"))
+        self.gr_tbl.setCellWidget(r, 3, self._check(True))
+        self.gr_tbl.setCellWidget(r, 4, self._bubble_combo("end"))
+
+    def _add_general(self) -> None:
+        r = self.gg_tbl.rowCount()
+        self.gg_tbl.insertRow(r)
+        self.gg_tbl.setItem(r, 0, QTableWidgetItem(f"D{r + 1}"))
+        for c in (1, 2, 3, 4):
+            self.gg_tbl.setItem(r, c, QTableWidgetItem("0"))
+        self.gg_tbl.setCellWidget(r, 5, self._check(True))
+
+    def _remove_general(self) -> None:
+        r = self.gg_tbl.currentRow()
+        if r >= 0:
+            self.gg_tbl.removeRow(r)
 
     def _remove_grid(self) -> None:
         r = self.gr_tbl.currentRow()
@@ -318,17 +377,35 @@ class StoryGridDialog(QDialog):
                                  elev=_f(self.st_tbl.item(r, 1)),
                                  height=_f(self.st_tbl.item(r, 2)),
                                  master=master, color=color))
+        def _checked(w):
+            return w.isChecked() if w is not None else True
+
         grids = []
         for r in range(self.gr_tbl.rowCount()):
             name_it = self.gr_tbl.item(r, 0)
             name = name_it.text().strip() if name_it else ""
             if not name:
                 continue
-            combo = self.gr_tbl.cellWidget(r, 1)
-            axis = combo.currentData() if combo else "x"
-            grids.append(GridLine(id=r + 1, name=name, axis=axis,
-                                  coord=_f(self.gr_tbl.item(r, 2))))
-        self.result = (stories, grids)
+            axis_c = self.gr_tbl.cellWidget(r, 1)
+            bub_c = self.gr_tbl.cellWidget(r, 4)
+            grids.append(GridLine(
+                id=r + 1, name=name,
+                axis=axis_c.currentData() if axis_c else "x",
+                coord=_f(self.gr_tbl.item(r, 2)),
+                visible=_checked(self.gr_tbl.cellWidget(r, 3)),
+                bubble=bub_c.currentData() if bub_c else "end"))
+        generals = []
+        for r in range(self.gg_tbl.rowCount()):
+            name_it = self.gg_tbl.item(r, 0)
+            name = name_it.text().strip() if name_it else ""
+            if not name:
+                continue
+            generals.append(GeneralGrid(
+                id=r + 1, name=name,
+                x1=_f(self.gg_tbl.item(r, 1)), y1=_f(self.gg_tbl.item(r, 2)),
+                x2=_f(self.gg_tbl.item(r, 3)), y2=_f(self.gg_tbl.item(r, 4)),
+                visible=_checked(self.gg_tbl.cellWidget(r, 5))))
+        self.result = (stories, grids, generals)
         self.accept()
 
     @classmethod
