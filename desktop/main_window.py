@@ -449,6 +449,10 @@ class MainWindow(QMainWindow):
         self.act_building_template.setStatusTip(
             "New grid & stories from a quick template (uniform grid + simple "
             "story stack) with a live preview")
+        self.act_import_grid_dxf = _action(self, "Import grid (&DXF)…", None,
+                                           self.import_grid_dxf, "open")
+        self.act_import_grid_dxf.setStatusTip(
+            "Import grid lines from a DXF file (LINE / LWPOLYLINE → grid)")
         self.act_replicate_story = _action(self, "&Replicate story…", None,
                                            self.replicate_story, "copy")
         self.act_hinges = _action(self, "&Hinges…", None, self.manage_hinges,
@@ -732,6 +736,7 @@ class MainWindow(QMainWindow):
             ("Constraints", ((self.act_add_diaphragm, "Diaphragm"),)),
             ("Levels", ((self.act_building_template, "Template"),
                         (self.act_stories, "Stories & grid"),
+                        (self.act_import_grid_dxf, "Import DXF"),
                         (self.act_replicate_story, "Replicate"))),
             ("Edit", ((self.act_undo, "Undo"), (self.act_redo, "Redo"),
                       (self.act_delete, "Delete"))),
@@ -2989,6 +2994,40 @@ class MainWindow(QMainWindow):
         self._refresh_story_combo()
         self.statusBar().showMessage(
             f"Template: {len(stories) - 1} stories, {len(grids)} grid lines")
+
+    def import_grid_dxf(self) -> None:
+        """Import grid lines from a DXF file (wall plan W8d): LINE/LWPOLYLINE
+        entities → axis-aligned grid lines + diagonal general grids. Replaces
+        the current grid (stories untouched)."""
+        p = self._project
+        if p is None:
+            return
+        from PySide6.QtWidgets import QFileDialog
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Import grid (DXF)", "", "DXF files (*.dxf);;All files (*)")
+        if not path:
+            return
+        import dxf_import
+        try:
+            with open(path, "r", encoding="utf-8", errors="ignore") as fh:
+                text = fh.read()
+            grids, generals = dxf_import.grids_from_dxf(text)
+        except Exception as e:                          # noqa: BLE001
+            QMessageBox.warning(self, "Import grid (DXF)", str(e))
+            return
+        if not grids and not generals:
+            QMessageBox.information(
+                self, "Import grid (DXF)",
+                "No line entities found to import as grid lines.")
+            return
+
+        def _mut():
+            p.grid_lines = grids
+            p.general_grids = generals
+        self._apply_edit("Import grid (DXF)", _mut)
+        self.statusBar().showMessage(
+            f"Imported {len(grids)} grid line(s) + {len(generals)} general "
+            f"grid(s) from DXF")
 
     # ------------------------------------------------- story-based wall drawing (W7)
     def _refresh_story_combo(self) -> None:
