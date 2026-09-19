@@ -684,6 +684,7 @@ class GridLine:
     coord: float = 0.0
     visible: bool = True
     bubble: str = "end"            # "start" | "end" | "none"
+    system: "int | None" = None    # GridSystem id (None = global/default, W8b-2)
 
     def __post_init__(self):
         self.axis = self.axis if self.axis in ("x", "y") else "x"
@@ -691,6 +692,25 @@ class GridLine:
         self.visible = bool(self.visible)
         self.bubble = self.bubble if self.bubble in ("start", "end", "none") \
             else "end"
+        self.system = int(self.system) if self.system is not None else None
+
+
+@dataclass
+class GridSystem:
+    """A named grid system (wall plan W8b-2) — a local frame the grid lines are
+    laid out in: ``origin`` ``(x, y)`` in global plan coords and ``rotation``
+    about global Z (degrees, CCW). A grid line's local ``coord`` is placed by
+    ``global = R(rotation)·local + origin``. ETABS 'Add New Grid System'."""
+    id: int
+    name: str
+    origin_x: float = 0.0
+    origin_y: float = 0.0
+    rotation: float = 0.0          # degrees CCW about global Z
+
+    def __post_init__(self):
+        self.origin_x = float(self.origin_x)
+        self.origin_y = float(self.origin_y)
+        self.rotation = float(self.rotation)
 
 
 @dataclass
@@ -745,6 +765,7 @@ class Project:
     stories: list = field(default_factory=list)         # Story (building levels, W4)
     grid_lines: list = field(default_factory=list)      # GridLine (W4)
     general_grids: list = field(default_factory=list)   # GeneralGrid (W8b)
+    grid_systems: list = field(default_factory=list)    # GridSystem (W8b-2)
     nonlinear_cases: list = field(default_factory=list)  # NonlinearCase (GUI-4)
     analysis_cases: list = field(default_factory=list)  # AnalysisCase (ACM plan)
     th_functions: list = field(default_factory=list)   # TimeHistoryFunction (ACM)
@@ -849,6 +870,12 @@ class Project:
         """Grid lines of a given ``axis`` ('x' or 'y'), sorted by coordinate."""
         return sorted((g for g in self.grid_lines if g.axis == axis),
                       key=lambda g: g.coord)
+
+    def grid_system(self, sys_id):
+        return next((s for s in self.grid_systems if s.id == sys_id), None)
+
+    def next_grid_system_id(self) -> int:
+        return max((s.id for s in self.grid_systems), default=0) + 1
 
     def diaphragm(self, dia_id):
         return next((d for d in self.diaphragms if d.id == dia_id), None)
@@ -1032,8 +1059,14 @@ class Project:
                                  axis=g.get("axis", "x"),
                                  coord=g.get("coord", 0.0),
                                  visible=g.get("visible", True),
-                                 bubble=g.get("bubble", "end"))
+                                 bubble=g.get("bubble", "end"),
+                                 system=g.get("system"))
                         for g in d.get("grid_lines", [])],
+            grid_systems=[GridSystem(id=s["id"], name=s.get("name", ""),
+                                     origin_x=s.get("origin_x", 0.0),
+                                     origin_y=s.get("origin_y", 0.0),
+                                     rotation=s.get("rotation", 0.0))
+                          for s in d.get("grid_systems", [])],
             general_grids=[GeneralGrid(id=g["id"], name=g.get("name", ""),
                                        x1=g.get("x1", 0.0), y1=g.get("y1", 0.0),
                                        x2=g.get("x2", 0.0), y2=g.get("y2", 0.0),

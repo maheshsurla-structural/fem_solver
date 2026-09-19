@@ -2955,12 +2955,13 @@ class MainWindow(QMainWindow):
         result = StoryGridDialog.manage(self, self._project, self._units())
         if result is None:
             return
-        stories, grids, generals = result
+        stories, grids, generals, systems = result
 
         def _mut():
             self._project.stories = stories
             self._project.grid_lines = grids
             self._project.general_grids = generals
+            self._project.grid_systems = systems
         self._apply_edit("Edit stories & grid", _mut)
         self._refresh_story_combo()
         self.statusBar().showMessage(

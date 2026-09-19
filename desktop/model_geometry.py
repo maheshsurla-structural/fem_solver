@@ -6,6 +6,8 @@ Pure geometry, no Qt / no OpenGL — every function here can run headless
 """
 from __future__ import annotations
 
+import math
+
 import numpy as np
 import pyvista as pv
 
@@ -412,6 +414,33 @@ def _model_bbox(model):
     return pts.min(axis=0), pts.max(axis=0)
 
 
+def _grid_frame(project, g):
+    """``(ox, oy, cos, sin)`` of the grid line's system (origin + rotation),
+    identity for a line with no/unknown system (wall plan W8b-2)."""
+    sid = getattr(g, "system", None)
+    sys = project.grid_system(sid) if (
+        sid is not None and hasattr(project, "grid_system")) else None
+    if sys is None:
+        return 0.0, 0.0, 1.0, 0.0
+    th = math.radians(sys.rotation)
+    return sys.origin_x, sys.origin_y, math.cos(th), math.sin(th)
+
+
+def grid_line_endpoints(project, g, lo, hi):
+    """Global ``((x1,y1),(x2,y2))`` for grid line ``g`` in its system's frame
+    (origin + rotation), spanning the model plan extent (wall plan W8b-2)."""
+    ox, oy, c, s = _grid_frame(project, g)
+    span = float(max(hi[0] - lo[0], hi[1] - lo[1], 1.0))
+    L = span * 1.2 + 1.0
+    if g.axis == "x":                       # local x = coord, runs in local +Y
+        ax, ay = ox + g.coord * c, oy + g.coord * s
+        dx, dy = -s, c
+    else:                                   # local y = coord, runs in local +X
+        ax, ay = ox - g.coord * s, oy + g.coord * c
+        dx, dy = c, s
+    return (ax - L * dx, ay - L * dy), (ax + L * dx, ay + L * dy)
+
+
 def grid_story_mesh(project, model, *, pad=None):
     """Lines PolyData for the named grid lines (drawn on the base plane) and the
     story levels (a horizontal rectangle at each elevation), spanning the model
@@ -446,10 +475,8 @@ def grid_story_mesh(project, model, *, pad=None):
     for g in grids:
         if not getattr(g, "visible", True):
             continue
-        if g.axis == "x":
-            _seg((g.coord, y0, zbase), (g.coord, y1, zbase))
-        else:
-            _seg((x0, g.coord, zbase), (x1, g.coord, zbase))
+        (gx1, gy1), (gx2, gy2) = grid_line_endpoints(project, g, lo, hi)
+        _seg((gx1, gy1, zbase), (gx2, gy2, zbase))
     for g in getattr(project, "general_grids", []):     # diagonal / arbitrary
         if not getattr(g, "visible", True):
             continue
@@ -467,11 +494,19 @@ def grid_story_mesh(project, model, *, pad=None):
 
 
 def snap_targets(project):
-    """``(xs, ys, zs)`` the named-grid X coordinates, Y coordinates and story
-    elevations to snap drawing to (wall plan W4b)."""
-    xs = [g.coord for g in getattr(project, "grid_lines", []) if g.axis == "x"]
-    ys = [g.coord for g in getattr(project, "grid_lines", []) if g.axis == "y"]
-    zs = [s.elev for s in getattr(project, "stories", [])]
+    """``(xs, ys, zs)`` the axis-aligned grid X/Y coordinates (offset by their
+    system origin) and story elevations to snap drawing to. Rotated grid systems
+    are not axis-aligned, so their lines are skipped for snapping (W4b/W8b-2)."""
+    xs, ys = [], []
+    for g in getattr(project, "grid_lines", []):
+        ox, oy, c, s = _grid_frame(project, g)
+        if abs(s) > 1e-9:                    # rotated → not axis-aligned
+            continue
+        if g.axis == "x":
+            xs.append(g.coord * c + ox)
+        else:
+            ys.append(g.coord * c + oy)
+    zs = [st.elev for st in getattr(project, "stories", [])]
     return xs, ys, zs
 
 
@@ -488,21 +523,13 @@ def grid_bubble_labels(project, model, *, pad=None):
     if bb is None or (not grids and not generals):
         return [], []
     lo, hi = bb
-    span = float(max(hi[0] - lo[0], hi[1] - lo[1], 1.0))
-    if pad is None:
-        pad = 0.1 * span
-    off = 0.5 * pad
-    x0, x1 = float(lo[0] - pad), float(hi[0] + pad)
-    y0, y1 = float(lo[1] - pad), float(hi[1] + pad)
     z = float(lo[2])
     pts, labels = [], []
     for g in grids:
-        if g.axis == "x":                       # const-X line runs in Y
-            y = (y0 - off) if g.bubble == "start" else (y1 + off)
-            pts.append((g.coord, y, z))
-        else:                                   # const-Y line runs in X
-            x = (x0 - off) if g.bubble == "start" else (x1 + off)
-            pts.append((x, g.coord, z))
+        # bubble at the chosen transformed endpoint of the line (W8b-2)
+        p1, p2 = grid_line_endpoints(project, g, lo, hi)
+        px, py = p1 if g.bubble == "start" else p2
+        pts.append((px, py, z))
         labels.append(g.name)
     for g in generals:
         if g.bubble == "start":

@@ -108,7 +108,7 @@ def test_story_grid_dialog_loads_and_parses(qapp):
     assert dlg.st_tbl.rowCount() == 3
     assert dlg.gr_tbl.rowCount() == 3
     dlg._accept()
-    stories, grids, _generals = dlg.result
+    stories, grids, _gg, _sys = dlg.result
     assert [s.name for s in stories] == ["Base", "L1", "Roof"]
     assert stories[2].elev == pytest.approx(6.0)
     assert {g.axis for g in grids} == {"x", "y"}
@@ -130,7 +130,7 @@ def test_story_grid_dialog_drops_unnamed_rows(qapp):
     dlg._add_story()
     dlg.st_tbl.setItem(0, 0, QTableWidgetItem("   "))   # blank name → dropped
     dlg._accept()
-    stories, _g, _gg = dlg.result
+    stories, _g, _gg, _sys = dlg.result
     assert stories == []
 
 
@@ -221,7 +221,7 @@ def test_similar_to_combo_sets_master(qapp):
     assert isinstance(combo, QComboBox)
     combo.setCurrentIndex(combo.findData("L1"))
     d._accept()
-    stories, _g, _gg = d.result
+    stories, _g, _gg, _sys = d.result
     by = {s.name: s for s in stories}
     assert by["L2"].master == "L1"
     # a lone story stays independent
@@ -236,5 +236,5 @@ def test_story_color_pick(qapp, monkeypatch):
                         staticmethod(lambda *a, **k: QColor("#123456")))
     d._on_story_double_click(1, 4)              # pick a colour for L1
     d._accept()
-    stories, _g, _gg = d.result
+    stories, _g, _gg, _sys = d.result
     assert {s.name: s.color for s in stories}["L1"] == "#123456"

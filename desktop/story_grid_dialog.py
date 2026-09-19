@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (QColorDialog, QComboBox, QDialog,
                                QVBoxLayout, QWidget)
 
 import style
-from project import GeneralGrid, GridLine, Story
+from project import GeneralGrid, GridLine, GridSystem, Story
 from units import Quantity, UnitSystem
 
 
@@ -66,9 +66,10 @@ class StoryGridDialog(QDialog):
 
         # ---- grid ----
         root.addWidget(self._h2("Grid lines"))
-        self.gr_tbl = QTableWidget(0, 5)
+        self.gr_tbl = QTableWidget(0, 6)
         self.gr_tbl.setHorizontalHeaderLabels(
-            ["Name", "Axis", f"Coordinate ({self._lu})", "Visible", "Bubble"])
+            ["Name", "Axis", f"Coordinate ({self._lu})", "Visible", "Bubble",
+             "System"])
         self.gr_tbl.verticalHeader().setVisible(False)
         self.gr_tbl.horizontalHeader().setSectionResizeMode(
             0, QHeaderView.ResizeMode.Stretch)
@@ -100,6 +101,26 @@ class StoryGridDialog(QDialog):
             ggrow.addWidget(b)
         ggrow.addStretch(1)
         root.addLayout(ggrow)
+
+        # ---- grid systems (origin + rotation) ----
+        root.addWidget(self._h2("Grid systems"))
+        self.gs_tbl = QTableWidget(0, 4)
+        self.gs_tbl.setHorizontalHeaderLabels(
+            ["Name", f"Origin X ({self._lu})", f"Origin Y ({self._lu})",
+             "Rotation (°)"])
+        self.gs_tbl.verticalHeader().setVisible(False)
+        self.gs_tbl.horizontalHeader().setSectionResizeMode(
+            0, QHeaderView.ResizeMode.Stretch)
+        self.gs_tbl.itemChanged.connect(lambda _i: self._rebuild_system_combos())
+        root.addWidget(self.gs_tbl)
+        gsrow = QHBoxLayout()
+        for label, slot in (("＋ Grid system", self._add_system),
+                            ("Remove", self._remove_system)):
+            b = QPushButton(label)
+            b.clicked.connect(slot)
+            gsrow.addWidget(b)
+        gsrow.addStretch(1)
+        root.addLayout(gsrow)
 
         hint = QLabel("Stories are levels at an elevation; a node/area belongs "
                       "to a story by its height. Grid line axis 'x' is a line "
@@ -138,6 +159,18 @@ class StoryGridDialog(QDialog):
             self._set_color_cell(r, s.color)
         self._relinking = False
         self._rebuild_similar_combos()
+        systems = list(getattr(self._project, "grid_systems", []))
+        self.gs_tbl.blockSignals(True)
+        self.gs_tbl.setRowCount(len(systems))
+        for r, s in enumerate(systems):
+            self.gs_tbl.setItem(r, 0, QTableWidgetItem(s.name))
+            self.gs_tbl.setItem(r, 1, QTableWidgetItem(
+                f"{us.to_display(s.origin_x, Quantity.LENGTH):.4g}"))
+            self.gs_tbl.setItem(r, 2, QTableWidgetItem(
+                f"{us.to_display(s.origin_y, Quantity.LENGTH):.4g}"))
+            self.gs_tbl.setItem(r, 3, QTableWidgetItem(f"{s.rotation:g}"))
+            self.gs_tbl.item(r, 0).setData(Qt.ItemDataRole.UserRole, s.id)
+        self.gs_tbl.blockSignals(False)
         grids = sorted(self._project.grid_lines, key=lambda g: (g.axis, g.coord))
         self.gr_tbl.setRowCount(len(grids))
         for r, g in enumerate(grids):
@@ -147,6 +180,7 @@ class StoryGridDialog(QDialog):
                 f"{us.to_display(g.coord, Quantity.LENGTH):.4g}"))
             self.gr_tbl.setCellWidget(r, 3, self._check(g.visible))
             self.gr_tbl.setCellWidget(r, 4, self._bubble_combo(g.bubble))
+            self.gr_tbl.setCellWidget(r, 5, self._system_combo(g.system))
         generals = list(getattr(self._project, "general_grids", []))
         self.gg_tbl.setRowCount(len(generals))
         for r, g in enumerate(generals):
@@ -155,6 +189,50 @@ class StoryGridDialog(QDialog):
                 self.gg_tbl.setItem(r, c, QTableWidgetItem(
                     f"{us.to_display(v, Quantity.LENGTH):.4g}"))
             self.gg_tbl.setCellWidget(r, 5, self._check(g.visible))
+
+    # ---------------------------------------------------------- grid systems
+    def _system_rows(self):
+        """[(id, name)] of the grid systems currently in the systems table."""
+        out = []
+        for r in range(self.gs_tbl.rowCount()):
+            it = self.gs_tbl.item(r, 0)
+            if it and it.text().strip():
+                sid = it.data(Qt.ItemDataRole.UserRole)
+                out.append((sid if sid is not None else r + 1, it.text().strip()))
+        return out
+
+    def _system_combo(self, sys_id=None):
+        c = QComboBox()
+        c.addItem("— global —", None)
+        for sid, nm in self._system_rows():
+            c.addItem(nm, sid)
+        i = c.findData(sys_id)
+        c.setCurrentIndex(i if i >= 0 else 0)
+        return c
+
+    def _rebuild_system_combos(self) -> None:
+        for r in range(self.gr_tbl.rowCount()):
+            w = self.gr_tbl.cellWidget(r, 5)
+            prev = w.currentData() if isinstance(w, QComboBox) else None
+            self.gr_tbl.setCellWidget(r, 5, self._system_combo(prev))
+
+    def _add_system(self) -> None:
+        r = self.gs_tbl.rowCount()
+        self.gs_tbl.blockSignals(True)
+        self.gs_tbl.insertRow(r)
+        it = QTableWidgetItem(f"G{r + 1}")
+        it.setData(Qt.ItemDataRole.UserRole, r + 1)
+        self.gs_tbl.setItem(r, 0, it)
+        for c in (1, 2, 3):
+            self.gs_tbl.setItem(r, c, QTableWidgetItem("0"))
+        self.gs_tbl.blockSignals(False)
+        self._rebuild_system_combos()
+
+    def _remove_system(self) -> None:
+        r = self.gs_tbl.currentRow()
+        if r >= 0:
+            self.gs_tbl.removeRow(r)
+            self._rebuild_system_combos()
 
     def _axis_combo(self, axis="x"):
         c = QComboBox()
@@ -307,6 +385,7 @@ class StoryGridDialog(QDialog):
         self.gr_tbl.setItem(r, 2, QTableWidgetItem("0"))
         self.gr_tbl.setCellWidget(r, 3, self._check(True))
         self.gr_tbl.setCellWidget(r, 4, self._bubble_combo("end"))
+        self.gr_tbl.setCellWidget(r, 5, self._system_combo(None))
 
     def _add_general(self) -> None:
         r = self.gg_tbl.rowCount()
@@ -380,6 +459,24 @@ class StoryGridDialog(QDialog):
         def _checked(w):
             return w.isChecked() if w is not None else True
 
+        systems = []
+        for r in range(self.gs_tbl.rowCount()):
+            name_it = self.gs_tbl.item(r, 0)
+            name = name_it.text().strip() if name_it else ""
+            if not name:
+                continue
+            sid = name_it.data(Qt.ItemDataRole.UserRole)
+
+            def _rot(item):
+                try:
+                    return float(item.text())
+                except (AttributeError, ValueError):
+                    return 0.0
+            systems.append(GridSystem(
+                id=sid if sid is not None else r + 1, name=name,
+                origin_x=_f(self.gs_tbl.item(r, 1)),
+                origin_y=_f(self.gs_tbl.item(r, 2)),
+                rotation=_rot(self.gs_tbl.item(r, 3))))
         grids = []
         for r in range(self.gr_tbl.rowCount()):
             name_it = self.gr_tbl.item(r, 0)
@@ -388,12 +485,14 @@ class StoryGridDialog(QDialog):
                 continue
             axis_c = self.gr_tbl.cellWidget(r, 1)
             bub_c = self.gr_tbl.cellWidget(r, 4)
+            sys_c = self.gr_tbl.cellWidget(r, 5)
             grids.append(GridLine(
                 id=r + 1, name=name,
                 axis=axis_c.currentData() if axis_c else "x",
                 coord=_f(self.gr_tbl.item(r, 2)),
                 visible=_checked(self.gr_tbl.cellWidget(r, 3)),
-                bubble=bub_c.currentData() if bub_c else "end"))
+                bubble=bub_c.currentData() if bub_c else "end",
+                system=sys_c.currentData() if sys_c else None))
         generals = []
         for r in range(self.gg_tbl.rowCount()):
             name_it = self.gg_tbl.item(r, 0)
@@ -405,7 +504,7 @@ class StoryGridDialog(QDialog):
                 x1=_f(self.gg_tbl.item(r, 1)), y1=_f(self.gg_tbl.item(r, 2)),
                 x2=_f(self.gg_tbl.item(r, 3)), y2=_f(self.gg_tbl.item(r, 4)),
                 visible=_checked(self.gg_tbl.cellWidget(r, 5))))
-        self.result = (stories, grids, generals)
+        self.result = (stories, grids, generals, systems)
         self.accept()
 
     @classmethod
