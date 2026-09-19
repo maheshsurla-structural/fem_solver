@@ -1,7 +1,7 @@
 # Construction-stage / staged-construction — commercial-parity roadmap
 
-*Status: **IN PROGRESS — C0 + C1a DONE** (branch `feat/construction-stage-parity`,
-not yet committed/pushed). This plan takes the staged-construction stack from
+*Status: **IN PROGRESS — C0 + C1a + C4 DONE** (branch `feat/construction-stage-parity`;
+C0/C1a committed `e96f7ee`, C4 committed next). This plan takes the staged-construction stack from
 "most of the physics exists, fragmented across three drivers and barely exposed
 in the GUI" to SAP2000 / CSiBridge / MIDAS Civil grade: one unified nonlinear +
 time-dependent staged case that composes birth/death + per-element
@@ -28,10 +28,16 @@ frame/shell models, driven from a real GUI stage manager. Sibling to the
   backward-compat, scalar-equivalence, determinate `δ∞=δinst(1+φ)` + force
   invariance, load-age monotonicity, differential-age redistribution. 216
   bridge/staged/analysis-case tests green.
-- **Next:** C4 (GUI stage-manager parity so users can set duration/age/death) +
-  C5 (per-material creep inputs feeding `f_cm`), or C1b (step-by-step creep on
-  frames — needed for "restraint added after loading relaxes an earlier load",
-  which C1a's incremental EMM deliberately does not capture).
+- **C4** — `stage_dialog.StageManagerDialog` now edits each stage's
+  **duration (days)**, **age at cast (days)**, a **Compute creep** checkbox, and
+  a second **Members removed (falsework / props)** list, with built/removed
+  mutual exclusivity and a richer stage-list summary (`built / removed / d / φ`).
+  Tests in `tests/test_desktop_construction_stages.py` (dialog edit + reselect +
+  exclusivity + a full-path creep-amplifies-deflection integration test).
+- **Next:** C5 (per-material creep inputs feeding `f_cm` + code selection), or
+  C1b (step-by-step creep on frames — needed for "restraint added after loading
+  relaxes an earlier load", which C1a's incremental EMM deliberately does not
+  capture).
 
 ---
 
@@ -200,14 +206,14 @@ erection differs most from a linear run; the cable nonlinearities already exist.
   MIDAS "backward analysis" / geometry-control loop.
 - Cable-force iteration to a target profile (compose with `unknown_load_factors`).
 
-### C4 — GUI: staged-case manager parity ★★ **[G]**
-Rebuild `stage_dialog.StageManagerDialog` into a real stage manager (MIDAS/CSI
-grade): a stage table with columns for duration, age, activated/deactivated
-element **groups**, activated/deactivated supports, per-stage loads, and tendons
-stressed. Element **groups** (named sets) rather than per-member picking, since
-real models stage by group. Register the staged case in the Analysis-cases
-manager as a saved, named, re-runnable case (fits the existing
-`case_types.py` registry).
+### C4 — GUI: staged-case manager parity ★★ **[G]** ✅ DONE (first pass)
+`stage_dialog.StageManagerDialog` now edits, per stage: name, **duration
+(days)**, **age at cast (days)**, a **Compute creep** toggle, the members
+**built**, and the members **removed** (falsework / temporary props), with
+built/removed exclusivity. **Remaining for a later pass:** element **groups**
+(named sets) instead of per-member picking, per-stage supports + arbitrary loads
++ tendons, and richer registration in the Analysis-cases manager
+(`case_types.py`). Those depend on C1c/C1d/C6 and a project group concept.
 
 ### C5 — GUI: time-dependent material inputs ★ **[G]**
 Per-material creep/shrinkage/aging inputs (code = CEB-FIP MC2010 / EN1992 /

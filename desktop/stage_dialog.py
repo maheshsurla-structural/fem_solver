@@ -16,9 +16,10 @@ from __future__ import annotations
 
 import copy
 
-from PySide6.QtWidgets import (QAbstractItemView, QDialog, QHBoxLayout, QLabel,
-                               QLineEdit, QListWidget, QListWidgetItem,
-                               QPushButton, QSpinBox, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QDialog,
+                               QDoubleSpinBox, QHBoxLayout, QLabel, QLineEdit,
+                               QListWidget, QListWidgetItem, QPushButton,
+                               QSpinBox, QVBoxLayout, QWidget)
 
 import style
 from analysis_ui import GroupCard, dialog_buttons
@@ -35,7 +36,7 @@ class StageManagerDialog(QDialog):
         self.setWindowTitle("Construction stages")
         self._project = project
         self._stages = copy.deepcopy(project.stages)
-        self.resize(640, 460)
+        self.resize(760, 600)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(style.SP_LG, style.SP_LG,
@@ -88,16 +89,48 @@ class StageManagerDialog(QDialog):
         self.name.textEdited.connect(self._on_name_edited)
         editor.body_layout().addWidget(QLabel("Name:"))
         editor.body_layout().addWidget(self.name)
+
+        # time-dependent (creep) attributes — plan C1a / C4
+        timerow = QHBoxLayout()
+        timerow.setSpacing(style.SP_MD)
+        timerow.addWidget(QLabel("Duration (days):"))
+        self.duration = QDoubleSpinBox()
+        self.duration.setRange(0.0, 1_000_000.0)
+        self.duration.setDecimals(1)
+        self.duration.setToolTip(
+            "Days this stage's loading is sustained before the next stage "
+            "(advances the creep clock). 0 = instantaneous.")
+        self.duration.valueChanged.connect(self._on_duration_changed)
+        timerow.addWidget(self.duration)
+        timerow.addWidget(QLabel("Age at cast (days):"))
+        self.age = QDoubleSpinBox()
+        self.age.setRange(0.5, 1_000_000.0)
+        self.age.setDecimals(1)
+        self.age.setValue(28.0)
+        self.age.setToolTip(
+            "Concrete age of this stage's newly-built members when cast "
+            "(the loading age fed to the creep coefficient).")
+        self.age.valueChanged.connect(self._on_age_changed)
+        timerow.addWidget(self.age)
+        self.creep = QCheckBox("Compute creep")
+        self.creep.setToolTip(
+            "Include time-dependent (creep) effects for this stage. Needs a "
+            "concrete material with a mean strength f_cm.")
+        self.creep.toggled.connect(self._on_creep_toggled)
+        timerow.addWidget(self.creep)
+        timerow.addStretch(1)
+        editor.body_layout().addLayout(timerow)
+
         editor.body_layout().addWidget(QLabel("Members built in this stage:"))
-        self.members = QListWidget()
-        self.members.setSelectionMode(
-            QAbstractItemView.SelectionMode.MultiSelection)
-        for mb in project.members:
-            it = QListWidgetItem(f"member {mb.id}  ({mb.n1}→{mb.n2})")
-            it.setData(_ROLE, mb.id)
-            self.members.addItem(it)
+        self.members = self._member_list()
         self.members.itemSelectionChanged.connect(self._on_members_changed)
-        editor.body_layout().addWidget(self.members, 1)
+        editor.body_layout().addWidget(self.members, 2)
+
+        editor.body_layout().addWidget(
+            QLabel("Members removed (falsework / temporary props):"))
+        self.removed = self._member_list()
+        self.removed.itemSelectionChanged.connect(self._on_removed_changed)
+        editor.body_layout().addWidget(self.removed, 1)
         body.addWidget(editor, 1)
         root.addLayout(body, 1)
 
@@ -110,6 +143,16 @@ class StageManagerDialog(QDialog):
             self._set_editor_enabled(False)
 
     # ---------------------------------------------------------------- helpers
+    def _member_list(self) -> QListWidget:
+        """A multi-select list of every project member (id in ``_ROLE``)."""
+        lst = QListWidget()
+        lst.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
+        for mb in self._project.members:
+            it = QListWidgetItem(f"member {mb.id}  ({mb.n1}→{mb.n2})")
+            it.setData(_ROLE, mb.id)
+            lst.addItem(it)
+        return lst
+
     @staticmethod
     def _midx(project, member) -> float:
         nodes = {n.id: n for n in project.nodes}
@@ -128,34 +171,71 @@ class StageManagerDialog(QDialog):
     def _set_editor_enabled(self, on: bool) -> None:
         self.name.setEnabled(on)
         self.members.setEnabled(on)
+        self.removed.setEnabled(on)
+        self.duration.setEnabled(on)
+        self.age.setEnabled(on)
+        self.creep.setEnabled(on)
 
     def _refresh_stage_list(self) -> None:
         self.stage_list.blockSignals(True)
         self.stage_list.clear()
         for i, s in enumerate(self._stages):
+            bits = [f"{len(s.add_members)} built"]
+            if getattr(s, "remove_members", None):
+                bits.append(f"{len(s.remove_members)} removed")
+            if getattr(s, "duration_days", 0.0):
+                bits.append(f"{s.duration_days:g}d")
+            if getattr(s, "creep", False):
+                bits.append("φ")
             self.stage_list.addItem(
-                f"{i + 1}. {s.name}  ({len(s.add_members)} members)")
-        self.stage_list.blockSignals(True)
+                f"{i + 1}. {s.name}  ({', '.join(bits)})")
         self.stage_list.blockSignals(False)
 
     # ------------------------------------------------------------- selection
     def _on_stage_selected(self, row: int) -> None:
         s = self._current()
         self._set_editor_enabled(s is not None)
-        self.name.blockSignals(True)
-        self.members.blockSignals(True)
+        for w in (self.name, self.members, self.removed, self.duration,
+                  self.age, self.creep):
+            w.blockSignals(True)
         self.name.setText(s.name if s else "")
-        ids = set(s.add_members) if s else set()
+        self.duration.setValue(float(getattr(s, "duration_days", 0.0))
+                               if s else 0.0)
+        self.age.setValue(float(getattr(s, "age_at_activation_days", 28.0))
+                          if s else 28.0)
+        self.creep.setChecked(bool(getattr(s, "creep", False)) if s else False)
+        built = set(s.add_members) if s else set()
+        gone = set(getattr(s, "remove_members", [])) if s else set()
         for i in range(self.members.count()):
-            it = self.members.item(i)
-            it.setSelected(it.data(_ROLE) in ids)
-        self.name.blockSignals(False)
-        self.members.blockSignals(False)
+            self.members.item(i).setSelected(
+                self.members.item(i).data(_ROLE) in built)
+            self.removed.item(i).setSelected(
+                self.removed.item(i).data(_ROLE) in gone)
+        for w in (self.name, self.members, self.removed, self.duration,
+                  self.age, self.creep):
+            w.blockSignals(False)
 
     def _on_name_edited(self, text: str) -> None:
         s = self._current()
         if s:
             s.name = text
+            self._refresh_keep_row()
+
+    def _on_duration_changed(self, value: float) -> None:
+        s = self._current()
+        if s:
+            s.duration_days = float(value)
+            self._refresh_keep_row()
+
+    def _on_age_changed(self, value: float) -> None:
+        s = self._current()
+        if s:
+            s.age_at_activation_days = float(value)
+
+    def _on_creep_toggled(self, on: bool) -> None:
+        s = self._current()
+        if s:
+            s.creep = bool(on)
             self._refresh_keep_row()
 
     def _on_members_changed(self) -> None:
@@ -166,12 +246,48 @@ class StageManagerDialog(QDialog):
                   for i in range(self.members.count())
                   if self.members.item(i).isSelected()]
         s.add_members = chosen
-        # exclusivity: a member belongs to at most one stage
+        # exclusivity: a member is built in at most one stage, and cannot be
+        # both built and removed in the same stage.
         for other in self._stages:
             if other is not s:
                 other.add_members = [m for m in other.add_members
                                      if m not in chosen]
+        s.remove_members = [m for m in getattr(s, "remove_members", [])
+                            if m not in chosen]
+        self._sync_removed_selection()
         self._refresh_keep_row()
+
+    def _on_removed_changed(self) -> None:
+        s = self._current()
+        if s is None:
+            return
+        chosen = [self.removed.item(i).data(_ROLE)
+                  for i in range(self.removed.count())
+                  if self.removed.item(i).isSelected()]
+        s.remove_members = chosen
+        # a member removed in this stage is not also built in it
+        if any(m in chosen for m in s.add_members):
+            s.add_members = [m for m in s.add_members if m not in chosen]
+            self._sync_built_selection()
+        self._refresh_keep_row()
+
+    def _sync_removed_selection(self) -> None:
+        s = self._current()
+        gone = set(getattr(s, "remove_members", [])) if s else set()
+        self.removed.blockSignals(True)
+        for i in range(self.removed.count()):
+            self.removed.item(i).setSelected(
+                self.removed.item(i).data(_ROLE) in gone)
+        self.removed.blockSignals(False)
+
+    def _sync_built_selection(self) -> None:
+        s = self._current()
+        built = set(s.add_members) if s else set()
+        self.members.blockSignals(True)
+        for i in range(self.members.count()):
+            self.members.item(i).setSelected(
+                self.members.item(i).data(_ROLE) in built)
+        self.members.blockSignals(False)
 
     def _refresh_keep_row(self) -> None:
         r = self.stage_list.currentRow()

@@ -104,6 +104,56 @@ def test_add_delete_stage(qapp):
     assert len(d.result()) == 1
 
 
+def test_dialog_edits_time_dependent_fields(qapp):
+    """C4: duration / age / creep editors write onto the selected stage."""
+    from stage_dialog import StageManagerDialog
+    p = _cantilever()
+    p.stages = [Stage(id=1, name="cast", add_members=[1, 2])]
+    d = StageManagerDialog(None, p)
+    d.stage_list.setCurrentRow(0)
+    d.duration.setValue(45.0)
+    d.age.setValue(7.0)
+    d.creep.setChecked(True)
+    s = d.result()[0]
+    assert s.duration_days == 45.0
+    assert s.age_at_activation_days == 7.0
+    assert s.creep is True
+
+
+def test_dialog_reselect_repopulates_time_fields(qapp):
+    """Switching stages loads each stage's own duration/age/creep + removals."""
+    from stage_dialog import StageManagerDialog
+    p = _cantilever()
+    p.stages = [Stage(id=1, name="s1", add_members=[1, 2], duration_days=10.0,
+                      creep=True),
+                Stage(id=2, name="s2", add_members=[3, 4], remove_members=[1],
+                      age_at_activation_days=3.0)]
+    d = StageManagerDialog(None, p)
+    d.stage_list.setCurrentRow(0)
+    assert d.duration.value() == 10.0 and d.creep.isChecked()
+    d.stage_list.setCurrentRow(1)
+    assert d.age.value() == 3.0 and not d.creep.isChecked()
+    gone = [d.removed.item(i).data(0x0100) for i in range(d.removed.count())
+            if d.removed.item(i).isSelected()]
+    assert gone == [1]
+
+
+def test_dialog_built_removed_exclusive(qapp):
+    """A member can't be both built and removed in the same stage."""
+    from stage_dialog import StageManagerDialog
+    p = _cantilever()
+    p.stages = [Stage(id=1, name="s1", add_members=[1, 2, 3])]
+    d = StageManagerDialog(None, p)
+    d.stage_list.setCurrentRow(0)
+    # mark member 2 for removal -> it drops out of "built"
+    for i in range(d.removed.count()):
+        if d.removed.item(i).data(0x0100) == 2:
+            d.removed.item(i).setSelected(True)
+    s = d.result()[0]
+    assert 2 in s.remove_members
+    assert 2 not in s.add_members
+
+
 # ---------------------------------------------------- analysis-cases row
 def test_analysis_cases_lists_stages(qapp):
     from analysis_cases_dialog import AnalysisCasesDialog
@@ -130,6 +180,31 @@ def test_run_stages_camber(qapp):
     assert cam.final_camber[-1] > 0.0
     assert abs(cam.final_deflection[-1]) > 0.0
     assert hasattr(w, "_stage_results_dlg")
+
+
+def test_run_stages_creep_amplifies_deflection(qapp):
+    """C0→C1a end to end: a stage that opts into creep (with a concrete f_cm)
+    droops more than the elastic build under the same self-weight."""
+    from main_window import MainWindow
+
+    p0 = _cantilever()
+    w0 = MainWindow()
+    w0.load_project(p0)
+    r0 = w0.run_construction_stages(config=[
+        Stage(id=1, name="S1", add_members=[m.id for m in p0.members])])
+    d_elastic = abs(r0["camber"].final_deflection[-1])
+
+    p1 = _cantilever()
+    p1.materials[0].params = {"fc": 30.0e6}          # concrete mean strength
+    w1 = MainWindow()
+    w1.load_project(p1)
+    r1 = w1.run_construction_stages(config=[
+        Stage(id=1, name="S1", add_members=[m.id for m in p1.members],
+              duration_days=18250.0, age_at_activation_days=28.0,
+              creep=True)])
+    d_creep = abs(r1["camber"].final_deflection[-1])
+
+    assert d_creep > 1.2 * d_elastic                 # creep amplifies droop
 
 
 def test_run_stages_guards(qapp, monkeypatch):
