@@ -1,12 +1,15 @@
 # Wall (shear-wall / pier) modeling — commercial-parity roadmap
 
-*Status: **IN PROGRESS — W0–W4 + W1b complete** (W0–W4 on `origin/main`; W1b on
-branch `feat/wall-workplane`). The core "credible wall tool" (W0–W3) is done:
+*Status: **ROADMAP COMPLETE — W0–W6 + W1b** (W0–W5 on `origin/main`; W6 on
+branch `feat/wall-openings`). The core "credible wall tool" (W0–W3) is done:
 label → draw → pier forces → ACI 318 §18.10 design; W4 (a/b/c) adds the
 Story/Grid model + manager, viewport overlay + snapping, and similar-story
-replication; W1b adds the XZ/YZ elevation draw plane; W5 adds wall openings.
-Only optional backlog remains (W6 coupled walls, W3 detailing polish). This
-roadmap takes the desktop app from "a wall is just a vertical `Area`"
+replication; W1b adds the XZ/YZ elevation draw plane; W5 adds wall openings; W6
+adds coupling beams. **The whole planned roadmap (W0–W6 + W1b) is done.** Only
+minor refinements remain (W3 IS 13920/EC8 detailing + drift-based boundary
+trigger, non-rectangular openings, a macro fiber-wall option, a 3-point work
+plane). This roadmap takes the desktop app from "a wall is just a vertical
+`Area`"
 to an ETABS-style wall workflow: a labeled **wall / pier / spandrel** object, a
 **story** context to draw and stack it in, automatic **pier force integration**,
 and a **wall design** check wired to the reinforcement the engine already knows
@@ -202,11 +205,16 @@ W5/W6 are v2.
   *(Non-rectangular openings / arbitrary polygon holes would still want a
   constrained triangulator — deferred.)*
 
-### W6 — Coupled walls / coupling beams in the GUI *(v2)*
-- Surface the engine's `coupling_beam.add_coupling_beam_2d` as a GUI action
-  (pick two piers + a floor line → coupling beam with rigid face offsets).
-- Macro fiber-wall option (`wall_section_2d`) as an alternative to the meshed
-  shell wall, for nonlinear/pushover users.
+### W6 — Coupled walls / coupling beams in the GUI — **DONE** (`2bb1ea1`)
+- `coupling.add_coupling_beam` + `CouplingBeamDialog` + Draw ▸ Coupling: a beam
+  `Member` between two shell-wall piers' facing inner edges at an elevation
+  (snapped to each wall's nearest mesh row), tied into the shell via the build's
+  coincident-node merge. **Note:** the engine's `coupling_beam.add_coupling_beam_2d`
+  is a *2-D macro* helper (centroid nodes, rigid face offsets) that doesn't fit
+  the desktop's 3-D meshed shell walls, so W6 is a desktop-native coupling beam
+  for shell walls rather than a wrapper over it. `tests/test_desktop_coupling.py`.
+- *Deferred:* a macro fiber-wall option (`wall_section_2d`) for nonlinear/
+  pushover users — a separate modeling idiom from the shell-wall GUI.
 
 ---
 
@@ -262,7 +270,7 @@ gives every later epic something to hang on.
 | W4b | Grid render + snap-to-grid | ☑ done (`aae1ca7`) |
 | W4c | Similar-story replication | ☑ done (`8818731`) |
 | W5 | Openings (opening-aware mesh) | ☑ done (`4e59f54`) |
-| W6 | Coupled walls / coupling beams GUI | ☐ proposed (v2) |
+| W6 | Coupled walls / coupling beams GUI | ☑ done (`2bb1ea1`) |
 
 *Engine additions required across the whole stream: only (a) the W2 pier-cut
 integrator and (b) the W3 ACI 318 §18.10 assembler. Everything else is desktop
