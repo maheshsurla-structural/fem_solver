@@ -1,7 +1,7 @@
 # Construction-stage / staged-construction — commercial-parity roadmap
 
-*Status: **IN PROGRESS — C0 + C1a + C4 + C5 + C1b DONE** (branch `feat/construction-stage-parity`;
-C0/C1a `e96f7ee`, C4 `95f989e`, C5 `1bf7d4b`, C1b committed next). This plan takes the staged-construction stack from
+*Status: **IN PROGRESS — C0 + C1a + C4 + C5 + C1b + C7 DONE** (branch `feat/construction-stage-parity`;
+C0/C1a `e96f7ee`, C4 `95f989e`, C5 `1bf7d4b`, C1b `4c7e811`, C7 committed next). This plan takes the staged-construction stack from
 "most of the physics exists, fragmented across three drivers and barely exposed
 in the GUI" to SAP2000 / CSiBridge / MIDAS Civil grade: one unified nonlinear +
 time-dependent staged case that composes birth/death + per-element
@@ -46,9 +46,13 @@ frame/shell models, driven from a real GUI stage manager. Sibling to the
   with differential creep. This is the "full creep integration" path (relaxes
   a developing restraint force, redistributes under differential creep) that
   C1a's per-increment EMM cannot do.
+- **C7** — staged results beyond camber: the results dialog gained a **Stage
+  forces** tab (stage selector → per-element axial/moment/E-factor table + peak
+  summary). See the C7 epic below.
 - **Next:** wire `StepByStepCreepFrame` into the staged birth/death driver (creep
-  across stages) + Gauss-point curvature for exact varying-moment redistribution,
-  or C7 (staged results beyond camber: per-stage forces/stresses, stage stepping).
+  across stages) + Gauss-point curvature for exact varying-moment redistribution;
+  C6 (tendon modelling + stressing sequence); or C2 (deck bending + 3-D in the
+  nonlinear cable erection driver).
 
 ---
 
@@ -253,11 +257,14 @@ A tendon object in the project (profile via `parabolic_drape_profile` /
 per-stage "stress tendon" action, wired to C1c. Render tendon profiles; report
 primary + secondary + effective force after losses.
 
-### C7 — GUI: staged results ★★ **[G]**
-Beyond camber: per-stage **deformed shape stepping** (a stage slider), per-stage
-element forces / stresses, tendon force history, a **stage force/stress table**
-(per element per stage — the number engineers actually check), stage envelopes,
-and CSV export. Reuse the results-panel + contour machinery from the slab work.
+### C7 — GUI: staged results ★★ **[G]** ✅ DONE (first pass)
+`ConstructionStageResultsDialog` is now tabbed: **Camber** (as before) + **Stage
+forces** — a stage selector over a per-element table (status active/born, axial
+`N`, peak `|M|`, and the applied creep E-factor when non-unity), with a
+peak-force stage summary, in the project's units. The runner passes the full
+`IncrementalStagedResult` + model. **Remaining:** per-stage deformed-shape
+stepping in the 3-D view, tendon-force history (needs C6), stage envelopes, and
+CSV export.
 
 ### C8 — GUI: cable-stayed staging + tuning + 3-D ★ **[G]**
 Expose `NonlinearStagedErection` (C2) and cable-force tuning (C3) in the GUI:

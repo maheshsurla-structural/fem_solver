@@ -1500,7 +1500,9 @@ class MainWindow(QMainWindow):
         from construction_stage_results_dialog import \
             ConstructionStageResultsDialog
         self._stage_results_dlg = ConstructionStageResultsDialog.show_results(
-            self, camber, n_stages=len(erection), unitsys=self._units())
+            self, camber, n_stages=len(erection), unitsys=self._units(),
+            result=res, model=model,
+            stage_names=[st.name for st in erection])
         self.log.appendPlainText(
             f"Construction stages solved: {len(erection)} stages, "
             f"max final deflection {dmax * 1e3:.2f} mm → camber {dmax * 1e3:.2f} "

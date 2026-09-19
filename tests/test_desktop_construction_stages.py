@@ -229,6 +229,52 @@ def test_run_stages_uses_material_creep_props(qapp):
     assert d_emm > d_aaem > 0.0
 
 
+def test_stage_forces_tab_populates(qapp):
+    """C7: the results dialog exposes a per-stage member-force table that
+    reflects birth (elements are '—' before they exist, forces once active)."""
+    from construction_stage_results_dialog import (
+        ConstructionStageResultsDialog, _local_axial_moment)
+    from femsolver.bridges import (ErectionStage, IncrementalStagedAnalysis,
+                                   staged_camber)
+
+    p = _cantilever(n=4, dx=3.0)
+    model = p.build_model(with_loads=False)
+
+    def _sw(ids):
+        loads = {}
+        for tag in ids:
+            el = model.element(tag)
+            L = float(((el.node_coords()[1] - el.node_coords()[0]) ** 2)
+                      .sum() ** 0.5)
+            w = el.material.rho * el.area * L * 9.80665
+            for nd in el.node_tags:
+                loads.setdefault(nd, [0.0, 0.0, 0.0])[1] += -w / 2.0
+        return loads
+
+    erection = [ErectionStage("S1", add_elements=[1, 2], loads=_sw([1, 2])),
+                ErectionStage("S2", add_elements=[3, 4], loads=_sw([3, 4]))]
+    res = IncrementalStagedAnalysis(model, erection).run()
+    cam = staged_camber(res, model, erection, dof=1)
+
+    dlg = ConstructionStageResultsDialog(
+        None, cam, n_stages=2, result=res, model=model,
+        stage_names=["S1", "S2"])
+    # stage 0: elements 3,4 are not yet born
+    dlg.stage_combo.setCurrentIndex(0)
+    rows = {int(dlg.table.item(r, 0).text()): dlg.table.item(r, 1).text()
+            for r in range(dlg.table.rowCount())}
+    assert rows[1] == "active" and rows[3] == "—"
+    # stage 1: all four active
+    dlg.stage_combo.setCurrentIndex(1)
+    rows = {int(dlg.table.item(r, 0).text()): dlg.table.item(r, 1).text()
+            for r in range(dlg.table.rowCount())}
+    assert rows[3] == "active" and rows[4] == "active"
+
+    # the reducer returns a finite (N, |M|) for a born 2-D beam element
+    nm = _local_axial_moment(model.element(1), res.element_force_history[1][0])
+    assert nm is not None and len(nm) == 2
+
+
 def test_run_stages_guards(qapp, monkeypatch):
     import main_window as MW
     monkeypatch.setattr(MW.QMessageBox, "information",
