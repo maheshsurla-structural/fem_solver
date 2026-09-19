@@ -268,10 +268,14 @@ data, group-aware typical floors, CAD import).
   height → elevations above recompute; edit an elevation → adjacent heights
   recompute; move the base → the stack shifts), add-story keep-heights, and a
   `Story.color` swatch. `tests/test_desktop_stories.py`.
-- **W8b — TODO**: named **grid systems** (origin + rotation) holding X/Y
-  **labeled** lines with **bubbles** (location, visibility) + **general/diagonal**
-  grids; render bubbles in the viewport. (`project.GridSystem` + extend
-  `GridLine`.)
+- **W8b — DONE** (`431f792`): X/Y grid lines with **bubbles** (`GridLine.bubble`
+  start/end/none) + **visibility** (`GridLine.visible`), and **general/diagonal**
+  grids (`project.GeneralGrid` + `Project.general_grids`). Rendering skips hidden
+  lines, draws general grids, and shows **name bubbles** (`model_geometry.
+  grid_bubble_labels` → `ModelView` `gridbubbles` overlay). Dialog gains Visible/
+  Bubble columns + a General-grids table; `manage` returns `(stories, grids,
+  generals)`. `tests/test_desktop_grid_parity.py`. *Still TODO for full parity:*
+  named multi grid-**systems** with origin + rotation (deferred to W8b-2).
 - **W8c — TODO**: an ETABS-style **quick template** (uniform grid + simple
   stories) new-model dialog — with a **live plan+elevation preview** as the
   differentiator.
@@ -340,7 +344,8 @@ gives every later epic something to hang on.
 | W6 | Coupled walls / coupling beams GUI | ☑ done (`2bb1ea1`) |
 | W7 | Story-based plan wall drawing + scope | ☑ done |
 | W8a | Story parity (Similar-To + H↔E linking + color) | ☑ done (`1def90b`) |
-| W8b/c/d | Grid systems + quick template + live editor | ☐ todo |
+| W8b | Grid parity (visibility + bubbles + general grids) | ☑ done (`431f792`) |
+| W8b-2/c/d | Grid systems (origin/rot) + quick template + live editor | ☐ todo |
 
 *Engine additions required across the whole stream: only (a) the W2 pier-cut
 integrator and (b) the W3 ACI 318 §18.10 assembler. Everything else is desktop
