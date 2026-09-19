@@ -1,8 +1,8 @@
 # Construction-stage / staged-construction — commercial-parity roadmap
 
-*Status: **IN PROGRESS — C0, C1a, C1b, C1c, C1d, C4, C5, C6, C7 DONE and MERGED
-to local `main`** (commits `e96f7ee` → `d678577`, fast-forwarded onto `main`;
-**not yet pushed** to `origin`). This plan takes the staged-construction stack
+*Status: **IN PROGRESS — C0, C1a, C1b, C1c, C1d, C4, C5, C6, C7 (+ C2 3-D half)
+DONE on local `main`** (C0–C7 merged `e96f7ee` → `b231e3f`; C2 3-D generalisation
+committed on `main` after; **not yet pushed** to `origin`). This plan takes the staged-construction stack
 from "most of the physics exists, fragmented across three drivers and barely
 exposed in the GUI" to SAP2000 / CSiBridge / MIDAS Civil grade: one unified
 nonlinear + time-dependent staged case that composes birth/death + per-element
@@ -25,8 +25,9 @@ stage selector), **temporary support** activation/release, and a **stage-forces
 results tab** (per-element N/|M|/E-factor). See the per-epic ✅ notes in §3.
 
 **Pick up next (highest-value, roughly ordered):**
-1. **C2** — deck bending + 3-D in the nonlinear cable-erection driver
-   (`NonlinearStagedErection`): the last genuinely-new physics.
+1. **C2 deck bending** — the 3-D half of `NonlinearStagedErection` is done; the
+   remaining piece is a corotational **beam** with a birth datum (deck bending
+   during free-cantilever erection).
 2. **Wire `StepByStepCreepFrame` into the staged birth/death driver** so creep
    redistributes *across stages* (today it is a standalone fixed-model march),
    + Gauss-point curvature for exact varying-moment bending redistribution.
@@ -271,11 +272,18 @@ A single driver (new `analysis/staged_case.py`, or a superset of
   stiffness) inside a stage's Newton solve, and lift the MP-constraint
   restriction so rigid links / diaphragms coexist with staging.
 
-### C2 — Nonlinear staged erection: deck bending + 3-D ★ **[E]**
-Extend `NonlinearStagedErection` from pin-jointed 2-D cable/truss to include a
-**corotational beam** with a birth datum (deck bending during free-cantilever
-erection) and a **3-D** node/DOF set. This is where cable-stayed / suspension
-erection differs most from a linear run; the cable nonlinearities already exist.
+### C2 — Nonlinear staged erection: deck bending + 3-D ★ **[E]** ⏳ 3-D DONE
+`NonlinearStagedErection` is now **2-D or 3-D** — the spatial dimension is
+inferred from the node coordinates and drives the DOF count per node (2 or 3);
+gravity for the Ernst sag acts along the last axis (y in 2-D, z in 3-D). The
+corotational axial/geometric-stiffness formulation, tension-only slack, staged
+pretension and stress-free birth all generalise unchanged; the 2-D path is
+byte-for-byte identical (existing tests untouched). New 3-D tests: axial
+elongation, a planar problem embedded in 3-D reproducing the 2-D answer, a
+symmetric 3-legged pyramid closed form, and 3-D stress-free birth.
+**Remaining:** deck **bending** during erection (a corotational *beam* with a
+birth datum) — the harder half, still deferred; this increment delivered the
+3-D generalisation of the cable/truss net.
 
 ### C3 — Backward / forward staged analysis + camber-control loop ★ **[E/G]**
 - Forward camber already exists (`staged_camber`). Add the **backward** (initial

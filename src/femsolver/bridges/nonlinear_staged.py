@@ -20,8 +20,11 @@ right needs three nonlinearities that a one-shot linear analysis misses:
    after it is born.
 
 :class:`NonlinearStagedErection` is a self-contained active-set Newton driver
-for a 2-D pin-jointed cable / truss network (the cable-erection idealisation:
-stays, hangers, and axial deck/pylon chords).  It consumes a list of
+for a **2-D or 3-D** pin-jointed cable / truss network (the cable-erection
+idealisation: stays, hangers, and axial deck/pylon chords). The spatial
+dimension is inferred from the node coordinates; gravity (for the Ernst sag
+correction) acts along the last axis (``y`` in 2-D, ``z`` in 3-D). It consumes
+a list of
 :class:`ErectionStage` (birth / death / incremental load / stay pretension) and
 returns the per-stage and final tensions and displacements, validated against
 closed forms (taut-string deflection, Ernst reduction, stress-free birth,
@@ -87,8 +90,9 @@ class ErectionStage:
         Segment tags **removed** (temporary stays, falsework); their force
         redistributes to the remaining structure when equilibrium is re-solved.
     loads : dict[int, tuple]
-        ``{node: (Fx, Fy)}`` nodal loads applied at this stage (incremental —
-        added to the running total held through later stages).
+        ``{node: (Fx, Fy[, Fz])}`` nodal loads applied at this stage (2-D or
+        3-D, matching the model; incremental — added to the running total held
+        through later stages).
     pretension : dict[int, float]
         ``{segment_tag: N0}`` stay pretension introduced at this stage (a
         lack-of-fit initial axial force, N, positive = tension).  Held into
@@ -139,7 +143,9 @@ class NonlinearStagedErection:
     Parameters
     ----------
     nodes : dict[int, tuple]
-        ``{node: (x, y)}`` reference coordinates.
+        ``{node: (x, y)}`` (2-D) or ``{node: (x, y, z)}`` (3-D) reference
+        coordinates. The dimension is taken from these and fixes the DOF count
+        per node; ``supports`` and ``loads`` must match it.
     segments : iterable[CableSegment]
         Every segment used across the stages (birth/death selects which are
         active).
@@ -167,6 +173,10 @@ class NonlinearStagedErection:
         self.stages = list(stages)
         if not self.stages:
             raise ValueError("at least one erection stage required")
+        # spatial dimension from the node coordinates (2-D or 3-D cable net)
+        self.ndim = len(next(iter(self.X.values()))) if self.X else 2
+        if self.ndim not in (2, 3):
+            raise ValueError("node coordinates must be 2-D or 3-D")
         supports = supports or {}
         self.fix = {int(t): tuple(bool(b) for b in f)
                     for t, f in supports.items()}
@@ -175,22 +185,24 @@ class NonlinearStagedErection:
         self.max_iter = int(max_iter)
         self.slack = float(slack_stiffness)
 
-        # DOF numbering: 2 per node, free DOFs only (fixed → eqn -1)
+        # DOF numbering: ndim per node, free DOFs only (fixed → eqn -1)
         self._node_ids = sorted(self.X)
         self._dof = {}
         eq = 0
         for nid in self._node_ids:
-            fx, fy = self.fix.get(nid, (False, False))
-            dx = -1 if fx else eq
-            if not fx:
-                eq += 1
-            dy = -1 if fy else eq
-            if not fy:
-                eq += 1
-            self._dof[nid] = (dx, dy)
+            fixes = self.fix.get(nid, (False,) * self.ndim)
+            dofs = []
+            for k in range(self.ndim):
+                if k < len(fixes) and fixes[k]:
+                    dofs.append(-1)
+                else:
+                    dofs.append(eq)
+                    eq += 1
+            self._dof[nid] = tuple(dofs)
         self.neq = eq
 
-        self.u = {nid: np.zeros(2) for nid in self._node_ids}  # displacements
+        self.u = {nid: np.zeros(self.ndim)          # displacements
+                  for nid in self._node_ids}
         self.L0 = {}          # per-segment birth (reference) length
         self.N_pre = {}       # per-segment pretension (lack-of-fit force)
         self._N_last = {}     # per-segment axial force (lagged, for Ernst T)
@@ -225,7 +237,10 @@ class NonlinearStagedErection:
             if T <= 0.0:
                 T = s.E * s.A * eps + self.N_pre.get(s.tag, 0.0)
             if T > 0.0:
-                L_h = abs(float(self._pos(s.node_b)[0] - self._pos(s.node_a)[0]))
+                # horizontal span (gravity acts along the last axis: y in 2-D,
+                # z in 3-D), so the horizontal projection is all-but-last.
+                dchord = self._pos(s.node_b) - self._pos(s.node_a)
+                L_h = float(np.linalg.norm(dchord[:-1]))
                 if L_h > 0.0:
                     E = ernst_equivalent_modulus(
                         E=s.E, A=s.A, L_h=L_h, gamma_eff=s.gamma_eff, T=T)
@@ -242,7 +257,8 @@ class NonlinearStagedErection:
         active set at the current displacement."""
         K = np.zeros((self.neq, self.neq))
         f_int = np.zeros(self.neq)
-        I2 = np.eye(2)
+        nd = self.ndim
+        I_n = np.eye(nd)
         for tag in active:
             s = self.seg[tag]
             N, E_eff, L0, L, n, slack = self._axial(s)
@@ -251,16 +267,16 @@ class NonlinearStagedErection:
                 km *= self.slack                        # residual stiffness
             nn = np.outer(n, n)
             kg = (N / L)                                # geometric (string)
-            Ablk = km * nn + kg * (I2 - nn)
-            fe = np.concatenate((-N * n, N * n))        # global 4-vector
+            Ablk = km * nn + kg * (I_n - nn)
+            fe = np.concatenate((-N * n, N * n))        # global 2·ndim vector
             Kblk = np.block([[Ablk, -Ablk], [-Ablk, Ablk]])
             eqs = (*self._dof[s.node_a], *self._dof[s.node_b])
-            for a in range(4):
+            for a in range(2 * nd):
                 ea = eqs[a]
                 if ea < 0:
                     continue
                 f_int[ea] += fe[a]
-                for b in range(4):
+                for b in range(2 * nd):
                     eb = eqs[b]
                     if eb >= 0:
                         K[ea, eb] += Kblk[a, b]
@@ -268,12 +284,11 @@ class NonlinearStagedErection:
 
     def _load_vector(self, load_total):
         F = np.zeros(self.neq)
-        for nid, (fx, fy) in load_total.items():
-            dx, dy = self._dof[int(nid)]
-            if dx >= 0:
-                F[dx] += fx
-            if dy >= 0:
-                F[dy] += fy
+        for nid, vec in load_total.items():
+            dofs = self._dof[int(nid)]
+            for k, val in enumerate(np.asarray(vec, dtype=float)):
+                if k < len(dofs) and dofs[k] >= 0:
+                    F[dofs[k]] += float(val)
         return F
 
     def _newton(self, active, F):
@@ -292,11 +307,9 @@ class NonlinearStagedErection:
                 return it, False
             # scatter increment
             for nid in self._node_ids:
-                dx, dy = self._dof[nid]
-                if dx >= 0:
-                    self.u[nid][0] += du[dx]
-                if dy >= 0:
-                    self.u[nid][1] += du[dy]
+                for k, eqk in enumerate(self._dof[nid]):
+                    if eqk >= 0:
+                        self.u[nid][k] += du[eqk]
             if np.linalg.norm(du) <= self.tol * max(
                     self._u_norm(), 1e-12):
                 # one more residual check after the update
@@ -338,11 +351,11 @@ class NonlinearStagedErection:
             # ---- pretension held from this stage on
             for tag, N0 in stage.pretension.items():
                 self.N_pre[int(tag)] = float(N0)
-            # ---- accumulate loads
+            # ---- accumulate loads (2-D or 3-D force vectors)
             for nid, load in stage.loads.items():
-                fx, fy = load
-                px, py = load_total.get(int(nid), (0.0, 0.0))
-                load_total[int(nid)] = (px + fx, py + fy)
+                vec = np.asarray(load, dtype=float)
+                cur = load_total.get(int(nid))
+                load_total[int(nid)] = vec if cur is None else cur + vec
 
             if not active:
                 raise RuntimeError(f"stage {stage.name!r}: nothing active")

@@ -171,6 +171,107 @@ def test_pretension_between_fixed_anchors():
     assert abs(res.displacements[2][0]) < 1e-12
 
 
+# ------------------------------------------------------------------- 3-D (C2)
+def test_3d_axial_elongation():
+    """A member along z pulled axially in 3-D: u = F L /(E A)."""
+    nodes = {1: (0.0, 0.0, 0.0), 2: (0.0, 0.0, 6.0)}
+    seg = [CableSegment(1, 1, 2, E, A)]
+    stages = [ErectionStage("pull", add=[1], loads={2: (0.0, 0.0, 2.0e6)})]
+    supports = {1: (True, True, True), 2: (True, True, False)}
+    res = NonlinearStagedErection(nodes, seg, stages, supports=supports).run()
+    assert all(res.converged)
+    assert res.displacements[2][2] == pytest.approx(2.0e6 * 6.0 / (E * A),
+                                                    rel=1e-6)
+    assert res.tensions[1] == pytest.approx(2.0e6, rel=1e-6)
+
+
+def test_3d_matches_2d_in_a_plane():
+    """A planar problem embedded in 3-D (z ≡ the 2-D y) reproduces the 2-D
+    result — the generalisation is consistent."""
+    P = 1.0e3
+    # 2-D reference: apex at origin, two bars up to (±3, 4)
+    n2 = {1: (-3.0, 4.0), 2: (3.0, 4.0), 3: (0.0, 0.0)}
+    s2 = [CableSegment(1, 1, 3, E, A), CableSegment(2, 2, 3, E, A)]
+    r2 = NonlinearStagedErection(
+        n2, s2, [ErectionStage("load", add=[1, 2], loads={3: (0.0, -P)})],
+        supports={1: (True, True), 2: (True, True)}).run()
+    # same geometry in the x-z plane (y = 0), load along -z. The two stays are
+    # coplanar, so the apex's out-of-plane (y) DOF is held (else a mechanism).
+    n3 = {1: (-3.0, 0.0, 4.0), 2: (3.0, 0.0, 4.0), 3: (0.0, 0.0, 0.0)}
+    s3 = [CableSegment(1, 1, 3, E, A), CableSegment(2, 2, 3, E, A)]
+    r3 = NonlinearStagedErection(
+        n3, s3, [ErectionStage("load", add=[1, 2],
+                               loads={3: (0.0, 0.0, -P)})],
+        supports={1: (True, True, True), 2: (True, True, True),
+                  3: (False, True, False)}).run()
+    assert all(r3.converged)
+    assert r3.tensions[1] == pytest.approx(r2.tensions[1], rel=1e-6)
+    assert r3.displacements[3][2] == pytest.approx(r2.displacements[3][1],
+                                                   rel=1e-6)
+    assert abs(r3.displacements[3][1]) < 1e-9        # no out-of-plane drift
+
+
+def test_3d_symmetric_pyramid_closed_form():
+    """Three equal legs from a symmetric base up to an apex, vertical load down
+    the axis: each leg carries P/(3·cosθ) by symmetry."""
+    import math
+    h = 4.0
+    r = 3.0
+    base = []
+    nodes = {}
+    for k in range(3):
+        ang = 2.0 * math.pi * k / 3.0
+        nid = k + 1
+        nodes[nid] = (r * math.cos(ang), r * math.sin(ang), 0.0)
+        base.append(nid)
+    apex = 4
+    nodes[apex] = (0.0, 0.0, h)
+    seg = [CableSegment(k + 1, base[k], apex, E, A) for k in range(3)]
+    supports = {b: (True, True, True) for b in base}
+    P = 3.0e3
+    res = NonlinearStagedErection(
+        nodes, seg, [ErectionStage("load", add=[1, 2, 3],
+                                   loads={apex: (0.0, 0.0, -P)})],
+        supports=supports).run()
+    assert all(res.converged)
+    leg = math.hypot(r, h)
+    cos_t = h / leg                     # vertical component fraction
+    N_expected = P / (3.0 * cos_t)      # compression in each leg
+    for t in (1, 2, 3):
+        assert res.tensions[t] == pytest.approx(-N_expected, rel=1e-3)
+    # symmetric vertical load -> apex drops straight down, no lateral drift
+    assert abs(res.displacements[apex][0]) < 1e-6
+    assert abs(res.displacements[apex][1]) < 1e-6
+    assert res.displacements[apex][2] < 0.0
+
+
+def test_3d_stress_free_birth():
+    """A stay added in 3-D at a later stage is stress-free at birth, then picks
+    up force under subsequent load. The tip is 3-D-stable at every stage (deck
+    chord + two anchored stays), so the new stay births into a real structure."""
+    nodes = {1: (0.0, 0.0, 0.0), 2: (8.0, 0.0, 0.0),
+             3: (8.0, 0.0, 6.0),          # stay to pylon (x-z plane)
+             4: (8.0, 4.0, 6.0),          # stay giving +y restraint
+             5: (8.0, -4.0, 6.0)}         # the later (out-of-plane) stay
+    seg = [CableSegment(1, 1, 2, E, A),          # deck chord (x)
+           CableSegment(2, 3, 2, E, A),          # stay to node 3
+           CableSegment(3, 4, 2, E, A),          # stay to node 4 (+y, z)
+           CableSegment(4, 5, 2, E, A)]          # stay to node 5 — born later
+    supports = {1: (True, True, True), 3: (True, True, True),
+                4: (True, True, True), 5: (True, True, True)}
+    stages = [
+        ErectionStage("erect + load", add=[1, 2, 3],
+                      loads={2: (0.0, 0.0, -5.0e4)}),
+        ErectionStage("add stay to 5", add=[4]),          # stress-free birth
+        ErectionStage("more load", loads={2: (0.0, 0.0, -5.0e4)}),
+    ]
+    res = NonlinearStagedErection(nodes, seg, stages, supports=supports).run()
+    assert all(res.converged)
+    ref = abs(res.tension_history[2][0])
+    assert abs(res.tension_history[4][1]) < 1e-6 * ref   # stress-free at birth
+    assert res.tension_history[4][2] != 0.0              # loads up afterward
+
+
 def test_tension_only_cable_goes_slack():
     """A tension-only cable carries no compression: in parallel with a regular
     (compression-capable) bar, a compressive push is taken entirely by the bar
