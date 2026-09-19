@@ -626,6 +626,11 @@ class MainWindow(QMainWindow):
         self.act_coupling_beam.setStatusTip(
             "Add a coupling beam between two wall piers at an elevation")
         self.act_coupling_beam.triggered.connect(self.add_coupling_beam)
+        self.act_macro_wall = _set_icon(QAction("&Macro fibre wall", self), "wall")
+        self.act_macro_wall.setStatusTip(
+            "Build the macro (fibre) wall section for the selected wall — the "
+            "nonlinear/pushover representation — and report its properties")
+        self.act_macro_wall.triggered.connect(self.show_macro_wall)
         self._mode_group = QActionGroup(self)
         for a in (self.act_select, self.act_sel_window, self.act_sel_poly,
                   self.act_draw_node, self.act_draw_member, self.act_draw_area):
@@ -715,6 +720,7 @@ class MainWindow(QMainWindow):
                       (self.act_draw_wall, "Wall"),
                       (self.act_wall_openings, "Openings"),
                       (self.act_coupling_beam, "Coupling"),
+                      (self.act_macro_wall, "Macro"),
                       (self.act_snap, "Snap"), self.snap_spin,
                       self.plane_combo, self.plane_offset,
                       (self.act_plane_3pt, "3-pt plane"))),
@@ -2659,6 +2665,36 @@ class MainWindow(QMainWindow):
         self._apply_edit("Edit wall openings", _mut, ("area", aid))
         self.statusBar().showMessage(
             f"Wall {aid}: {len(openings)} opening(s)")
+
+    def show_macro_wall(self) -> None:
+        """Build the macro (fibre) wall section for the selected wall panel and
+        report its gross properties (optional nonlinear/pushover representation).
+        Not folded into the shell solve — it is the section you'd push over."""
+        p = self._project
+        sel = [rid for (k, rid) in self._selected_refs() if k == "area"]
+        area = p.area(sel[0]) if len(sel) == 1 else None
+        if area is None or area.role != "wall" or len(area.nodes) != 4:
+            QMessageBox.information(
+                self, "Macro fibre wall",
+                "Select a single 4-node wall panel first.")
+            return
+        import macro_wall
+        try:
+            sec, geom = macro_wall.macro_wall_from_area(p, area)
+            props = macro_wall.macro_wall_properties(sec)
+        except Exception as e:                         # noqa: BLE001
+            QMessageBox.warning(self, "Macro fibre wall", str(e))
+            return
+        us = self._units()
+        self.log.appendPlainText(
+            f"Macro fibre wall (pier {area.pier or area.id}): "
+            f"ℓw = {geom['lw']:.2f} m, t = {geom['t']*1e3:.0f} mm, "
+            f"f'c(web) = {geom['fc_web']/1e6:.0f} MPa · gross A = "
+            f"{props['area']:.3f} m², Iz = {props['Iz']:.4f} m⁴. "
+            f"(Nonlinear-analysis section — not part of the shell solve.)")
+        self.statusBar().showMessage(
+            f"Macro fibre wall: A = {props['area']:.3f} m², "
+            f"Iz = {props['Iz']:.4f} m⁴")
 
     def add_coupling_beam(self) -> None:
         """Add a coupling beam between two wall piers at an elevation (wall plan
