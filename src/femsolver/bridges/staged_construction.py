@@ -278,6 +278,16 @@ class ErectionStage:
         Optional uniform scale on the active stiffness for this stage's
         solve (e.g. an EMM creep factor ``1/(1+chi*phi)`` for a
         long-duration sustained-load stage). Default 1.0 = elastic.
+        Composes multiplicatively with the per-element age-based creep
+        factor when a :class:`StagedCreep` config is supplied.
+    duration_days : float, default 0.0
+        Days this stage's loading is sustained before the next stage
+        (advances the creep clock). Only used when
+        :class:`IncrementalStagedAnalysis` is given a ``creep`` config.
+    age_at_activation_days : float, default 28.0
+        Concrete age (days) of this stage's newly-born elements at the
+        moment they are cast/loaded — the loading age ``t0`` fed to the
+        creep coefficient (plan C1a). Only used with a ``creep`` config.
     """
 
     name: str
@@ -285,6 +295,61 @@ class ErectionStage:
     remove_elements: list = field(default_factory=list)
     loads: dict = field(default_factory=dict)
     stiffness_factor: float = 1.0
+    duration_days: float = 0.0
+    age_at_activation_days: float = 28.0
+
+
+@dataclass
+class StagedCreep:
+    """Time-dependent (creep) configuration for an
+    :class:`IncrementalStagedAnalysis` (construction-stage parity plan C1a).
+
+    When supplied, the driver replaces the single scalar
+    ``ErectionStage.stiffness_factor`` with a **per-element, per-stage**
+    Effective-Modulus factor ``1 / (1 + chi·phi(t_end, t0))`` computed from
+    each element's own concrete age. Because a load applied at a later stage
+    has less remaining time to creep, and because elements cast at different
+    stages have different ages at the same instant, every active element in
+    every stage gets its own factor — the generalisation of the uniform-EMM
+    :class:`StagedConstructionAnalysis` to a birth/death staged model.
+
+    The creep coefficient is CEB-FIP MC 2010
+    (:func:`femsolver.bridges.cebfip_creep_coefficient`).
+
+    Attributes
+    ----------
+    f_cm : float
+        Mean concrete compressive strength (Pa) for the creep coefficient.
+    chi : float, default 1.0
+        Ageing coefficient. ``1.0`` recovers the plain Effective Modulus
+        Method (``delta_inf = delta_inst·(1+phi)``); ``~0.8`` is the
+        Trost/Bazant age-adjusted (AAEM) long-term value.
+    RH : float, default 70.0
+        Relative humidity (percent).
+    h_0 : float, default 0.20
+        Notional member size (m).
+    initial_age_days : float, default 28.0
+        Concrete age of elements active **before** stage 1
+        (``initial_active``) at global time zero.
+    final_time_days : float, optional
+        Elapsed time from the start of stage 1 at which long-term creep is
+        evaluated (the analysis end). Defaults to the sum of every stage's
+        ``duration_days``. Set this (e.g. ``18250`` = 50 yr) to read
+        long-term creep without adding a trailing dummy stage.
+    """
+
+    f_cm: float
+    chi: float = 1.0
+    RH: float = 70.0
+    h_0: float = 0.20
+    initial_age_days: float = 28.0
+    final_time_days: float | None = None
+
+    def __post_init__(self):
+        if self.f_cm <= 0.0:
+            raise ValueError("StagedCreep.f_cm must be > 0")
+        if not (0.0 < self.chi <= 1.0):
+            raise ValueError("StagedCreep.chi must be in (0, 1]")
 
 
 @dataclass
@@ -307,6 +372,12 @@ class IncrementalStagedResult:
         (``None`` for stages where the element was inactive).
     active_history : list[set]
         Set of active element tags at the end of each stage.
+    creep_factors : list[dict]
+        Per stage, ``{element_tag: effective-modulus factor}`` applied to that
+        element's stiffness (and force accumulation) in the stage solve. The
+        factor is ``1.0`` for the purely elastic path (no :class:`StagedCreep`
+        config and unit ``stiffness_factor``). Exposed for transparency /
+        verification (plan C1a).
     """
 
     stage_names: list
@@ -315,6 +386,7 @@ class IncrementalStagedResult:
     element_forces: dict
     element_force_history: dict
     active_history: list
+    creep_factors: list = field(default_factory=list)
 
 
 class IncrementalStagedAnalysis:
@@ -346,6 +418,12 @@ class IncrementalStagedAnalysis:
     initial_active : list, optional
         Element tags active before stage 1 (default: empty -- every
         element must be born by some stage's ``add_elements``).
+    creep : StagedCreep, optional
+        Time-dependent (creep) configuration (plan C1a). When given, each
+        active element's stiffness in each stage solve is scaled by its own
+        age-based Effective-Modulus factor ``1/(1+chi·phi)`` instead of only
+        the scalar ``ErectionStage.stiffness_factor``. When omitted the driver
+        is purely elastic (backward-compatible).
 
     Notes
     -----
@@ -353,7 +431,7 @@ class IncrementalStagedAnalysis:
     diaphragms) are not yet supported by this driver.
     """
 
-    def __init__(self, model, stages, *, initial_active=None):
+    def __init__(self, model, stages, *, initial_active=None, creep=None):
         if not stages:
             raise ValueError("at least one stage required")
         if model.mp_constraints:
@@ -361,13 +439,47 @@ class IncrementalStagedAnalysis:
                 "IncrementalStagedAnalysis does not yet support MP "
                 "constraints (rigid links / diaphragms)."
             )
+        if creep is not None and not isinstance(creep, StagedCreep):
+            raise TypeError("creep must be a StagedCreep or None")
         self.model = model
         self.stages = list(stages)
         self.initial_active = set(initial_active or [])
+        self.creep = creep
+        # Global-time timeline: T_start[k] = elapsed days at the start of
+        # stage k (= sum of earlier stages' durations); T_final = analysis end.
+        t = 0.0
+        self._stage_start = []
+        for s in self.stages:
+            self._stage_start.append(t)
+            t += float(getattr(s, "duration_days", 0.0) or 0.0)
+        if creep is not None and creep.final_time_days is not None:
+            self._t_final = float(creep.final_time_days)
+        else:
+            self._t_final = t
 
     def _element_dofmaps(self):
         m = self.model
         return {e.tag: m.element_dof_map(e) for e in m.elements.values()}
+
+    def _creep_factor(self, tag, stage_idx, birth_time, birth_age) -> float:
+        """Age-based Effective-Modulus factor ``1/(1+chi·phi(t_end, t0))`` for
+        element ``tag`` responding to stage ``stage_idx``'s load increment.
+
+        ``t0`` is the element's concrete age when this stage's load is applied;
+        ``t_end`` its age at the analysis end. A load applied later has less
+        remaining time to creep -> a larger factor (stiffer). Returns ``1.0``
+        (elastic) when no creep config was supplied or no time remains.
+        """
+        if self.creep is None:
+            return 1.0
+        t0 = birth_age[tag] + (self._stage_start[stage_idx] - birth_time[tag])
+        t_end = birth_age[tag] + (self._t_final - birth_time[tag])
+        if t_end <= t0:
+            return 1.0
+        phi = cebfip_creep_coefficient(
+            t_days=t_end, t0_days=max(t0, 1e-6),
+            f_cm=self.creep.f_cm, RH=self.creep.RH, h_0=self.creep.h_0).phi
+        return float(1.0 / (1.0 + self.creep.chi * phi))
 
     def run(self) -> IncrementalStagedResult:
         m = self.model
@@ -389,8 +501,14 @@ class IncrementalStagedAnalysis:
         names = []
         force_history = {e.tag: [] for e in m.elements.values()}
         active_history = []
+        creep_factor_hist = []
 
-        for stage in self.stages:
+        # per-element birth global-time + concrete age at birth (for creep)
+        default_age = self.creep.initial_age_days if self.creep else 28.0
+        birth_time: dict[int, float] = {tag: 0.0 for tag in active}
+        birth_age: dict[int, float] = {tag: default_age for tag in active}
+
+        for stage_idx, stage in enumerate(self.stages):
             # ---- birth / death --------------------------------------
             release = np.zeros(neq)
             for tag in stage.remove_elements:
@@ -414,6 +532,9 @@ class IncrementalStagedAnalysis:
                     )
                 active.add(tag)
                 f_elem[tag] = np.zeros(dofmaps[tag].size)  # born stress-free
+                birth_time[tag] = self._stage_start[stage_idx]
+                birth_age[tag] = float(
+                    getattr(stage, "age_at_activation_days", 28.0))
 
             if not active:
                 raise RuntimeError(
@@ -435,10 +556,20 @@ class IncrementalStagedAnalysis:
                 )
             g2l = {int(g): l for l, g in enumerate(ix)}
 
+            # per-element effective-stiffness factor: the stage's uniform
+            # scalar composed with each element's own age-based creep factor
+            # (plan C1a). The SAME factor scales the element-force accumulation
+            # below, so a determinate structure's member forces stay constant
+            # under creep while its deflection grows -- correct EMM physics.
+            eff = {tag: (stage.stiffness_factor
+                         * self._creep_factor(tag, stage_idx,
+                                              birth_time, birth_age))
+                   for tag in active_tags}
+
             rows, cols, vals = [], [], []
             for tag in active_tags:
                 dm = dofmaps[tag]
-                Ke = Ke_cache[tag] * stage.stiffness_factor
+                Ke = Ke_cache[tag] * eff[tag]
                 ndof = dm.size
                 for a in range(ndof):
                     ga = dm[a]
@@ -486,14 +617,17 @@ class IncrementalStagedAnalysis:
             u_increments.append(du)
 
             # ---- accumulate element forces ---------------------------
+            # use the effective (creep-scaled) stiffness so the recovered
+            # member force is the actual force carried at the current modulus.
             for tag in active_tags:
                 dm = dofmaps[tag]
                 du_e = np.array([du[eq] if eq >= 0 else 0.0 for eq in dm])
-                f_elem[tag] = f_elem[tag] + Ke_cache[tag] @ du_e
+                f_elem[tag] = f_elem[tag] + eff[tag] * (Ke_cache[tag] @ du_e)
 
             # ---- record -------------------------------------------------
             names.append(stage.name)
             active_history.append(set(active))
+            creep_factor_hist.append(dict(eff))
             for tag in force_history:
                 if tag in active:
                     force_history[tag].append(f_elem[tag].copy())
@@ -513,6 +647,7 @@ class IncrementalStagedAnalysis:
             element_forces={t: f.copy() for t, f in f_elem.items()},
             element_force_history=force_history,
             active_history=active_history,
+            creep_factors=creep_factor_hist,
         )
 
 

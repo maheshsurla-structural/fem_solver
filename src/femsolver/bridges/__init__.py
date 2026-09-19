@@ -92,6 +92,7 @@ from femsolver.bridges.staged_construction import (
     IncrementalStagedResult,
     StagedConstructionAnalysis,
     StagedConstructionResult,
+    StagedCreep,
     effective_modulus_EMM,
 )
 from femsolver.bridges.construction_stage import (
@@ -213,6 +214,8 @@ __all__ = [
     "ErectionStage",
     "IncrementalStagedAnalysis",
     "IncrementalStagedResult",
+    # per-element age-based creep in the staged driver (parity C1a)
+    "StagedCreep",
     # general moving-load / influence-line engine (Phase B.1)
     "InfluenceLine",
     "InfluenceLineEngine",

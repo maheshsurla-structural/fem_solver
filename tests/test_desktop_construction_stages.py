@@ -49,6 +49,29 @@ def test_stage_model_serializes():
         [(1, "S1", [1, 2]), (2, "S2", [3, 4])]
 
 
+def test_stage_time_dependent_fields_round_trip():
+    """C0: death + time-dependent stage attributes survive save/load."""
+    p = _cantilever()
+    p.stages = [Stage(id=1, name="cast", add_members=[1, 2],
+                      remove_members=[9], duration_days=30.0,
+                      age_at_activation_days=7.0, creep=True)]
+    s = Project.from_dict(p.to_dict()).stages[0]
+    assert s.remove_members == [9]
+    assert s.duration_days == 30.0
+    assert s.age_at_activation_days == 7.0
+    assert s.creep is True
+
+
+def test_old_stage_migrates_new_fields():
+    """A pre-C0 stage dict (only id/name/add_members) loads with defaults."""
+    p = _cantilever()
+    d = p.to_dict()
+    d["stages"] = [{"id": 1, "name": "S1", "add_members": [1]}]
+    s = Project.from_dict(d).stages[0]
+    assert s.remove_members == [] and s.duration_days == 0.0
+    assert s.age_at_activation_days == 28.0 and s.creep is False
+
+
 def test_old_project_without_stages_loads():
     p = _cantilever()
     d = p.to_dict()

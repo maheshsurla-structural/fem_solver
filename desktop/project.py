@@ -535,13 +535,46 @@ class LoadCombination:
 
 @dataclass
 class Stage:
-    """One construction stage: the members that become active ("born") in it,
-    in construction order. Members in no stage are treated as built before the
-    sequence (initially active). Drives the incremental staged analysis + camber
-    (bridge GUI plan G3)."""
+    """One construction stage of the erection sequence (construction-stage
+    parity plan C0).
+
+    A stage names the members that become active ("born") in it and, optionally,
+    those removed ("died" -- falsework, temporary props). Members in no stage are
+    treated as built before the sequence (initially active). It also carries the
+    **time-dependent** attributes -- the concrete age when the stage's members
+    are cast and how long the stage lasts -- that drive per-element creep
+    (plan C1a) via :class:`femsolver.bridges.IncrementalStagedAnalysis`.
+
+    Drives the incremental staged analysis + camber (bridge GUI plan G3;
+    construction-stage parity C0/C1a).
+
+    Attributes
+    ----------
+    add_members : list[int]
+        Member ids born (installed stress-free in the current geometry) at the
+        start of this stage, in construction order.
+    remove_members : list[int]
+        Member ids removed at the start of this stage (falsework / temporary
+        props); their locked-in force is released onto the remaining structure.
+    duration_days : float
+        Days this stage lasts before the next stage's loading (advances the
+        creep clock). ``0`` -> instantaneous (no creep from this stage on).
+    age_at_activation_days : float
+        Concrete age (days) of this stage's newly-born members at the moment
+        they are cast/loaded. Feeds the CEB-FIP creep coefficient.
+    creep : bool
+        Whether time-dependent (creep) effects are computed for this stage.
+        Requires a concrete material with the properties the creep model needs
+        (mean strength) and is a no-op until the staged run is given a creep
+        configuration (plan C1a / C5).
+    """
     id: int
     name: str
     add_members: list = field(default_factory=list)   # member ids born this stage
+    remove_members: list = field(default_factory=list)  # member ids removed (death)
+    duration_days: float = 0.0        # stage duration (creep clock)
+    age_at_activation_days: float = 28.0  # concrete age when born (days)
+    creep: bool = False               # compute time-dependent (creep) effects
 
 
 @dataclass
@@ -869,7 +902,12 @@ class Project:
                                   master=x.get("master"))
                         for x in d.get("diaphragms", [])],
             stages=[Stage(id=s["id"], name=s.get("name", ""),
-                          add_members=list(s.get("add_members", [])))
+                          add_members=list(s.get("add_members", [])),
+                          remove_members=list(s.get("remove_members", [])),
+                          duration_days=float(s.get("duration_days", 0.0)),
+                          age_at_activation_days=float(
+                              s.get("age_at_activation_days", 28.0)),
+                          creep=bool(s.get("creep", False)))
                     for s in d.get("stages", [])],
             stories=[Story(id=s["id"], name=s.get("name", ""),
                            elev=s.get("elev", 0.0), height=s.get("height", 0.0),

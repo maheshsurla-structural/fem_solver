@@ -1439,7 +1439,27 @@ class MainWindow(QMainWindow):
                     ids = unassigned + ids
                 erection.append(ErectionStage(
                     s.name or f"Stage {i + 1}", add_elements=ids,
-                    loads=_self_weight(ids)))
+                    remove_elements=list(getattr(s, "remove_members", [])),
+                    loads=_self_weight(ids),
+                    duration_days=float(getattr(s, "duration_days", 0.0)),
+                    age_at_activation_days=float(
+                        getattr(s, "age_at_activation_days", 28.0))))
+
+        # Time-dependent (creep) config — active only if a stage opted in and a
+        # concrete mean strength f_cm is derivable (proper material creep inputs
+        # arrive with plan C5). Falls back to an elastic run otherwise.
+        creep_cfg = None
+        if stages and any(getattr(s, "creep", False) for s in stages):
+            f_cm = next((float(m.params["fc"]) for m in p.materials
+                         if isinstance(getattr(m, "params", None), dict)
+                         and m.params.get("fc", 0.0) > 0.0), 0.0)
+            if f_cm > 0.0:
+                from femsolver.bridges import StagedCreep
+                creep_cfg = StagedCreep(f_cm=f_cm)
+            else:
+                self.log.appendPlainText(
+                    "Construction stages: creep requested but no concrete "
+                    "f_cm found — running elastic.")
 
         total_w = sum(abs(v[vdof]) for st in erection
                       for v in st.loads.values())
@@ -1451,7 +1471,8 @@ class MainWindow(QMainWindow):
             return None
 
         try:
-            res = IncrementalStagedAnalysis(model, erection).run()
+            res = IncrementalStagedAnalysis(
+                model, erection, creep=creep_cfg).run()
         except Exception as exc:                           # noqa: BLE001
             QMessageBox.warning(
                 self, "Construction stages",
