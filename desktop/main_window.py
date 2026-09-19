@@ -444,6 +444,11 @@ class MainWindow(QMainWindow):
                                      self.manage_materials, "materials")
         self.act_stories = _action(self, "Stories && grid…", None,
                                    self.manage_stories, "grid")
+        self.act_building_template = _action(self, "&Template…", None,
+                                             self.new_building_template, "grid")
+        self.act_building_template.setStatusTip(
+            "New grid & stories from a quick template (uniform grid + simple "
+            "story stack) with a live preview")
         self.act_replicate_story = _action(self, "&Replicate story…", None,
                                            self.replicate_story, "copy")
         self.act_hinges = _action(self, "&Hinges…", None, self.manage_hinges,
@@ -725,7 +730,8 @@ class MainWindow(QMainWindow):
                        (self.act_shell_sections, "Thickness"),
                        (self.act_materials, "Materials"))),
             ("Constraints", ((self.act_add_diaphragm, "Diaphragm"),)),
-            ("Levels", ((self.act_stories, "Stories & grid"),
+            ("Levels", ((self.act_building_template, "Template"),
+                        (self.act_stories, "Stories & grid"),
                         (self.act_replicate_story, "Replicate"))),
             ("Edit", ((self.act_undo, "Undo"), (self.act_redo, "Redo"),
                       (self.act_delete, "Delete"))),
@@ -2955,6 +2961,34 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(
             f"{len(stories)} stor{'y' if len(stories) == 1 else 'ies'}, "
             f"{len(grids) + len(generals)} grid line(s)")
+
+    def new_building_template(self) -> None:
+        """Quick template (wall plan W8c): generate a uniform grid + simple
+        story stack (with a live preview) and apply it to the project. Replaces
+        the current stories & grid; confirms if either already has content."""
+        p = self._project
+        if p is None:
+            return
+        if p.stories or p.grid_lines or p.general_grids:
+            if QMessageBox.question(
+                    self, "New grid & stories",
+                    "Replace the existing stories and grid with the template?"
+                    ) != QMessageBox.StandardButton.Yes:
+                return
+        from building_template_dialog import GridStoryTemplateDialog
+        result = GridStoryTemplateDialog.get(self, self._units())
+        if result is None:
+            return
+        stories, grids = result
+
+        def _mut():
+            p.stories = stories
+            p.grid_lines = grids
+            p.general_grids = []
+        self._apply_edit("New grid & stories", _mut)
+        self._refresh_story_combo()
+        self.statusBar().showMessage(
+            f"Template: {len(stories) - 1} stories, {len(grids)} grid lines")
 
     # ------------------------------------------------- story-based wall drawing (W7)
     def _refresh_story_combo(self) -> None:
