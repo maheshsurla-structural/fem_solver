@@ -282,8 +282,12 @@ data, group-aware typical floors, CAD import).
   build_grid_stories` (pure: X-dir A,B,C… + Y-dir 1,2,3… + Base+N stories,
   bottom story may differ) + `GridStoryTemplateDialog` + Home ▸ Levels ▸
   Template. `tests/test_desktop_building_template.py`.
-- **W8d — TODO**: unified 2-way editor (table ⇄ viewport update together) + DXF
-  grid import. *(Optional later: cylindrical/radial grids, reference
+- **W8d — DONE (DXF import half)** (`f06fe79`): **DXF grid import** —
+  `dxf_import.read_segments` (LINE + LWPOLYLINE, no third-party dep) +
+  `grids_from_dxf` (axis-aligned → GridLine A,B,C…/1,2,3…, diagonal →
+  GeneralGrid, coincident dedupe, unit `scale`); Home ▸ Levels ▸ Import DXF.
+  `tests/test_desktop_dxf_import.py`. *Still TODO:* the unified 2-way live editor
+  (table ⇄ viewport). *(Optional later: cylindrical/radial grids, reference
   points/planes.)*
 
 **Where we beat ETABS:** live in-editor preview (ETABS has a static thumbnail);
@@ -349,7 +353,8 @@ gives every later epic something to hang on.
 | W8a | Story parity (Similar-To + H↔E linking + color) | ☑ done (`1def90b`) |
 | W8b | Grid parity (visibility + bubbles + general grids) | ☑ done (`431f792`) |
 | W8c | Quick template + live plan/elevation preview | ☑ done (`996d29b`) |
-| W8b-2/d | Grid systems (origin/rot) + 2-way editor + DXF import | ☐ todo |
+| W8d | DXF grid import | ☑ done (`f06fe79`) |
+| W8b-2 / W8d-2 | Named grid systems (origin/rot) + 2-way live editor | ☐ todo |
 
 *Engine additions required across the whole stream: only (a) the W2 pier-cut
 integrator and (b) the W3 ACI 318 §18.10 assembler. Everything else is desktop
