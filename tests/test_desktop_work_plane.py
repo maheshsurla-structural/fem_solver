@@ -102,3 +102,51 @@ def test_plane_selector_pushes_to_view(qapp_vtk):
     w.plane_offset.setValue(3.5)
     assert w.view._work_plane == "xz"
     assert w.view._work_offset == pytest.approx(3.5)
+
+
+# ----------------------------------------------------- W1c: 3-point work plane
+
+def test_set_work_plane_3pt_and_projection(qapp_vtk):
+    w = _window(qapp_vtk)
+    # a tilted plane through 3 points; normal = (p1-p0)x(p2-p0)
+    ok = w.view.set_work_plane_3pt((0, 0, 0), (1, 0, 0), (0, 1, 1))
+    assert ok and w.view._work_plane == "3pt"
+    captured = []
+    w.view._add_node_cb = lambda x, y, z: captured.append((x, y, z))
+    w.view._mode = "draw_node"
+    # pick a point off the plane → it must be projected ONTO the plane
+    w.view._on_point_picked(np.array([0.5, 0.5, 0.5]))
+    x, y, z = captured[-1]
+    import numpy as _np
+    o, n = w.view._work_plane_origin_normal()
+    # the returned point lies on the plane: (q - o)·n ≈ 0
+    assert abs(float(_np.dot(_np.array([x, y, z]) - o, n))) < 1e-6
+
+
+def test_set_work_plane_3pt_rejects_collinear(qapp_vtk):
+    w = _window(qapp_vtk)
+    assert not w.view.set_work_plane_3pt((0, 0, 0), (1, 0, 0), (2, 0, 0))
+
+
+def test_work_plane_from_nodes_action(qapp_vtk):
+    from main_window import MainWindow
+    p = _proj()
+    p.nodes.append(Node(id=3, x=0.0, y=3.0, z=2.0))
+    w = MainWindow()
+    w.load_project(p)
+    w._set_selection([("node", 1), ("node", 2), ("node", 3)])
+    w.set_work_plane_from_nodes()
+    assert w.view._work_plane == "3pt"
+
+
+def test_work_plane_from_nodes_needs_three(qapp_vtk, monkeypatch):
+    from main_window import MainWindow
+    import main_window as mw
+    w = MainWindow()
+    w.load_project(_proj())
+    w._set_selection([("node", 1)])
+    seen = {}
+    monkeypatch.setattr(mw.QMessageBox, "information",
+                        lambda *a, **k: seen.setdefault("info", a))
+    w.set_work_plane_from_nodes()
+    assert "info" in seen

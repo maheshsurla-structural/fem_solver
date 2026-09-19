@@ -171,8 +171,10 @@ class ModelView(QtInteractor):
         self._snap_xs: list = []              # named-grid snap targets (W4b)
         self._snap_ys: list = []
         self._snap_zs: list = []              # story-elevation snap targets (W1b)
-        self._work_plane = "xy"               # draw work plane: xy | xz | yz (W1b)
+        self._work_plane = "xy"               # draw work plane: xy | xz | yz | 3pt
         self._work_offset = 0.0               # its fixed-axis coordinate (SI)
+        self._plane_origin = None             # 3-pt plane origin (np 3-vec)
+        self._plane_normal = None             # 3-pt plane unit normal
         self._region_cb = None
         self._coord_cb = None
         self._rubber = None
@@ -656,16 +658,40 @@ class ModelView(QtInteractor):
         Redraws the plane while the draw-node tool is active (wall plan W1b)."""
         self._work_plane = kind if kind in self._PLANE_NORMAL else "xy"
         self._work_offset = float(offset)
+        self._redraw_work_plane()
+
+    def set_work_plane_3pt(self, p0, p1, p2) -> bool:
+        """Set an arbitrary work plane through three points (wall plan W1c). The
+        plane origin is ``p0`` and its normal is ``(p1−p0)×(p2−p0)``. Returns
+        False (leaving the plane unchanged) if the three points are collinear."""
+        p0, p1, p2 = (np.asarray(p, dtype=float) for p in (p0, p1, p2))
+        n = np.cross(p1 - p0, p2 - p0)
+        if np.linalg.norm(n) < 1e-9:
+            return False
+        self._plane_origin = p0
+        self._plane_normal = n / np.linalg.norm(n)
+        self._work_plane = "3pt"
+        self._redraw_work_plane()
+        return True
+
+    def _redraw_work_plane(self) -> None:
         if self._mode == "draw_node":
             self.remove_actor("groundplane", render=False)
             self._add_ground_plane()
             self.render()
 
+    def _work_plane_origin_normal(self):
+        """(origin, unit-normal) of the active work plane as np 3-vectors."""
+        if self._work_plane == "3pt" and self._plane_origin is not None:
+            return self._plane_origin, self._plane_normal
+        ax = self._PLANE_AXIS.get(self._work_plane, 2)
+        o = np.zeros(3)
+        o[ax] = self._work_offset
+        return o, np.asarray(self._PLANE_NORMAL.get(self._work_plane,
+                                                    (0.0, 0.0, 1.0)), float)
+
     def _add_ground_plane(self) -> None:
         import pyvista as pv
-        kind = self._work_plane
-        off = self._work_offset
-        ax = self._PLANE_AXIS[kind]
         if self._model is not None and len(self._model.nodes):
             _t, pts, _i = mg.node_points(self._model)
             lo, hi = pts.min(axis=0), pts.max(axis=0)
@@ -674,8 +700,12 @@ class ModelView(QtInteractor):
         else:
             ctr = [0.0, 0.0, 0.0]
             size = 20.0
-        ctr[ax] = off                             # sit the plane at the offset
-        plane = pv.Plane(center=tuple(ctr), direction=self._PLANE_NORMAL[kind],
+        origin, normal = self._work_plane_origin_normal()
+        if self._work_plane == "3pt":
+            ctr = list(origin)                    # centre the plane at its origin
+        else:
+            ctr[self._PLANE_AXIS[self._work_plane]] = self._work_offset
+        plane = pv.Plane(center=tuple(ctr), direction=tuple(normal),
                          i_size=size, j_size=size)
         self.add_mesh(plane, color=style.ACCENT, opacity=0.12, name="groundplane",
                       pickable=True)
@@ -692,8 +722,16 @@ class ModelView(QtInteractor):
         p = p[:3]
         if self._mode == "draw_node":
             if self._add_node_cb is not None:
-                # the click lands on the active work plane (W1b); keep its full
-                # 3-D position, spacing-snapping only the two in-plane axes.
+                if self._work_plane == "3pt":
+                    # arbitrary plane (W1c): project the click onto it; no
+                    # axis-aligned snapping applies to a tilted plane
+                    o, n = self._work_plane_origin_normal()
+                    q = p - float(np.dot(p - o, n)) * n
+                    self._add_node_cb(round(float(q[0]), 4),
+                                      round(float(q[1]), 4), round(float(q[2]), 4))
+                    return
+                # axis-aligned plane (W1b): pin the fixed axis to the offset,
+                # spacing-snap the two in-plane axes.
                 fixed = self._PLANE_AXIS[self._work_plane]
                 xyz = [float(p[0]), float(p[1]), float(p[2])]
                 xyz[fixed] = self._work_offset          # exact on the plane

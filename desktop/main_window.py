@@ -665,6 +665,11 @@ class MainWindow(QMainWindow):
         self.plane_offset.setPrefix("@ ")
         self.plane_offset.setSuffix(" m")
         self.plane_offset.valueChanged.connect(lambda _v: self._update_work_plane())
+        self.act_plane_3pt = _set_icon(QAction("Plane from &3 nodes", self),
+                                       "grid")
+        self.act_plane_3pt.setStatusTip(
+            "Set an arbitrary draw work plane through three selected nodes")
+        self.act_plane_3pt.triggered.connect(self.set_work_plane_from_nodes)
 
         # ---- CSiBridge-style tabbed ribbon (plan ribbon R1) ---------------
         # One compact strip replaces BOTH the classic menu bar and the old
@@ -711,7 +716,8 @@ class MainWindow(QMainWindow):
                       (self.act_wall_openings, "Openings"),
                       (self.act_coupling_beam, "Coupling"),
                       (self.act_snap, "Snap"), self.snap_spin,
-                      self.plane_combo, self.plane_offset)),
+                      self.plane_combo, self.plane_offset,
+                      (self.act_plane_3pt, "3-pt plane"))),
             ("Select", ((self.act_select, "Select"),
                         (self.act_sel_window, "Window"),
                         (self.act_sel_poly, "Poly"),
@@ -3639,6 +3645,26 @@ class MainWindow(QMainWindow):
         kind = self.plane_combo.currentData()
         off = self._units().to_si(self.plane_offset.value(), Quantity.LENGTH)
         self.view.set_work_plane(kind, off)
+
+    def set_work_plane_from_nodes(self) -> None:
+        """Set an arbitrary draw work plane through three selected nodes (W1c),
+        so nodes can be drawn on a skewed/inclined plane."""
+        p = self._project
+        ids = [rid for (k, rid) in self._selected_refs() if k == "node"][:3]
+        if len(ids) != 3:
+            QMessageBox.information(
+                self, "Work plane",
+                "Select exactly three nodes to define the work plane.")
+            return
+        by_id = {n.id: n for n in p.nodes}
+        pts = [(by_id[i].x, by_id[i].y, by_id[i].z) for i in ids]
+        if not self.view.set_work_plane_3pt(*pts):
+            QMessageBox.warning(self, "Work plane",
+                                "Those three nodes are collinear — pick three "
+                                "that span a plane.")
+            return
+        self.statusBar().showMessage(
+            f"Work plane set through nodes {ids[0]}, {ids[1]}, {ids[2]}")
 
     def _register_toolbar_commands(self) -> None:
         """Expose the common model/edit commands so they can be pinned onto the
