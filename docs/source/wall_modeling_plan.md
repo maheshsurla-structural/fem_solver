@@ -1,15 +1,15 @@
 # Wall (shear-wall / pier) modeling — commercial-parity roadmap
 
-*Status: **ROADMAP COMPLETE — W0–W6 + W1b** (W0–W5 on `origin/main`; W6 on
-branch `feat/wall-openings`). The core "credible wall tool" (W0–W3) is done:
-label → draw → pier forces → ACI 318 §18.10 design; W4 (a/b/c) adds the
+*Status: **ROADMAP COMPLETE — W0–W6 + W1b + W3-polish** (W0–W6 on `origin/main`;
+W3-polish on branch `feat/wall-detailing`). The core "credible wall tool"
+(W0–W3) is done: label → draw → pier forces → design; W4 (a/b/c) adds the
 Story/Grid model + manager, viewport overlay + snapping, and similar-story
 replication; W1b adds the XZ/YZ elevation draw plane; W5 adds wall openings; W6
-adds coupling beams. **The whole planned roadmap (W0–W6 + W1b) is done.** Only
-minor refinements remain (W3 IS 13920/EC8 detailing + drift-based boundary
-trigger, non-rectangular openings, a macro fiber-wall option, a 3-point work
-plane). This roadmap takes the desktop app from "a wall is just a vertical
-`Area`"
+adds coupling beams; **W3-polish** adds the ACI §18.10.6.2 drift-based boundary
+trigger and IS 13920 / EC8 detailing (multi-code selector). Only minor
+refinements remain (non-rectangular openings, a macro fiber-wall option, a
+3-point work plane). This roadmap takes the desktop app from "a wall is just a
+vertical `Area`"
 to an ETABS-style wall workflow: a labeled **wall / pier / spandrel** object, a
 **story** context to draw and stack it in, automatic **pier force integration**,
 and a **wall design** check wired to the reinforcement the engine already knows
@@ -166,9 +166,12 @@ W5/W6 are v2.
   boundary/detailing flags. `piers.pier_geometry` supplies (ℓw, t, hw).
   `MainWindow.show_wall_design` + `act_wall_design`. `tests/
   test_desktop_wall_design.py` (5).
-- *Not yet wired:* IS 13920 / EC8 detailing and the displacement-based boundary
-  trigger (`c ≥ ℓw/(600·δu/hw)`) — future polish; the stress-based trigger and
-  ACI strength checks ship now.
+- **W3-polish — DONE** (`aff2adc`): the displacement-based boundary trigger
+  (`c ≥ ℓw/(600·δu/hw)`, §18.10.6.2) with the real ℓbe = max(c−0.1ℓw, c/2), plus
+  a **multi-code detailing** layer (`WALL_CODES` = ACI 318-19 / IS 13920 / EC8;
+  `wall_detailing`) — boundary/web minimum-reinforcement ratios (IS 13920 §10.4.4
+  0.8%, EC8 §5.4.3.4.2 0.5%) and code-referenced notes. `design_wall_pier(code=,
+  drift=)`; the dialog gains a code selector + design-drift input.
 
 ### W4 — Story / Level system ★ (building-modeling backbone)
 - **W4a — DONE** (`939548f`): `project.Story` (named level at an elevation +
