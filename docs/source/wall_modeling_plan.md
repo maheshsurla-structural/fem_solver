@@ -354,7 +354,8 @@ gives every later epic something to hang on.
 | W8b | Grid parity (visibility + bubbles + general grids) | ☑ done (`431f792`) |
 | W8c | Quick template + live plan/elevation preview | ☑ done (`996d29b`) |
 | W8d | DXF grid import | ☑ done (`f06fe79`) |
-| W8b-2 / W8d-2 | Named grid systems (origin/rot) + 2-way live editor | ☐ todo |
+| W8b-2 | Named grid systems (origin + rotation) | ☑ done (`4e816df`) |
+| W8d-2 | Unified 2-way live editor (table ⇄ viewport) | ☐ todo |
 
 *Engine additions required across the whole stream: only (a) the W2 pier-cut
 integrator and (b) the W3 ACI 318 §18.10 assembler. Everything else is desktop
