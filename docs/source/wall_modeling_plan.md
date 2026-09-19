@@ -4,9 +4,9 @@
 branch `feat/wall-workplane`). The core "credible wall tool" (W0–W3) is done:
 label → draw → pier forces → ACI 318 §18.10 design; W4 (a/b/c) adds the
 Story/Grid model + manager, viewport overlay + snapping, and similar-story
-replication; W1b adds the XZ/YZ elevation draw plane. Only optional backlog
-remains (W5 openings, W6 coupled walls, W3 detailing polish). This roadmap takes
-the desktop app from "a wall is just a vertical `Area`"
+replication; W1b adds the XZ/YZ elevation draw plane; W5 adds wall openings.
+Only optional backlog remains (W6 coupled walls, W3 detailing polish). This
+roadmap takes the desktop app from "a wall is just a vertical `Area`"
 to an ETABS-style wall workflow: a labeled **wall / pier / spandrel** object, a
 **story** context to draw and stack it in, automatic **pier force integration**,
 and a **wall design** check wired to the reinforcement the engine already knows
@@ -190,10 +190,17 @@ W5/W6 are v2.
 - Walls already work story-agnostically, so these are ergonomics/scale upgrades,
   not correctness gates.
 
-### W5 — Openings ★ *(v2)*
-- Door/window openings in a wall panel with **opening-aware meshing** (extends
-  the polygon-area mesher; needs ear-clipping for the non-convex remainder — the
-  same gap noted in the slab backlog).
+### W5 — Openings ★ — **DONE** (`4e59f54`)
+- Rectangular door/window openings in a wall panel (`Area.openings`, parametric
+  `(u0,v0,u1,v1)`). **Opening-aware meshing without ear-clipping**: the quad
+  mesher drops the grid cells whose centre falls in an opening (the ETABS
+  approach) and builds only the nodes a kept cell uses, so openings leave no
+  orphaned/singular nodes; `area_quad_cells`/`area_quad_needed_nodes` are shared
+  by the mesher, `_area_element_tags` and `_area_edge_coords` so they never
+  disagree. `wall_opening_dialog.WallOpeningDialog` (physical X/Z/W/H → fraction)
+  + Draw ▸ Openings on the selected wall. `tests/test_desktop_wall_openings.py`.
+  *(Non-rectangular openings / arbitrary polygon holes would still want a
+  constrained triangulator — deferred.)*
 
 ### W6 — Coupled walls / coupling beams in the GUI *(v2)*
 - Surface the engine's `coupling_beam.add_coupling_beam_2d` as a GUI action
@@ -254,7 +261,7 @@ gives every later epic something to hang on.
 | W4a | Story / Grid data model + manager | ☑ done (`939548f`) |
 | W4b | Grid render + snap-to-grid | ☑ done (`aae1ca7`) |
 | W4c | Similar-story replication | ☑ done (`8818731`) |
-| W5 | Openings (opening-aware mesh) | ☐ proposed (v2) |
+| W5 | Openings (opening-aware mesh) | ☑ done (`4e59f54`) |
 | W6 | Coupled walls / coupling beams GUI | ☐ proposed (v2) |
 
 *Engine additions required across the whole stream: only (a) the W2 pier-cut
