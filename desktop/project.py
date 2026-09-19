@@ -38,11 +38,43 @@ def area_element_tag(area_id: int, k: int = 0) -> int:
     return AREA_TAG_BASE + area_id * AREA_TAG_STRIDE + k
 
 
+def _opening_is_rect(o) -> bool:
+    """An opening is a rectangle ``(u0,v0,u1,v1)`` (4 scalars); otherwise it is a
+    polygon — a sequence of ``(u,v)`` vertices (wall plan W5 / non-rectangular)."""
+    try:
+        return len(o) == 4 and all(
+            not hasattr(x, "__len__") for x in o)
+    except TypeError:
+        return False
+
+
+def _point_in_poly(verts, u, v) -> bool:
+    """Ray-casting point-in-polygon for ``(u, v)`` against ``verts`` (list of
+    (u,v)); boundary counts as inside for stable cell dropping."""
+    n = len(verts)
+    inside = False
+    j = n - 1
+    for i in range(n):
+        ui, vi = verts[i]
+        uj, vj = verts[j]
+        if (vi > v) != (vj > v):
+            u_cross = ui + (uj - ui) * (v - vi) / (vj - vi)
+            if u <= u_cross:
+                inside = not inside
+        j = i
+    return inside
+
+
 def _cell_in_opening(openings, u, v) -> bool:
-    """True if the parametric cell centre ``(u, v)`` lies in any opening rect
-    ``(u0, v0, u1, v1)`` (wall plan W5)."""
-    for (u0, v0, u1, v1) in openings:
-        if u0 <= u <= u1 and v0 <= v <= v1:
+    """True if the parametric cell centre ``(u, v)`` lies in any opening — a
+    rectangle ``(u0,v0,u1,v1)`` or a polygon of ``(u,v)`` vertices (wall plan
+    W5). The same drop-cell test serves any opening shape (no ear-clipping)."""
+    for o in openings:
+        if _opening_is_rect(o):
+            u0, v0, u1, v1 = o
+            if u0 <= u <= u1 and v0 <= v <= v1:
+                return True
+        elif len(o) >= 3 and _point_in_poly(o, u, v):
             return True
     return False
 
@@ -307,18 +339,28 @@ class Area:
         self.pier = _norm_label(self.pier) if self.role == "wall" else None
         self.spandrel = (_norm_label(self.spandrel)
                          if self.role == "wall" else None)
-        # normalize each opening to a sorted 4-tuple clamped to the unit square
+        # normalize each opening: a rectangle → a sorted 4-tuple; a polygon → a
+        # tuple of (u,v) vertices; all clamped to the unit square (W5)
+        def _c(x):
+            return min(max(float(x), 0.0), 1.0)
+
         norm = []
         for o in (self.openings or []):
-            try:
-                u0, v0, u1, v1 = (float(o[0]), float(o[1]),
-                                  float(o[2]), float(o[3]))
-            except (TypeError, ValueError, IndexError):
-                continue
-            u0, u1 = sorted((min(max(u0, 0.0), 1.0), min(max(u1, 0.0), 1.0)))
-            v0, v1 = sorted((min(max(v0, 0.0), 1.0), min(max(v1, 0.0), 1.0)))
-            if u1 - u0 > 1e-9 and v1 - v0 > 1e-9:
-                norm.append((u0, v0, u1, v1))
+            if _opening_is_rect(o):
+                try:
+                    u0, u1 = sorted((_c(o[0]), _c(o[2])))
+                    v0, v1 = sorted((_c(o[1]), _c(o[3])))
+                except (TypeError, ValueError):
+                    continue
+                if u1 - u0 > 1e-9 and v1 - v0 > 1e-9:
+                    norm.append((u0, v0, u1, v1))
+            else:                                   # polygon opening
+                try:
+                    verts = tuple((_c(p[0]), _c(p[1])) for p in o)
+                except (TypeError, ValueError, IndexError):
+                    continue
+                if len(verts) >= 3:
+                    norm.append(verts)
         self.openings = norm
 
 
@@ -956,6 +998,7 @@ class Project:
         # path can find them without build state.
         if self.ndm == 3 and self.areas:
             self._mesh_and_add_areas(m, mats, node_at)
+            self._prune_opening_orphans(m)
         for nd in self.nodes:
             if nd.supports and any(nd.supports):
                 m.fix(nd.id, list(nd.supports))
@@ -1155,6 +1198,37 @@ class Project:
                 RigidOffset(master=c, slave=p, couple_slave_rotations=True))
         for j in range(len(nodes) - 1):
             model.add_element(make_el(tags[j], phantom[j], phantom[j + 1]))
+
+    def _prune_opening_orphans(self, model) -> None:
+        """Drop a wall-panel corner node an opening left unreferenced (W5): if an
+        opening eats the corner cell, that project corner node would otherwise be
+        a free (singular) node. Only removes corners of areas that carry openings
+        and that nothing else uses — an element, a member end, a non-opening
+        area, a support or a diaphragm all protect a node."""
+        opening_areas = [a for a in self.areas if getattr(a, "openings", None)]
+        if not opening_areas:
+            return
+        used = set()
+        for e in model.elements.values():
+            used.update(getattr(e, "node_tags", ()))
+        protected = set(used)
+        for mb in self.members:
+            protected.update((mb.n1, mb.n2))
+        for a in self.areas:
+            if not getattr(a, "openings", None):
+                protected.update(a.nodes)
+        for nd in self.nodes:
+            if nd.supports and any(nd.supports):
+                protected.add(nd.id)
+        for d in self.diaphragms:
+            protected.update(d.nodes)
+            if d.master is not None:
+                protected.add(d.master)
+        candidates = set()
+        for a in opening_areas:
+            candidates.update(a.nodes)
+        for nid in candidates - protected:
+            model.remove_node(nid)
 
     def _mesh_and_add_areas(self, model, mats, node_at) -> None:
         """Mesh every ``Area`` into shell elements and add them to ``model``

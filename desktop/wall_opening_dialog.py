@@ -86,8 +86,13 @@ class WallOpeningDialog(QDialog):
 
     def _load(self) -> None:
         us = self._us
-        self.tbl.setRowCount(len(self._area.openings))
-        for r, (u0, v0, u1, v1) in enumerate(self._area.openings):
+        from project import _opening_is_rect
+        rects = [o for o in self._area.openings if _opening_is_rect(o)]
+        # polygon openings are preserved untouched (this table edits rectangles)
+        self._polygons = [o for o in self._area.openings
+                          if not _opening_is_rect(o)]
+        self.tbl.setRowCount(len(rects))
+        for r, (u0, v0, u1, v1) in enumerate(rects):
             vals = [u0 * self._L, v0 * self._H,
                     (u1 - u0) * self._L, (v1 - v0) * self._H]
             for cci, v in enumerate(vals):
@@ -128,6 +133,8 @@ class WallOpeningDialog(QDialog):
                 continue
             openings.append((x / self._L, z / self._H,
                              (x + w) / self._L, (z + h) / self._H))
+        # keep any polygon openings the table doesn't edit
+        openings.extend(getattr(self, "_polygons", []))
         self.result = openings
         self.accept()
 

@@ -178,3 +178,58 @@ def test_edit_wall_openings_guarded_without_selection(qapp_vtk, monkeypatch):
                         lambda *a, **k: seen.setdefault("info", a))
     w.edit_wall_openings()
     assert "info" in seen
+
+
+# ------------------------------------------ non-rectangular (polygon) openings
+
+def test_polygon_opening_drops_cells_no_orphans():
+    # an L-shaped opening (6 verts) over the lower-left quadrant of an 8×8 wall
+    poly = [(0.0, 0.0), (0.5, 0.0), (0.5, 0.25),
+            (0.25, 0.25), (0.25, 0.5), (0.0, 0.5)]
+    p, aid = _wall(mesh=(8, 8), openings=[poly])
+    cells = proj.area_quad_cells(p.area(aid))
+    assert len(cells) < 64                       # some cells removed
+    m = p.build_model(with_loads=False)
+    used = set()
+    for e in m.elements.values():
+        used.update(e.node_tags)
+    assert set(m.nodes.keys()) == used           # no orphaned nodes
+
+
+def test_triangle_opening_point_in_poly():
+    tri = [(0.25, 0.25), (0.75, 0.25), (0.5, 0.75)]
+    p, aid = _wall(mesh=(8, 8), openings=[tri])
+    # a cell centre inside the triangle is dropped; one clearly outside is kept
+    assert proj._cell_in_opening([tri], 0.5, 0.35)      # inside
+    assert not proj._cell_in_opening([tri], 0.05, 0.9)  # outside
+    m = p.build_model(with_loads=False)
+    assert 0 < len(m.elements) < 64
+
+
+def test_polygon_opening_round_trip():
+    tri = [(0.25, 0.25), (0.75, 0.25), (0.5, 0.75)]
+    p, aid = _wall(mesh=(4, 4), openings=[tri])
+    q = Project.from_json(p.to_json())
+    assert q.area(aid).openings == [((0.25, 0.25), (0.75, 0.25), (0.5, 0.75))]
+    assert len(q.build_model(with_loads=False).elements) == \
+        len(p.build_model(with_loads=False).elements)
+
+
+def test_rect_and_polygon_openings_mixed():
+    rect = (0.0, 0.0, 0.25, 0.25)
+    tri = [(0.6, 0.6), (0.9, 0.6), (0.75, 0.9)]
+    p, aid = _wall(mesh=(8, 8), openings=[rect, tri])
+    a = p.area(aid)
+    assert len(a.openings) == 2
+    assert proj._opening_is_rect(a.openings[0])
+    assert not proj._opening_is_rect(a.openings[1])
+
+
+def test_opening_dialog_preserves_polygon(qapp):
+    from wall_opening_dialog import WallOpeningDialog
+    tri = ((0.6, 0.6), (0.9, 0.6), (0.75, 0.9))
+    p, aid = _wall(mesh=(4, 4), openings=[(0.0, 0.0, 0.25, 0.25), tri])
+    dlg = WallOpeningDialog(None, p, p.area(aid))
+    assert dlg.tbl.rowCount() == 1               # only the rect shows in the table
+    dlg._accept()                                # editing rects must keep the poly
+    assert tri in dlg.result

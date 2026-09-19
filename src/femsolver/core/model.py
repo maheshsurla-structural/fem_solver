@@ -55,6 +55,17 @@ class Model:
     def node(self, tag: int) -> Node:
         return self._nodes[tag]
 
+    def remove_node(self, tag: int) -> bool:
+        """Remove node ``tag`` if it exists (no-op otherwise). The caller is
+        responsible for ensuring no element/constraint still references it —
+        used to drop nodes left unreferenced by meshing. Returns True if
+        removed. Invalidates DOF numbering."""
+        if tag in self._nodes:
+            del self._nodes[tag]
+            self._numbered = False
+            return True
+        return False
+
     @property
     def nodes(self):
         return self._nodes
