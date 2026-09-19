@@ -621,6 +621,11 @@ class MainWindow(QMainWindow):
         self.act_wall_openings.setStatusTip(
             "Add or remove openings (doors, windows) in the selected wall panel")
         self.act_wall_openings.triggered.connect(self.edit_wall_openings)
+        self.act_coupling_beam = _set_icon(
+            QAction("&Coupling beam…", self), "coupling")
+        self.act_coupling_beam.setStatusTip(
+            "Add a coupling beam between two wall piers at an elevation")
+        self.act_coupling_beam.triggered.connect(self.add_coupling_beam)
         self._mode_group = QActionGroup(self)
         for a in (self.act_select, self.act_sel_window, self.act_sel_poly,
                   self.act_draw_node, self.act_draw_member, self.act_draw_area):
@@ -704,6 +709,7 @@ class MainWindow(QMainWindow):
                       (self.act_add_area, "Area…"),
                       (self.act_draw_wall, "Wall"),
                       (self.act_wall_openings, "Openings"),
+                      (self.act_coupling_beam, "Coupling"),
                       (self.act_snap, "Snap"), self.snap_spin,
                       self.plane_combo, self.plane_offset)),
             ("Select", ((self.act_select, "Select"),
@@ -2647,6 +2653,47 @@ class MainWindow(QMainWindow):
         self._apply_edit("Edit wall openings", _mut, ("area", aid))
         self.statusBar().showMessage(
             f"Wall {aid}: {len(openings)} opening(s)")
+
+    def add_coupling_beam(self) -> None:
+        """Add a coupling beam between two wall piers at an elevation (wall plan
+        W6). Two 4-node wall panels + a beam section are needed; the beam ties
+        into each wall's inner edge via coincident-node merge."""
+        p = self._project
+        walls = [a for a in p.areas if a.role == "wall" and len(a.nodes) == 4]
+        if len(walls) < 2:
+            QMessageBox.information(
+                self, "Coupling beam",
+                "Need at least two wall panels (Draw ▸ Wall) to couple.")
+            return
+        if not p.sections or not p.materials:
+            QMessageBox.information(
+                self, "Coupling beam",
+                "Add a beam section and a material first.")
+            return
+        import coupling
+        from coupling_beam_dialog import CouplingBeamDialog
+        seed = [rid for (k, rid) in self._selected_refs() if k == "area"][:2]
+        params = CouplingBeamDialog.get(self, p, self._units(), seed=seed)
+        if params is None:
+            return
+        if params["area_a_id"] == params["area_b_id"]:
+            QMessageBox.warning(self, "Coupling beam",
+                                "Pick two different wall panels.")
+            return
+        made = {}
+
+        def _mut():
+            _na, _nb, mid = coupling.add_coupling_beam(p, **params)
+            made["member"] = mid
+
+        try:
+            self._apply_edit("Add coupling beam", _mut)
+        except ValueError as e:
+            QMessageBox.warning(self, "Coupling beam", str(e))
+            return
+        if made.get("member"):
+            self._set_selection([("member", made["member"])])
+        self.statusBar().showMessage("Coupling beam added")
 
     def add_diaphragm(self) -> None:
         """Add a rigid floor diaphragm tying the selected joints (slab plan S8).

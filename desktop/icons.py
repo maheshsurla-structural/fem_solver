@@ -40,6 +40,9 @@ _ICONS = {
     # opening — a wall panel with a rectangular hole (door/window) outlined
     "opening": '<rect x="4" y="4" width="16" height="16" rx="1"/>'
                '<rect x="9" y="8" width="6" height="9"/>',
+    # coupling — two wall piers joined by a horizontal link beam
+    "coupling": '<rect x="3" y="4" width="5" height="16"/>'
+                '<rect x="16" y="4" width="5" height="16"/><path d="M8 12h8"/>',
     # contour — nested iso-bands (a filled-contour / result map glyph)
     "contour": '<path d="M4 18h16"/><path d="M6 18a6 6 0 0 1 12 0"/>'
                '<path d="M9 18a3 3 0 0 1 6 0"/>',
