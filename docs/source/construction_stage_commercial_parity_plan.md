@@ -1,13 +1,49 @@
 # Construction-stage / staged-construction — commercial-parity roadmap
 
-*Status: **IN PROGRESS — C0, C1a, C4, C5, C1b, C7, C1c+C6, C1d DONE** (branch `feat/construction-stage-parity`;
-C0/C1a `e96f7ee`, C4 `95f989e`, C5 `1bf7d4b`, C1b `4c7e811`, C7 `f764ffd`, C1c+C6 `d3ac1c8`, C1d committed next). This plan takes the staged-construction stack from
-"most of the physics exists, fragmented across three drivers and barely exposed
-in the GUI" to SAP2000 / CSiBridge / MIDAS Civil grade: one unified nonlinear +
-time-dependent staged case that composes birth/death + per-element
+*Status: **IN PROGRESS — C0, C1a, C1b, C1c, C1d, C4, C5, C6, C7 DONE and MERGED
+to local `main`** (commits `e96f7ee` → `d678577`, fast-forwarded onto `main`;
+**not yet pushed** to `origin`). This plan takes the staged-construction stack
+from "most of the physics exists, fragmented across three drivers and barely
+exposed in the GUI" to SAP2000 / CSiBridge / MIDAS Civil grade: one unified
+nonlinear + time-dependent staged case that composes birth/death + per-element
 creep/shrinkage + tendon stressing + geometric nonlinearity on general 3-D
 frame/shell models, driven from a real GUI stage manager. Sibling to the
 (complete) bridge-analysis and bridge-GUI work streams.*
+
+## 0. Resume here (session hand-off)
+
+**Merged to `main`; work continues directly on `main`** (the
+`feat/construction-stage-parity` branch has been fast-forward-merged, so `main`
+holds everything below; not pushed to `origin`). Full suite green at merge
+(broad staged/bridge/desktop sweep 995 passed, engine staged 51 passed).
+
+**What ships now (all on `main`):** staged construction with element
+birth/death, per-element **age-based creep** (EMM) + material creep inputs +
+stage duration/age UI, **step-by-step frame creep/shrinkage**
+(`StepByStepCreepFrame`), **tendon stressing per stage** (tendon manager +
+stage selector), **temporary support** activation/release, and a **stage-forces
+results tab** (per-element N/|M|/E-factor). See the per-epic ✅ notes in §3.
+
+**Pick up next (highest-value, roughly ordered):**
+1. **C2** — deck bending + 3-D in the nonlinear cable-erection driver
+   (`NonlinearStagedErection`): the last genuinely-new physics.
+2. **Wire `StepByStepCreepFrame` into the staged birth/death driver** so creep
+   redistributes *across stages* (today it is a standalone fixed-model march),
+   + Gauss-point curvature for exact varying-moment bending redistribution.
+3. **C3** — backward / geometry-control camber loop (target-profile casting
+   camber).
+4. **C1e** — geometric nonlinearity (P-Δ) + MP constraints in the general
+   staged driver.
+5. **Deferred GUI polish:** a `(node, dof)` temporary-support picker in the
+   stage dialog (C1d fields persist but aren't dialog-editable yet); tendon
+   long-term losses across stages + primary/secondary reporting +
+   profile rendering (C1c/C6); per-stage deformed-shape stepping + CSV export
+   (C7).
+
+**How to work:** `PYTHONPATH=src <repo>/.venv-gui/Scripts/python -m pytest tests/ -q`
+(desktop tests need `QT_QPA_PLATFORM=offscreen`; patch modal `QMessageBox` in
+headless tests or they hang). Cadence: work on `main` (or a short-lived branch),
+targeted tests per slice, then a broad sweep before finishing.
 
 **Done so far (C0 + C1a):**
 - **C0** — `desktop/project.Stage` extended: `remove_members` (death),
