@@ -1,7 +1,7 @@
 # Construction-stage / staged-construction — commercial-parity roadmap
 
-*Status: **IN PROGRESS — C0 + C1a + C4 + C5 DONE** (branch `feat/construction-stage-parity`;
-C0/C1a `e96f7ee`, C4 `95f989e`, C5 committed next). This plan takes the staged-construction stack from
+*Status: **IN PROGRESS — C0 + C1a + C4 + C5 + C1b DONE** (branch `feat/construction-stage-parity`;
+C0/C1a `e96f7ee`, C4 `95f989e`, C5 `1bf7d4b`, C1b committed next). This plan takes the staged-construction stack from
 "most of the physics exists, fragmented across three drivers and barely exposed
 in the GUI" to SAP2000 / CSiBridge / MIDAS Civil grade: one unified nonlinear +
 time-dependent staged case that composes birth/death + per-element
@@ -41,9 +41,14 @@ frame/shell models, driven from a real GUI stage manager. Sibling to the
   builds `StagedCreep` from a creep-enabled material's props (χ threaded
   through), falling back to `f'c`+8 MPa then elastic. Tests in
   `test_desktop_materials.py` + a χ-affects-droop end-to-end test.
-- **Next:** C1b (step-by-step creep on frames — needed for "restraint added
-  after loading relaxes an earlier load", which C1a's incremental EMM
-  deliberately does not capture), or C7 (staged results beyond camber).
+- **C1b** — `StepByStepCreepFrame` (see the C1 sub-epic below): step-by-step
+  creep + shrinkage on 2-D frames, exact for axial + constant-moment bending,
+  with differential creep. This is the "full creep integration" path (relaxes
+  a developing restraint force, redistributes under differential creep) that
+  C1a's per-increment EMM cannot do.
+- **Next:** wire `StepByStepCreepFrame` into the staged birth/death driver (creep
+  across stages) + Gauss-point curvature for exact varying-moment redistribution,
+  or C7 (staged results beyond camber: per-stage forces/stresses, stage stepping).
 
 ---
 
@@ -178,14 +183,24 @@ A single driver (new `analysis/staged_case.py`, or a superset of
   `StagedCreep` config on `IncrementalStagedAnalysis`. Element-force
   accumulation uses the effective stiffness (determinate forces stay constant,
   deflection grows). See status block above.
-- **C1b — Step-by-step creep + shrinkage on frame elements.** Extend the
-  initial-strain (eigenstrain) creep march (`StepByStepCreepFE`, today
-  Quad4/Hex8) to `BeamColumn2D/3D`: carry per-element axial/curvature stress
-  history, impose the creep + shrinkage strain increment as an equivalent load
-  each time step, and re-solve the active set. Delivers true creep
-  **redistribution** in indeterminate/composite staged frames (not just the
-  one-step AAEM approximation). Validate against `StepByStepCreep` (member) and
-  a two-span continuity closed form.
+- **C1b — Step-by-step creep + shrinkage on frame elements. ✅ DONE (first
+  pass).** New `analysis/time_dependent.StepByStepCreepFrame` — the frame
+  counterpart of `StepByStepCreepFE`. Each `BeamColumn2D` carries a generalised
+  section state (axial force `N`, average curvature `κ=(θ₁−θ₂)/L`); the creep
+  (from the element's own stress-increment history) + shrinkage increment is
+  imposed each step as an eigenstrain via the temperature-action equivalent-load
+  form (`apply_beam_thermal_actions` pattern), then the active set is re-solved
+  (`LinearStaticAnalysis`). Per-element `element_phi` gives **differential
+  creep**. Result: `CreepFrameResult` (disp / reaction / axial / moment
+  histories). **Exact for axial (any indeterminacy) and constant-moment
+  bending; the average-curvature imposition is approximate for
+  moment-varying-along-a-member bending (mesh-refine).** Tests
+  (`tests/test_creep_frame.py`, 5): cantilever tip-moment growth `(1+φ)`,
+  determinate moment unchanged, restrained-shrinkage relaxation, homogeneous
+  axial no-redistribution, differential-axial redistribution. **Remaining:**
+  Gauss-point curvature integration for exact varying-moment bending
+  redistribution (the two-span-continuity closed form), 3-D beams, and wiring
+  the march into the staged birth/death driver (creep across stages).
 - **C1c — Tendon stressing integrated per stage.** Fold `tendon_stage_loads`
   into the driver so a tendon can be stressed at the stage it physically is,
   with time-dependent PT losses (`prestress_long_term_loss`) accruing over

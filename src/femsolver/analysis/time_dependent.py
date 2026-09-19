@@ -478,6 +478,231 @@ class StepByStepCreepFE:
         )
 
 
+# ============================================================ step-by-step creep on FRAMES
+
+@dataclass
+class CreepFrameResult:
+    """Time history from :meth:`StepByStepCreepFrame.run`.
+
+    Attributes
+    ----------
+    times : np.ndarray
+    disp : dict[(int, int), np.ndarray]
+        Tracked nodal-displacement histories, keyed by ``(node_tag, dof)``.
+    reactions : dict[(int, int), np.ndarray]
+        Tracked support-reaction histories, keyed by ``(node_tag, dof)``.
+    axial : dict[int, np.ndarray]
+        Per-element axial-force ``N(t)`` history (Pa·m² = N).
+    moment : dict[int, np.ndarray]
+        Per-element (average) bending-moment ``M(t)`` history (N·m).
+    """
+
+    times: np.ndarray
+    disp: dict
+    reactions: dict
+    axial: dict
+    moment: dict
+
+
+class StepByStepCreepFrame:
+    """Step-by-step creep / shrinkage time-march on a 2-D **frame**
+    (``BeamColumn2D``) model — the frame counterpart of
+    :class:`StepByStepCreepFE` (plan C1b).
+
+    Each concrete beam element carries a generalised section state — axial
+    force ``N`` (from axial strain ``ε``) and average bending moment ``M``
+    (from average curvature ``κ = (θ₂−θ₁)/L``). At each time step the creep
+    generalised-strain increment (from the element's own stress-increment
+    history through the ageing-viscoelastic superposition integral) and the
+    axial shrinkage increment are imposed as an **eigenstrain** — a per-element
+    ``(ε₀, κ₀)`` applied as work-equivalent nodal loads exactly as
+    :func:`femsolver.bridges.thermal_gradient.apply_beam_thermal_actions` does
+    for temperature. The resulting solve:
+
+    * in a statically **determinate** frame, is fully accommodated — the
+      section forces are unchanged and the deflection simply grows
+      (``δ → δ(1+φ)``);
+    * in an **indeterminate** frame, is restrained wherever the free creep
+      deformation is incompatible, so internal forces **redistribute** — the
+      classic effects: differential-creep force transfer between members of
+      different age / material, and relaxation of a restraint force.
+
+    The elastic stiffness uses the instantaneous modulus (the element's own
+    ``E``); the creep compliance increment is carried entirely by the
+    eigenstrain (the general step-by-step / initial-strain method). Section
+    state is tracked with a constant axial strain (exact) and an average
+    curvature (exact for constant-moment elements; refine the mesh where the
+    moment varies along a member).
+
+    Parameters
+    ----------
+    model : Model
+        A 2-D frame (``ndm=2, ndf=3``) of ``BeamColumn2D`` elements.
+    phi : Callable[[float, float], float]
+        Creep coefficient ``φ(t, t0)`` in analysis-time days (returns 0 for
+        ``t ≤ t0``).
+    shrinkage : Callable[[float], float], optional
+        Free axial shrinkage strain ``ε_sh(t)`` (negative).
+    element_phi : dict[int, Callable], optional
+        Per-element creep-coefficient override (for **differential creep** —
+        members cast at different ages / of different concrete). Elements not
+        listed use ``phi``.
+
+    Notes
+    -----
+    Small-displacement, linear-elastic instantaneous stiffness. MP constraints
+    are handled by the underlying :class:`LinearStaticAnalysis`. Non-beam
+    elements are ignored by the creep march (they still contribute stiffness).
+    """
+
+    def __init__(self, model, *, phi, shrinkage=None, element_phi=None):
+        self.model = model
+        self._phi = phi
+        self._sh = shrinkage
+        self._element_phi = dict(element_phi or {})
+
+    def _phi_of(self, tag):
+        return self._element_phi.get(tag, self._phi)
+
+    def phi(self, tag, t, t0):
+        f = self._phi_of(tag)
+        return 0.0 if t <= t0 else float(f(t, t0))
+
+    def eps_sh(self, t):
+        return float(self._sh(t)) if self._sh is not None else 0.0
+
+    @staticmethod
+    def _tau(times):
+        tau = np.empty_like(times)
+        tau[0] = times[0]
+        tau[1:] = 0.5 * (times[:-1] + times[1:])
+        return tau
+
+    def _beam_elems(self):
+        from femsolver.elements.beam import BeamColumn2D
+        return [e for e in self.model.elements.values()
+                if isinstance(e, BeamColumn2D)]
+
+    def _gen_strain(self, el):
+        """Current-increment generalised strain ``(ε_axial, κ_avg)`` of a beam
+        element, from its nodes' displacement increment (this step's solve).
+
+        The curvature sign is taken as ``(θ₁−θ₂)/L`` so it matches the
+        curvature convention of the imposed eigenstrain load in
+        :meth:`_apply_eigenstrain` (verified: a free element under an imposed
+        ``κ₀`` recovers exactly ``κ₀``, so a determinate member develops no
+        stress under creep)."""
+        T = el.transform_matrix()
+        u_g = np.concatenate([self.model.node(nt).disp[:3]
+                              for nt in el.node_tags])
+        u_l = T @ u_g
+        L = el.length_and_angle()[0]
+        return (u_l[3] - u_l[0]) / L, (u_l[2] - u_l[5]) / L
+
+    def _apply_eigenstrain(self, el, eps0, kappa):
+        """Add the work-equivalent nodal loads for an imposed ``(ε₀, κ₀)`` on
+        one beam element (the temperature-action form)."""
+        E = el.material.E
+        EA, EI = E * el.area, E * el.Iz
+        f_local = np.array([-EA * eps0, 0.0, +EI * kappa,
+                            +EA * eps0, 0.0, -EI * kappa])
+        f_global = el.transform_matrix().T @ f_local
+        n1, n2 = el.node_tags
+        self.model.add_nodal_load(n1, list(f_global[0:3]))
+        self.model.add_nodal_load(n2, list(f_global[3:6]))
+
+    def run(self, times, *, sustained_loads, track=(), track_reactions=()):
+        """March the creep/shrinkage response over ``times`` (days).
+
+        Parameters
+        ----------
+        times : array-like
+            Ages (days); ``times[0]`` is the loading age.
+        sustained_loads : callable
+            ``sustained_loads(model)`` sets the constant nodal/member loads
+            applied at ``times[0]`` and held (via creep) thereafter.
+        track, track_reactions : iterable[(node_tag, dof)]
+            Nodal-displacement / support-reaction histories to record.
+        """
+        from femsolver.analysis.linear_static import LinearStaticAnalysis
+
+        m = self.model
+        t = np.asarray(times, dtype=float).ravel()
+        if t.size < 1:
+            raise ValueError("need at least one time")
+        tau = self._tau(t)
+        elems = self._beam_elems()
+        if not elems:
+            raise TypeError("StepByStepCreepFrame needs BeamColumn2D elements")
+
+        # per-element elastic generalised-strain increment history + state
+        hist = {e.tag: [] for e in elems}        # [(deps, dkappa, tau_j), ...]
+        N = {e.tag: 0.0 for e in elems}
+        Mn = {e.tag: 0.0 for e in elems}
+
+        disp_out = {k: [] for k in track}
+        reac_out = {k: [] for k in track_reactions}
+        ax_out = {e.tag: [] for e in elems}
+        mo_out = {e.tag: [] for e in elems}
+        u_tot = {n.tag: np.zeros(n.ndf) for n in m.nodes.values()}
+        r_tot = {n.tag: np.zeros(n.ndf) for n in m.nodes.values()}
+
+        for n_idx, t_n in enumerate(t):
+            if n_idx == 0:
+                m.clear_loads()
+                sustained_loads(m)
+                LinearStaticAnalysis(m).run()
+                for e in elems:
+                    de, dk = self._gen_strain(e)
+                    hist[e.tag].append((de, dk, tau[0]))
+                    N[e.tag] = e.material.E * e.area * de
+                    Mn[e.tag] = e.material.E * e.Iz * dk
+            else:
+                t_prev = t[n_idx - 1]
+                imposed = {}
+                for e in elems:
+                    de_cr = dk_cr = 0.0
+                    for (de_j, dk_j, tau_j) in hist[e.tag]:
+                        dphi = (self.phi(e.tag, t_n, tau_j)
+                                - self.phi(e.tag, t_prev, tau_j))
+                        if dphi != 0.0:
+                            de_cr += de_j * dphi
+                            dk_cr += dk_j * dphi
+                    de_sh = self.eps_sh(t_n) - self.eps_sh(t_prev)
+                    imposed[e.tag] = (de_cr + de_sh, dk_cr)
+                m.clear_loads()
+                for e in elems:
+                    self._apply_eigenstrain(e, *imposed[e.tag])
+                LinearStaticAnalysis(m).run()         # node.disp = Δu_n
+                for e in elems:
+                    de_tot, dk_tot = self._gen_strain(e)
+                    eps0, kap0 = imposed[e.tag]
+                    de = de_tot - eps0                # stress-producing part
+                    dk = dk_tot - kap0
+                    hist[e.tag].append((de, dk, tau[n_idx]))
+                    N[e.tag] += e.material.E * e.area * de
+                    Mn[e.tag] += e.material.E * e.Iz * dk
+            # accumulate tracked histories from this solve's increment
+            for node in m.nodes.values():
+                u_tot[node.tag] = u_tot[node.tag] + node.disp
+                r_tot[node.tag] = r_tot[node.tag] + node.reaction
+            for (nd, dof) in track:
+                disp_out[(nd, dof)].append(float(u_tot[nd][dof]))
+            for (nd, dof) in track_reactions:
+                reac_out[(nd, dof)].append(float(r_tot[nd][dof]))
+            for e in elems:
+                ax_out[e.tag].append(N[e.tag])
+                mo_out[e.tag].append(Mn[e.tag])
+
+        return CreepFrameResult(
+            times=t,
+            disp={k: np.asarray(v) for k, v in disp_out.items()},
+            reactions={k: np.asarray(v) for k, v in reac_out.items()},
+            axial={k: np.asarray(v) for k, v in ax_out.items()},
+            moment={k: np.asarray(v) for k, v in mo_out.items()},
+        )
+
+
 def restraint_force_relaxation(
     *,
     times,
