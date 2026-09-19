@@ -616,6 +616,11 @@ class MainWindow(QMainWindow):
             "Draw wall — select the base line (2+ nodes), then extrude it "
             "upward by a height into vertical wall panels")
         self.act_draw_wall.triggered.connect(self.draw_wall)
+        self.act_wall_openings = _set_icon(
+            QAction("Wall &openings…", self), "opening")
+        self.act_wall_openings.setStatusTip(
+            "Add or remove openings (doors, windows) in the selected wall panel")
+        self.act_wall_openings.triggered.connect(self.edit_wall_openings)
         self._mode_group = QActionGroup(self)
         for a in (self.act_select, self.act_sel_window, self.act_sel_poly,
                   self.act_draw_node, self.act_draw_member, self.act_draw_area):
@@ -698,6 +703,7 @@ class MainWindow(QMainWindow):
                       (self.act_draw_area, "Area"),
                       (self.act_add_area, "Area…"),
                       (self.act_draw_wall, "Wall"),
+                      (self.act_wall_openings, "Openings"),
                       (self.act_snap, "Snap"), self.snap_spin,
                       self.plane_combo, self.plane_offset)),
             ("Select", ((self.act_select, "Select"),
@@ -2617,6 +2623,30 @@ class MainWindow(QMainWindow):
                          refs[0] if len(refs) == 1 else None)
         if refs:
             self._set_selection(refs)
+
+    def edit_wall_openings(self) -> None:
+        """Add / remove openings (doors, windows) in the selected wall panel
+        (wall plan W5). Select one 4-node wall area first."""
+        p = self._project
+        sel_areas = [rid for (k, rid) in self._selected_refs() if k == "area"]
+        area = p.area(sel_areas[0]) if len(sel_areas) == 1 else None
+        if area is None or len(area.nodes) != 4:
+            QMessageBox.information(
+                self, "Wall openings",
+                "Select a single 4-node wall panel first (click it in the "
+                "model), then Draw ▸ Openings.")
+            return
+        from wall_opening_dialog import WallOpeningDialog
+        openings = WallOpeningDialog.edit(self, p, area, self._units())
+        if openings is None:
+            return
+        aid = area.id
+
+        def _mut():
+            p.area(aid).openings = openings
+        self._apply_edit("Edit wall openings", _mut, ("area", aid))
+        self.statusBar().showMessage(
+            f"Wall {aid}: {len(openings)} opening(s)")
 
     def add_diaphragm(self) -> None:
         """Add a rigid floor diaphragm tying the selected joints (slab plan S8).

@@ -38,6 +38,39 @@ def area_element_tag(area_id: int, k: int = 0) -> int:
     return AREA_TAG_BASE + area_id * AREA_TAG_STRIDE + k
 
 
+def _cell_in_opening(openings, u, v) -> bool:
+    """True if the parametric cell centre ``(u, v)`` lies in any opening rect
+    ``(u0, v0, u1, v1)`` (wall plan W5)."""
+    for (u0, v0, u1, v1) in openings:
+        if u0 <= u <= u1 and v0 <= v <= v1:
+            return True
+    return False
+
+
+def area_quad_cells(area) -> list:
+    """``(k, i, j)`` for each *kept* mesh cell of a 4-node area — cells whose
+    centre falls inside an opening (W5) are dropped. ``k = j·n1 + i`` is a stable
+    tag index independent of which cells are dropped, so element tags never
+    shift. Non-quad areas return ``[]``."""
+    if len(area.nodes) != 4:
+        return []
+    n1 = max(1, int(area.mesh[0]))
+    n2 = max(1, int(area.mesh[1]))
+    ops = getattr(area, "openings", None) or []
+    return [(j * n1 + i, i, j)
+            for j in range(n2) for i in range(n1)
+            if not _cell_in_opening(ops, (i + 0.5) / n1, (j + 0.5) / n2)]
+
+
+def area_quad_needed_nodes(area) -> set:
+    """The grid corners ``(i, j)`` used by at least one kept cell — the only
+    mesh nodes to create, so openings leave no orphaned (singular) nodes."""
+    needed = set()
+    for (_k, i, j) in area_quad_cells(area):
+        needed.update(((i, j), (i + 1, j), (i + 1, j + 1), (i, j + 1)))
+    return needed
+
+
 # Element-tag block for beam sub-elements produced when a member lying along a
 # meshed slab edge is auto-split at the slab's edge nodes (beam-to-slab-edge
 # compatibility, epics BE0-BE2). An *unsplit* member keeps its own id as the
@@ -255,6 +288,12 @@ class Area:
     role: str = "slab"
     pier: "str | None" = None
     spandrel: "str | None" = None
+    # Rectangular openings (wall plan W5), each ``(u0, v0, u1, v1)`` in the quad's
+    # parametric coordinates: ``u`` runs along nodes[0]→nodes[1] (the base of a
+    # W1a wall), ``v`` along nodes[0]→nodes[3] (its height), both in 0..1. Mesh
+    # cells whose centre falls inside any opening are dropped, so a door/window
+    # is a hole in the panel. Only honoured for 4-node (quad) areas.
+    openings: list = field(default_factory=list)
 
     def __post_init__(self):
         # JSON round-trips ``nodes``/``mesh`` as lists; normalize types so
@@ -268,6 +307,19 @@ class Area:
         self.pier = _norm_label(self.pier) if self.role == "wall" else None
         self.spandrel = (_norm_label(self.spandrel)
                          if self.role == "wall" else None)
+        # normalize each opening to a sorted 4-tuple clamped to the unit square
+        norm = []
+        for o in (self.openings or []):
+            try:
+                u0, v0, u1, v1 = (float(o[0]), float(o[1]),
+                                  float(o[2]), float(o[3]))
+            except (TypeError, ValueError, IndexError):
+                continue
+            u0, u1 = sorted((min(max(u0, 0.0), 1.0), min(max(u1, 0.0), 1.0)))
+            v0, v1 = sorted((min(max(v0, 0.0), 1.0), min(max(v1, 0.0), 1.0)))
+            if u1 - u0 > 1e-9 and v1 - v0 > 1e-9:
+                norm.append((u0, v0, u1, v1))
+        self.openings = norm
 
 
 # Load "nature" -> ASCE 7 pattern key used by the code combinations. ``None``
@@ -750,7 +802,8 @@ class Project:
                         local_axis=float(a.get("local_axis", 0.0)),
                         role=a.get("role", "slab"),   # migrate: absent -> slab
                         pier=a.get("pier"),
-                        spandrel=a.get("spandrel"))
+                        spandrel=a.get("spandrel"),
+                        openings=[tuple(o) for o in a.get("openings", [])])
                    for a in d.get("areas", [])],
             load_cases=cases,
             loads=[Load(node=x["node"], values=tuple(x["values"]),
@@ -985,13 +1038,18 @@ class Project:
             corners = [ncoord[nid] for nid in a.nodes]
             n1 = max(1, int(a.mesh[0]))
             n2 = max(1, int(a.mesh[1]))
-            # (s, t) params of the interior points on each of the four edges
-            params = ([(i / n1, 0.0) for i in range(1, n1)]      # P0->P1
-                      + [(1.0, j / n2) for j in range(1, n2)]    # P1->P2
-                      + [(i / n1, 1.0) for i in range(1, n1)]    # P3->P2
-                      + [(0.0, j / n2) for j in range(1, n2)])   # P0->P3
-            for s, t in params:
-                coords.append(tuple(float(v) for v in _bilinear(corners, s, t)))
+            # interior edge grid nodes, keeping only those a kept cell uses so an
+            # opening on the boundary leaves no orphaned edge node (W5)
+            needed = area_quad_needed_nodes(a)
+            edge_ij = ([(i, 0) for i in range(1, n1)]            # P0->P1
+                       + [(n1, j) for j in range(1, n2)]         # P1->P2
+                       + [(i, n2) for i in range(1, n1)]         # P3->P2
+                       + [(0, j) for j in range(1, n2)])         # P0->P3
+            for i, j in edge_ij:
+                if (i, j) not in needed:
+                    continue
+                coords.append(tuple(float(v)
+                                    for v in _bilinear(corners, i / n1, j / n2)))
         return coords
 
     def _register_area_edge_nodes(self, node_at) -> dict:
@@ -1121,21 +1179,17 @@ class Project:
                 corners = [ncoord[nid] for nid in a.nodes]
                 n1 = max(1, int(a.mesh[0]))
                 n2 = max(1, int(a.mesh[1]))
-                grid = {}
-                for j in range(n2 + 1):
-                    for i in range(n1 + 1):
-                        grid[(i, j)] = _node_at(
-                            _bilinear(corners, i / n1, j / n2))
-                k = 0
-                for j in range(n2):
-                    for i in range(n1):
-                        quad = [grid[(i, j)], grid[(i + 1, j)],
-                                grid[(i + 1, j + 1)], grid[(i, j + 1)]]
-                        el = _build_shell_element(
-                            area_element_tag(a.id, k), quad, mat, ss)
-                        if el is not None:
-                            model.add_element(el)
-                        k += 1
+                cells = area_quad_cells(a)            # kept cells (W5 openings)
+                grid = {}                             # only nodes a kept cell uses
+                for (i, j) in area_quad_needed_nodes(a):
+                    grid[(i, j)] = _node_at(_bilinear(corners, i / n1, j / n2))
+                for (k, i, j) in cells:
+                    quad = [grid[(i, j)], grid[(i + 1, j)],
+                            grid[(i + 1, j + 1)], grid[(i, j + 1)]]
+                    el = _build_shell_element(
+                        area_element_tag(a.id, k), quad, mat, ss)
+                    if el is not None:
+                        model.add_element(el)
             elif len(a.nodes) >= 5:               # polygon → centroid fan of tris
                 corners = [ncoord[nid] for nid in a.nodes]
                 cx = sum(c[0] for c in corners) / len(corners)
@@ -1389,9 +1443,10 @@ class Project:
         centroid-fan triangle per edge; a triangle owns one. Matches the
         deterministic tags emitted by :meth:`_mesh_and_add_areas`."""
         n_nodes = len(area.nodes)
-        if n_nodes == 4:
-            n = max(1, int(area.mesh[0])) * max(1, int(area.mesh[1]))
-        elif n_nodes >= 5:
+        if n_nodes == 4:                          # kept cells only (W5 openings)
+            return [area_element_tag(area.id, k) for (k, _i, _j)
+                    in area_quad_cells(area)]
+        if n_nodes >= 5:
             n = n_nodes                           # centroid-fan: one tri per edge
         else:
             n = 1

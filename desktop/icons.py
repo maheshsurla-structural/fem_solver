@@ -37,6 +37,9 @@ _ICONS = {
             'M15.5 9.3v5.3M10.2 14.6V20M13.8 14.6V20"/>',
     # grid — stories/levels: horizontal level lines crossed by grid axes
     "grid": '<path d="M3 7h18M3 12h18M3 17h18M8 4v16M14 4v16"/>',
+    # opening — a wall panel with a rectangular hole (door/window) outlined
+    "opening": '<rect x="4" y="4" width="16" height="16" rx="1"/>'
+               '<rect x="9" y="8" width="6" height="9"/>',
     # contour — nested iso-bands (a filled-contour / result map glyph)
     "contour": '<path d="M4 18h16"/><path d="M6 18a6 6 0 0 1 12 0"/>'
                '<path d="M9 18a3 3 0 0 1 6 0"/>',
